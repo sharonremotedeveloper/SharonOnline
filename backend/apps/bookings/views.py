@@ -1,0 +1,156 @@
+from rest_framework import generics, permissions, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
+from .models import Booking, LessonMemo
+from apps.teachers.models import TeacherProfile
+from .serializers import (
+    BookingDetailSerializer,
+    BookingCreateSerializer,
+    ReserveSlotRequestSerializer,
+    LessonMemoSerializer,
+    ReviewSubmitSerializer
+)
+from .services.slot_generator import generate_teacher_slots
+from .services.lock_service import acquire_slot_lock, release_slot_lock
+
+class TeacherSlotsView(APIView):
+    """
+    Returns concrete 25-minute slots for a given teacher projected into the requested timezone.
+    """
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request, teacher_id):
+        teacher = get_object_or_404(TeacherProfile, id=teacher_id, is_active=True)
+        days_ahead = int(request.query_params.get('days', 7))
+        viewer_tz = request.query_params.get('tz', 'UTC')
+
+        slots = generate_teacher_slots(
+            teacher=teacher,
+            days_ahead=min(days_ahead, 14),
+            viewer_tz_name=viewer_tz
+        )
+        return Response({
+            "teacher_id": str(teacher.id),
+            "teacher_name": teacher.user.get_full_name() or teacher.user.username,
+            "viewer_timezone": viewer_tz,
+            "slot_count": len(slots),
+            "slots": slots
+        })
+
+class ReserveSlotView(APIView):
+    """
+    Acquires a 10-minute pessimistic Redis lock for a slot prior to checkout.
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request):
+        serializer = ReserveSlotRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        teacher_id = str(serializer.validated_data['teacher_id'])
+        start_time_utc = serializer.validated_data['start_time_utc'].isoformat()
+        student_id = str(request.user.id)
+
+        acquired = acquire_slot_lock(teacher_id, start_time_utc, student_id)
+        if not acquired:
+            return Response(
+                {"error": "This 25-minute slot is currently being reserved by another student. Please select an alternate slot."},
+                status=status.HTTP_409_CONFLICT
+            )
+
+        return Response({
+            "status": "reserved",
+            "teacher_id": teacher_id,
+            "start_time_utc": start_time_utc,
+            "lock_ttl_seconds": 600,
+            "message": "Slot held for 10 minutes. Please complete payment to confirm booking."
+        }, status=status.HTTP_200_OK)
+
+class BookingListCreateView(generics.ListCreateAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return BookingCreateSerializer
+        return BookingDetailSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'teacher' and hasattr(user, 'teacher_profile'):
+            return Booking.objects.filter(teacher=user.teacher_profile).select_related('teacher__user', 'student', 'material')
+        return Booking.objects.filter(student=user).select_related('teacher__user', 'student', 'material')
+
+class BookingDetailView(generics.RetrieveAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = BookingDetailSerializer
+    lookup_field = 'id'
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'teacher' and hasattr(user, 'teacher_profile'):
+            return Booking.objects.filter(teacher=user.teacher_profile)
+        return Booking.objects.filter(student=user)
+
+class SubmitMemoView(APIView):
+    """
+    Allows a teacher to submit the post-lesson feedback memo.
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, booking_id):
+        booking = get_object_or_404(Booking, id=booking_id)
+        if booking.teacher.user != request.user and not request.user.is_staff:
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+
+        feedback_text = request.data.get('feedback_text', '')
+        vocabulary_words = request.data.get('vocabulary_words', [])
+        pronunciation_notes = request.data.get('pronunciation_notes', '')
+        homework = request.data.get('homework', '')
+
+        memo, _ = LessonMemo.objects.update_or_create(
+            booking=booking,
+            defaults={
+                'teacher': booking.teacher,
+                'student': booking.student,
+                'feedback_text': feedback_text,
+                'vocabulary_words': vocabulary_words,
+                'pronunciation_notes': pronunciation_notes,
+                'homework': homework
+            }
+        )
+
+        booking.status = Booking.Status.COMPLETED
+        booking.save()
+
+        return Response(LessonMemoSerializer(memo).data, status=status.HTTP_200_OK)
+
+class SubmitReviewView(APIView):
+    """
+    Allows a student to submit a 1-5 star rating and optional written review.
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, booking_id):
+        booking = get_object_or_404(Booking, id=booking_id, student=request.user)
+        serializer = ReviewSubmitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        rating = serializer.validated_data['rating']
+        review = serializer.validated_data.get('review', '')
+
+        booking.student_rating = rating
+        booking.student_review = review
+        booking.save()
+
+        # Update teacher aggregate stats
+        teacher = booking.teacher
+        total_ratings = Booking.objects.filter(teacher=teacher, student_rating__isnull=False)
+        count = total_ratings.count()
+        avg = sum(b.student_rating for b in total_ratings) / count if count > 0 else 5.0
+        teacher.rating_count = count
+        teacher.rating_avg = round(avg, 2)
+        teacher.save()
+
+        return Response({"status": "review_recorded", "rating_avg": teacher.rating_avg}, status=status.HTTP_200_OK)

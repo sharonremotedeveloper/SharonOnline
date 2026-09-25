@@ -1,0 +1,25 @@
+# Django & REST Framework
+Django>=5.1,<5.2
+djangorestframework>=3.15.2
+django-cors-headers>=4.4.0
+djangorestframework-simplejwt>=5.3.1
+django-filter>=24.3
+
+# Database & Cache
+psycopg2-binary>=2.9.9
+dj-database-url>=2.2.0
+redis>=5.0.8
+
+# Asynchronous Tasks
+celery>=5.4.0
+
+# Security & Utilities
+python-dotenv>=1.0.1
+requests>=2.32.3
+icalendar>=5.0.13
+pytz>=2024.1
+whitenoise>=6.7.0
+
+# Testing
+pytest>=8.3.2
+pytest-django>=4.9.0

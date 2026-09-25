@@ -1,0 +1,20 @@
+from django.contrib import admin
+from django.urls import path, include
+from django.http import JsonResponse
+
+def health_check(request):
+    return JsonResponse({
+        "status": "healthy",
+        "service": "esl_backend",
+        "version": "1.0.0"
+    })
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/health/', health_check, name='health-check'),
+    path('api/v1/auth/', include('apps.users.urls')),
+    path('api/v1/teachers/', include('apps.teachers.urls')),
+    path('api/v1/bookings/', include('apps.bookings.urls')),
+    path('api/v1/materials/', include('apps.materials.urls')),
+    path('api/v1/payments/', include('apps.payments.urls')),
+]
