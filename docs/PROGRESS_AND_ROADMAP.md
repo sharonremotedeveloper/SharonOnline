@@ -31,10 +31,11 @@ flowchart LR
 - [x] `seed_data` script initialized (`admin`, `student_aiko`, 3 tutors, 4 materials)
 - [x] `pytest` suite configured (`conftest.py` with eager Celery & `LocMemCache`)
 - [x] Health check endpoint (`GET /api/health/`)
-- [ ] JWT Auth endpoints (`/api/v1/auth/token/`, `/api/v1/auth/register/`)
-- [ ] Redis Redlock reservation engine (`SET booking:slot:... NX EX 600`)
-- [ ] Zoom S2S OAuth Client & Webhook Receiver
-- [ ] PayFast ITN & PayPal Webhook Handlers
+- [x] JWT Auth endpoints (`/api/v1/auth/token/`, `/api/v1/auth/register/`)
+- [x] Redis Redlock reservation engine (`SET booking:slot:... NX EX 600`)
+- [-] Zoom S2S OAuth Client & Webhook Receiver
+- [-] PayFast ITN & PayPal Webhook Handlers
+- [*] See comprehensive breakdown in [`docs/MASTER_MODULE_ROADMAP_AND_ARCHITECTURE.md`](./MASTER_MODULE_ROADMAP_AND_ARCHITECTURE.md)
 
 ### 2.2 Frontend Services (`Project-files/frontend/`)
 - [x] Next.js 14 App Router (TypeScript, Tailwind CSS)
