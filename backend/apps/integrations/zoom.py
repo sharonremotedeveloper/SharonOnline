@@ -69,7 +69,98 @@ class ZoomClient:
                 "start_url": res_data.get('start_url'),
                 "password": res_data.get('password', '')
             }
-        logger.error(f"Failed to create Zoom meeting: {resp.text}")
-        raise RuntimeError(f"Zoom meeting creation failed: {resp.text}")
+    def get_meeting_status(self, meeting_id: str) -> dict:
+        token = self.get_access_token()
+        if not token:
+            # Fallback mock for development/sandbox
+            return {
+                "meeting_id": str(meeting_id),
+                "status": "waiting",
+                "participant_count": 0
+            }
+
+        url = f"https://api.zoom.us/v2/meetings/{meeting_id}"
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json'
+        }
+        resp = requests.get(url, headers=headers, timeout=10)
+        if resp.status_code == 200:
+            res_data = resp.json()
+            return {
+                "meeting_id": str(res_data.get('id')),
+                "status": res_data.get('status', 'waiting'),  # 'waiting', 'started', 'finished'
+                "participant_count": res_data.get('participant_count', 0)
+            }
+        logger.error(f"Failed to fetch Zoom meeting status for {meeting_id}: {resp.text}")
+        return {
+            "meeting_id": str(meeting_id),
+            "status": "error",
+            "participant_count": 0
+        }
+
+    @staticmethod
+    def get_webhook_secret() -> str:
+        from django.conf import settings
+        return (
+            getattr(settings, 'ZOOM_WEBHOOK_SECRET_TOKEN', '')
+            or os.environ.get('ZOOM_WEBHOOK_SECRET_TOKEN', '')
+            or getattr(settings, 'SECRET_KEY', 'zoom-dev-secret')
+        )
+
+    @classmethod
+    def verify_webhook_signature(cls, headers: dict, raw_body: bytes) -> tuple[bool, str]:
+        import hmac
+        import hashlib
+        import time
+
+        zm_signature = headers.get('x-zm-signature') or headers.get('HTTP_X_ZM_SIGNATURE', '')
+        zm_timestamp = headers.get('x-zm-request-timestamp') or headers.get('HTTP_X_ZM_REQUEST_TIMESTAMP', '')
+
+        if not zm_signature or not zm_timestamp:
+            return False, "Missing Zoom webhook signature or timestamp headers"
+
+        try:
+            timestamp_int = int(zm_timestamp)
+        except (ValueError, TypeError):
+            return False, "Invalid timestamp format in Zoom webhook header"
+
+        # Check replay attack drift (within 300 seconds / 5 minutes)
+        if abs(int(time.time()) - timestamp_int) > 300:
+            return False, "Request timestamp out of allowable window (replay guard)"
+
+        secret = cls.get_webhook_secret()
+        body_str = raw_body.decode('utf-8', errors='replace')
+        message = f"v0:{zm_timestamp}:{body_str}"
+        computed_hash = hmac.new(
+            secret.encode('utf-8'),
+            message.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+        expected_signature = f"v0={computed_hash}"
+
+        if not hmac.compare_digest(expected_signature, zm_signature):
+            return False, "Invalid HMAC signature"
+
+        return True, "Valid"
+
+    @classmethod
+    def generate_url_validation_response(cls, plain_token: str) -> dict:
+        import hmac
+        import hashlib
+
+        secret = cls.get_webhook_secret()
+        encrypted_token = hmac.new(
+            secret.encode('utf-8'),
+            plain_token.encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+
+        return {
+            "plainToken": plain_token,
+            "encryptedToken": encrypted_token
+        }
+
 
 zoom_client = ZoomClient()
+

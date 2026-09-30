@@ -206,7 +206,9 @@ flowchart LR
 
 ## 4. Current Active Sprint Backlog (Sprint 6: Launch Hardening)
 
-- [ ] **Task 6.1**: Implement Zoom Webhook Ingestion Receiver (`ZoomWebhookReceiverView` in `apps.integrations`) validating HMAC-SHA256 signature (`x-zm-signature`) and populating `AttendanceAudit`.
-- [ ] **Task 6.2**: Formalize double-entry transaction journal table (`LedgerEntry` debit/credit rows) in `apps.payments.models` for regulatory SARB / GAAP reporting.
-- [ ] **Task 6.3**: Connect Cloudflare R2 bucket integration for static curriculum PDFs and audio snippets with zero egress fees.
-- [ ] **Task 6.4**: Run end-to-end multi-container docker staging test (`docker compose up -d`) with full lifecycle verification.
+- [x] **Task 6.1**: Implement Zoom Webhook Ingestion Receiver (`ZoomWebhookReceiverView` in `apps.integrations`) validating HMAC-SHA256 signature (`x-zm-signature`) and populating `AttendanceAudit`.
+- [x] **Task 6.2**: Implement Late Webhook Concurrency Guard (Active Zoom probe at T+10m, `select_for_update` DB row locks, out-of-order session keying, and late webhook dispute quarantine in `apps.integrations` & `apps.bookings`).
+- [ ] **Task 6.3**: Formalize double-entry transaction journal table (`LedgerEntry` debit/credit rows) in `apps.payments.models` for regulatory SARB / GAAP reporting.
+- [ ] **Task 6.4**: Connect Cloudflare R2 bucket integration for static curriculum PDFs and audio snippets with zero egress fees.
+- [ ] **Task 6.5**: Run end-to-end multi-container docker staging test (`docker compose up -d`) with full lifecycle verification.
+

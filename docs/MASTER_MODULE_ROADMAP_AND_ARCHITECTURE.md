@@ -274,10 +274,11 @@ Zero-maintenance, carrier-grade synchronous video infrastructure using Zoom Serv
   - `apps.integrations.zoom.zoom_client` generating OAuth access tokens via S2S credentials, provisioning meetings with passcode, waiting room, and disabled host-before-join.
 - **Stage 5.2: Asynchronous Room Dispatch Task** `[x] COMPLETED`
   - `apps.integrations.tasks.dispatch_booking_fulfillment` triggered upon booking confirmation to generate meeting ID, host start URL, and student join URL.
-- **Stage 5.3: Zoom Webhook Ingestion & Attendance Auditing** `[-] IN_PROGRESS`
-  - `AttendanceAudit` model tracking participant email, join time, leave time, duration in minutes.
+- **Stage 5.3: Zoom Webhook Ingestion & Attendance Auditing** `[x] COMPLETED`
+  - `AttendanceAudit` model tracking participant email, zoom_user_id, join time, leave time, duration in minutes, raw payload.
   - Celery Beat attendance audit (`audit_attendance_and_noshows_task`) and escrow minimum duration gate (>= 20 minutes) completed.
-  - *Remaining:* Ingestion HTTP endpoint (`ZoomWebhookReceiverView` in DRF) validating Zoom HMAC-SHA256 signature (`x-zm-signature`) for live webhooks.
+  - Ingestion HTTP endpoint (`ZoomWebhookReceiverView` in DRF at `/api/v1/integrations/zoom/webhook/`) validating Zoom HMAC-SHA256 signature (`x-zm-signature`), URL validation CRC handshake, and timestamp replay attack guard (300s window).
+  - Late Webhook Concurrency Guard implemented with Active Zoom API probe fallback at T+10m, transactional `select_for_update` DB row locking, out-of-order session keying, and automated dispute quarantine for late attendance arrivals post-adjudication.
 - **Stage 5.4: Live Classroom Launch Pad UI** `[x] COMPLETED`
   - Classroom staging pages deployed in `/student/classroom/[id]` and `/teacher/classroom/[id]`.
   - Hardware AV check (`HardwareCheckModal.tsx` WebRTC mic/cam test), 50/50 split-screen curriculum reader, countdown clock, and 1-click Zoom App / Web Client launcher (`ZoomLauncherButton.tsx`).

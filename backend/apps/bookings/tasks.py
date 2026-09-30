@@ -101,23 +101,52 @@ def audit_attendance_and_noshows_task():
         end_time_utc__gt=now
     ).select_related('teacher__user', 'student')
 
-    for booking in t10_candidates:
-        teacher_email = booking.teacher.user.email
-        student_email = booking.student.email
+    for candidate in t10_candidates:
+        with transaction.atomic():
+            booking = Booking.objects.select_for_update().filter(id=candidate.id).first()
+            if not booking or booking.status != Booking.Status.CONFIRMED:
+                continue
 
-        teacher_attended = AttendanceAudit.objects.filter(
-            booking=booking,
-            participant_email=teacher_email
-        ).exists()
+            teacher_email = booking.teacher.user.email
+            student_email = booking.student.email
 
-        student_attended = AttendanceAudit.objects.filter(
-            booking=booking,
-            participant_email=student_email
-        ).exists()
+            teacher_attended = AttendanceAudit.objects.filter(
+                booking=booking,
+                participant_email=teacher_email
+            ).exists()
 
-        # Scenario A: Teacher is Absent at T+10m
-        if not teacher_attended:
-            with transaction.atomic():
+            student_attended = AttendanceAudit.objects.filter(
+                booking=booking,
+                participant_email=student_email
+            ).exists()
+
+            # Active Zoom Probe Guard (Pillar 1)
+            # Before issuing no-show penalties, query live Zoom status
+            if not teacher_attended and booking.zoom_meeting_id:
+                try:
+                    from apps.integrations.zoom import zoom_client
+                    z_telemetry = zoom_client.get_meeting_status(booking.zoom_meeting_id)
+                    if z_telemetry.get('status') == 'started' or z_telemetry.get('participant_count', 0) > 0:
+                        AttendanceAudit.objects.get_or_create(
+                            booking=booking,
+                            participant_email=teacher_email,
+                            defaults={
+                                "join_time_utc": booking.start_time_utc,
+                                "raw_payload": {"source": "active_zoom_probe"}
+                            }
+                        )
+                        teacher_attended = True
+                        booking.status = Booking.Status.IN_PROGRESS
+                        booking.save(update_fields=['status', 'updated_at'])
+                        logger.warning(
+                            f"[ACTIVE ZOOM PROBE GUARD] Active meeting detected for booking {booking.id}. "
+                            f"Prevented false teacher no-show penalty."
+                        )
+                except Exception as probe_err:
+                    logger.error(f"[ACTIVE ZOOM PROBE ERROR] Error probing Zoom meeting {booking.zoom_meeting_id}: {probe_err}")
+
+            # Scenario A: Teacher is Absent at T+10m
+            if not teacher_attended:
                 booking.status = Booking.Status.TEACHER_NO_SHOW
                 booking.save(update_fields=['status', 'updated_at'])
 
@@ -143,9 +172,8 @@ def audit_attendance_and_noshows_task():
                     f"Student {booking.student.username} awarded 2 restitution credits."
                 )
 
-        # Scenario B: Student Absent at T+10m, but Teacher is Present
-        elif not student_attended:
-            with transaction.atomic():
+            # Scenario B: Student Absent at T+10m, but Teacher is Present
+            elif not student_attended:
                 booking.status = Booking.Status.STUDENT_NO_SHOW
                 booking.save(update_fields=['status', 'updated_at'])
                 results["student_no_shows"] += 1
@@ -160,14 +188,18 @@ def audit_attendance_and_noshows_task():
         end_time_utc__lte=now
     ).select_related('teacher__user')
 
-    for booking in ended_candidates:
-        teacher_email = booking.teacher.user.email
-        teacher_minutes = AttendanceAudit.objects.filter(
-            booking=booking,
-            participant_email=teacher_email
-        ).aggregate(total=Sum('total_minutes'))['total'] or 0
-
+    for candidate in ended_candidates:
         with transaction.atomic():
+            booking = Booking.objects.select_for_update().filter(id=candidate.id).first()
+            if not booking or booking.status not in [Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS]:
+                continue
+
+            teacher_email = booking.teacher.user.email
+            teacher_minutes = AttendanceAudit.objects.filter(
+                booking=booking,
+                participant_email=teacher_email
+            ).aggregate(total=Sum('total_minutes'))['total'] or 0
+
             if teacher_minutes >= 20:
                 booking.status = Booking.Status.COMPLETED_PENDING_MEMO
                 booking.save(update_fields=['status', 'updated_at'])

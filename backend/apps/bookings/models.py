@@ -95,9 +95,11 @@ class AttendanceAudit(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='attendance_audits')
     participant_email = models.EmailField()
-    join_time_utc = models.DateTimeField()
+    zoom_user_id = models.CharField(max_length=64, blank=True, db_index=True)
+    join_time_utc = models.DateTimeField(null=True, blank=True)
     leave_time_utc = models.DateTimeField(null=True, blank=True)
     total_minutes = models.PositiveIntegerField(default=0)
+    raw_payload = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
