@@ -98,13 +98,14 @@ export interface Booking {
   created_at: string;
 }
 
-export type CEFRLevel = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2';
+import { CEFRLevel } from './material';
+export * from './material';
 
 export interface Material {
   id: string;
   title: string;
   slug: string;
-  category: 'daily_news' | 'freetalk' | 'business' | 'test_prep';
+  category: 'daily_news' | 'freetalk' | 'business' | 'test_prep' | 'pronunciation' | 'grammar';
   category_display: string;
   cefr_level: CEFRLevel;
   cefr_display: string;
@@ -112,3 +113,7 @@ export interface Material {
   content_html?: string;
   pdf_file_url?: string;
 }
+
+export * from './teacher';
+export * from './admin';
+export * from './student';

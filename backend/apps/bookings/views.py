@@ -124,6 +124,38 @@ class SubmitMemoView(APIView):
         booking.status = Booking.Status.COMPLETED
         booking.save()
 
+        # Automatically populate / update student's spaced repetition flashcard deck
+        try:
+            from apps.srs.models import StudentFlashcard
+            lesson_source = f"{booking.material.title if booking.material else 'Conversation'} ({booking.teacher.user.get_full_name() or booking.teacher.user.username})"
+            for vocab in vocabulary_words:
+                if isinstance(vocab, dict):
+                    word = vocab.get('word', '').strip()
+                    definition = vocab.get('definition', '').strip()
+                    phonetic = vocab.get('phonetic', '').strip()
+                    part_of_speech = vocab.get('part_of_speech', '').strip()
+                else:
+                    word = str(vocab).strip()
+                    definition = "Practiced during lesson"
+                    phonetic = ""
+                    part_of_speech = ""
+
+                if word:
+                    StudentFlashcard.objects.update_or_create(
+                        student=booking.student,
+                        word=word,
+                        defaults={
+                            'definition': definition or "Practiced during lesson",
+                            'phonetic': phonetic,
+                            'part_of_speech': part_of_speech,
+                            'lesson_source': lesson_source,
+                            'mastery': StudentFlashcard.Mastery.NEW,
+                            'next_review_due': timezone.now().date()
+                        }
+                    )
+        except Exception:
+            pass
+
         return Response(LessonMemoSerializer(memo).data, status=status.HTTP_200_OK)
 
 class SubmitReviewView(APIView):
@@ -154,3 +186,46 @@ class SubmitReviewView(APIView):
         teacher.save()
 
         return Response({"status": "review_recorded", "rating_avg": teacher.rating_avg}, status=status.HTTP_200_OK)
+
+class ReportOutageView(APIView):
+    """
+    Handles Eskom load shedding / grid power interruption during or before a lesson:
+    1. Marks booking as INTERRUPTED_POWER.
+    2. Refunds 1 lesson credit to student's wallet (or increments active CreditBundle).
+    3. Waives any cancellation penalty for the teacher.
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, booking_id):
+        booking = get_object_or_404(Booking, id=booking_id)
+        is_student = (booking.student == request.user)
+        is_teacher = (booking.teacher.user == request.user)
+        if not (is_student or is_teacher or request.user.is_staff):
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+
+        reason = request.data.get("reason", "Eskom Load Shedding / Power Interruption")
+        booking.status = Booking.Status.INTERRUPTED_POWER
+        booking.save()
+
+        # Refund 1 credit to student
+        from apps.payments.models import CreditBundle
+        bundle = CreditBundle.objects.filter(user=booking.student).order_by('-created_at').first()
+        if bundle:
+            bundle.remaining_credits += 1
+            bundle.save()
+        else:
+            CreditBundle.objects.create(
+                user=booking.student,
+                pack_name="Eskom Outage Refund Credit",
+                total_credits=1,
+                remaining_credits=1,
+                amount_paid=0.00,
+                currency="USD"
+            )
+
+        return Response({
+            "status": "interrupted_power",
+            "message": "Eskom power interruption recorded. 1 lesson credit has been automatically refunded to the student's wallet.",
+            "reason": reason,
+            "refunded": True
+        }, status=status.HTTP_200_OK)

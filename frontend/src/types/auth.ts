@@ -1,0 +1,43 @@
+export type UserRole = "student" | "teacher" | "admin";
+
+export interface AuthUser {
+  id: string;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: UserRole;
+  country: string;
+  timezone: string;
+  avatar_url?: string;
+  phone_number?: string;
+  credits?: number; // Present if role === 'student'
+  is_verified?: boolean; // Present if role === 'teacher'
+  created_at?: string;
+}
+
+export interface AuthTokens {
+  access: string;
+  refresh: string;
+}
+
+export interface LoginResponse {
+  tokens: AuthTokens;
+  user: AuthUser;
+}
+
+export interface RegisterPayload {
+  username: string;
+  email: string;
+  password: string;
+  password_confirm: string;
+  first_name: string;
+  last_name: string;
+  role: UserRole;
+  country: string;
+  timezone: string;
+  phone_number?: string;
+  // Tutor specific fields
+  has_power_backup?: boolean;
+  tefl_certified?: boolean;
+}

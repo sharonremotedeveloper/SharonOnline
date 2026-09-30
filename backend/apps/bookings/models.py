@@ -10,6 +10,7 @@ class Booking(models.Model):
         COMPLETED = 'completed', 'Completed'
         CANCELLED = 'cancelled', 'Cancelled'
         DISPUTED = 'disputed', 'Disputed'
+        INTERRUPTED_POWER = 'interrupted_power', 'Interrupted (Power Outage)'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     teacher = models.ForeignKey('teachers.TeacherProfile', on_delete=models.PROTECT, related_name='bookings')
@@ -70,3 +71,19 @@ class LessonMemo(models.Model):
 
     def __str__(self):
         return f"Memo for Booking {self.booking_id} by {self.teacher.user.username}"
+
+
+class AttendanceAudit(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='attendance_audits')
+    participant_email = models.EmailField()
+    join_time_utc = models.DateTimeField()
+    leave_time_utc = models.DateTimeField(null=True, blank=True)
+    total_minutes = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-join_time_utc']
+
+    def __str__(self):
+        return f"Attendance {self.participant_email} on {self.booking_id} ({self.total_minutes}m)"

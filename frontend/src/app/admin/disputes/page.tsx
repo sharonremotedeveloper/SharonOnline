@@ -1,0 +1,247 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  Scale,
+  CheckCircle2,
+  AlertTriangle,
+  User,
+  Clock,
+  ShieldAlert,
+  Radio,
+  Sparkles,
+  ArrowRight,
+} from "lucide-react";
+import { api } from "@/lib/api";
+import { DisputeCase } from "@/types/admin";
+
+export default function AdminDisputesPage() {
+  const [disputes, setDisputes] = useState<DisputeCase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [successNote, setSuccessNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadDisputes() {
+      try {
+        const list = await api.getDisputes();
+        setDisputes(list);
+      } catch (e) {
+        console.error("Failed to load disputes:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadDisputes();
+  }, []);
+
+  const handleResolve = async (
+    caseId: string,
+    action: "full_refund_student" | "release_tutor" | "split_50_50"
+  ) => {
+    setResolvingId(caseId);
+    setSuccessNote(null);
+    try {
+      await api.resolveDispute(caseId, action);
+      setSuccessNote(
+        `Dispute ${caseId} resolved with action [${action}]. Escrow ledger updated atomically.`
+      );
+      setDisputes((prev) =>
+        prev.map((d) => (d.id === caseId ? { ...d, status: "resolved", resolution: action } : d))
+      );
+    } catch (e) {
+      console.error("Failed to resolve dispute:", e);
+    } finally {
+      setResolvingId(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="py-20 text-center space-y-4">
+        <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm font-bold text-ink-muted">Loading frozen escrow arbitration tribunal...</p>
+      </div>
+    );
+  }
+
+  const openCases = disputes.filter((d) => d.status === "open");
+
+  return (
+    <div className="space-y-8 max-w-7xl mx-auto">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/dashboard"
+            className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-md">
+                ESCROW ARBITRATION
+              </span>
+              <span className="text-xs font-bold text-ink-muted">{openCases.length} Cases Requiring Decision</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-ink font-serif">
+              Dispute Adjudication Tribunal
+            </h1>
+          </div>
+        </div>
+      </div>
+
+      {successNote && (
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-950 flex items-center gap-2.5">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{successNote}</span>
+        </div>
+      )}
+
+      {/* Disputes List */}
+      <div className="space-y-6">
+        {disputes.map((c) => {
+          const isResolved = c.status === "resolved";
+
+          return (
+            <div
+              key={c.id}
+              className={`bg-white rounded-3xl p-6 sm:p-8 border shadow-card space-y-6 transition-all ${
+                isResolved ? "opacity-75 border-divider" : "border-rose-300 ring-2 ring-rose-50"
+              }`}
+            >
+              {/* Case Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-divider pb-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold text-teal bg-teal/10 px-2.5 py-0.5 rounded-full">
+                      CASE: {c.booking_ref}
+                    </span>
+                    <span className="text-xs text-ink-muted">{c.lesson_date}</span>
+                  </div>
+                  <h3 className="text-lg font-black text-ink font-serif">
+                    {c.student_name} vs. {c.teacher_name}
+                  </h3>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <span className="text-[10px] uppercase font-bold text-ink-muted block">Frozen Amount</span>
+                    <span className="text-base font-black text-ink">
+                      ${c.amount_usd.toFixed(2)} USD (R{c.amount_zar.toFixed(2)})
+                    </span>
+                  </div>
+
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-bold ${
+                      isResolved
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-rose-100 text-rose-800 animate-pulse"
+                    }`}
+                  >
+                    {isResolved ? `Resolved (${c.resolution})` : "Arbitration Open"}
+                  </span>
+                </div>
+              </div>
+
+              {/* 3-Column Evidence Comparison */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                {/* 1. Student Complaint */}
+                <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-2">
+                  <div className="flex items-center gap-2 text-ink font-bold">
+                    <User className="w-4 h-4 text-accent" />
+                    <span>Student Complaint Statement</span>
+                  </div>
+                  <p className="text-ink-muted leading-relaxed font-sans italic bg-white p-3 rounded-xl border border-divider">
+                    &ldquo;{c.student_statement}&rdquo;
+                  </p>
+                </div>
+
+                {/* 2. Tutor Defense */}
+                <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-2">
+                  <div className="flex items-center gap-2 text-ink font-bold">
+                    <User className="w-4 h-4 text-teal" />
+                    <span>Tutor Defense Statement</span>
+                  </div>
+                  <p className="text-ink-muted leading-relaxed font-sans italic bg-white p-3 rounded-xl border border-divider">
+                    &ldquo;{c.teacher_statement}&rdquo;
+                  </p>
+                </div>
+
+                {/* 3. Authoritative Zoom Webhook Telemetry */}
+                <div className="p-4 rounded-2xl bg-[#1B1123] text-cream border border-white/10 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-accent">
+                    <Radio className="w-4 h-4" />
+                    <span>Zoom Server Dwell Logs</span>
+                  </div>
+                  <div className="space-y-1.5 text-[11px] font-mono">
+                    <div className="flex justify-between">
+                      <span className="text-cream/60">Student Dwell:</span>
+                      <strong className="text-white">{c.zoom_telemetry.student_dwell_minutes} mins</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-cream/60">Tutor Dwell:</span>
+                      <strong className="text-white">{c.zoom_telemetry.teacher_dwell_minutes} mins</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-cream/60">Audio Connected:</span>
+                      <strong className={c.zoom_telemetry.call_connected ? "text-emerald-400" : "text-rose-400"}>
+                        {c.zoom_telemetry.call_connected ? "Yes" : "Failed / Dropped"}
+                      </strong>
+                    </div>
+                    {c.zoom_telemetry.interrupted_reason && (
+                      <p className="text-[10px] text-accent-surface pt-1 border-t border-white/10">
+                        {c.zoom_telemetry.interrupted_reason}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Adjudication Decision Bar */}
+              {!isResolved && (
+                <div className="pt-4 border-t border-divider flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="text-xs text-ink-muted">
+                    Executing an adjudication decision atomically credits/debits the double-entry escrow ledger.
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={resolvingId === c.id}
+                      onClick={() => handleResolve(c.id, "full_refund_student")}
+                      className="px-4 py-2 rounded-xl bg-teal text-white text-xs font-bold hover:bg-teal-hover transition-colors shadow-xs"
+                    >
+                      100% Refund to Student
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={resolvingId === c.id}
+                      onClick={() => handleResolve(c.id, "split_50_50")}
+                      className="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-colors shadow-xs"
+                    >
+                      Split 50/50 Goodwill
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={resolvingId === c.id}
+                      onClick={() => handleResolve(c.id, "release_tutor")}
+                      className="px-4 py-2 rounded-xl bg-ink text-white text-xs font-bold hover:bg-black transition-colors shadow-xs"
+                    >
+                      Release 100% to Tutor
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

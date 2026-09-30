@@ -17,4 +17,7 @@ urlpatterns = [
     path('api/v1/bookings/', include('apps.bookings.urls')),
     path('api/v1/materials/', include('apps.materials.urls')),
     path('api/v1/payments/', include('apps.payments.urls')),
+    path('api/v1/admin/', include('apps.admin_api.urls')),
+    path('api/v1/teacher/students/', include('apps.crm.urls')),
+    path('api/v1/student/', include('apps.srs.urls')),
 ]

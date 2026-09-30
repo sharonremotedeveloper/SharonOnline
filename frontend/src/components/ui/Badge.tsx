@@ -10,6 +10,7 @@ export interface BadgeProps {
     | "teal"
     | "plum"
     | "neutral";
+  size?: "sm" | "md" | "lg";
   dot?: boolean;
   className?: string;
 }
@@ -17,6 +18,7 @@ export interface BadgeProps {
 export function Badge({
   children,
   variant = "neutral",
+  size = "md",
   dot = false,
   className = "",
 }: BadgeProps) {
@@ -30,6 +32,12 @@ export function Badge({
     neutral: "bg-[#F3EBE4] text-ink-muted border-[#E4D3C6]",
   }[variant];
 
+  const sizeStyles = {
+    sm: "px-2 py-0.5 text-[10px]",
+    md: "px-2.5 py-0.5 text-xs",
+    lg: "px-3 py-1 text-xs font-bold",
+  }[size];
+
   const dotColors = {
     accent: "bg-primary",
     gold: "bg-gold",
@@ -42,7 +50,7 @@ export function Badge({
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide border ${styles} ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full font-semibold tracking-wide border ${styles} ${sizeStyles} ${className}`}
     >
       {dot && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColors}`} />}
       {children}

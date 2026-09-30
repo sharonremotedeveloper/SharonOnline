@@ -85,6 +85,29 @@ services:
         condition: service_healthy
 
   # ----------------------------------------------------------------------------
+  # Celery Beat Periodic Task Scheduler
+  # ----------------------------------------------------------------------------
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: esl_celery_beat
+    restart: unless-stopped
+    command: celery -A config beat -l info
+    volumes:
+      - ./backend:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.local
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/esl_dev
+      - REDIS_URL=redis://redis:6379/0
+      - DJANGO_SECRET_KEY=django-insecure-dev-key-change-in-production-esl-marketplace-2026
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------------------
   # Next.js 14 Frontend Application
   # ----------------------------------------------------------------------------
   frontend:

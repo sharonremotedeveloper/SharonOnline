@@ -34,6 +34,9 @@ INSTALLED_APPS = [
     'apps.payments',
     'apps.materials',
     'apps.integrations',
+    'apps.admin_api',
+    'apps.crm',
+    'apps.srs',
 ]
 
 MIDDLEWARE = [

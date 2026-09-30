@@ -1,0 +1,148 @@
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.utils import timezone
+from datetime import timedelta
+from django.shortcuts import get_object_or_404
+from django.db.models import Avg
+
+from apps.users.permissions import IsStudent
+from apps.srs.models import StudentFlashcard
+from apps.bookings.models import Booking
+from apps.srs.serializers import (
+    StudentFlashcardSerializer,
+    FlashcardMasteryUpdateSerializer,
+    StudentLessonItemSerializer,
+    SubmitLessonReviewSerializer,
+    StudentProfileSerializer,
+)
+
+class StudentLessonsListView(APIView):
+    permission_classes = [IsStudent]
+
+    def get(self, request):
+        lessons = Booking.objects.filter(student=request.user).select_related(
+            'teacher', 'teacher__user', 'material', 'student'
+        ).prefetch_related('memo').order_by('-start_time_utc')
+        serializer = StudentLessonItemSerializer(lessons, many=True)
+        return Response(serializer.data)
+
+
+class StudentFlashcardsListView(APIView):
+    permission_classes = [IsStudent]
+
+    def get(self, request):
+        cards = StudentFlashcard.objects.filter(student=request.user).order_by('next_review_due')
+        serializer = StudentFlashcardSerializer(cards, many=True)
+        return Response(serializer.data)
+
+
+class UpdateFlashcardMasteryView(APIView):
+    permission_classes = [IsStudent]
+
+    def post(self, request, pk):
+        card = get_object_or_404(StudentFlashcard, pk=pk, student=request.user)
+        serializer = FlashcardMasteryUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        grade = serializer.validated_data['grade']
+
+        today = timezone.now().date()
+        if grade == 'easy':
+            card.mastery = StudentFlashcard.Mastery.MASTERED
+            card.next_review_due = today + timedelta(days=7)
+        elif grade == 'good':
+            card.mastery = StudentFlashcard.Mastery.LEARNING
+            card.next_review_due = today + timedelta(days=3)
+        else: # again
+            card.mastery = StudentFlashcard.Mastery.NEW
+            card.next_review_due = today + timedelta(days=1)
+
+        card.review_count += 1
+        card.save()
+
+        return Response({
+            'success': True,
+            'nextReview': card.next_review_due.strftime('%Y-%m-%d'),
+            'mastery': card.mastery
+        })
+
+
+class SubmitLessonReviewView(APIView):
+    permission_classes = [IsStudent]
+
+    def post(self, request, pk):
+        booking = get_object_or_404(Booking, pk=pk, student=request.user)
+        serializer = SubmitLessonReviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        rating = serializer.validated_data['rating']
+        private_notes = serializer.validated_data.get('private_notes', '')
+
+        booking.student_rating = rating
+        booking.student_review = private_notes
+        booking.save()
+
+        # Recalculate teacher rolling average
+        teacher = booking.teacher
+        reviews = Booking.objects.filter(teacher=teacher, student_rating__isnull=False)
+        avg_rating = reviews.aggregate(avg=Avg('student_rating'))['avg'] or 5.0
+        teacher.rating_avg = round(avg_rating, 2)
+        teacher.rating_count = reviews.count()
+        teacher.save()
+
+        return Response({
+            'success': True,
+            'message': "Thank you! Your confidential 5-star rubric review has been recorded."
+        })
+
+
+class StudentProfileView(APIView):
+    permission_classes = [IsStudent]
+
+    def get(self, request):
+        user = request.user
+        target_level = getattr(user, 'target_level', "C1 - Advanced Fluency")
+        learning_goals = getattr(user, 'learning_goals', "Conduct seamless cross-border product design reviews and expand active vocabulary.")
+
+        return Response({
+            'id': str(user.id),
+            'full_name': user.get_full_name() or user.username,
+            'email': user.email,
+            'country': user.country or "Japan",
+            'timezone': user.timezone or "Asia/Tokyo",
+            'target_level': target_level,
+            'learning_goals': learning_goals
+        })
+
+    def patch(self, request):
+        user = request.user
+        data = request.data
+
+        if 'full_name' in data:
+            parts = data['full_name'].split(' ', 1)
+            user.first_name = parts[0]
+            if len(parts) > 1:
+                user.last_name = parts[1]
+
+        if 'country' in data:
+            user.country = data['country'][:2].upper()
+        if 'timezone' in data:
+            user.timezone = data['timezone']
+
+        target_level = data.get('target_level', getattr(user, 'target_level', "C1 - Advanced Fluency"))
+        learning_goals = data.get('learning_goals', getattr(user, 'learning_goals', "Conduct seamless cross-border product design reviews."))
+
+        user.save()
+
+        return Response({
+            'success': True,
+            'profile': {
+                'id': str(user.id),
+                'full_name': user.get_full_name() or user.username,
+                'email': user.email,
+                'country': user.country,
+                'timezone': user.timezone,
+                'target_level': target_level,
+                'learning_goals': learning_goals
+            }
+        })

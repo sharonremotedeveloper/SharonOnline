@@ -1,205 +1,250 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { Search, Star, ShieldCheck, Video, Clock, Filter, ArrowRight } from "lucide-react";
-import { Teacher } from "../../../types";
-import { api } from "../../../lib/api";
+import { useState, useEffect, Suspense, useMemo } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Users, Sparkles, Filter } from "lucide-react";
+import { TutorFilters } from "@/components/tutors/TutorFilters";
+import { TutorGrid } from "@/components/tutors/TutorGrid";
+import { PublicTutor, TutorFilterState } from "@/types/tutor";
+import { api } from "@/lib/api";
 
-const ACCENTS = [
-  { label: "All Accents", value: "" },
-  { label: "🇿🇦 South African", value: "ZA" },
-  { label: "🇬🇧 British", value: "UK" },
-  { label: "🇺🇸 American", value: "US" },
-  { label: "🌐 International", value: "OTHER" },
+const FULL_TUTORS: PublicTutor[] = [
+  {
+    id: "tut-1",
+    user_id: "usr-sharon",
+    slug: "sharon-m",
+    full_name: "Sharon M.",
+    first_name: "Sharon",
+    last_name: "M.",
+    headline: "Senior ESL Specialist · 10+ Yrs Experience (Japan & Korea Focus)",
+    bio: "Certified TEFL educator specializing in conversational fluency, business presentations, and accent softening for Japanese and Korean executives. Patient, structured, and warm.",
+    accent: "ZA",
+    accent_display: "South African (Neutral RP)",
+    country: "South Africa",
+    country_flag: "🇿🇦",
+    timezone: "Africa/Johannesburg",
+    avatar_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
+    intro_video_url: "https://assets.mixkit.co/videos/preview/mixkit-woman-talking-on-video-call-41292-large.mp4",
+    intro_audio_url: "https://actions.google.com/sounds/v1/ambiences/outdoor_festival_crowd_distant.ogg",
+    rating_avg: 4.98,
+    rating_count: 142,
+    lessons_completed: 1840,
+    price_per_25min_usd: 8.0,
+    specialties: ["Business English", "Interview Prep", "FreeTalk", "Pronunciation & Accent"],
+    learning_goals: ["business", "interview", "conversation"],
+    learner_levels: "A2 to C2 All Levels",
+    has_inverter_backup: true,
+    next_available_slot: {
+      start_time_utc: new Date(Date.now() + 3600000).toISOString(),
+      local_display: "Today · 17:30 JST",
+    },
+  },
+  {
+    id: "tut-2",
+    user_id: "usr-david",
+    slug: "david-k",
+    full_name: "David K.",
+    first_name: "David",
+    last_name: "K.",
+    headline: "Cambridge Certified CELTA Coach · IELTS Speaking Examiner",
+    bio: "Focuses on structured IELTS Band 7.5+ preparation, technical vocabulary acquisition, and formal job interview roleplays. Strict, insightful, with concrete correction notes.",
+    accent: "ZA",
+    accent_display: "South African (Standard)",
+    country: "South Africa",
+    country_flag: "🇿🇦",
+    timezone: "Africa/Johannesburg",
+    avatar_url: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80",
+    intro_video_url: "https://assets.mixkit.co/videos/preview/mixkit-man-having-a-video-call-on-a-laptop-41288-large.mp4",
+    rating_avg: 4.95,
+    rating_count: 98,
+    lessons_completed: 1120,
+    price_per_25min_usd: 8.0,
+    specialties: ["IELTS Prep", "Grammar Mastery", "Daily News", "Interview Prep"],
+    learning_goals: ["interview", "presentation"],
+    learner_levels: "B1 to C2 Intermediate to Advanced",
+    has_inverter_backup: true,
+    next_available_slot: {
+      start_time_utc: new Date(Date.now() + 7200000).toISOString(),
+      local_display: "Today · 19:00 JST",
+    },
+  },
+  {
+    id: "tut-3",
+    user_id: "usr-elena",
+    slug: "elena-v",
+    full_name: "Elena V.",
+    first_name: "Elena",
+    last_name: "V.",
+    headline: "Conversational English Tutor · Beginners & Travel Specialist",
+    bio: "Passionate about helping timid English learners build natural speaking confidence. Uses engaging visual flashcards, daily news articles, and cultural idioms.",
+    accent: "UK",
+    accent_display: "British / South African",
+    country: "United Kingdom",
+    country_flag: "🇬🇧",
+    timezone: "Europe/London",
+    avatar_url: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80",
+    intro_video_url: "https://assets.mixkit.co/videos/preview/mixkit-young-woman-in-online-meeting-41290-large.mp4",
+    rating_avg: 4.92,
+    rating_count: 86,
+    lessons_completed: 780,
+    price_per_25min_usd: 8.0,
+    specialties: ["FreeTalk", "Daily News", "Grammar Mastery"],
+    learning_goals: ["conversation", "travel"],
+    learner_levels: "A1 to B2 Beginner to Intermediate",
+    has_inverter_backup: false,
+    next_available_slot: {
+      start_time_utc: new Date(Date.now() + 86400000).toISOString(),
+      local_display: "Tomorrow · 14:00 JST",
+    },
+  },
+  {
+    id: "tut-4",
+    user_id: "usr-thabo",
+    slug: "thabo-n",
+    full_name: "Thabo N.",
+    first_name: "Thabo",
+    last_name: "N.",
+    headline: "Tech & Corporate Communications Coach (Johannesburg)",
+    bio: "Software engineering background. Specializes in assisting developers and tech product managers in Tokyo and Berlin with agile ceremonies, sprint demos, and executive standups.",
+    accent: "ZA",
+    accent_display: "South African (Neutral)",
+    country: "South Africa",
+    country_flag: "🇿🇦",
+    timezone: "Africa/Johannesburg",
+    avatar_url: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=400&q=80",
+    rating_avg: 4.96,
+    rating_count: 64,
+    lessons_completed: 530,
+    price_per_25min_usd: 8.5,
+    specialties: ["Business English", "Interview Prep", "Pronunciation & Accent"],
+    learning_goals: ["business", "presentation"],
+    learner_levels: "B2 to C2 Advanced",
+    has_inverter_backup: true,
+    next_available_slot: {
+      start_time_utc: new Date(Date.now() + 10800000).toISOString(),
+      local_display: "Today · 20:30 JST",
+    },
+  },
 ];
 
-const SPECIALTIES = [
-  "All Specialties",
-  "FreeTalk",
-  "Business English",
-  "Daily News",
-  "IELTS/TOEIC",
-  "Pronunciation"
-];
+function TutorsContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-export default function TutorsPage() {
-  const [tutors, setTutors] = useState<Teacher[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [accent, setAccent] = useState("");
-  const [specialty, setSpecialty] = useState("All Specialties");
+  const [filters, setFilters] = useState<TutorFilterState>({
+    search: searchParams.get("search") || "",
+    accent: searchParams.get("accent") || "",
+    specialty: searchParams.get("specialty") || "",
+    learning_goal: searchParams.get("goal") || "",
+    max_price: searchParams.get("max_price") ? parseFloat(searchParams.get("max_price")!) : null,
+    only_power_guard: searchParams.get("power_guard") === "true",
+    only_today: searchParams.get("today") === "true",
+  });
 
-  useEffect(() => {
-    async function loadTutors() {
-      setLoading(true);
-      try {
-        const data = await api.getTeachers({
-          accent: accent || undefined,
-          specialty: specialty !== "All Specialties" ? specialty : undefined,
-          search: search || undefined,
-        });
-        setTutors(data);
-      } catch (err) {
-        console.error("Failed to load tutors:", err);
-      } finally {
-        setLoading(false);
+  const [tutors, setTutors] = useState<PublicTutor[]>(FULL_TUTORS);
+  const [loading, setLoading] = useState(false);
+
+  // Sync state to URL params for shareable search
+  const handleFilterChange = (newFilters: TutorFilterState) => {
+    setFilters(newFilters);
+    const params = new URLSearchParams();
+    if (newFilters.search) params.set("search", newFilters.search);
+    if (newFilters.accent) params.set("accent", newFilters.accent);
+    if (newFilters.specialty) params.set("specialty", newFilters.specialty);
+    if (newFilters.learning_goal) params.set("goal", newFilters.learning_goal);
+    if (newFilters.max_price) params.set("max_price", newFilters.max_price.toString());
+    if (newFilters.only_power_guard) params.set("power_guard", "true");
+    if (newFilters.only_today) params.set("today", "true");
+
+    router.replace(`/tutors?${params.toString()}`);
+  };
+
+  // Filter computation
+  const filteredTutors = useMemo(() => {
+    return tutors.filter((t) => {
+      // Search term
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        const matchesName = t.full_name.toLowerCase().includes(q);
+        const matchesHeadline = t.headline.toLowerCase().includes(q);
+        const matchesBio = t.bio.toLowerCase().includes(q);
+        const matchesSpecialty = t.specialties.some((s) => s.toLowerCase().includes(q));
+        if (!matchesName && !matchesHeadline && !matchesBio && !matchesSpecialty) {
+          return false;
+        }
       }
-    }
-    loadTutors();
-  }, [accent, specialty, search]);
+
+      // Accent filter
+      if (filters.accent && t.accent !== filters.accent) {
+        return false;
+      }
+
+      // Specialty filter
+      if (filters.specialty && !t.specialties.includes(filters.specialty)) {
+        return false;
+      }
+
+      // Power guard filter
+      if (filters.only_power_guard && !t.has_inverter_backup) {
+        return false;
+      }
+
+      // Today filter
+      if (filters.only_today && !t.next_available_slot?.local_display.includes("Today")) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [tutors, filters]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Page Header */}
       <div className="space-y-2">
-        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Find Your English Tutor</h1>
-        <p className="text-sm text-gray-600">
-          Book 1-on-1 private lessons in 25-minute increments. Filter by accent, specialty, and availability.
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cream-surface border border-divider text-xs font-bold text-teal">
+          <Users className="w-3.5 h-3.5 text-accent" />
+          <span>Vetted English Tutors · 100% Native & South African Accent Verification</span>
+        </div>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-ink font-serif tracking-tight">
+          Find Your Perfect 25-Minute Tutor
+        </h1>
+        <p className="text-xs sm:text-sm text-ink-muted max-w-2xl">
+          Watch 60-second video introductions, listen to 15-second accent samples, and book discrete 25-minute slots with instant 10-minute hold confirmation.
         </p>
       </div>
 
-      {/* Filter Controls */}
-      <div className="bg-white p-5 rounded-2xl shadow-card border border-gray-100 space-y-4">
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by tutor name, keyword, or teaching specialty..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-brand-700 focus:ring-1 focus:ring-brand-700"
-          />
-        </div>
+      {/* Faceted Filters Component */}
+      <TutorFilters
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        totalCount={filteredTutors.length}
+      />
 
-        {/* Accent Pills */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="text-xs font-bold text-gray-500 mr-2 flex items-center gap-1">
-            <Filter className="w-3.5 h-3.5" /> Accent:
-          </span>
-          {ACCENTS.map((item) => (
-            <button
-              key={item.value}
-              onClick={() => setAccent(item.value)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                accent === item.value
-                  ? "bg-brand-900 text-white shadow-sm"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Specialty Filter */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="text-xs font-bold text-gray-500 mr-2">Focus:</span>
-          {SPECIALTIES.map((spec) => (
-            <button
-              key={spec}
-              onClick={() => setSpecialty(spec)}
-              className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-                specialty === spec
-                  ? "bg-brand-100 text-brand-900 font-bold border border-brand-300"
-                  : "text-gray-600 hover:bg-gray-50 border border-transparent"
-              }`}
-            >
-              {spec}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Tutor Grid */}
-      {loading ? (
-        <div className="text-center py-20 text-gray-500 text-sm animate-pulse">
-          Loading vetted tutors...
-        </div>
-      ) : tutors.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 p-8">
-          <p className="text-gray-600 font-medium">No tutors found matching your current filter criteria.</p>
-          <button
-            onClick={() => { setAccent(""); setSpecialty("All Specialties"); setSearch(""); }}
-            className="mt-3 text-xs font-bold text-brand-700 hover:underline"
-          >
-            Reset Filters
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {tutors.map((tutor) => (
-            <div
-              key={tutor.id}
-              className="bg-white rounded-2xl border border-gray-100 shadow-card hover:shadow-card-hover transition-all flex flex-col justify-between overflow-hidden group"
-            >
-              {/* Card Header & Avatar */}
-              <div className="p-6 space-y-4">
-                <div className="flex items-start gap-4">
-                  <div className="relative w-16 h-16 rounded-full overflow-hidden bg-brand-50 flex-shrink-0 border-2 border-brand-100">
-                    {tutor.avatar_url ? (
-                      <img src={tutor.avatar_url} alt={tutor.full_name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center font-bold text-xl text-brand-800">
-                        {tutor.first_name[0]}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="font-bold text-base text-gray-900 truncate">{tutor.full_name}</h3>
-                      {tutor.is_verified && (
-                        <ShieldCheck className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-500 font-medium mt-0.5">
-                      {tutor.accent === 'ZA' ? '🇿🇦 South African' : tutor.accent === 'UK' ? '🇬🇧 British' : tutor.accent === 'US' ? '🇺🇸 American' : '🌐 International'}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1.5 text-xs">
-                      <span className="flex items-center text-amber-500 font-bold">
-                        <Star className="w-3.5 h-3.5 fill-current mr-0.5" />
-                        {Number(tutor.rating_avg).toFixed(2)}
-                      </span>
-                      <span className="text-gray-400">({tutor.rating_count} lessons)</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Headline & Bio Preview */}
-                <p className="text-xs font-semibold text-brand-900 line-clamp-1">{tutor.headline}</p>
-                <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">{tutor.bio}</p>
-
-                {/* Specialty Tags */}
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {tutor.specialties.slice(0, 3).map((tag) => (
-                    <span key={tag} className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-[11px] font-medium">
-                      {tag}
-                    </span>
-                  ))}
-                  {tutor.specialties.length > 3 && (
-                    <span className="px-1.5 py-0.5 text-gray-400 text-[11px]">+{tutor.specialties.length - 3}</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Card Footer / Booking Trigger */}
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                <div>
-                  <span className="text-lg font-extrabold text-gray-900">${Number(tutor.price_per_25min_usd).toFixed(2)}</span>
-                  <span className="text-[11px] text-gray-500 font-medium ml-1">/ 25 min</span>
-                </div>
-                <Link
-                  href={`/tutors/${tutor.id}`}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand-900 hover:bg-brand-950 text-white rounded-xl text-xs font-bold transition-all shadow-sm group-hover:bg-gold-500 group-hover:text-brand-950"
-                >
-                  Book Slot <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Results Grid */}
+      <TutorGrid
+        tutors={filteredTutors}
+        loading={loading}
+        onResetFilters={() =>
+          handleFilterChange({
+            search: "",
+            accent: "",
+            specialty: "",
+            learning_goal: "",
+            max_price: null,
+            only_power_guard: false,
+            only_today: false,
+          })
+        }
+      />
     </div>
+  );
+}
+
+export default function TutorsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-ink-muted">Loading tutor directory...</div>}>
+      <TutorsContent />
+    </Suspense>
   );
 }

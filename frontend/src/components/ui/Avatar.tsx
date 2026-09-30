@@ -2,12 +2,14 @@ import React from "react";
 
 export interface AvatarProps {
   src?: string;
-  name: string;
+  name?: string;
+  alt?: string;
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 }
 
-export function Avatar({ src, name, size = "md", className = "" }: AvatarProps) {
+export function Avatar({ src, name, alt, size = "md", className = "" }: AvatarProps) {
+  const displayName = name || alt || "User";
   const sizeClasses = {
     sm: "w-8 h-8 text-xs",
     md: "w-10 h-10 text-sm",
@@ -28,7 +30,7 @@ export function Avatar({ src, name, size = "md", className = "" }: AvatarProps) 
     return (
       <img
         src={src}
-        alt={name}
+        alt={displayName}
         className={`${sizeClasses} rounded-full object-cover border border-[#D8B7A5] ${className}`}
       />
     );
@@ -37,9 +39,9 @@ export function Avatar({ src, name, size = "md", className = "" }: AvatarProps) 
   return (
     <div
       className={`${sizeClasses} rounded-full bg-cream-deep text-ink flex items-center justify-center font-medium border border-[#D8B7A5] ${className}`}
-      aria-label={name}
+      aria-label={displayName}
     >
-      {getInitials(name)}
+      {getInitials(displayName)}
     </div>
   );
 }

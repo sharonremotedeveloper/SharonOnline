@@ -1,0 +1,81 @@
+"use client";
+
+import { DollarSign, ShieldCheck, TrendingUp, Info, Calendar } from "lucide-react";
+import { TeacherWalletData } from "@/types/teacher";
+
+interface EarningsBreakdownCardProps {
+  wallet: TeacherWalletData;
+  className?: string;
+}
+
+export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakdownCardProps) {
+  return (
+    <div className={`space-y-6 ${className}`}>
+      {/* 3 Metric Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Card 1: Cleared Balance ZAR */}
+        <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
+            <span>Cleared for Payout</span>
+            <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-[10px]">
+              Ready for EFT
+            </span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-emerald-800 font-serif">
+            R{wallet.cleared_balance_zar.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+          </div>
+          <p className="text-[11px] text-ink-muted">
+            Equivalent to ${wallet.cleared_balance_usd.toFixed(2)} USD
+          </p>
+        </div>
+
+        {/* Card 2: Pending Escrow USD */}
+        <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
+            <span>In 24h Escrow</span>
+            <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full text-[10px]">
+              Holding Buffer
+            </span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-ink font-serif">
+            ${wallet.pending_escrow_usd.toFixed(2)}{" "}
+            <span className="text-xs font-normal text-ink-muted">USD</span>
+          </div>
+          <p className="text-[11px] text-ink-muted">
+            ≈ R{(wallet.pending_escrow_usd * wallet.fx_rate_usd_to_zar).toFixed(2)} ZAR (Clears in 24h)
+          </p>
+        </div>
+
+        {/* Card 3: Payout FX Rate */}
+        <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
+            <span>Market FX Rate</span>
+            <span className="text-teal bg-teal/10 px-2 py-0.5 rounded-full text-[10px] font-bold">
+              USD &rarr; ZAR
+            </span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-teal font-serif">
+            R{wallet.fx_rate_usd_to_zar.toFixed(2)}
+          </div>
+          <p className="text-[11px] text-ink-muted">
+            Guaranteed minimum FX on bi-weekly batch settlement
+          </p>
+        </div>
+      </div>
+
+      {/* Revenue Transparency Callout */}
+      <div className="p-5 rounded-2xl bg-cream-surface border border-divider space-y-2 text-xs text-ink leading-relaxed">
+        <div className="flex items-center gap-2 font-bold text-teal">
+          <Info className="w-4 h-4 shrink-0" />
+          <span>Fair Payout Structure &amp; Escrow Guarantee</span>
+        </div>
+        <p className="text-[11px] text-ink-muted">
+          Students pay $8.00 per 25-minute lesson. Tutors receive an <strong>80% net share ($6.40 USD)</strong>.
+          At the current guaranteed conversion rate of 18.75 FX, you earn exactly{" "}
+          <strong className="text-ink">R120.00 ZAR per 25-minute completed session</strong>.
+          Escrow releases automatically 24 hours post-lesson once student confirmation is verified.
+        </p>
+      </div>
+    </div>
+  );
+}

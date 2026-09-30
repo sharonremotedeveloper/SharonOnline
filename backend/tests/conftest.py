@@ -58,3 +58,16 @@ def student_user(db):
         country="JP",
         timezone="Asia/Tokyo"
     )
+
+@pytest.fixture
+def admin_user(db):
+    return User.objects.create_user(
+        username="test_admin",
+        email="admin@test.com",
+        password="password123",
+        role=User.Role.ADMIN,
+        is_staff=True,
+        is_superuser=True,
+        country="ZA",
+        timezone="Africa/Johannesburg"
+    )

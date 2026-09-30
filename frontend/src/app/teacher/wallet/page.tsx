@@ -1,0 +1,172 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  DollarSign,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  ArrowRight,
+  ShieldCheck,
+  CreditCard,
+  Download,
+} from "lucide-react";
+import { api } from "@/lib/api";
+import { TeacherWalletData } from "@/types/teacher";
+import { EarningsBreakdownCard } from "@/components/teacher/EarningsBreakdownCard";
+
+export default function TeacherWalletPage() {
+  const [wallet, setWallet] = useState<TeacherWalletData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadWallet() {
+      try {
+        const w = await api.getTeacherWallet();
+        setWallet(w);
+      } catch (e) {
+        console.error("Failed to load teacher wallet:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadWallet();
+  }, []);
+
+  if (loading || !wallet) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center py-20">
+        <div className="text-center space-y-4">
+          <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm font-bold text-ink-muted">Loading earnings and payout ledger...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-cream py-8 sm:py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        {/* Top Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/teacher/dashboard"
+              className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                  ZAR CLEARING LEDGER
+                </span>
+                <span className="text-xs font-bold text-ink-muted">Tutor Financial Center</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-ink font-serif">
+                Earnings &amp; Payout Wallet
+              </h1>
+            </div>
+          </div>
+
+          <Link
+            href="/teacher/wallet/payout-settings"
+            className="px-5 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-2 transition-all self-start sm:self-auto"
+          >
+            <Building2 className="w-4 h-4 text-teal" />
+            <span>Manage EFT Payout Bank</span>
+            <ArrowRight className="w-3.5 h-3.5 text-ink-muted" />
+          </Link>
+        </div>
+
+        {/* Earnings Metric Cards & Fair Revenue Callout */}
+        <EarningsBreakdownCard wallet={wallet} />
+
+        {/* Registered Payout Bank Summary */}
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-teal/10 text-teal flex items-center justify-center shrink-0">
+              <Building2 className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <span className="text-xs font-bold uppercase tracking-wider text-ink-muted block">
+                Direct EFT Payout Account
+              </span>
+              <h3 className="text-lg font-black text-ink font-serif">
+                {wallet.payout_bank_account?.bank_name} · {wallet.payout_bank_account?.account_number_masked}
+              </h3>
+              <p className="text-xs text-ink-muted">
+                Branch Code: <span className="font-mono font-bold text-ink">{wallet.payout_bank_account?.branch_code}</span> ·{" "}
+                Account Type: <span className="capitalize">{wallet.payout_bank_account?.account_type}</span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>Verified for Bi-Weekly Auto-Payouts</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Transaction History Ledger */}
+        <div className="bg-white rounded-3xl border border-divider shadow-card p-6 sm:p-8 space-y-6">
+          <div className="flex items-center justify-between border-b border-divider pb-4">
+            <div>
+              <h3 className="text-lg font-black text-ink font-serif">Lesson Clearing Ledger</h3>
+              <p className="text-xs text-ink-muted">Transparent breakdown of gross USD fees and net ZAR settlement</p>
+            </div>
+            <span className="text-xs font-bold text-ink-muted">Showing {wallet.transactions.length} entries</span>
+          </div>
+
+          <div className="overflow-x-auto rounded-2xl border border-divider">
+            <table className="w-full min-w-[700px] border-collapse text-xs">
+              <thead>
+                <tr className="bg-cream-surface border-b border-divider text-ink-muted uppercase font-bold tracking-wider text-left">
+                  <th className="py-3 px-4">Date</th>
+                  <th className="py-3 px-4">Booking Ref</th>
+                  <th className="py-3 px-4">Session / Event</th>
+                  <th className="py-3 px-4">Gross USD</th>
+                  <th className="py-3 px-4">Net ZAR (80%)</th>
+                  <th className="py-3 px-4">Clearing Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-divider bg-white">
+                {wallet.transactions.map((tx) => (
+                  <tr key={tx.id} className="hover:bg-cream-surface/40 transition-colors">
+                    <td className="py-3 px-4 font-medium text-ink-muted">{tx.date}</td>
+                    <td className="py-3 px-4 font-mono font-bold text-teal">{tx.booking_ref}</td>
+                    <td className="py-3 px-4 font-bold text-ink">{tx.student_name}</td>
+                    <td className="py-3 px-4 font-medium text-ink-muted">${tx.gross_usd.toFixed(2)}</td>
+                    <td className="py-3 px-4 font-extrabold text-ink font-serif text-sm">
+                      R{tx.net_zar.toFixed(2)}
+                    </td>
+                    <td className="py-3 px-4">
+                      {tx.status === "cleared" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Cleared
+                        </span>
+                      ) : tx.status === "pending" ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200">
+                          <Clock className="w-3 h-3 text-amber-600" /> In 24h Escrow
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal/10 text-teal text-[10px] font-bold border border-teal/20">
+                          <CheckCircle2 className="w-3 h-3 text-teal" /> Paid to Bank
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
