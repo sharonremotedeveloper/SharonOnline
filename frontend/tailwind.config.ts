@@ -8,34 +8,68 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-dm-sans)", "DM Sans", "system-ui", "sans-serif"],
+        serif: ["var(--font-lora)", "Lora", "Georgia", "serif"],
+      },
       colors: {
-        brand: {
-          50: '#F0F7F6',
-          100: '#DDEFEA',
-          200: '#BBDDD5',
-          300: '#8BC3B8',
-          400: '#5BA498',
-          500: '#3D887C',
-          600: '#2C6D63',
-          700: '#1D534B',
-          800: '#15433D',
-          900: '#0D4440', // Primary signature deep teal
-          950: '#062523',
+        cream: {
+          DEFAULT: "#FFF8F2",
+          deep: "#F4E7DA",
+          surface: "#FFF4EA",
+        },
+        ink: {
+          DEFAULT: "#2D2521",
+          muted: "#6B5B53",
+          faint: "#8A746A",
+        },
+        primary: {
+          DEFAULT: "#A94332",
+          hover: "#873426",
+          surface: "#FFF4EA",
+        },
+        terracotta: {
+          DEFAULT: "#A94332",
+          hover: "#873426",
+          surface: "#FFF4EA",
         },
         gold: {
-          500: '#E6A838', // Warm accent gold
-          600: '#D49422',
+          DEFAULT: "#E7A83E",
+          hover: "#D6962E",
+          surface: "#FAF0DC",
+          bright: "#D4A84B",
         },
-        surface: {
-          DEFAULT: '#F7FAF9',
-          card: '#FFFFFF',
-          muted: '#F0F4F3',
-        }
+        teal: {
+          DEFAULT: "#0D4440",
+          hover: "#092E2B",
+          surface: "#E6F2F0",
+          border: "#A8D0C8",
+        },
+        plum: {
+          DEFAULT: "#4A2948",
+          surface: "#FFF1E6",
+        },
+        divider: "#E4D3C6",
+        success: {
+          DEFAULT: "#52705A",
+          surface: "#EEF3EC",
+        },
+        error: {
+          DEFAULT: "#B83232",
+          surface: "#FDF0EE",
+        },
       },
       boxShadow: {
-        'card': '0 2px 8px -2px rgba(13, 68, 64, 0.08), 0 1px 4px -1px rgba(13, 68, 64, 0.04)',
-        'card-hover': '0 12px 24px -6px rgba(13, 68, 64, 0.12), 0 4px 8px -2px rgba(13, 68, 64, 0.06)',
-      }
+        card: "0 1px 3px rgba(45, 37, 33, 0.07), 0 8px 24px rgba(45, 37, 33, 0.05)",
+        "card-hover": "0 2px 6px rgba(45, 37, 33, 0.08), 0 16px 34px rgba(45, 37, 33, 0.08)",
+        "card-sm": "0 1px 4px rgba(45, 37, 33, 0.07)",
+      },
+      borderRadius: {
+        sm: "6px",
+        md: "10px",
+        lg: "14px",
+        xl: "20px",
+      },
     },
   },
   plugins: [],
