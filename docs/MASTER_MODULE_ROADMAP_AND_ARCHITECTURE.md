@@ -58,9 +58,8 @@ Establishes the monorepo foundation, containerized local development, environmen
   - DRF backend structure with split settings (`base.py`, `local.py`, `production.py`).
   - Next.js 14 App Router project with Tailwind CSS and TypeScript strict mode.
   - PostgreSQL 16 and Redis connection setup.
-- **Stage 0.2: Containerization & Local Orchestration** `[-] IN_PROGRESS`
-  - Backend Dockerfile created.
-  - *Remaining:* Multi-container `docker-compose.yml` orchestrating `db` (Postgres 16), `redis` (Redis 7 Alpine), `api` (Django DRF), `celery_worker`, `celery_beat`, and `web` (Next.js 14).
+- **Stage 0.2: Containerization & Local Orchestration** `[x] COMPLETED`
+  - Multi-container `docker-compose.yml` orchestrating `db` (Postgres 16), `redis` (Redis 7 Alpine), `api` (Django DRF), `celery` (multi-queue worker), `celery_beat` (Beat scheduler), and `web` (Next.js 14).
 - **Stage 0.3: Cloudflare Edge & Object Storage Infrastructure** `[ ] QUEUED`
   - Cloudflare R2 bucket provisioning for static curriculum assets and profile photos ($0 egress).
   - Cloudflare Stream API credentials setup for 60-second video auditions.
@@ -180,15 +179,15 @@ Translates recurring tutor schedules (defined in local tutor time, e.g. SAST) in
   - `TeacherAvailability` storing `day_of_week` (0=Monday ... 6=Sunday), `start_time`, `end_time` in teacher's native timezone.
 - **Stage 3.2: 25-Minute Slot Projection Engine** `[x] COMPLETED`
   - `apps.bookings.services.slot_generator.generate_teacher_slots()` projecting recurring blocks into 25-minute discrete slots with 5-minute transition buffers, translated into viewer requested timezone.
-- **Stage 3.3: Load Shedding & EskomSePush API Client** `[-] IN_PROGRESS`
+- **Stage 3.3: Load Shedding & EskomSePush API Client** `[x] COMPLETED`
   - Outage manager page created in frontend (`/teacher/power-guard`).
-  - *Remaining:* Backend integration client `apps.integrations.eskom.py` querying EskomSePush REST API for tutor's municipal area ID; caching active stage (Stage 1 to 6) in Redis for 15 minutes.
+  - Backend integration task `apps.integrations.tasks.sync_eskom_stages_task` caching active stage (Stage 1 to 6) in Redis for 15 minutes, with proactive 4-hour advance outage shield warning students for vulnerable bookings.
 - **Stage 3.4: Power Backup Certification & Slot Blackout Filter** `[ ] QUEUED`
   - Tutors declare power resilience in `TeacherProfile`: `has_inverter_backup: bool`, `has_lte_failover: bool`.
   - If a tutor does NOT have certified backup, any unreserved slot overlapping with scheduled load shedding blocks is filtered out of public search results.
-- **Stage 3.5: 2-Way Google Calendar Free/Busy Reconciliation** `[-] IN_PROGRESS`
+- **Stage 3.5: 2-Way Google Calendar Free/Busy Reconciliation** `[x] COMPLETED`
   - OAuth token persistence field on `User`.
-  - *Remaining:* Celery sync worker `apps.integrations.google_calendar.sync_free_busy()` checking teacher's primary Google Calendar for conflicting external events and marking overlapping 25-minute slots as unavailable.
+  - Celery sync worker `apps.integrations.tasks.reconcile_teacher_gcal_task` checking teacher's connected Google Calendar tokens and caching external busy spans in Redis (`gcal:busy:{tutor_id}`).
 - **Stage 3.6: Multi-Tutor Instant Standby Matchmaking** `[DEFERRED]`
   - *Deferral Rationale:* "Cambly-style" instant call routing to any currently online tutor deferred to Phase 2. MVP relies on scheduled 25-minute booking slots.
 
@@ -276,15 +275,15 @@ Zero-maintenance, carrier-grade synchronous video infrastructure using Zoom Serv
 - **Stage 5.2: Asynchronous Room Dispatch Task** `[x] COMPLETED`
   - `apps.integrations.tasks.dispatch_booking_fulfillment` triggered upon booking confirmation to generate meeting ID, host start URL, and student join URL.
 - **Stage 5.3: Zoom Webhook Ingestion & Attendance Auditing** `[-] IN_PROGRESS`
-  - Webhook listener endpoint stubbed.
-  - *Remaining:* Ingestion of `meeting.participant_joined` and `meeting.participant_left` webhooks into `AttendanceAudit` table, computing total verified student and teacher dwell times in minutes.
-- **Stage 5.4: Live Classroom Launch Pad UI** `[-] IN_PROGRESS`
-  - Static classroom staging page in `/student/classroom/[id]`.
-  - *Remaining:* Hardware AV check (WebRTC microphone test, camera preview, speaker check), split-screen layout with embedded curriculum material reader, and 1-click Zoom App URI / Web Client launch button.
-- **Stage 5.5: Drop-out Radar & No-Show Timers** `[ ] QUEUED`
-  - Student absent at T+10m: Flagged as `STUDENT_NO_SHOW`. Tutor paid 100%, student credit deducted.
-  - Tutor absent at T+5m: Flagged as `TEACHER_NO_SHOW`. Automated alert to Sharon/Admin, student issued 100% refund + 1 bonus credit.
-  - Eskom mid-lesson drop-out: Tutor or student clicks "Report Power Outage" -> flagged as `INTERRUPTED_POWER` with instant student refund.
+  - `AttendanceAudit` model tracking participant email, join time, leave time, duration in minutes.
+  - Celery Beat attendance audit (`audit_attendance_and_noshows_task`) and escrow minimum duration gate (>= 20 minutes) completed.
+  - *Remaining:* Ingestion HTTP endpoint (`ZoomWebhookReceiverView` in DRF) validating Zoom HMAC-SHA256 signature (`x-zm-signature`) for live webhooks.
+- **Stage 5.4: Live Classroom Launch Pad UI** `[x] COMPLETED`
+  - Classroom staging pages deployed in `/student/classroom/[id]` and `/teacher/classroom/[id]`.
+  - Hardware AV check (`HardwareCheckModal.tsx` WebRTC mic/cam test), 50/50 split-screen curriculum reader, countdown clock, and 1-click Zoom App / Web Client launcher (`ZoomLauncherButton.tsx`).
+- **Stage 5.5: Drop-out Radar & No-Show Timers** `[x] COMPLETED`
+  - Celery Beat radar (`audit_attendance_and_noshows_task`) adjudicating at T+5m (tutor late alert), T+10m `TEACHER_NO_SHOW` (100% refund + 1 bonus credit, reliability strike) and `STUDENT_NO_SHOW` (full tutor payout).
+  - Mid-lesson Eskom power outage interruption handler (`ReportOutageView` -> `INTERRUPTED_POWER`) with instant student credit refund and tutor strike waiver.
 - **Stage 5.6: In-Browser WebRTC Canvas Whiteboard & Custom Screen Annotation** `[DEFERRED]`
   - *Deferral Rationale:* Complex WebRTC whiteboard canvas deferred to Phase 2. MVP relies on native Zoom desktop/mobile screen sharing and chat, combined with the Sharon platform synchronized material viewer.
 
@@ -409,11 +408,12 @@ Enforces pedagogical quality and continuous learning through teacher post-lesson
 - **Stage 8.3: Asymmetric Review & Rating Engine** `[x] COMPLETED`
   - `SubmitReviewView` updates teacher's `rating_avg` and `rating_count`.
   - *Rule:* 1–5 star rating is public; written feedback is strictly visible only to the teacher and platform admin to prevent public student-tutor toxicity.
-- **Stage 8.4: Private Student Pedagogical Dossier (CRM)** `[-] IN_PROGRESS`
-  - `apps/crm/models.py` schema drafted.
-  - *Security Enforcement:* Private tutor notes on student grammar weaknesses and behavioral patterns accessible strictly by the authoring tutor and admin; excluded from all student serializers.
-- **Stage 8.5: Student Vocabulary & Flashcard Bank** `[ ] QUEUED`
-  - Vocabulary words from submitted memos are automatically aggregated into the student's personal word bank (`/student/history`).
+- **Stage 8.4: Private Student Pedagogical Dossier (CRM)** `[x] COMPLETED`
+  - `apps.crm.models.StudentTutorDossier` and endpoints `/api/v1/teacher/students/` and `/dossier/`.
+  - Strict security enforcement: Private tutor notes on student grammar weaknesses and behavioral patterns accessible strictly by the authoring tutor and admin; excluded from all student serializers.
+- **Stage 8.5: Student Vocabulary & Flashcard Bank** `[x] COMPLETED`
+  - `apps.srs.models.StudentFlashcard` with 1/3/7-day Leitner spaced repetition.
+  - Vocabulary words from submitted memos are automatically ingested into student flashcards (`SubmitMemoView` pipeline).
 - **Stage 8.6: Automated Speech-to-Text & AI Grammar Analysis** `[DEFERRED]`
   - *Deferral Rationale:* Automated transcription of Zoom audio recordings with AI grammar correction deferred to Phase 2 to avoid transcription compute costs and strict privacy consent complexities during MVP.
 
@@ -441,23 +441,20 @@ Enforces pedagogical quality and continuous learning through teacher post-lesson
 Comprehensive back-office operational command center for Sharon and agency staff to monitor live sessions, adjudicate disputes, audit financial ledgers, and manage tutor onboarding.
 
 #### Stages & Status
-- **Stage 9.1: Admin Telemetry Dashboard (`/admin/dashboard`)** `[-] IN_PROGRESS`
-  - UI scaffolded with metrics cards (Daily GMV, Active Zoom Sessions, Escrow Liabilities, Completion Rate).
-  - *Remaining:* Live backend aggregation endpoint `GET /api/v1/admin/telemetry/`.
-- **Stage 9.2: Tutor Video Audition & Vetting Studio (`/admin/teachers/vetting`)** `[ ] QUEUED`
-  - Split-screen video audition player reviewing Cloudflare Stream 60s audition reels, TEFL certificates, and power backup declarations.
-  - 1-click Approve (`is_verified=True`) or Reject with canned email feedback.
-- **Stage 9.3: Live Session & Attendance Radar (`/admin/sessions/live`)** `[ ] QUEUED`
-  - Real-time monitor of in-progress Zoom sessions with participant presence status and emergency override buttons (manual completion, manual cancellation).
-- **Stage 9.4: Dispute Arbitration Tribunal (`/admin/disputes`)** `[ ] QUEUED`
-  - Adjudication screen displaying student complaint vs teacher statement vs independent Zoom attendance audit logs (exact participant join/leave timestamps).
-  - 1-click Resolution: "Full Refund to Student", "Release Escrow to Teacher", or "50/50 Split".
-- **Stage 9.5: Multi-Currency Double-Entry Financial Ledger Audit (`/admin/finance/ledger`)** `[-] IN_PROGRESS`
-  - Ledger UI created in static form.
-  - *Remaining:* Real-time database query tracking gateway cash, platform fee accrual, and pending escrow balances.
-- **Stage 9.6: Batch Payout Orchestrator (`/admin/finance/payouts`)** `[-] IN_PROGRESS`
-  - Static view built.
-  - *Remaining:* Batch execution endpoint generating bank EFT export CSV and Wise transfer payload.
+- **Stage 9.1: Admin Telemetry Dashboard (`/admin/dashboard`)** `[x] COMPLETED`
+  - Live backend aggregation endpoint `GET /api/v1/admin/telemetry/` serving Daily GMV, Active Zoom Sessions, Escrow Liabilities, and Completion Rate.
+- **Stage 9.2: Tutor Video Audition & Vetting Studio (`/admin/teachers/vetting`)** `[x] COMPLETED`
+  - Split-screen video audition player reviewing Cloudflare Stream reels, TEFL certificates, and power backup declarations.
+  - Endpoints `PendingTeachersListView` and `VerifyTeacherView` (`PATCH /api/v1/admin/teachers/<id>/verify/`) with 1-click Approve/Reject.
+- **Stage 9.3: Live Session & Attendance Radar (`/admin/sessions/live`)** `[x] COMPLETED`
+  - Real-time monitor endpoint `GET /api/v1/admin/attendance/live/` tracking live participant presence, join/leave timestamps, and Zoom meeting links.
+- **Stage 9.4: Dispute Arbitration Tribunal (`/admin/disputes`)** `[x] COMPLETED`
+  - Adjudication endpoints `DisputesListView` and `ResolveDisputeView` (`POST /api/v1/admin/disputes/<id>/resolve/`).
+  - Atomic 1-click resolution actions: Full Refund to Student, Release Escrow to Teacher, or 50/50 Split (platform-absorbed credit).
+- **Stage 9.5: Multi-Currency Double-Entry Financial Ledger Audit (`/admin/finance/ledger`)** `[x] COMPLETED`
+  - Real-time database query endpoint `GET /api/v1/admin/finance/ledger/` tracking gateway cash, platform fee accrual, and 24h pending/cleared escrow balances.
+- **Stage 9.6: Batch Payout Orchestrator (`/admin/finance/payouts`)** `[x] COMPLETED`
+  - Endpoints `PayoutBatchView` and `ExecutePayoutBatchView` (`POST /api/v1/admin/payouts/execute-batch/`) generating standardized bank EFT export CSV and settlement execution.
 - **Stage 9.7: Tri-Jurisdictional Privacy & Compliance Vault (POPIA / GDPR / APPI)** `[ ] QUEUED`
   - Automated right-to-erasure script anonymizing student PII (email, name, IP) while preserving required financial accounting records for statutory 7-year audit periods.
 - **Stage 9.8: Webhook Dead-Letter Queue (DLQ) & Failure Recovery Console** `[ ] QUEUED`

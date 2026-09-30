@@ -70,7 +70,7 @@ services:
       dockerfile: Dockerfile
     container_name: esl_celery
     restart: unless-stopped
-    command: celery -A config worker -l info -c 2
+    command: celery -A config worker -l info -c 2 -Q celery,scheduler_beat,financial_escrow,notifications,critical_io
     volumes:
       - ./backend:/app
     environment:

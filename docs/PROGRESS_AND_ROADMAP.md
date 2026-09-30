@@ -4,21 +4,21 @@
 
 ```mermaid
 flowchart LR
-    P1["Phase 1: Core Scaffolding<br/><b>COMPLETED</b>"] --> P2["Phase 2: Auth & Profiles<br/><b>IN PROGRESS</b>"]
-    P2 --> P3["Phase 3: Booking & Redis Lock<br/><b>QUEUED</b>"]
-    P3 --> P4["Phase 4: Payments & Escrow<br/><b>QUEUED</b>"]
-    P4 --> P5["Phase 5: Materials CMS & Memos<br/><b>QUEUED</b>"]
-    P5 --> P6["Phase 6: E2E Tests & Launch<br/><b>QUEUED</b>"]
+    P1["Phase 1: Core Scaffolding<br/><b>COMPLETED</b>"] --> P2["Phase 2: Auth & Profiles<br/><b>COMPLETED</b>"]
+    P2 --> P3["Phase 3: Booking & Redis Lock<br/><b>COMPLETED</b>"]
+    P3 --> P4["Phase 4: Payments & Escrow<br/><b>COMPLETED</b>"]
+    P4 --> P5["Phase 5: Background Automation & Beat<br/><b>COMPLETED</b>"]
+    P5 --> P6["Phase 6: Webhooks & Launch Hardening<br/><b>IN PROGRESS</b>"]
 ```
 
 | Phase | Milestone Description | Target Window | Status | Owner / Assignee |
 | :--- | :--- | :--- | :--- | :--- |
 | **Phase 1** | Monorepo scaffolding, Django 5.1 REST API + Next.js 14 setup, Postgres models, initial migrations & test suite | Sept 2026 | `COMPLETED` | Anesu MUPESA / Antigravity |
-| **Phase 2** | JWT Authentication, User Roles (Student/Teacher/Admin), Profile Management, IANA Timezone Engine | Oct 2026 | `IN PROGRESS` | Anesu MUPESA / AI Agents |
-| **Phase 3** | Redlock 10-Min Reservation Lock, Slot Availability Projection, Zoom S2S OAuth Meeting Generation, Google Calendar API | Oct 2026 | `QUEUED` | Anesu MUPESA / AI Agents |
-| **Phase 4** | PayFast (ZAR) Webhooks, PayPal v2 Orders (USD), Multi-Currency Ledger, Monthly Batch Payout Engine | Oct 2026 | `QUEUED` | Anesu MUPESA / AI Agents |
-| **Phase 5** | Materials CMS Catalog, Interactive Article Reader, Post-Lesson Memo Studio, Confidential Student Dossier | Nov 2026 | `QUEUED` | Anesu MUPESA / AI Agents |
-| **Phase 6** | E2E Integration Tests, Zoom Attendance Webhook Auditing, Cloudflare R2 Recording Expiration Policy, Production Launch | Nov 2026 | `QUEUED` | Anesu MUPESA / AI Agents |
+| **Phase 2** | JWT Authentication, User Roles (Student/Teacher/Admin), Profile Management, IANA Timezone Engine | Oct 2026 | `COMPLETED` | Anesu MUPESA / AI Agents |
+| **Phase 3** | Redlock 10-Min Reservation Lock, Slot Availability Projection, Zoom S2S OAuth Meeting Generation, Google Calendar API | Oct 2026 | `COMPLETED` | Anesu MUPESA / AI Agents |
+| **Phase 4** | PayFast (ZAR) Webhooks, PayPal v2 Orders (USD), Multi-Currency Ledger, Monthly Batch Payout Engine | Oct 2026 | `COMPLETED` | Anesu MUPESA / AI Agents |
+| **Phase 5** | Background Automation & Celery Beat Workers (8 automated schedules, distributed locks, no-show adjudication, 24h escrow clearance, memo SLA) | Nov 2026 | `COMPLETED` | Anesu MUPESA / AI Agents |
+| **Phase 6** | Zoom Attendance Webhook HMAC Ingestion, Cloudflare R2 Asset Delivery, E2E Staging & Production Launch | Nov 2026 | `IN PROGRESS` | Anesu MUPESA / AI Agents |
 
 ---
 
@@ -26,15 +26,16 @@ flowchart LR
 
 ### 2.1 Backend Services (`Project-files/backend/`)
 - [x] Django 5.1 & DRF Monorepo Structure
-- [x] `apps.users`, `apps.teachers`, `apps.materials`, `apps.bookings`, `apps.payments`, `apps.crm`, `apps.reviews` schema models
+- [x] `apps.users`, `apps.teachers`, `apps.materials`, `apps.bookings`, `apps.payments`, `apps.crm`, `apps.admin_api`, `apps.srs` schema models
 - [x] PostgreSQL database migrations applied cleanly
-- [x] `seed_data` script initialized (`admin`, `student_aiko`, 3 tutors, 4 materials)
-- [x] `pytest` suite configured (`conftest.py` with eager Celery & `LocMemCache`)
+- [x] `seed_data` and `seed_phase41_data` initialized
+- [x] `pytest` suite configured (39/39 automated unit & integration tests passing)
 - [x] Health check endpoint (`GET /api/health/`)
 - [x] JWT Auth endpoints (`/api/v1/auth/token/`, `/api/v1/auth/register/`)
 - [x] Redis Redlock reservation engine (`SET booking:slot:... NX EX 600`)
-- [-] Zoom S2S OAuth Client & Webhook Receiver
-- [-] PayFast ITN & PayPal Webhook Handlers
+- [x] Zoom S2S OAuth Client & Asynchronous Meeting Provisioning
+- [x] PayFast ITN & PayPal Webhook Handlers (`process_payment_webhook`)
+- [x] Celery Beat Background Automation (8 scheduled tasks, `@distributed_task_lock`, multi-queue routing)
 - [*] See comprehensive breakdown in [`docs/MASTER_MODULE_ROADMAP_AND_ARCHITECTURE.md`](./MASTER_MODULE_ROADMAP_AND_ARCHITECTURE.md)
 
 ### 2.2 Frontend Services (`Project-files/frontend/`)
@@ -203,10 +204,9 @@ flowchart LR
 
 ---
 
-## 4. Current Active Sprint Backlog (Sprint 2)
+## 4. Current Active Sprint Backlog (Sprint 6: Launch Hardening)
 
-- [ ] **Task 2.1**: Implement JWT Authentication Endpoints (`/api/v1/auth/token/login/`, `/token/refresh/`) in Django `apps/users`.
-- [ ] **Task 2.2**: Wire Next.js Auth Context & Token Storage for Student/Teacher login.
-- [ ] **Task 2.3**: Implement Redis Lock Helper (`Redlock` 10-min reservation TTL) in `apps/bookings/services.py`.
-- [ ] **Task 2.4**: Create Zoom S2S OAuth API client wrapper (`apps/bookings/zoom_client.py`).
-- [ ] **Task 2.5**: Document all new endpoint schemas in [`docs/ARCHITECTURE_AND_SCHEMA.md`](./ARCHITECTURE_AND_SCHEMA.md).
+- [ ] **Task 6.1**: Implement Zoom Webhook Ingestion Receiver (`ZoomWebhookReceiverView` in `apps.integrations`) validating HMAC-SHA256 signature (`x-zm-signature`) and populating `AttendanceAudit`.
+- [ ] **Task 6.2**: Formalize double-entry transaction journal table (`LedgerEntry` debit/credit rows) in `apps.payments.models` for regulatory SARB / GAAP reporting.
+- [ ] **Task 6.3**: Connect Cloudflare R2 bucket integration for static curriculum PDFs and audio snippets with zero egress fees.
+- [ ] **Task 6.4**: Run end-to-end multi-container docker staging test (`docker compose up -d`) with full lifecycle verification.
