@@ -20,6 +20,7 @@ class PaymentTransaction(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=3, default='USD')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.INITIALIZED, db_index=True)
+    escrow_cleared = models.BooleanField(default=False, db_index=True)
     raw_webhook_payload = models.JSONField(default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

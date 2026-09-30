@@ -23,6 +23,9 @@ class TeacherProfile(models.Model):
     specialties = models.JSONField(default=list, help_text="List of tags: ['FreeTalk', 'Business English', 'Daily News', 'TOEIC']")
     is_verified = models.BooleanField(default=False, db_index=True)
     is_active = models.BooleanField(default=True, db_index=True)
+    sla_strikes = models.PositiveSmallIntegerField(default=0)
+    eskom_area_id = models.CharField(max_length=64, blank=True, default="jhb-block-3")
+    has_inverter_backup = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

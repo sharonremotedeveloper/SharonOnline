@@ -11,6 +11,10 @@ class Booking(models.Model):
         CANCELLED = 'cancelled', 'Cancelled'
         DISPUTED = 'disputed', 'Disputed'
         INTERRUPTED_POWER = 'interrupted_power', 'Interrupted (Power Outage)'
+        STUDENT_NO_SHOW = 'student_no_show', 'Student No Show'
+        TEACHER_NO_SHOW = 'teacher_no_show', 'Teacher No Show'
+        COMPLETED_PENDING_MEMO = 'completed_pending_memo', 'Completed (Pending Memo)'
+        COMPLETED_MEMO_FORFEITED = 'completed_memo_forfeited', 'Completed (Memo Forfeited)'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     teacher = models.ForeignKey('teachers.TeacherProfile', on_delete=models.PROTECT, related_name='bookings')
@@ -32,6 +36,14 @@ class Booking(models.Model):
     # Google Calendar reference
     teacher_gcal_event_id = models.CharField(max_length=255, blank=True)
 
+    # Background Automation & Reminder State Bitflags
+    memo_reminder_sent = models.BooleanField(default=False)
+    reminder_24h_sent = models.BooleanField(default=False)
+    reminder_1h_sent = models.BooleanField(default=False)
+    reminder_10m_sent = models.BooleanField(default=False)
+    tutor_late_alert_sent = models.BooleanField(default=False)
+    escrow_cleared_at = models.DateTimeField(null=True, blank=True)
+
     # Asymmetric Feedback & Rating
     student_rating = models.PositiveSmallIntegerField(null=True, blank=True, help_text="1 to 5 star rating")
     student_review = models.TextField(blank=True, help_text="Written review visible to admin and teacher")
@@ -45,7 +57,13 @@ class Booking(models.Model):
             # Hard database-level lock preventing double-booking race conditions
             models.UniqueConstraint(
                 fields=['teacher', 'start_time_utc'],
-                condition=models.Q(status__in=['confirmed', 'in_progress', 'completed']),
+                condition=models.Q(status__in=[
+                    'confirmed',
+                    'in_progress',
+                    'completed',
+                    'completed_pending_memo',
+                    'completed_memo_forfeited'
+                ]),
                 name='unique_teacher_active_timeslot'
             )
         ]

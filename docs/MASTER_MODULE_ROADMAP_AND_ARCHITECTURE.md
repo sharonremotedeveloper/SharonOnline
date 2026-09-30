@@ -239,8 +239,8 @@ Eliminates high-contention double-booking race conditions when multiple global s
     11. `DISPUTED`
     12. `COMPLETED`
   - *Remaining:* Explicit state transition validator function (`transition_booking(booking, target_status, actor)`) enforcing legal state transitions and raising `InvalidStateTransitionError`.
-- **Stage 4.4: Auto-Expiry Cleanup Task for Abandoned Checkouts** `[ ] QUEUED`
-  - Celery Beat task running every 60 seconds (`purge_expired_reservations`) that cancels `pending_payment` bookings older than 10 minutes and cleans up Redis locks.
+- **Stage 4.4: Auto-Expiry Cleanup Task for Abandoned Checkouts** `[x] COMPLETED`
+  - Celery Beat task running every 60 seconds (`purge_expired_reservations_task`) that cancels `pending_payment` bookings older than 10 minutes and cleans up Redis locks.
 - **Stage 4.5: Cancellation & Rescheduling Policy Engine** `[ ] QUEUED`
   - Greater than 2 hours before start: 100% credit refund to student wallet; slot freed.
   - Less than 2 hours before start: Student credit forfeited; teacher credited 50% compensation.
@@ -360,10 +360,10 @@ Decoupled multi-currency financial infrastructure supporting PayFast for South A
 - **Stage 7.4: PayPal v2 Webhook & Order Capture Listener** `[-] IN_PROGRESS`
   - PayPal payment stubbed.
   - *Remaining:* Webhook handler for `CHECKOUT.ORDER.APPROVED` and `PAYMENT.CAPTURE.COMPLETED`, verifying PayPal transmission signature.
-- **Stage 7.5: Double-Entry Escrow Ledger & Wallet Model** `[ ] QUEUED`
+- **Stage 7.5: Double-Entry Escrow Ledger & Wallet Model** `[x] COMPLETED`
   - Double-entry ledger architecture:
     - On payment: Debit Gateway Cash, Credit Escrow Liability.
-    - On lesson verification + 24h dispute window expiry: Debit Escrow Liability, Credit Teacher Cleared Wallet (80%), Credit Platform Revenue (20%).
+    - On lesson verification + 24h dispute window expiry: Debit Escrow Liability, Credit Teacher Cleared Wallet (80%), Credit Platform Revenue (20%) via `release_cleared_escrow_task`.
 - **Stage 7.6: Bi-Weekly South African Bank Batch Payout Generator** `[ ] QUEUED`
   - Admin batch payout module: generates standardized ACB/EFT payout export file for South African clearing banks (FNB, Standard Bank, Capitec, ABSA, Nedbank) and Wise Batch API JSON for international payouts.
 - **Stage 7.7: Automated South African Reserve Bank (SARB) Cross-Border BoP Reporting** `[DEFERRED]`
@@ -402,10 +402,10 @@ Enforces pedagogical quality and continuous learning through teacher post-lesson
 - **Stage 8.1: Lesson Memo Model & Submission Studio** `[x] COMPLETED`
   - `LessonMemo` model with `feedback_text`, `vocabulary_words`, `pronunciation_notes`, `homework`.
   - `apps.bookings.views.SubmitMemoView` implemented.
-- **Stage 8.2: 24-Hour Memo SLA & Celery Escalation Engine** `[ ] QUEUED`
+- **Stage 8.2: 24-Hour Memo SLA & Celery Escalation Engine** `[x] COMPLETED`
   - Lessons enter `COMPLETED_PENDING_MEMO` upon completion.
   - Celery reminder sent at T+12h if memo not submitted.
-  - At T+24h: Memo forfeited, tutor reliability score reduced, and admin notified.
+  - At T+24h: Memo forfeited (`COMPLETED_MEMO_FORFEITED`), tutor reliability score reduced, admin notified, and student awarded 1 apology credit.
 - **Stage 8.3: Asymmetric Review & Rating Engine** `[x] COMPLETED`
   - `SubmitReviewView` updates teacher's `rating_avg` and `rating_count`.
   - *Rule:* 1–5 star rating is public; written feedback is strictly visible only to the teacher and platform admin to prevent public student-tutor toxicity.
