@@ -40,6 +40,7 @@ flowchart LR
 ### 2.2 Frontend Services (`Project-files/frontend/`)
 - [x] Next.js 14 App Router (TypeScript, Tailwind CSS)
 - [x] 12/12 Static and Dynamic Route build compilation (`npm run build` succeeds)
+- [x] UI Vertical Slicing Migration Plan formulated & documented (`docs/UI_VERTICAL_SLICE_MIGRATION_PLAN.md`)
 - [x] Public Marketing Landing Page (`/`)
 - [x] Tutor Directory Listing (`/tutors`)
 - [x] Tutor Public Profile (`/tutors/[slug]`)
@@ -47,9 +48,9 @@ flowchart LR
 - [x] Student Command Dashboard (`/student/dashboard`)
 - [x] Teacher Operations Dashboard (`/teacher/dashboard`)
 - [x] Admin Operations Telemetry Dashboard (`/admin/dashboard`)
-- [ ] API Axios / Fetch Client Integration with Backend JWT Auth
-- [ ] Live Classroom Launch Pad & Zoom Embed Bridge
-- [ ] PayFast & PayPal SDK Checkout Integration
+- [ ] API Axios / Fetch Client Integration with Backend JWT Auth (Slice 2)
+- [ ] Live Classroom Launch Pad & Zoom Embed Bridge (Slice 6)
+- [ ] PayFast & PayPal SDK Checkout Integration (Slice 4)
 
 ---
 
