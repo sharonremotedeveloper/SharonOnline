@@ -2,6 +2,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
+from django.db import transaction
 from django.utils import timezone
 from .models import Booking, LessonMemo
 from apps.teachers.models import TeacherProfile
@@ -104,6 +105,14 @@ class SubmitMemoView(APIView):
         if booking.teacher.user != request.user and not request.user.is_staff:
             return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
 
+        memo_allowed = {
+            Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS, Booking.Status.COMPLETED,
+            Booking.Status.COMPLETED_PENDING_MEMO, Booking.Status.COMPLETED_MEMO_FORFEITED,
+        }
+        if booking.status not in memo_allowed:
+            return Response({"error": f"A memo cannot be submitted for a booking in status '{booking.status}'."},
+                            status=status.HTTP_409_CONFLICT)
+
         feedback_text = request.data.get('feedback_text', '')
         vocabulary_words = request.data.get('vocabulary_words', [])
         pronunciation_notes = request.data.get('pronunciation_notes', '')
@@ -204,28 +213,34 @@ class ReportOutageView(APIView):
             return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
 
         reason = request.data.get("reason", "Eskom Load Shedding / Power Interruption")
-        booking.status = Booking.Status.INTERRUPTED_POWER
-        booking.save()
+        with transaction.atomic():
+            # Row lock + status guard make the refund idempotent: one outage report per live booking.
+            booking = Booking.objects.select_for_update().get(pk=booking.pk)
+            if booking.status not in (Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS):
+                return Response({"error": f"Outage cannot be reported for a booking in status '{booking.status}'."},
+                                status=status.HTTP_409_CONFLICT)
+            booking.status = Booking.Status.INTERRUPTED_POWER
+            booking.save()
 
-        # Refund 1 credit to student
-        from apps.payments.models import CreditBundle
-        bundle = CreditBundle.objects.filter(user=booking.student).order_by('-created_at').first()
-        if bundle:
-            bundle.remaining_credits += 1
-            bundle.save()
-        else:
-            CreditBundle.objects.create(
-                user=booking.student,
-                pack_name="Eskom Outage Refund Credit",
-                total_credits=1,
-                remaining_credits=1,
-                amount_paid=0.00,
-                currency="USD"
-            )
+            # Refund 1 credit to student
+            from apps.payments.models import CreditBundle
+            bundle = CreditBundle.objects.filter(user=booking.student).order_by('-created_at').first()
+            if bundle:
+                bundle.remaining_credits += 1
+                bundle.save()
+            else:
+                CreditBundle.objects.create(
+                    user=booking.student,
+                    pack_name="Eskom Outage Refund Credit",
+                    total_credits=1,
+                    remaining_credits=1,
+                    amount_paid=0.00,
+                    currency="USD"
+                )
 
-        # Record double-entry ledger journal entry
-        from apps.payments.services.ledger_service import record_outage_refund_entry
-        record_outage_refund_entry(booking=booking, user=booking.student)
+            # Record double-entry ledger journal entry
+            from apps.payments.services.ledger_service import record_outage_refund_entry
+            record_outage_refund_entry(booking=booking, user=booking.student)
 
         return Response({
             "status": "interrupted_power",

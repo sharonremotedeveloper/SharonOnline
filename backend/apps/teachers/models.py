@@ -63,7 +63,7 @@ class TeacherProfile(models.Model):
                     return self.tefl_certificate_file.url
                 except Exception:
                     pass
-        return self.tefl_certificate_url or "https://pub-088f123.r2.dev/certificates/default-tefl.pdf"
+        return self.tefl_certificate_url or ""
 
     def __str__(self):
         return f"{self.user.get_full_name() or self.user.username} ({self.get_accent_display()})"

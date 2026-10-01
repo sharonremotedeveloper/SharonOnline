@@ -55,7 +55,7 @@ def generate_presigned_download_url(object_key: str, expires_in: int = 900) -> s
         media_url = getattr(settings, 'MEDIA_URL', '/media/')
         return f"{media_url.rstrip('/')}/{object_key.lstrip('/')}"
 
-def generate_presigned_upload_url(object_key: str, content_type: str = None, expires_in: int = 900) -> dict:
+def generate_presigned_upload_url(object_key: str, content_type: str = None, expires_in: int = 900, content_length: int = None) -> dict:
     """
     Generates a direct PUT presigned upload URL enabling client-side direct uploads
     to Cloudflare R2 with zero backend compute overhead.
@@ -76,6 +76,9 @@ def generate_presigned_upload_url(object_key: str, content_type: str = None, exp
     }
     if content_type:
         params['ContentType'] = content_type
+    if content_length is not None:
+        # Signed header: R2 rejects any upload whose Content-Length differs, enforcing the size cap.
+        params['ContentLength'] = int(content_length)
 
     try:
         url = client.generate_presigned_url(

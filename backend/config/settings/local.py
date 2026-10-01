@@ -4,6 +4,9 @@ import os
 
 DEBUG = True
 
+# Dev-only constant so local webhook tests/tools can sign payloads. Production refuses to boot without a real one.
+ZOOM_WEBHOOK_SECRET_TOKEN = os.environ.get('ZOOM_WEBHOOK_SECRET_TOKEN') or 'local-dev-zoom-webhook-secret'
+
 # Database: Uses DATABASE_URL if configured, otherwise falls back gracefully to SQLite for local lightweight development
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL:

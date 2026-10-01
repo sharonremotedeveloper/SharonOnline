@@ -42,7 +42,7 @@ class PendingTeacherApplicationSerializer(serializers.ModelSerializer):
     def get_tefl_certificate_url(self, obj):
         if hasattr(obj, 'resolved_tefl_certificate_url'):
             return obj.resolved_tefl_certificate_url
-        return getattr(obj, 'tefl_certificate_url', 'https://pub-088f123.r2.dev/certificates/default-tefl.pdf')
+        return getattr(obj, 'tefl_certificate_url', '')
 
 
     def get_eskom_area(self, obj):

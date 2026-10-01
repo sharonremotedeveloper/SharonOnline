@@ -201,7 +201,8 @@ class TestCloudflareR2StorageIntegration:
         res_ok = client.post('/api/v1/integrations/storage/presigned-url/', {
             'action': 'upload',
             'key': f'students/avatars/{student.id}/photo.jpg',
-            'content_type': 'image/jpeg'
+            'content_type': 'image/jpeg',
+            'size': 2048
         })
         assert res_ok.status_code == 200
         assert 'upload_url' in res_ok.data
@@ -230,7 +231,8 @@ class TestCloudflareR2StorageIntegration:
         res_admin_upload = client.post('/api/v1/integrations/storage/presigned-url/', {
             'action': 'upload',
             'key': 'materials/pdfs/brand-new-lesson.pdf',
-            'content_type': 'application/pdf'
+            'content_type': 'application/pdf',
+            'size': 2048
         })
         assert res_admin_upload.status_code == 200
         assert 'upload_url' in res_admin_upload.data

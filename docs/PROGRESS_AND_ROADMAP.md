@@ -230,3 +230,22 @@ flowchart LR
   - *Live Endpoint & SSR Validation*: Verified live health check (`GET /api/health/`), JWT auth token issuance (`POST /api/v1/auth/token/`), teacher and material catalogs, admin telemetry radar, and multi-route Next.js server-side rendering (`/`, `/tutors`, `/materials`, `/pricing`, `/how-it-works`, `/trust-safety`) with zero connection errors.
   - *PostgreSQL Outer-Join Concurrency Fix (`ERR-004`)*: Resolved `FeatureNotSupported: FOR UPDATE cannot be applied to the nullable side of an outer join` in `release_cleared_escrow_task` using subquery exclusion and table-level `of=('self',)` row locks.
   - *Multi-Container Dual-Environment Routing (`ERR-005`)*: Configured `INTERNAL_API_URL=http://backend:8000/api/v1` for server-side RSC/SSR container-to-container calls with automatic fallback to client-side browser endpoint `http://localhost:8000/api/v1`.
+
+---
+
+## 5. Production Readiness Phases 7-16 (added 2026-10-02)
+
+A four-way audit (backend, frontend, spec-vs-roadmap, infra) found that Phases 1-6 delivered a UI-complete, test-green skeleton, not a launched platform: payment webhooks are unauthenticated, checkout and payouts are stubs, the frontend silently falls back to mock data, and nothing is deployed. The full task list with IDs, owners, sizes and acceptance notes is in [`PRODUCTION_READINESS_PLAN.md`](PRODUCTION_READINESS_PLAN.md). Tick tasks off there **and** summarise each phase here as it closes.
+
+| Phase | Theme | Status |
+| :--- | :--- | :--- |
+| **Phase 7** | Security emergency + spec freeze (decisions D-1..D-12) | `7A DONE (7.1-7.9); 7.10 + D-3,4,7-12 awaiting Anesu` |
+| **Phase 8** | Honest frontend + real auth | `NOT STARTED` |
+| **Phase 9** | Booking core (`transition_booking()`, reserve → book) | `NOT STARTED` |
+| **Phase 10** | Real payments (PayPal/PayFast sandbox, credits, refunds, multi-currency ledger) | `NOT STARTED` |
+| **Phase 11** | Tutor lifecycle + real payouts | `NOT STARTED` |
+| **Phase 12** | Integrations + notifications (Zoom, Resend, GCal, Eskom) | `NOT STARTED` |
+| **Phase 13** | Platform ops (prod images, CI, Sentry, hosted staging) | `NOT STARTED` |
+| **Phase 14** | Compliance + legal (POPIA/GDPR) | `NOT STARTED` |
+| **Phase 15** | Missing screens, admin, SEO, test pyramid | `NOT STARTED` |
+| **Phase 16** | UAT + launch | `NOT STARTED` |

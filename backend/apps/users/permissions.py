@@ -24,7 +24,6 @@ class IsTeacher(permissions.BasePermission):
         return (
             getattr(request.user, 'role', None) == 'teacher'
             or hasattr(request.user, 'teacher_profile')
-            or request.user.is_staff
         )
 
 
@@ -37,7 +36,6 @@ class IsStudent(permissions.BasePermission):
             return False
         return (
             getattr(request.user, 'role', None) == 'student'
-            or request.user.is_staff
         )
 
 

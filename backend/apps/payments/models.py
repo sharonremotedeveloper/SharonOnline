@@ -18,6 +18,8 @@ class PaymentTransaction(models.Model):
     booking = models.ForeignKey('bookings.Booking', on_delete=models.CASCADE, related_name='transactions')
     gateway = models.CharField(max_length=20, choices=Gateway.choices)
     gateway_reference = models.CharField(max_length=255, unique=True, db_index=True)
+    # Our own reference (sent to the gateway as m_payment_id / custom_id) so webhooks can find the expected amount.
+    merchant_reference = models.CharField(max_length=64, unique=True, null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=3, default='USD')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.INITIALIZED, db_index=True)

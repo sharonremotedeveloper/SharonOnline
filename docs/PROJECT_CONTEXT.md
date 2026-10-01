@@ -57,3 +57,14 @@ The platform provides friction-free 25-minute synchronous video lessons, automat
 - **Redlock Lock**: A temporary 10-minute Redis lock (`SET slot:... NX EX 600`) held while a student completes checkout to prevent double-booking.
 - **Lesson Memo**: Structured post-lesson feedback containing grammar notes, vocabulary lists, and homework.
 - **Attendance Audit**: Automated join/leave timestamps ingested directly from Zoom webhooks.
+
+## 6. Decisions recorded 2026-10-02 (Phase 7 spec freeze)
+
+These supersede conflicting statements above (notably the fixed R75 tutor payout in §2). Full list and open items: `DECISIONS_D1_D12.md`.
+
+- **D-1 Pricing:** platform-set flat retail price per currency (not tutor-set). Trial lesson undecided.
+- **D-2 Tutor pay:** 80/20 split; the platform bears gateway fees from its 20%.
+- **D-5 No-show:** tutor and student at T+10 minutes; 5 minute disconnect grace.
+- **D-6 Refunds:** gateway refund only (cancel window and credit expiry still open; conflicts with credit refunds in the outage and DEF-501 paths, to be resolved before Phase 10).
+- **Tutor signup:** self-registration as `teacher` is allowed but unverified and hidden until vetted; `admin` is never self-assigned.
+- **Storage:** Cloudflare R2 bucket `esl-platform-assets` (public access off, no custom domain yet). Uploads are presigned PUT with a signed `Content-Length`.

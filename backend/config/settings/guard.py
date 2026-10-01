@@ -1,0 +1,49 @@
+import os
+from urllib.parse import urlparse
+
+from django.core.exceptions import ImproperlyConfigured
+
+_DEV_SECRET_PREFIX = 'django-insecure'
+SANDBOX_PAYFAST_MERCHANT_ID = '10000100'
+_LOCAL_HOSTS = {'localhost', '127.0.0.1', '0.0.0.0', 'backend', '::1'}
+
+
+def _is_local_origin(origin: str) -> bool:
+    host = urlparse(origin).hostname or ''
+    return host in _LOCAL_HOSTS or host.endswith('.localhost')
+
+
+def validate_production_settings(env=os.environ):
+    """Fail fast: refuse to boot production with dev defaults or missing security config."""
+    errors = []
+    secret = env.get('DJANGO_SECRET_KEY', '')
+    if not secret or secret.startswith(_DEV_SECRET_PREFIX) or len(secret) < 50:
+        errors.append('DJANGO_SECRET_KEY must be a unique random value (>=50 chars, not the dev key)')
+
+    hosts = [h.strip() for h in env.get('DJANGO_ALLOWED_HOSTS', '').split(',') if h.strip()]
+    if not hosts or any(h in _LOCAL_HOSTS or h == '*' for h in hosts):
+        errors.append('DJANGO_ALLOWED_HOSTS must list real hostnames (no localhost, internal names or *)')
+
+    for name in ('CORS_ALLOWED_ORIGINS', 'CSRF_TRUSTED_ORIGINS'):
+        origins = [o.strip() for o in env.get(name, '').split(',') if o.strip()]
+        if not origins:
+            errors.append(f'{name} must be set')
+        elif any(_is_local_origin(o) or not o.startswith('https://') for o in origins):
+            errors.append(f'{name} must be https:// origins and must not include localhost')
+
+    if not env.get('ZOOM_WEBHOOK_SECRET_TOKEN'):
+        errors.append('ZOOM_WEBHOOK_SECRET_TOKEN must be set')
+
+    if env.get('PAYFAST_SKIP_IP_CHECK', '').lower() in ('1', 'true', 'yes'):
+        errors.append('PAYFAST_SKIP_IP_CHECK must not be enabled in production')
+    if env.get('PAYFAST_SANDBOX', 'True').lower() not in ('1', 'true', 'yes'):  # live PayFast
+        for name in ('PAYFAST_MERCHANT_ID', 'PAYFAST_MERCHANT_KEY', 'PAYFAST_PASSPHRASE', 'PAYFAST_NOTIFY_URL'):
+            if not env.get(name):
+                errors.append(f'{name} is required when PAYFAST_SANDBOX is false')
+        if env.get('PAYFAST_MERCHANT_ID') == SANDBOX_PAYFAST_MERCHANT_ID:
+            errors.append('PayFast sandbox merchant id must not be used with PAYFAST_SANDBOX=False')
+    if env.get('PAYPAL_CLIENT_ID') and not env.get('PAYPAL_WEBHOOK_ID'):
+        errors.append('PAYPAL_WEBHOOK_ID is required when PayPal is configured')
+
+    if errors:
+        raise ImproperlyConfigured('Unsafe production configuration: ' + '; '.join(errors))
