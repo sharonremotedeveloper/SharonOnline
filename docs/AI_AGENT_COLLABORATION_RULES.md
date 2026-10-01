@@ -38,6 +38,9 @@ Before writing or modifying any code in `Project-files/`, every AI agent **MUST*
 - A local pattern library is available at `c:\Dev\Active Projects\Notion\ECC-main\skills/`.
 - When designing or implementing specialized modules (e.g. Django API security, Redis reservation locks, Next.js App Router patterns, or payment webhooks), agents are encouraged to read the corresponding skill directory in `ECC-main/skills/<skill-name>/` for production-grade architectural references.
 
+### Rule 8: Tool Access — Confirm the Account First (STRICT)
+- Before using **any** external tool, service, API, MCP server, or CLI, every agent **MUST** follow [`docs/TOOL_ACCESS_AND_ACCOUNTS.md`](./TOOL_ACCESS_AND_ACCOUNTS.md): look the tool up in its registry, verify the active account matches the authorized one, and state the confirmation. If the tool is unlisted, `UNCONFIRMED`, or the account differs — **STOP and ask Anesu**. First-time Neon setup steps for all agents: [`docs/NEON_SETUP.md`](./NEON_SETUP.md). Railway: [`docs/RAILWAY_SETUP.md`](./RAILWAY_SETUP.md). No secrets in docs or git.
+
 ---
 
 ## 🌿 Git Version Control & GitFlow Strategy

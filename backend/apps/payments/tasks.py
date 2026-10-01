@@ -31,8 +31,12 @@ def release_cleared_escrow_task():
     total_cleared_usd = Decimal('0.00')
 
     with transaction.atomic():
+        open_dispute_booking_ids = DisputeCase.objects.filter(
+            status=DisputeCase.Status.OPEN
+        ).values_list('booking_id', flat=True)
+
         candidates = list(
-            Booking.objects.select_for_update(skip_locked=True)
+            Booking.objects.select_for_update(of=('self',), skip_locked=True)
             .filter(
                 status__in=[
                     Booking.Status.COMPLETED,
@@ -42,7 +46,7 @@ def release_cleared_escrow_task():
                 end_time_utc__lte=cutoff_24h,
                 escrow_cleared_at__isnull=True
             )
-            .exclude(dispute__status=DisputeCase.Status.OPEN)
+            .exclude(id__in=open_dispute_booking_ids)
             .select_related('teacher__user')[:50]
         )
 

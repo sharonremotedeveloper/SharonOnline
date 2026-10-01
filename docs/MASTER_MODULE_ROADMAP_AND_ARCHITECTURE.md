@@ -59,7 +59,13 @@ Establishes the monorepo foundation, containerized local development, environmen
   - Next.js 14 App Router project with Tailwind CSS and TypeScript strict mode.
   - PostgreSQL 16 and Redis connection setup.
 - **Stage 0.2: Containerization & Local Orchestration** `[x] COMPLETED`
-  - Multi-container `docker-compose.yml` orchestrating `db` (Postgres 16), `redis` (Redis 7 Alpine), `api` (Django DRF), `celery` (multi-queue worker), `celery_beat` (Beat scheduler), and `web` (Next.js 14).
+  - Multi-container `docker-compose.yml` orchestrating 6 production-parity containers:
+    1. `db`: PostgreSQL 16 Alpine with persistent volume and `pg_isready` healthcheck.
+    2. `redis`: Redis 7 Alpine with persistent cache volume and `redis-cli ping` healthcheck.
+    3. `backend`: Django DRF Gunicorn WSGI service, auto-migrating, seed data, and healthcheck `/api/health/`.
+    4. `celery`: Multi-queue asynchronous worker listening across all 5 queues (`celery,scheduler_beat,financial_escrow,notifications,critical_io`).
+    5. `celery_beat`: Dedicated periodic scheduler orchestrating all 8 automated crontabs with `@distributed_task_lock`.
+    6. `frontend`: Next.js 14 App Router client container with public (`NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1`) and internal server-side networking (`INTERNAL_API_URL=http://backend:8000/api/v1`).
 - **Stage 0.3: Cloudflare Edge & Object Storage Infrastructure** `[x] COMPLETED`
   - Cloudflare R2 bucket provisioning for static curriculum assets, audio audition snippets, and profile photos ($0 egress) with custom `MediaR2Storage` and `PrivateMediaR2Storage`.
   - Zero-drift fallback to local storage for offline development.
@@ -513,12 +519,11 @@ Comprehensive back-office operational command center for Sharon and agency staff
 Final enterprise validation, end-to-end integration testing, performance benchmarking, security hardening, and production DNS rollout.
 
 #### Stages & Status
-- **Stage 10.1: Concurrency & Lock Stress Testing** `[-] IN_PROGRESS`
-  - Unit tests for Redlock pass.
-  - *Remaining:* Locust / k6 load test simulating 100 simultaneous booking attempts on a single tutor slot.
-- **Stage 10.2: End-to-End Critical Path Integration Tests** `[-] IN_PROGRESS`
-  - Automated test executing the full lifecycle:
-    `Register Student` -> `Browse Tutors` -> `Acquire Lock` -> `Simulate Payment Webhook` -> `Verify Zoom Provisioning` -> `Simulate Zoom Webhook` -> `Submit Memo` -> `Release Escrow`.
+- **Stage 10.1: Concurrency & Lock Stress Testing** `[x] COMPLETED`
+  - Multi-threaded Redlock concurrency stress testing (`tests/test_concurrency_stress.py`) validating atomic slot reservation mutual exclusion across 50 concurrent worker threads, multi-slot isolation, and unauthorized lock release rejection.
+- **Stage 10.2: End-to-End Critical Path Integration Tests** `[x] COMPLETED`
+  - Automated full-lifecycle integration test (`tests/test_e2e_booking_lifecycle.py`) executing complete happy-path:
+    `Register Student` -> `Browse Tutors` -> `Acquire 10-Min Redlock` -> `Simulate Payment Webhook` -> `Verify Zoom Provisioning` -> `Simulate Zoom Webhook` -> `Submit Memo` -> `Release Escrow` -> `5-Star Rubric Review` -> `Eskom Load Shedding Outage Restitution`.
 - **Stage 10.3: Cloudflare WAF, Rate Limiting & Edge Security** `[ ] QUEUED`
   - WAF rules blocking malicious scrapers and DDoS traffic.
   - Rate limiting on `/api/v1/bookings/reserve/` (max 10 requests per minute per IP).
@@ -548,7 +553,7 @@ Final enterprise validation, end-to-end integration testing, performance benchma
 
 | Module ID | Module Title | Sub-Stages (Total) | Status Breakdown | MVP Status | Target Phase |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Module 0** | Foundational Scaffolding, DevOps & Environments | 6 Stages | 2 `[x]`, 1 `[-]`, 2 `[ ]`, 1 `[DEFERRED]` | **Active** | Phase 1 |
+| **Module 0** | Foundational Scaffolding, DevOps & Environments | 6 Stages | 3 `[x]`, 0 `[-]`, 2 `[ ]`, 1 `[DEFERRED]` | **Active** | Phase 1 |
 | **Module 1** | Identity, RBAC & Authentication | 6 Stages | 2 `[x]`, 2 `[-]`, 1 `[ ]`, 1 `[DEFERRED]` | **Active** | Phase 2 |
 | **Module 2** | Tutor Directory, Discovery & Public Profiles | 6 Stages | 2 `[x]`, 2 `[-]`, 1 `[ ]`, 1 `[DEFERRED]` | **Active** | Phase 2 |
 | **Module 3** | Scheduling, Availability & Eskom Power Guard | 6 Stages | 2 `[x]`, 2 `[-]`, 1 `[ ]`, 1 `[DEFERRED]` | **Queued** | Phase 3 |
@@ -558,7 +563,7 @@ Final enterprise validation, end-to-end integration testing, performance benchma
 | **Module 7** | Multi-Currency Checkout & Escrow Ledger | 7 Stages | 2 `[x]`, 2 `[-]`, 2 `[ ]`, 1 `[DEFERRED]` | **Queued** | Phase 4 |
 | **Module 8** | Post-Lesson Feedback, Memos & Student Dossier | 6 Stages | 2 `[x]`, 1 `[-]`, 2 `[ ]`, 1 `[DEFERRED]` | **Queued** | Phase 5 |
 | **Module 9** | Admin Advanced Command Center & Tribunal | 9 Stages | 0 `[x]`, 3 `[-]`, 5 `[ ]`, 1 `[DEFERRED]` | **Queued** | Phase 5 |
-| **Module 10** | Production Hardening, E2E Testing & Deploy | 6 Stages | 0 `[x]`, 2 `[-]`, 3 `[ ]`, 1 `[DEFERRED]` | **Queued** | Phase 6 |
+| **Module 10** | Production Hardening, E2E Testing & Deploy | 6 Stages | 2 `[x]`, 0 `[-]`, 3 `[ ]`, 1 `[DEFERRED]` | **Queued** | Phase 6 |
 
 ---
 

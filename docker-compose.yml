@@ -29,6 +29,8 @@ services:
     restart: unless-stopped
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -44,7 +46,11 @@ services:
       dockerfile: Dockerfile
     container_name: esl_backend
     restart: unless-stopped
-    command: python manage.py runserver 0.0.0.0:8000
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py seed_data &&
+             python manage.py seed_phase41_data &&
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 120"
     volumes:
       - ./backend:/app
     ports:
@@ -55,6 +61,12 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/esl_dev
       - REDIS_URL=redis://redis:6379/0
       - DJANGO_SECRET_KEY=django-insecure-dev-key-change-in-production-esl-marketplace-2026
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     depends_on:
       db:
         condition: service_healthy
@@ -124,10 +136,13 @@ services:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - INTERNAL_API_URL=http://backend:8000/api/v1
       - NEXT_PUBLIC_APP_URL=http://localhost:3000
       - NODE_ENV=development
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   postgres_data:
+  redis_data:

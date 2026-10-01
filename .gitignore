@@ -57,3 +57,10 @@ Thumbs.db
 
 # Docker
 postgres_data/
+
+# Secrets & runtime artifacts (added 2026-10-02)
+.env.apikeys
+.env.*
+!.env.example
+celerybeat-schedule*
+backend/celerybeat-schedule*

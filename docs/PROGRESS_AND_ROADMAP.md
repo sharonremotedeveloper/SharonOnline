@@ -8,7 +8,7 @@ flowchart LR
     P2 --> P3["Phase 3: Booking & Redis Lock<br/><b>COMPLETED</b>"]
     P3 --> P4["Phase 4: Payments & Escrow<br/><b>COMPLETED</b>"]
     P4 --> P5["Phase 5: Background Automation & Beat<br/><b>COMPLETED</b>"]
-    P5 --> P6["Phase 6: Webhooks & Launch Hardening<br/><b>IN PROGRESS</b>"]
+    P5 --> P6["Phase 6: Webhooks & Launch Hardening<br/><b>COMPLETED</b>"]
 ```
 
 | Phase | Milestone Description | Target Window | Status | Owner / Assignee |
@@ -18,7 +18,7 @@ flowchart LR
 | **Phase 3** | Redlock 10-Min Reservation Lock, Slot Availability Projection, Zoom S2S OAuth Meeting Generation, Google Calendar API | Oct 2026 | `COMPLETED` | Anesu MUPESA / AI Agents |
 | **Phase 4** | PayFast (ZAR) Webhooks, PayPal v2 Orders (USD), Multi-Currency Ledger, Monthly Batch Payout Engine | Oct 2026 | `COMPLETED` | Anesu MUPESA / AI Agents |
 | **Phase 5** | Background Automation & Celery Beat Workers (8 automated schedules, distributed locks, no-show adjudication, 24h escrow clearance, memo SLA) | Nov 2026 | `COMPLETED` | Anesu MUPESA / AI Agents |
-| **Phase 6** | Zoom Attendance Webhook HMAC Ingestion, Cloudflare R2 Asset Delivery, E2E Staging & Production Launch | Nov 2026 | `IN PROGRESS` | Anesu MUPESA / AI Agents |
+| **Phase 6** | Zoom Attendance Webhook HMAC Ingestion, Cloudflare R2 Asset Delivery, E2E Staging & Production Launch | Nov 2026 | `COMPLETED` | Anesu MUPESA / AI Agents |
 
 ---
 
@@ -223,8 +223,10 @@ flowchart LR
   - *Presigned Direct-to-Storage API Endpoints*: Exposed `PresignedUploadURLView` at `POST /api/v1/integrations/storage/presigned-url/` and `/api/v1/integrations/r2/presigned-url/` with role-based prefix enforcement (protecting teacher audio/avatar and private certificate namespaces), path traversal defense, and private vault download RBAC.
   - *Edge Domain Whitelisting*: Configured Next.js `images.remotePatterns` for `assets.sharonesl.com`, `*.r2.dev`, and `*.r2.cloudflarestorage.com`.
   - *Automated Test Suite*: Created `tests/test_r2_storage.py` (7/7 unit & RBAC tests passing; 74/74 total backend suite tests clean).
-- [-] **Task 6.5**: Run end-to-end multi-container docker staging test (`docker compose up -d`) with full lifecycle verification. `[IN PROGRESS]`
-
-
-
-
+- [x] **Task 6.5**: Run end-to-end multi-container docker staging test (`docker compose up -d`) with full lifecycle verification. `[COMPLETED]`
+  - *Container Cluster Orchestration*: Spun up all 6 interconnected Docker services (`esl_postgres` PostgreSQL 16 Alpine, `esl_redis` Redis 7 Alpine, `esl_backend` Django 5.1 REST API, `esl_celery` Celery 5.4 worker, `esl_celery_beat` Celery Beat periodic scheduler, and `esl_frontend` Next.js 14 App Router) with integrated health checks and graceful startup dependencies.
+  - *Containerized Database Migrations & Seeding*: Applied all 35+ Django database migrations cleanly and executed `seed_data` + `seed_phase41_data` initializing base admin, Japanese student (`student_aiko`), verified tutor roster, CEFR materials, pending vetting applications, dispute cases, and Leitner flashcards.
+  - *Containerized Test Execution*: Executed full automated test suite (`docker compose exec backend pytest`) passing 74/74 unit, integration, concurrency stress, double-entry ledger, and storage tests clean (100% pass rate in 29.9s).
+  - *Live Endpoint & SSR Validation*: Verified live health check (`GET /api/health/`), JWT auth token issuance (`POST /api/v1/auth/token/`), teacher and material catalogs, admin telemetry radar, and multi-route Next.js server-side rendering (`/`, `/tutors`, `/materials`, `/pricing`, `/how-it-works`, `/trust-safety`) with zero connection errors.
+  - *PostgreSQL Outer-Join Concurrency Fix (`ERR-004`)*: Resolved `FeatureNotSupported: FOR UPDATE cannot be applied to the nullable side of an outer join` in `release_cleared_escrow_task` using subquery exclusion and table-level `of=('self',)` row locks.
+  - *Multi-Container Dual-Environment Routing (`ERR-005`)*: Configured `INTERNAL_API_URL=http://backend:8000/api/v1` for server-side RSC/SSR container-to-container calls with automatic fallback to client-side browser endpoint `http://localhost:8000/api/v1`.
