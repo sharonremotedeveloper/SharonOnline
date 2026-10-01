@@ -19,7 +19,11 @@ requests>=2.32.3
 icalendar>=5.0.13
 pytz>=2024.1
 whitenoise>=6.7.0
+boto3>=1.35.0
+django-storages>=1.14.4
+Pillow>=10.4.0
 
 # Testing
 pytest>=8.3.2
 pytest-django>=4.9.0
+moto[s3]>=5.0.0

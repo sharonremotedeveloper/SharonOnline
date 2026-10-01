@@ -23,7 +23,10 @@ class Material(models.Model):
     cefr_level = models.CharField(max_length=4, choices=CEFRLevel.choices, db_index=True)
     description = models.TextField(blank=True)
     content_html = models.TextField(blank=True, help_text="Structured HTML content: article text, vocab definitions, discussion questions")
+    pdf_file = models.FileField(upload_to='materials/pdfs/', blank=True, null=True, help_text="Direct upload worksheet PDF to Cloudflare R2 ($0 egress)")
     pdf_file_url = models.URLField(blank=True, help_text="Cloudflare R2 link for student/teacher worksheet download")
+    audio_snippet_file = models.FileField(upload_to='materials/audio/', blank=True, null=True, help_text="Listening comprehension audio file stored on R2")
+    audio_snippet_url = models.URLField(blank=True, help_text="Direct Cloudflare R2 audio stream link")
     is_approved = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -31,5 +34,24 @@ class Material(models.Model):
     class Meta:
         ordering = ['cefr_level', 'title']
 
+    @property
+    def resolved_pdf_url(self) -> str:
+        if self.pdf_file:
+            try:
+                return self.pdf_file.url
+            except Exception:
+                pass
+        return self.pdf_file_url or ""
+
+    @property
+    def resolved_audio_url(self) -> str:
+        if self.audio_snippet_file:
+            try:
+                return self.audio_snippet_file.url
+            except Exception:
+                pass
+        return self.audio_snippet_url or ""
+
     def __str__(self):
         return f"[{self.cefr_level}] {self.title} ({self.get_category_display()})"
+

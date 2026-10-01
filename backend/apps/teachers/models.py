@@ -16,7 +16,12 @@ class TeacherProfile(models.Model):
     accent = models.CharField(max_length=10, choices=Accent.choices, default=Accent.SOUTH_AFRICAN, db_index=True)
     intro_video_url = models.URLField(blank=True, help_text="Cloudflare Stream HLS or preview MP4 URL")
     intro_video_thumbnail = models.URLField(blank=True)
+    avatar_image = models.ImageField(upload_to='teachers/avatars/', blank=True, null=True, help_text="Teacher avatar image stored on Cloudflare R2")
     avatar_url = models.URLField(blank=True)
+    intro_audio_file = models.FileField(upload_to='teachers/audio/', blank=True, null=True, help_text="15s accent audio audition sample stored on R2")
+    intro_audio_url = models.URLField(blank=True, help_text="Cloudflare R2 public audio URL")
+    tefl_certificate_file = models.FileField(upload_to='private/vetting/certificates/', blank=True, null=True, help_text="Private TEFL certificate stored securely on R2")
+    tefl_certificate_url = models.URLField(blank=True, help_text="Direct or fallback certificate URL")
     rating_avg = models.DecimalField(max_digits=3, decimal_places=2, default=5.00)
     rating_count = models.PositiveIntegerField(default=0)
     price_per_25min_usd = models.DecimalField(max_digits=6, decimal_places=2, default=9.00)
@@ -28,6 +33,37 @@ class TeacherProfile(models.Model):
     has_inverter_backup = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def resolved_avatar_url(self) -> str:
+        if self.avatar_image:
+            try:
+                return self.avatar_image.url
+            except Exception:
+                pass
+        return self.avatar_url or ""
+
+    @property
+    def resolved_intro_audio_url(self) -> str:
+        if self.intro_audio_file:
+            try:
+                return self.intro_audio_file.url
+            except Exception:
+                pass
+        return self.intro_audio_url or ""
+
+    @property
+    def resolved_tefl_certificate_url(self) -> str:
+        if self.tefl_certificate_file:
+            try:
+                from apps.common.r2_client import generate_presigned_download_url
+                return generate_presigned_download_url(self.tefl_certificate_file.name)
+            except Exception:
+                try:
+                    return self.tefl_certificate_file.url
+                except Exception:
+                    pass
+        return self.tefl_certificate_url or "https://pub-088f123.r2.dev/certificates/default-tefl.pdf"
 
     def __str__(self):
         return f"{self.user.get_full_name() or self.user.username} ({self.get_accent_display()})"

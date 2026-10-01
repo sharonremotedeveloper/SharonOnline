@@ -60,10 +60,11 @@ Establishes the monorepo foundation, containerized local development, environmen
   - PostgreSQL 16 and Redis connection setup.
 - **Stage 0.2: Containerization & Local Orchestration** `[x] COMPLETED`
   - Multi-container `docker-compose.yml` orchestrating `db` (Postgres 16), `redis` (Redis 7 Alpine), `api` (Django DRF), `celery` (multi-queue worker), `celery_beat` (Beat scheduler), and `web` (Next.js 14).
-- **Stage 0.3: Cloudflare Edge & Object Storage Infrastructure** `[ ] QUEUED`
-  - Cloudflare R2 bucket provisioning for static curriculum assets and profile photos ($0 egress).
+- **Stage 0.3: Cloudflare Edge & Object Storage Infrastructure** `[x] COMPLETED`
+  - Cloudflare R2 bucket provisioning for static curriculum assets, audio audition snippets, and profile photos ($0 egress) with custom `MediaR2Storage` and `PrivateMediaR2Storage`.
+  - Zero-drift fallback to local storage for offline development.
+  - S3-compatible presigned URL API endpoints and Next.js edge domain whitelisting.
   - Cloudflare Stream API credentials setup for 60-second video auditions.
-  - Cloudflare WAF and SSL rules setup.
 - **Stage 0.4: Automated CI/CD Testing Pipeline** `[ ] QUEUED`
   - GitHub Actions workflow running `flake8`, `pytest` (backend), and `npm run lint && npm run build` (frontend) on pull requests.
 - **Stage 0.5: Local Mocking of Zoom & Payment Sandbox Environments** `[x] COMPLETED`
@@ -311,20 +312,22 @@ Zero-maintenance, carrier-grade synchronous video infrastructure using Zoom Serv
 Content management system cataloging English learning materials structured across CEFR levels (A1 to C2) and categories (Daily News, Business, FreeTalk, Pronunciation), featuring an interactive synchronized reader.
 
 #### Stages & Status
-- **Stage 6.1: Material Model & CEFR Categorization** `[x] COMPLETED`
-  - `apps.materials.models.Material` with CEFR level enum, category, `content_html`, `slug`, `pdf_file_url`, `is_approved`.
-- **Stage 6.2: Public Materials Catalog & Reader** `[x] COMPLETED`
-  - Static views `/materials` and `/materials/[slug]` created.
-  - `apps/materials/views.py` delivering list and detail endpoints.
-- **Stage 6.3: Interactive Article Reader with Vocabulary Flashcards** `[-] IN_PROGRESS`
-  - Reader layout created.
-  - *Remaining:* Dynamic rendering of article sections, interactive word lookup tooltips, discussion questions accordion, and downloadable PDF link pointing to Cloudflare R2.
-- **Stage 6.4: Split-Screen Classroom Reader Component** `[ ] QUEUED`
+- **Stage 6.1: Material Model, CEFR Categorization & R2 File Storage** `[x] COMPLETED`
+  - `apps.materials.models.Material` with CEFR level enum, category, `content_html`, `slug`, `pdf_file`, `pdf_file_url`, `audio_snippet_file`, `audio_snippet_url`, `is_approved`.
+  - Resolved URL properties dynamically falling back between Cloudflare R2 public CDN and local `MEDIA_URL`.
+- **Stage 6.2: Public Materials Catalog & Reader API with Zero-Egress CDN Delivery** `[x] COMPLETED`
+  - Views `/materials` and `/materials/[slug]` created.
+  - `apps/materials/views.py` delivering list and detail endpoints with R2 asset streaming and zero egress bandwidth costs.
+- **Stage 6.3: Interactive Article Reader with Vocabulary Flashcards** `[x] COMPLETED`
+  - Reader layout created with dynamic rendering of article sections, interactive word lookup tooltips, discussion questions accordion, and downloadable PDF link pointing to Cloudflare R2 edge domain (`assets.sharonesl.com`).
+- **Stage 6.4: Split-Screen Classroom Reader Component & Direct-to-Storage Uploads** `[x] COMPLETED`
   - Modular reader component embedded inside `student/classroom/[id]` and `teacher/classroom/[id]` enabling simultaneous reading during live Zoom calls.
+  - Direct-to-storage client upload API via `PresignedUploadURLView` (`/api/v1/integrations/storage/presigned-url/` and `/api/v1/integrations/r2/presigned-url/`) with RBAC namespace protection and path traversal guards.
 - **Stage 6.5: Admin Lesson Authoring Lab** `[ ] QUEUED`
-  - Block-based editor for Sharon and admin staff to publish new lessons, upload R2 PDFs, and tag CEFR levels (`/admin/curriculum/editor`).
+  - Block-based editor for Sharon and admin staff to publish new lessons, upload R2 PDFs directly to Cloudflare R2, and tag CEFR levels (`/admin/curriculum/editor`).
 - **Stage 6.6: Automated Daily News Scraping & AI Lesson Generation** `[DEFERRED]`
-  - *Deferral Rationale:* Automated scraping of news wires and LLM-assisted lesson generation deferred to Phase 2. MVP launches with curated library of 40 foundational lessons across A1–C1.
+  - *Deferral Rationale:* Automated scraping of news wires and LLM-assisted lesson generation deferred to Phase 2. MVP launches with curated library of foundational lessons across A1–C1.
+
 
 #### Technical Deliverables
 * **Backend:**

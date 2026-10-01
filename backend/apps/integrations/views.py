@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, permissions
 from rest_framework.permissions import AllowAny
 
 from apps.bookings.models import Booking, AttendanceAudit
@@ -238,3 +238,103 @@ class ZoomWebhookReceiverView(APIView):
             "event": event,
             "meeting_id": meeting_id
         }, status=status.HTTP_200_OK)
+
+
+class PresignedUploadURLView(APIView):
+    """
+    POST /api/v1/integrations/storage/presigned-url/
+    POST /api/v1/integrations/r2/presigned-url/
+    Generates presigned upload or download URLs for Cloudflare R2 object storage with zero egress fees.
+    Direct-to-storage client upload architecture eliminates backend Gunicorn/Celery worker blocking.
+    Enforces strict role-based access control (RBAC), Tier 1 vs Tier 2 separation, and path traversal protection.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        action = request.data.get('action', 'upload')  # 'upload' or 'download'
+        key = str(request.data.get('key') or '').strip()
+        content_type = request.data.get('content_type', 'application/octet-stream')
+        try:
+            expires_in = int(request.data.get('expires_in', 900))
+        except (ValueError, TypeError):
+            expires_in = 900
+
+        if not key:
+            return Response(
+                {"error": "Object 'key' is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Path traversal guard
+        if '..' in key or key.startswith('/') or '\\' in key:
+            return Response(
+                {"error": "Invalid object key path."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = request.user
+        is_admin = bool(user.is_staff or getattr(user, 'role', '') == 'admin' or user.is_superuser)
+        user_id_str = str(user.id)
+
+        # 1. Access Control for UPLOAD action
+        if action == 'upload':
+            if not is_admin:
+                allowed_prefixes = []
+                user_role = getattr(user, 'role', '')
+                if user_role == 'teacher' or getattr(user, 'teacher_profile', None):
+                    allowed_prefixes.extend([
+                        f"teachers/avatars/{user_id_str}",
+                        f"teachers/audio/{user_id_str}",
+                        f"private/vetting/certificates/{user_id_str}",
+                        f"private/vetting/{user_id_str}",
+                    ])
+                if user_role in ['student', 'teacher']:
+                    allowed_prefixes.append(f"students/avatars/{user_id_str}")
+
+                if not any(key.startswith(p) for p in allowed_prefixes):
+                    return Response(
+                        {"error": f"Permission denied to upload to key '{key}'."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+
+        # 2. Access Control for DOWNLOAD action (Tier 2 Private Regulated Compliance Vault)
+        elif action == 'download':
+            if key.startswith('private/'):
+                if not is_admin:
+                    allowed_private_prefixes = [
+                        f"private/vetting/certificates/{user_id_str}",
+                        f"private/vetting/{user_id_str}",
+                        f"private/{user_id_str}",
+                    ]
+                    if not any(key.startswith(p) for p in allowed_private_prefixes):
+                        return Response(
+                            {"error": f"Permission denied to download private document '{key}'."},
+                            status=status.HTTP_403_FORBIDDEN
+                        )
+        else:
+            return Response(
+                {"error": f"Invalid action '{action}'. Supported actions: 'upload', 'download'."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from apps.common.r2_client import (
+            generate_presigned_upload_url,
+            generate_presigned_download_url,
+            get_public_r2_url
+        )
+
+        if action == 'upload':
+            res = generate_presigned_upload_url(object_key=key, content_type=content_type, expires_in=expires_in)
+            res['public_cdn_url'] = get_public_r2_url(key)
+            return Response(res, status=status.HTTP_200_OK)
+        elif action == 'download':
+            url = generate_presigned_download_url(object_key=key, expires_in=expires_in)
+            return Response({
+                "download_url": url,
+                "key": key,
+                "expires_in": expires_in
+            }, status=status.HTTP_200_OK)
+
+
+R2PresignedUrlView = PresignedUploadURLView
+

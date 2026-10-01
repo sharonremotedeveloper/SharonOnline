@@ -216,7 +216,15 @@ flowchart LR
   - *Strict Immutability*: Prohibits UPDATE/DELETE operations via `LedgerEntryQuerySet` and model-level `save()` / `delete()` overrides raising `LedgerImmutabilityError`.
   - *Lifecycle Balancing Hooks*: Captures, clearances, gateway/wallet refunds, dispute tribunal splits (50/50 platform absorption), and EFT payout disbursements.
   - *Live Admin Telemetry*: `GET /api/v1/admin/finance/ledger/` queries `LedgerEntry` directly for live gateway balances, pending escrow, tutor liabilities, and net revenue with zero-sum trial balance validation.
-- [ ] **Task 6.4**: Connect Cloudflare R2 bucket integration for static curriculum PDFs and audio snippets with zero egress fees.
-- [ ] **Task 6.5**: Run end-to-end multi-container docker staging test (`docker compose up -d`) with full lifecycle verification.
+- [x] **Task 6.4**: Connect Cloudflare R2 bucket integration for static curriculum PDFs, tutor audio audition samples, and profile avatars with zero egress fees.
+  - *Custom Storage Backends*: Implemented `MediaR2Storage` (Tier 1 public CDN edge delivery at `assets.sharonesl.com` with `default_acl = None` and `s3v4` signature) and `PrivateMediaR2Storage` (Tier 2 private regulated compliance vault with 15-minute presigned queries for private TEFL/ID vetting documents) in `apps.common.storage`.
+  - *Client Helpers & Presigned Utilities*: Built `apps.common.r2_client` supporting `generate_presigned_download_url`, `generate_presigned_upload_url`, `get_public_r2_url`, with zero-drift local `MEDIA_URL` fallback for offline development.
+  - *Model & Schema Enhancements*: Added `pdf_file`, `audio_snippet_file`, `audio_snippet_url` to `Material` and `avatar_image`, `intro_audio_file`, `intro_audio_url`, `tefl_certificate_file` to `TeacherProfile` with dynamic property resolution and Django admin upload fieldsets.
+  - *Presigned Direct-to-Storage API Endpoints*: Exposed `PresignedUploadURLView` at `POST /api/v1/integrations/storage/presigned-url/` and `/api/v1/integrations/r2/presigned-url/` with role-based prefix enforcement (protecting teacher audio/avatar and private certificate namespaces), path traversal defense, and private vault download RBAC.
+  - *Edge Domain Whitelisting*: Configured Next.js `images.remotePatterns` for `assets.sharonesl.com`, `*.r2.dev`, and `*.r2.cloudflarestorage.com`.
+  - *Automated Test Suite*: Created `tests/test_r2_storage.py` (7/7 unit & RBAC tests passing; 74/74 total backend suite tests clean).
+- [-] **Task 6.5**: Run end-to-end multi-container docker staging test (`docker compose up -d`) with full lifecycle verification. `[IN PROGRESS]`
+
+
 
 

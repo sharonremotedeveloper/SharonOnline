@@ -13,13 +13,16 @@ class TeacherListSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     last_name = serializers.CharField(source='user.last_name', read_only=True)
     country = serializers.CharField(source='user.country', read_only=True)
+    avatar_url = serializers.CharField(source='resolved_avatar_url', read_only=True)
+    intro_audio_url = serializers.CharField(source='resolved_intro_audio_url', read_only=True)
 
     class Meta:
         model = TeacherProfile
         fields = (
             'id', 'user_id', 'full_name', 'first_name', 'last_name', 'headline',
-            'accent', 'intro_video_thumbnail', 'avatar_url', 'rating_avg',
-            'rating_count', 'price_per_25min_usd', 'specialties', 'country', 'is_verified'
+            'accent', 'intro_video_thumbnail', 'avatar_url', 'intro_audio_url',
+            'rating_avg', 'rating_count', 'price_per_25min_usd', 'specialties',
+            'country', 'is_verified'
         )
 
     def get_full_name(self, obj):
@@ -33,3 +36,4 @@ class TeacherDetailSerializer(TeacherListSerializer):
         fields = TeacherListSerializer.Meta.fields + (
             'bio', 'intro_video_url', 'timezone', 'availabilities'
         )
+

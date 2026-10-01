@@ -40,7 +40,10 @@ class PendingTeacherApplicationSerializer(serializers.ModelSerializer):
         return obj.user.get_full_name() or obj.user.username
 
     def get_tefl_certificate_url(self, obj):
+        if hasattr(obj, 'resolved_tefl_certificate_url'):
+            return obj.resolved_tefl_certificate_url
         return getattr(obj, 'tefl_certificate_url', 'https://pub-088f123.r2.dev/certificates/default-tefl.pdf')
+
 
     def get_eskom_area(self, obj):
         return getattr(obj, 'eskom_area', 'City of Johannesburg Block 3')

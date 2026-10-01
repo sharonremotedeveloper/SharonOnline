@@ -170,3 +170,23 @@ def process_payment_webhook(gateway, transaction_id, raw_payload, status):
 1. **Database Universal Storage**: All timestamps stored strictly in **UTC (ISO 8601)** (`YYYY-MM-DDTHH:MM:SSZ`).
 2. **Recurring Availability Projection**: Teachers specify availability in their local IANA timezone; Celery projected slots translate concrete UTC dates 14 days forward using `zoneinfo`.
 3. **Browser Localized Rendering**: Next.js automatically formats UTC dates into the student's local browser timezone (`Intl.DateTimeFormat().resolvedOptions().timeZone`).
+
+---
+
+## 5. Cloudflare R2 Asset Storage & Zero-Egress Delivery Architecture
+
+### 5.1 Asset Partitioning & Storage Classes
+| Asset Namespace | Access Tier | Storage Backend | Delivery Endpoint | Expiration / Caching |
+| :--- | :--- | :--- | :--- | :--- |
+| `materials/pdfs/*` | Public CDN | `MediaR2Storage` | `https://assets.sharonesl.com/materials/pdfs/...` | Edge Cache (1 year) |
+| `materials/audio/*` | Public CDN | `MediaR2Storage` | `https://assets.sharonesl.com/materials/audio/...` | Edge Cache (1 year) |
+| `teachers/avatars/*` | Public CDN | `MediaR2Storage` | `https://assets.sharonesl.com/teachers/avatars/...` | Next.js Image Optimizer |
+| `teachers/audio/*` | Public CDN | `MediaR2Storage` | `https://assets.sharonesl.com/teachers/audio/...` | HTML5 Audio Streaming |
+| `private/vetting/*` | **Private** | `PrivateMediaR2Storage` | Presigned S3 GET URL | 15 minutes (900s TTL) |
+
+### 5.2 Zero-Egress Economics & S3 Compatibility
+- **Zero Bandwidth Surcharge**: Cloudflare R2 provides \$0.00 / GB egress fees, eliminating AWS S3 data transfer costs across global student/teacher traffic.
+- **Header Sanitization**: Cloudflare R2 does not support AWS S3 ACL headers; `default_acl = None` is enforced across all custom storage backends.
+- **Presigned URL Service**: `POST /api/v1/integrations/r2/presigned-url/` authenticates and issues direct-to-R2 upload and download presigned URLs with strict namespace RBAC enforcement.
+- **Zero-Drift Offline Fallback**: In local development environments without R2 credentials, Django seamlessly falls back to `django.core.files.storage.FileSystemStorage` (`MEDIA_URL = '/media/'`).
+
