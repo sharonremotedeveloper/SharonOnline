@@ -108,6 +108,7 @@ One line per confirmation or change. Newest last. Do not delete entries.
 | 2026-10-02 | Claude | Neon CLI | `sharonremotedeveloper@gmail.com` (org `org-lucky-pine-32944571`) | — | `neon me` verified after Anesu's re-login. Project `sweet-bonus-69458238` belongs to this org. |
 | 2026-10-02 | Claude | Neon MCP (global) | **MISMATCH**: `list_organizations` returned org `Anesu` (`org-misty-band-32565604`) | — | Static API-key MCP in `~/.claude.json` belongs to another account. Left untouched; not to be used. Project-level OAuth MCP added in `.mcp.json`. |
 | 2026-10-02 | Claude | Neon MCP config | removed global Neon entries (`~/.claude.json`, `~/.codex/config.toml`); replaced Antigravity's `~/.gemini/config/mcp_config.json` Neon entry with OAuth + `projectId=sweet-bonus-69458238` | — | Per Anesu: Neon must be local to this project and belong to Sharon. OAuth sign-in on first use must be as `sharonremotedeveloper@gmail.com`; verify via `list_organizations` = `org-lucky-pine-32944571`. |
+| 2026-10-02 | Antigravity | Git & GitHub | `sharonremotedeveloper` (`sharonremotedeveloper@gmail.com`) | dev | Configured local git user & author credentials; pushed `develop` and `main` branches to `sharonremotedeveloper/SharonOnline`. |
 
 ---
 
