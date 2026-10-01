@@ -390,6 +390,7 @@ Decoupled multi-currency financial infrastructure supporting PayFast for South A
 #### Risk & Concurrency Mitigations
 * **Webhook Replay & Tampering:** PayFast MD5 passphrase signature validation and PayPal webhook signature verification reject forged payloads.
 * **Double Processing:** Database `select_for_update()` lock on `PaymentTransaction` prevents concurrent webhook processing races.
+* **Late Payment Collision on Re-Booked Inventory (DEF-501):** When a payment webhook arrives late after the 10-minute slot reservation TTL has expired and the timeslot has already been re-booked and confirmed by another student, `process_payment_webhook` traps the collision, quarantines the booking to `DISPUTED`, awards the student 1 lesson wallet credit restitution, and logs an arbitration ticket in `DisputeCase`, preventing fatal PostgreSQL `IntegrityError` (HTTP 500) retry loops.
 
 ---
 

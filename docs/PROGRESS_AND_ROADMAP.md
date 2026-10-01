@@ -29,12 +29,14 @@ flowchart LR
 - [x] `apps.users`, `apps.teachers`, `apps.materials`, `apps.bookings`, `apps.payments`, `apps.crm`, `apps.admin_api`, `apps.srs` schema models
 - [x] PostgreSQL database migrations applied cleanly
 - [x] `seed_data` and `seed_phase41_data` initialized
-- [x] `pytest` suite configured (39/39 automated unit & integration tests passing)
+- [x] `pytest` suite configured (51/51 automated unit, concurrency & webhook integration tests passing)
 - [x] Health check endpoint (`GET /api/health/`)
 - [x] JWT Auth endpoints (`/api/v1/auth/token/`, `/api/v1/auth/register/`)
 - [x] Redis Redlock reservation engine (`SET booking:slot:... NX EX 600`)
 - [x] Zoom S2S OAuth Client & Asynchronous Meeting Provisioning
-- [x] PayFast ITN & PayPal Webhook Handlers (`process_payment_webhook`)
+- [x] PayFast ITN & PayPal Webhook Handlers (`process_payment_webhook`) with DEF-501 Concurrency Guard (late payment quarantine & wallet restitution)
+- [x] Zoom Webhook Ingestion Receiver (`ZoomWebhookReceiverView`) with timing-safe HMAC verification, CRC challenge response, replay attack prevention, and attendance telemetry
+- [x] Late Webhook Concurrency Guard (Active Zoom probe at T+10m, transactional row locks, out-of-order session keying, and dispute quarantine)
 - [x] Celery Beat Background Automation (8 scheduled tasks, `@distributed_task_lock`, multi-queue routing)
 - [*] See comprehensive breakdown in [`docs/MASTER_MODULE_ROADMAP_AND_ARCHITECTURE.md`](./MASTER_MODULE_ROADMAP_AND_ARCHITECTURE.md)
 
@@ -206,8 +208,9 @@ flowchart LR
 
 ## 4. Current Active Sprint Backlog (Sprint 6: Launch Hardening)
 
-- [x] **Task 6.1**: Implement Zoom Webhook Ingestion Receiver (`ZoomWebhookReceiverView` in `apps.integrations`) validating HMAC-SHA256 signature (`x-zm-signature`) and populating `AttendanceAudit`.
+- [x] **Task 6.1**: Implement Zoom Webhook Ingestion Receiver (`ZoomWebhookReceiverView` in `apps.integrations`) validating HMAC-SHA256 signature (`x-zm-signature`), CRC challenge handshake, replay guard, and populating `AttendanceAudit`.
 - [x] **Task 6.2**: Implement Late Webhook Concurrency Guard (Active Zoom probe at T+10m, `select_for_update` DB row locks, out-of-order session keying, and late webhook dispute quarantine in `apps.integrations` & `apps.bookings`).
+- [x] **DEF-501 Fix**: Payment Gateway Concurrency Guard in `apps/payments/services/webhook_handler.py` resolving collision when late payments arrive on expired/re-booked slots (auto-quarantines to `DISPUTED`, awards 1 lesson credit restitution, opens `DisputeCase`, preventing `IntegrityError` 500s).
 - [ ] **Task 6.3**: Formalize double-entry transaction journal table (`LedgerEntry` debit/credit rows) in `apps.payments.models` for regulatory SARB / GAAP reporting.
 - [ ] **Task 6.4**: Connect Cloudflare R2 bucket integration for static curriculum PDFs and audio snippets with zero egress fees.
 - [ ] **Task 6.5**: Run end-to-end multi-container docker staging test (`docker compose up -d`) with full lifecycle verification.
