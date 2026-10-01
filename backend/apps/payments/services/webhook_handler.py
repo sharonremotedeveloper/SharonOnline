@@ -1,6 +1,7 @@
 from django.db import transaction, IntegrityError
 from django.utils import timezone
 from apps.payments.models import PaymentTransaction, CreditBundle
+from apps.payments.services.ledger_service import record_payment_capture_entry, record_def501_quarantine_entry
 from apps.bookings.models import Booking
 from apps.bookings.services.lock_service import release_slot_lock
 from apps.admin_api.models import DisputeCase
@@ -15,6 +16,7 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
     Guarantees that multiple retries from payment gateways (PayFast/PayPal)
     never result in double bookings, duplicate meetings, or corrupted ledgers.
     Includes DEF-501 Concurrency Guard against late payments on expired/re-booked slots.
+    Records immutable GAAP/SARB double-entry ledger entries upon settlement.
     """
     tx, created = PaymentTransaction.objects.select_for_update().get_or_create(
         gateway_reference=transaction_id,
@@ -104,6 +106,9 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
                 }
             )
 
+            # Record DEF-501 double-entry journal entries
+            record_def501_quarantine_entry(payment_transaction=tx, booking=booking, user=booking.student)
+
             start_iso = booking.start_time_utc.isoformat()
             release_slot_lock(str(booking.teacher_id), start_iso, str(booking.student_id))
 
@@ -147,12 +152,16 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
                     "admin_notes": f"Payment {transaction_id} caught race condition. Quarantined."
                 }
             )
+            record_def501_quarantine_entry(payment_transaction=tx, booking=booking, user=booking.student)
             return {
                 "status": "collision_quarantined",
                 "reason": "race_condition_quarantined",
                 "transaction_id": transaction_id,
                 "booking_id": str(booking.id)
             }
+
+        # Record standard payment capture in general ledger
+        record_payment_capture_entry(payment_transaction=tx, booking=booking, user=booking.student)
 
         # Release the temporary Redis lock now that it's permanently confirmed in PostgreSQL
         start_iso = booking.start_time_utc.isoformat()
@@ -166,3 +175,4 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
             logger.warning(f"Could not dispatch async Celery task (will run or retry): {e}")
 
     return {"status": "success", "transaction_id": transaction_id}
+

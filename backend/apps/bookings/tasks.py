@@ -166,6 +166,21 @@ def audit_attendance_and_noshows_task():
                 bundle.total_credits += 2
                 bundle.save(update_fields=['remaining_credits', 'total_credits'])
 
+                # Record double-entry ledger journal entries for no-show refund and platform compensation
+                from apps.payments.services.ledger_service import record_compensation_entry, record_student_refund_entry
+                record_student_refund_entry(
+                    booking=booking,
+                    amount_usd=booking.teacher.price_per_25min_usd,
+                    refund_method='wallet_credit',
+                    reason="Teacher no-show full refund"
+                )
+                record_compensation_entry(
+                    user=booking.student,
+                    booking=booking,
+                    amount_usd=booking.teacher.price_per_25min_usd,
+                    reason="Teacher no-show bonus compensation"
+                )
+
                 results["teacher_no_shows"] += 1
                 logger.error(
                     f"[NO-SHOW] Teacher {teacher.user.username} absent at T+10m on booking {booking.id}. "
@@ -343,6 +358,15 @@ def enforce_memo_sla_task():
             bundle.remaining_credits += 1
             bundle.total_credits += 1
             bundle.save(update_fields=['remaining_credits', 'total_credits'])
+
+            # Record platform-absorbed compensation entry
+            from apps.payments.services.ledger_service import record_compensation_entry
+            record_compensation_entry(
+                user=booking.student,
+                booking=booking,
+                amount_usd=booking.teacher.price_per_25min_usd,
+                reason="Tutor 24h memo SLA forfeiture compensation"
+            )
 
             results["memos_forfeited"] += 1
             logger.error(

@@ -361,9 +361,23 @@ Decoupled multi-currency financial infrastructure supporting PayFast for South A
   - PayPal payment stubbed.
   - *Remaining:* Webhook handler for `CHECKOUT.ORDER.APPROVED` and `PAYMENT.CAPTURE.COMPLETED`, verifying PayPal transmission signature.
 - **Stage 7.5: Double-Entry Escrow Ledger & Wallet Model** `[x] COMPLETED`
-  - Double-entry ledger architecture:
-    - On payment: Debit Gateway Cash, Credit Escrow Liability.
-    - On lesson verification + 24h dispute window expiry: Debit Escrow Liability, Credit Teacher Cleared Wallet (80%), Credit Platform Revenue (20%) via `release_cleared_escrow_task`.
+  - Formal GAAP & SARB Double-Entry General Ledger Architecture (`apps.payments.models.LedgerEntry` & `apps.payments.services.ledger_service`):
+    - **Chart of Accounts Hierarchy**:
+      - *Assets (1000s)*: `1010_asset_gateway_payfast` (ZAR), `1020_asset_gateway_paypal` (USD), `1030_asset_operating_bank` (ZAR).
+      - *Liabilities (2000s)*: `2010_liability_student_escrow` (Unearned escrow hold), `2020_liability_tutor_payable` (Cleared 80% tutor share), `2030_liability_quarantine_deposit` (DEF-501 late deposits), `2040_liability_student_wallet` (Prepaid student lesson credits / restitution).
+      - *Revenue (4000s)*: `4010_revenue_platform_commission` (20% take rate).
+      - *Expenses (5000s)*: `5010_expense_dispute_settlement`, `5020_expense_student_compensation`, `5030_expense_gateway_fees`.
+    - **Strict Double-Entry Balancing & Immutability**:
+      - Invariant: $\sum \text{Debit} == \sum \text{Credit}$ enforced atomically per journal batch with SARB ZAR statutory conversion.
+      - Immutability: Enforced append-only model via `LedgerEntryQuerySet` and `LedgerEntry.save()` / `delete()` overrides raising `LedgerImmutabilityError`.
+    - **Complete Lifecycle Journal Hooks**:
+      1. *Payment Capture*: DR Gateway Cash, CR Student Escrow Liability.
+      2. *24h Dual-Verified Escrow Clearance*: DR Student Escrow (100%), CR Tutor Payable (80%), CR Platform Commission (20%).
+      3. *Student Refund (No-Show / Cancel)*: DR Student Escrow, CR Student Wallet Credits (or CR Gateway Cash).
+      4. *Dispute Adjudication (Full Refund / Release / 50-50 Split)*: Exact platform absorption and tutor/student restitution splits.
+      5. *Bi-Weekly Tutor Payout*: DR Tutor Payable, CR Operating Bank Cash (ZAR).
+      6. *Load Shedding / Eskom Force Majeure*: DR Student Escrow, CR Student Wallet Credits.
+      7. *DEF-501 Late Payment Collision*: Auto-quarantined into `2030` and re-allocated to `2040` wallet credits.
 - **Stage 7.6: Bi-Weekly South African Bank Batch Payout Generator** `[ ] QUEUED`
   - Admin batch payout module: generates standardized ACB/EFT payout export file for South African clearing banks (FNB, Standard Bank, Capitec, ABSA, Nedbank) and Wise Batch API JSON for international payouts.
 - **Stage 7.7: Automated South African Reserve Bank (SARB) Cross-Border BoP Reporting** `[DEFERRED]`
@@ -454,7 +468,13 @@ Comprehensive back-office operational command center for Sharon and agency staff
   - Adjudication endpoints `DisputesListView` and `ResolveDisputeView` (`POST /api/v1/admin/disputes/<id>/resolve/`).
   - Atomic 1-click resolution actions: Full Refund to Student, Release Escrow to Teacher, or 50/50 Split (platform-absorbed credit).
 - **Stage 9.5: Multi-Currency Double-Entry Financial Ledger Audit (`/admin/finance/ledger`)** `[x] COMPLETED`
-  - Real-time database query endpoint `GET /api/v1/admin/finance/ledger/` tracking gateway cash, platform fee accrual, and 24h pending/cleared escrow balances.
+  - Real-time GAAP general ledger query endpoint `GET /api/v1/admin/finance/ledger/` via `apps.admin_api.views.EscrowLedgerView` integrating `apps.payments.services.ledger_service.get_ledger_telemetry()`.
+  - Live calculations derived directly from `LedgerEntry`:
+    - Live gateway cash balances (PayFast ZAR, PayPal USD, Operating Bank ZAR).
+    - Unearned escrow liabilities and 24h holding clearance buffers.
+    - Tutor payables and student wallet credit contract liabilities.
+    - Net platform commission revenues and dispute/compensation expenses.
+    - Live General Ledger Trial Balance verification ($\sum \text{DR} == \sum \text{CR}$) with zero variance guarantee.
 - **Stage 9.6: Batch Payout Orchestrator (`/admin/finance/payouts`)** `[x] COMPLETED`
   - Endpoints `PayoutBatchView` and `ExecutePayoutBatchView` (`POST /api/v1/admin/payouts/execute-batch/`) generating standardized bank EFT export CSV and settlement execution.
 - **Stage 9.7: Tri-Jurisdictional Privacy & Compliance Vault (POPIA / GDPR / APPI)** `[ ] QUEUED`

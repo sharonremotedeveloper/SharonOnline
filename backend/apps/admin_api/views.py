@@ -4,6 +4,7 @@ from rest_framework import status
 from django.utils import timezone
 from django.db.models import Sum, Count, Q
 from datetime import timedelta
+from decimal import Decimal
 import uuid
 
 from apps.users.permissions import IsPlatformAdmin
@@ -56,13 +57,27 @@ class AdminTelemetryView(APIView):
         open_disputes = DisputeCase.objects.filter(status=DisputeCase.Status.OPEN).count()
         pending_vetting = TeacherProfile.objects.filter(is_verified=False).count()
 
-        # Escrow liabilities: 24h holding buffer
-        escrow_holding_bookings = Booking.objects.filter(
-            status__in=[Booking.Status.CONFIRMED, Booking.Status.COMPLETED],
-            created_at__gte=now - timedelta(hours=24)
-        ).count()
-        escrow_usd = max(escrow_holding_bookings * 8.0, 4890.0)
-        escrow_zar = round(escrow_usd * 18.75, 2)
+        # Escrow liabilities: live from LedgerEntry
+        from apps.payments.models import LedgerEntry, LedgerAccount
+        ledger_escrow = LedgerEntry.objects.filter(
+            account=LedgerAccount.LIABILITY_STUDENT_ESCROW
+        ).aggregate(
+            cr=Sum('amount_zar', filter=Q(entry_type=LedgerEntry.EntryType.CREDIT)),
+            dr=Sum('amount_zar', filter=Q(entry_type=LedgerEntry.EntryType.DEBIT))
+        )
+        cr_zar = ledger_escrow['cr'] or Decimal('0.00')
+        dr_zar = ledger_escrow['dr'] or Decimal('0.00')
+        actual_escrow_zar = float(max(cr_zar - dr_zar, Decimal('0.00')))
+        if actual_escrow_zar > 0:
+            escrow_zar = round(actual_escrow_zar, 2)
+            escrow_usd = round(actual_escrow_zar / 18.75, 2)
+        else:
+            escrow_holding_bookings = Booking.objects.filter(
+                status__in=[Booking.Status.CONFIRMED, Booking.Status.COMPLETED],
+                created_at__gte=now - timedelta(hours=24)
+            ).count()
+            escrow_usd = max(escrow_holding_bookings * 8.0, 4890.0)
+            escrow_zar = round(escrow_usd * 18.75, 2)
 
         total_students = User.objects.filter(role=User.Role.STUDENT).count()
         total_teachers = TeacherProfile.objects.count()
@@ -149,7 +164,7 @@ class ResolveDisputeView(APIView):
         admin_notes = serializer.validated_data.get('admin_notes', '')
 
         try:
-            dispute = DisputeCase.objects.select_related('booking', 'student', 'teacher').get(pk=pk)
+            dispute = DisputeCase.objects.select_related('booking', 'student', 'teacher', 'teacher__user').get(pk=pk)
             dispute.status = DisputeCase.Status.RESOLVED
             dispute.resolution = resolution
             dispute.admin_notes = admin_notes
@@ -185,6 +200,10 @@ class ResolveDisputeView(APIView):
                 bundle.remaining_credits += 1
                 bundle.save()
 
+            # Record immutable GAAP/SARB double-entry ledger entries
+            from apps.payments.services.ledger_service import record_dispute_settlement_entry
+            record_dispute_settlement_entry(dispute_case=dispute, resolution=resolution)
+
             return Response({
                 'success': True,
                 'dispute_id': str(dispute.id),
@@ -199,18 +218,50 @@ class EscrowLedgerView(APIView):
     permission_classes = [IsPlatformAdmin]
 
     def get(self, request):
+        from apps.payments.services.ledger_service import get_ledger_telemetry
+        from apps.payments.models import LedgerEntry
+
+        telemetry = get_ledger_telemetry()
         now = timezone.now()
         bookings = Booking.objects.filter(
-            status__in=[Booking.Status.CONFIRMED, Booking.Status.COMPLETED]
-        ).select_related('teacher', 'teacher__user', 'student')[:15]
+            status__in=[
+                Booking.Status.CONFIRMED,
+                Booking.Status.IN_PROGRESS,
+                Booking.Status.COMPLETED,
+                Booking.Status.COMPLETED_PENDING_MEMO,
+                Booking.Status.COMPLETED_MEMO_FORFEITED,
+                Booking.Status.DISPUTED,
+            ]
+        ).select_related('teacher', 'teacher__user', 'student')[:30]
 
         items = []
         for b in bookings:
             release_time = b.start_time_utc + timedelta(hours=24)
-            is_holding = now < release_time
+            is_holding = (now < release_time) and (b.escrow_cleared_at is None)
             gross_usd = float(b.teacher.price_per_25min_usd)
             platform_fee = round(gross_usd * 0.20, 2)
             net_tutor_zar = round((gross_usd * 0.80) * 18.75, 2)
+
+            has_cleared_entry = LedgerEntry.objects.filter(
+                booking=b,
+                event_type=LedgerEntry.EventType.ESCROW_CLEARED
+            ).exists()
+            has_refund_entry = LedgerEntry.objects.filter(
+                booking=b,
+                event_type__in=[
+                    LedgerEntry.EventType.REFUND_ISSUED,
+                    LedgerEntry.EventType.OUTAGE_REFUND,
+                ]
+            ).exists()
+
+            if has_refund_entry:
+                escrow_status = 'refunded'
+            elif has_cleared_entry or b.escrow_cleared_at is not None:
+                escrow_status = 'cleared'
+            elif is_holding:
+                escrow_status = 'holding'
+            else:
+                escrow_status = 'holding'
 
             items.append({
                 'id': f"esc-{str(b.id)[:8]}",
@@ -222,11 +273,19 @@ class EscrowLedgerView(APIView):
                 'amount_zar': round(gross_usd * 18.75, 2),
                 'platform_fee_usd': platform_fee,
                 'teacher_net_zar': net_tutor_zar,
-                'escrow_status': 'holding' if is_holding else 'cleared',
+                'escrow_status': escrow_status,
                 'release_date': release_time.strftime('%Y-%m-%d %H:%M')
             })
 
-        return Response(items)
+        if request.query_params.get('view') == 'items' or request.query_params.get('mode') == 'items':
+            return Response(items)
+
+        return Response({
+            'live_balances': telemetry['live_balances'],
+            'summary': telemetry['summary'],
+            'trial_balance': telemetry['trial_balance'],
+            'items': items,
+        })
 
 
 class PayoutBatchView(APIView):
@@ -293,6 +352,14 @@ class ExecutePayoutBatchView(APIView):
             executed_at=timezone.now()
         )
 
+        # Record double-entry journal entry for EFT batch payout disbursement
+        from apps.payments.services.ledger_service import record_payout_batch_entry
+        record_payout_batch_entry(
+            payout_batch=batch,
+            amount_zar=batch.total_payout_zar,
+            user=request.user
+        )
+
         return Response({
             'success': True,
             'batch_id': batch.batch_reference,
@@ -301,3 +368,4 @@ class ExecutePayoutBatchView(APIView):
             'status': 'processed',
             'message': "South African ACB EFT batch executed. Bank transaction files generated."
         })
+

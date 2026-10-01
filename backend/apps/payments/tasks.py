@@ -83,6 +83,14 @@ def release_cleared_escrow_task():
                 booking.status = Booking.Status.COMPLETED
             booking.save(update_fields=['escrow_cleared_at', 'status', 'updated_at'])
 
+            # Record GAAP/SARB double-entry ledger clearance entries
+            from apps.payments.services.ledger_service import record_escrow_clearance_entry
+            record_escrow_clearance_entry(
+                booking=booking,
+                payment_transaction=tx,
+                amount_usd=amount_usd
+            )
+
             cleared_count += 1
             total_cleared_usd += tutor_net_usd
             logger.info(

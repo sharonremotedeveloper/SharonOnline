@@ -223,6 +223,10 @@ class ReportOutageView(APIView):
                 currency="USD"
             )
 
+        # Record double-entry ledger journal entry
+        from apps.payments.services.ledger_service import record_outage_refund_entry
+        record_outage_refund_entry(booking=booking, user=booking.student)
+
         return Response({
             "status": "interrupted_power",
             "message": "Eskom power interruption recorded. 1 lesson credit has been automatically refunded to the student's wallet.",

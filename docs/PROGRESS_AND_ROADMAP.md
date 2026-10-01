@@ -29,7 +29,7 @@ flowchart LR
 - [x] `apps.users`, `apps.teachers`, `apps.materials`, `apps.bookings`, `apps.payments`, `apps.crm`, `apps.admin_api`, `apps.srs` schema models
 - [x] PostgreSQL database migrations applied cleanly
 - [x] `seed_data` and `seed_phase41_data` initialized
-- [x] `pytest` suite configured (51/51 automated unit, concurrency & webhook integration tests passing)
+- [x] `pytest` suite configured (59/59 automated unit, concurrency, webhook & double-entry ledger integration tests passing)
 - [x] Health check endpoint (`GET /api/health/`)
 - [x] JWT Auth endpoints (`/api/v1/auth/token/`, `/api/v1/auth/register/`)
 - [x] Redis Redlock reservation engine (`SET booking:slot:... NX EX 600`)
@@ -211,7 +211,12 @@ flowchart LR
 - [x] **Task 6.1**: Implement Zoom Webhook Ingestion Receiver (`ZoomWebhookReceiverView` in `apps.integrations`) validating HMAC-SHA256 signature (`x-zm-signature`), CRC challenge handshake, replay guard, and populating `AttendanceAudit`.
 - [x] **Task 6.2**: Implement Late Webhook Concurrency Guard (Active Zoom probe at T+10m, `select_for_update` DB row locks, out-of-order session keying, and late webhook dispute quarantine in `apps.integrations` & `apps.bookings`).
 - [x] **DEF-501 Fix**: Payment Gateway Concurrency Guard in `apps/payments/services/webhook_handler.py` resolving collision when late payments arrive on expired/re-booked slots (auto-quarantines to `DISPUTED`, awards 1 lesson credit restitution, opens `DisputeCase`, preventing `IntegrityError` 500s).
-- [ ] **Task 6.3**: Formalize double-entry transaction journal table (`LedgerEntry` debit/credit rows) in `apps.payments.models` for regulatory SARB / GAAP reporting.
+- [x] **Task 6.3**: Formalize double-entry transaction journal table (`LedgerEntry` debit/credit rows with strict zero-sum balancing, SARB/SARS ZAR conversion, and GAAP Chart of Accounts) in `apps.payments.models`, `apps.payments.services.ledger_service`, webhook handlers, Celery escrow tasks, dispute tribunal, and payout orchestrator.
+  - *GAAP Chart of Accounts*: Assets (`1010` PayFast, `1020` PayPal, `1030` Operating Bank), Liabilities (`2010` Escrow Trust, `2020` Tutor Payable, `2030` DEF-501 Quarantine, `2040` Student Wallet Credits), Revenue (`4010` Platform Commission 20%), Expenses (`5010` Dispute Subsidies, `5020` Student Compensation, `5030` Gateway Fees).
+  - *Strict Immutability*: Prohibits UPDATE/DELETE operations via `LedgerEntryQuerySet` and model-level `save()` / `delete()` overrides raising `LedgerImmutabilityError`.
+  - *Lifecycle Balancing Hooks*: Captures, clearances, gateway/wallet refunds, dispute tribunal splits (50/50 platform absorption), and EFT payout disbursements.
+  - *Live Admin Telemetry*: `GET /api/v1/admin/finance/ledger/` queries `LedgerEntry` directly for live gateway balances, pending escrow, tutor liabilities, and net revenue with zero-sum trial balance validation.
 - [ ] **Task 6.4**: Connect Cloudflare R2 bucket integration for static curriculum PDFs and audio snippets with zero egress fees.
 - [ ] **Task 6.5**: Run end-to-end multi-container docker staging test (`docker compose up -d`) with full lifecycle verification.
+
 
