@@ -56,11 +56,37 @@ New or changed environment variables (see `.env.example`):
 
 Local development: settings default to `config.settings.local` for `manage.py`; Docker compose sets it explicitly. The tests' autouse fixture clears the cache per test so throttle counters do not leak.
 
-## 5. Tests added (99)
+## 5. Tests added (99 in 7A, +47 in 7B = 220 total)
 
 `test_security_auth.py` (registration, logout, permission declaration, anonymous access), `test_settings_guard.py` (production guard, Zoom fail-closed), `test_upload_hardening.py` (policy + throttles), `test_permission_matrix.py` (IDOR, CRM, admin routes, teacher visibility), `test_payment_verification.py` (checkout, 12 PayFast and 10 PayPal cases with the network faked). Gateway HTTP goes through `requests` inside `apps/payments/gateways/`, which tests monkeypatch; there is no "fake gateway" flag that could reach production.
 
 Existing tests were adjusted only where behaviour intentionally changed (the upload tests now send `size`); none were deleted.
+
+## 5b. Phase 7B - adversarial review fixes (2026-10-02)
+
+An independent security/systems-design review of 7.1-7.3 confirmed no forgeable-payment or admin-escalation path, but found gaps around them. Fixed here (suite 173 -> 220 passing; each key fix was mutation-checked by reverting it and watching its test fail):
+
+| Finding | Fix |
+| :--- | :--- |
+| **HIGH** Second payment for an already-settled reference returned 200 and was dropped (money taken, no ledger, no refund) | PayFast/PayPal views compare the incoming gateway id with the settled one. A different id is recorded as an `UNALLOCATED` transaction, posted DR gateway cash / CR 2030 (no wallet credit, per D-6) and a `GatewayAnomaly` is raised. Idempotent on redelivery. |
+| **HIGH** A late second payment on a COMPLETED/IN_PROGRESS/etc. booking flipped it to `DISPUTED` (griefing; freezes escrow) | `process_payment_webhook` only acts on `PENDING_PAYMENT` / `CANCELLED` (DEF-501 path unchanged). Any other state is held as unallocated and the booking is never touched. `UNALLOCATED` rows are excluded from escrow selection. |
+| **HIGH** `NUM_PROXIES = 0 or None` made DRF trust the client's whole `X-Forwarded-For`, so rotating the header bypassed every IP throttle | `NUM_PROXIES` is now the integer (0 = ignore XFF). Added a per-username login throttle (`login_user`, 10/hour). |
+| MED Authenticated-but-rejected payments (amount mismatch, unknown ref) were only logged | `GatewayAnomaly` rows, written only after signature/IP checks, de-duplicated across gateway retries. |
+| MED PayPal re-serialised the event before verifying | Raw request bytes are forwarded verbatim in `webhook_event`. |
+| MED Anyone could spend PayPal API calls; PayPal 4xx treated as outage | Local pre-checks (`SHA256withRSA`, https `*.paypal.com` cert host, transmission time window) before any outbound call; 400/422 from PayPal = invalid (400), only 5xx/network = 503. Token refreshed once on a 401. Capture id URL-quoted. |
+| MED Guard gaps | Production now requires `THROTTLE_NUM_PROXIES>=1` and (if PayFast configured) `PAYFAST_TRUSTED_PROXY_COUNT>=1` unless `BEHIND_NO_PROXY=1`; passphrase whenever PayFast is configured; sandbox in prod needs `ALLOW_PAYMENT_SANDBOX_IN_PROD=1`; `PAYPAL_MODE` must be `live`/`sandbox`; PayPal secret required; notify URL https. |
+| MED Celery fulfillment dispatched inside the open transaction and failures were swallowed | `transaction.on_commit`; failure logged with `logger.exception`. |
+| MED PayFast postback held the row lock; DNS lookups repeated on every ITN when failing | Postback now runs between two short transactions (state re-checked under the lock); DNS failures are negative-cached 60s; optional `PAYFAST_EXTRA_ALLOWED_CIDRS`. |
+| MED Logout needed a live access token | `POST /auth/logout/` is `AllowAny`, authenticated by the refresh token itself. |
+| LOW PayFast `~` encoding (`%7E`), non-UUID/non-object checkout body (500), unverified/inactive tutor, past slot, zero price payable | Fixed with tests. Registration: IANA timezone validated, usernames unique case-insensitively, password similarity now evaluated with the user's own details. |
+
+Migration `payments/0007`: `PaymentTransaction.Status.UNALLOCATED`, `LedgerEntry.EventType.UNALLOCATED_PAYMENT`, model `GatewayAnomaly`.
+
+**Deliberately not done, with reasons**
+- PayPal transmission-time window is 4 days (not 5 minutes): PayPal retries for ~3 days and may keep the original time; replay safety comes from idempotency.
+- No hard-coded PayFast IP ranges: I could not verify them offline. Set `PAYFAST_EXTRA_ALLOWED_CIDRS` from PayFast's published list (DNS resolution still applies).
+- A `CANCELLED` booking is still treated as payable (DEF-501 path) because the model cannot yet tell "hold expired" from "student/teacher cancelled". Needs `transition_booking()` / a cancellation reason (Phase 9).
+- Not done (tracked): refunding unallocated money at the gateway (Phase 10 refund service), gateway fee capture to 5030, PayPal DENIED/REFUNDED/DISPUTE and PayFast chargeback handlers, daily gateway-vs-ledger reconciliation, re-dispatch of fulfillment for CONFIRMED bookings with no Zoom meeting, DB unique index on lower(email), NFKC username normalisation, JWT claims still carry email/role (the backend re-reads the DB per request; frontend must not trust them), refusing `config.settings.local` when `DATABASE_URL` looks like production, appending rejected-webhook audit table.
 
 ## 6. Known limits and follow-ups
 

@@ -239,7 +239,7 @@ A four-way audit (backend, frontend, spec-vs-roadmap, infra) found that Phases 1
 
 | Phase | Theme | Status |
 | :--- | :--- | :--- |
-| **Phase 7** | Security emergency + spec freeze (decisions D-1..D-12) | `7A DONE (7.1-7.9); 7.10 + D-3,4,7-12 awaiting Anesu` |
+| **Phase 7** | Security emergency + spec freeze (decisions D-1..D-12) | `7A + 7B DONE (7.1-7.9, adversarial-review fixes; 220 tests); 7.10 + D-3,4,7-12 awaiting Anesu` |
 | **Phase 8** | Honest frontend + real auth | `NOT STARTED` |
 | **Phase 9** | Booking core (`transition_booking()`, reserve → book) | `NOT STARTED` |
 | **Phase 10** | Real payments (PayPal/PayFast sandbox, credits, refunds, multi-currency ledger) | `NOT STARTED` |

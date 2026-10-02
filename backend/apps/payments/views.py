@@ -13,14 +13,30 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
+from django.utils import timezone
+
 from apps.bookings.models import Booking
 from .gateways import payfast, paypal
-from .models import CreditBundle, PaymentTransaction
-from .services.webhook_handler import process_payment_webhook
+from .models import CreditBundle, GatewayAnomaly, PaymentTransaction
+from .services.webhook_handler import process_payment_webhook, record_unallocated_payment
 
 logger = logging.getLogger(__name__)
 
 CENT = Decimal('0.01')
+
+
+SETTLED_STATES = (PaymentTransaction.Status.SUCCESS, PaymentTransaction.Status.UNALLOCATED)
+
+
+def _anomaly(gateway, reference, reason, detail='', tx=None, payload=None):
+    """
+    Persist an authenticated-but-unappliable notification (money may have moved). Only call AFTER signature/IP checks
+    so unauthenticated callers cannot fill the table. De-duplicated so gateway retries don't multiply rows.
+    """
+    GatewayAnomaly.objects.get_or_create(
+        gateway=gateway, reference=str(reference or '')[:255], reason=reason, resolved=False,
+        defaults={'detail': detail, 'payload': payload or {}, 'payment_transaction': tx,
+                  'booking': tx.booking if tx is not None else None})
 
 
 def _bind_gateway_reference(tx: PaymentTransaction, gateway_reference: str, raw_payload: dict):
@@ -44,17 +60,28 @@ class CheckoutInitializeView(APIView):
     throttle_scope = 'checkout'
 
     def post(self, request):
-        booking_id = request.data.get('booking_id')
+        if not isinstance(request.data, dict):
+            return Response({"error": "JSON object expected."}, status=status.HTTP_400_BAD_REQUEST)
         gateway = request.data.get('gateway', 'paypal')
         if gateway not in ('payfast', 'paypal'):
             return Response({"error": "gateway must be 'payfast' or 'paypal'."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            booking_id = uuid.UUID(str(request.data.get('booking_id')))
+        except ValueError:
+            return Response({"error": "booking_id must be a valid UUID."}, status=status.HTTP_400_BAD_REQUEST)
 
-        booking = get_object_or_404(Booking, id=booking_id, student=request.user)
+        booking = get_object_or_404(Booking.objects.select_related('teacher__user'), id=booking_id, student=request.user)
         if booking.status != Booking.Status.PENDING_PAYMENT:
             return Response({"error": f"Booking is '{booking.status}' and cannot be paid for."},
                             status=status.HTTP_409_CONFLICT)
+        if not (booking.teacher.is_active and booking.teacher.is_verified):
+            return Response({"error": "This tutor is not currently bookable."}, status=status.HTTP_409_CONFLICT)
+        if booking.start_time_utc <= timezone.now():
+            return Response({"error": "This lesson slot has already started."}, status=status.HTTP_409_CONFLICT)
 
         amount_usd = Decimal(str(booking.teacher.price_per_25min_usd)).quantize(CENT, ROUND_HALF_UP)
+        if amount_usd <= 0:
+            return Response({"error": "Lesson price is not configured."}, status=status.HTTP_409_CONFLICT)
         reference = f"TX-{uuid.uuid4().hex[:12].upper()}"
         item_name = f"25-Min Lesson with {booking.teacher.user.first_name or booking.teacher.user.username}"
 
@@ -123,28 +150,47 @@ class PayFastWebhookView(APIView):
         if not reference or not pf_payment_id:
             return self._reject("missing m_payment_id/pf_payment_id")
 
+        # Phase 1 - read-only checks, no row lock held.
+        tx = (PaymentTransaction.objects.select_related('booking')
+              .filter(merchant_reference=reference, gateway=PaymentTransaction.Gateway.PAYFAST).first())
+        if tx is None:
+            _anomaly('payfast', reference, 'unknown_reference', f"pf_payment_id={pf_payment_id}", payload=data)
+            return self._reject("unknown m_payment_id", m_payment_id=reference)
+        try:
+            gross = Decimal(data.get('amount_gross', ''))
+        except Exception:
+            return self._reject("unparseable amount_gross")
+        if tx.currency != 'ZAR' or gross.quantize(CENT) != tx.amount.quantize(CENT):
+            _anomaly('payfast', reference, 'amount_mismatch',
+                     f"expected {tx.amount} {tx.currency}, gateway says {gross}", tx=tx, payload=data)
+            return self._reject("amount mismatch", expected=str(tx.amount), got=str(gross))
+
+        if data.get('payment_status') != 'COMPLETE':
+            logger.info("PayFast ITN %s status=%s acknowledged without action", reference, data.get('payment_status'))
+            return Response("OK", status=status.HTTP_200_OK)
+
+        if tx.status in SETTLED_STATES and tx.gateway_reference == pf_payment_id:
+            return Response("OK", status=status.HTTP_200_OK)  # duplicate delivery of an already-processed ITN
+
+        # Server-to-server postback happens OUTSIDE the transaction/row lock (it is a 10s network call).
+        if not payfast.server_confirms(pairs):
+            return self._reject("server postback not VALID", m_payment_id=reference)
+
+        # Phase 2 - lock and apply; re-check state because it may have changed during the postback.
         with transaction.atomic():
-            tx = (PaymentTransaction.objects.select_for_update()
-                  .filter(merchant_reference=reference, gateway=PaymentTransaction.Gateway.PAYFAST).first())
-            if tx is None:
-                return self._reject("unknown m_payment_id", m_payment_id=reference)
-            try:
-                gross = Decimal(data.get('amount_gross', ''))
-            except Exception:
-                return self._reject("unparseable amount_gross")
-            if tx.currency != 'ZAR' or gross.quantize(CENT) != tx.amount.quantize(CENT):
-                return self._reject("amount mismatch", expected=str(tx.amount), got=str(gross))
-
-            if data.get('payment_status') != 'COMPLETE':
-                logger.info("PayFast ITN %s status=%s acknowledged without action", reference, data.get('payment_status'))
+            tx = PaymentTransaction.objects.select_for_update().select_related('booking').get(pk=tx.pk)
+            if tx.status in SETTLED_STATES:
+                if tx.gateway_reference == pf_payment_id:
+                    return Response("OK", status=status.HTTP_200_OK)
+                # A DIFFERENT PayFast payment against an already-settled m_payment_id (e.g. the signed form paid twice):
+                # real money was taken, so hold it for refund instead of silently dropping it.
+                record_unallocated_payment(
+                    booking=tx.booking, gateway=PaymentTransaction.Gateway.PAYFAST, transaction_id=pf_payment_id,
+                    amount=tx.amount, currency='ZAR', raw_payload=data, reason='duplicate_payment',
+                    detail=f"m_payment_id {reference} already settled by {tx.gateway_reference}")
                 return Response("OK", status=status.HTTP_200_OK)
-
-            if tx.status == PaymentTransaction.Status.SUCCESS:
-                return Response("OK", status=status.HTTP_200_OK)  # duplicate delivery
-
-            if not payfast.server_confirms(pairs):
-                return self._reject("server postback not VALID", m_payment_id=reference)
             if not _bind_gateway_reference(tx, pf_payment_id, data):
+                _anomaly('payfast', pf_payment_id, 'gateway_reference_reused', f"m_payment_id={reference}", tx=tx, payload=data)
                 return self._reject("gateway reference already used", pf_payment_id=pf_payment_id)
 
             process_payment_webhook(
@@ -167,15 +213,16 @@ class PayPalWebhookView(APIView):
         return Response({"error": "invalid_notification"}, status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request):
+        raw_body = request._request.body
         try:
-            event = json.loads(request._request.body.decode('utf-8'))
+            event = json.loads(raw_body.decode('utf-8'))
         except (ValueError, UnicodeDecodeError):
             return self._reject("body is not JSON")
         if not isinstance(event, dict):
             return self._reject("body is not an object")
 
         try:
-            if not paypal.verify_webhook_signature(request._request.META, event):
+            if not paypal.verify_webhook_signature(request._request.META, raw_body):
                 return self._reject("signature verification failed")
         except paypal.PayPalError as exc:
             logger.error("%s", exc)
@@ -185,7 +232,7 @@ class PayPalWebhookView(APIView):
             return Response({"status": "ignored"}, status=status.HTTP_200_OK)
 
         capture_id = (event.get('resource') or {}).get('id')
-        if not capture_id:
+        if not capture_id or not isinstance(capture_id, str):
             return self._reject("missing capture id")
 
         try:
@@ -197,24 +244,38 @@ class PayPalWebhookView(APIView):
         reference = capture.get('custom_id')
         amount_info = capture.get('amount') or {}
 
+        tx = (PaymentTransaction.objects.select_related('booking')
+              .filter(merchant_reference=reference, gateway=PaymentTransaction.Gateway.PAYPAL).first()
+              if reference else None)
+        if tx is None:
+            _anomaly('paypal', capture_id, 'unknown_reference', f"custom_id={reference}", payload=event)
+            return self._reject("unknown custom_id", custom_id=reference)
+        if capture.get('status') != 'COMPLETED':
+            return self._reject("capture not COMPLETED", status=capture.get('status'))
+        try:
+            paid = Decimal(str(amount_info.get('value', '')))
+        except Exception:
+            return self._reject("unparseable amount")
+        if amount_info.get('currency_code') != tx.currency or paid.quantize(CENT) != tx.amount.quantize(CENT):
+            _anomaly('paypal', capture_id, 'amount_mismatch',
+                     f"expected {tx.amount} {tx.currency}, PayPal says {paid} {amount_info.get('currency_code')}",
+                     tx=tx, payload=event)
+            return self._reject("amount/currency mismatch", expected=f"{tx.amount} {tx.currency}",
+                                got=f"{paid} {amount_info.get('currency_code')}")
+
         with transaction.atomic():
-            tx = (PaymentTransaction.objects.select_for_update()
-                  .filter(merchant_reference=reference, gateway=PaymentTransaction.Gateway.PAYPAL).first()
-                  if reference else None)
-            if tx is None:
-                return self._reject("unknown custom_id", custom_id=reference)
-            if capture.get('status') != 'COMPLETED':
-                return self._reject("capture not COMPLETED", status=capture.get('status'))
-            try:
-                paid = Decimal(str(amount_info.get('value', '')))
-            except Exception:
-                return self._reject("unparseable amount")
-            if amount_info.get('currency_code') != tx.currency or paid.quantize(CENT) != tx.amount.quantize(CENT):
-                return self._reject("amount/currency mismatch", expected=f"{tx.amount} {tx.currency}",
-                                    got=f"{paid} {amount_info.get('currency_code')}")
-            if tx.status == PaymentTransaction.Status.SUCCESS:
-                return Response({"status": "received"}, status=status.HTTP_200_OK)  # duplicate delivery
+            tx = PaymentTransaction.objects.select_for_update().select_related('booking').get(pk=tx.pk)
+            if tx.status in SETTLED_STATES:
+                if tx.gateway_reference == capture_id:
+                    return Response({"status": "received"}, status=status.HTTP_200_OK)  # duplicate delivery
+                # A DIFFERENT capture against an already-settled order reference: hold for refund, never drop silently.
+                record_unallocated_payment(
+                    booking=tx.booking, gateway=PaymentTransaction.Gateway.PAYPAL, transaction_id=capture_id,
+                    amount=tx.amount, currency=tx.currency, raw_payload=event, reason='duplicate_payment',
+                    detail=f"custom_id {reference} already settled by {tx.gateway_reference}")
+                return Response({"status": "received"}, status=status.HTTP_200_OK)
             if not _bind_gateway_reference(tx, capture_id, event):
+                _anomaly('paypal', capture_id, 'gateway_reference_reused', f"custom_id={reference}", tx=tx, payload=event)
                 return self._reject("gateway reference already used", capture_id=capture_id)
 
             process_payment_webhook(

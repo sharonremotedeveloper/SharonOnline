@@ -65,6 +65,7 @@ Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done.
 - [ ] **D-7** Credit bundles: sizes/discounts, subscriptions in MVP or not.
 - [ ] **D-8** Recording policy (record or not, retention 7 days?, consent flow).
 - [ ] **D-9** Zoom licensing model (per-tutor hosts / licence count / alternative hosts).
+- [x] **D-13** Auth provider: **Django + simplejwt stays** (decided by Anesu 2026-10-02; Clerk and Neon Auth considered and declined for now). Keeps identity data in our own Postgres (simpler POPIA/GDPR/APPI). Phase 8 and Tasks 7.7, 8.4-8.6 stand as written. Hedge: keep all token verification behind one DRF authentication class so a provider swap later is localised. Because we own auth, Task 7.8 permission-matrix/IDOR tests and Task 13.3 CI are mandatory, not optional; add a scheduled `flushexpiredtokens` Celery beat job and an admin runbook for lockout / lost-2FA / email-change support requests.
 - [ ] **D-10** Stack choices: backend host (Railway vs Render), frontend host (Vercel vs Cloudflare Pages), domain (`sharonesl.com` vs `sharon-esl.com`), whether Neon Auth/Functions/Storage are used at all (current answer: no, Django JWT + R2).
 - [ ] **D-11** Tutor employment model and vetting process (who interviews, background checks, SA ID verification).
 - [ ] **D-12** Legal entity, VAT status, POPIA Information Officer, accountant's view on SARB/FX; signed SOW with engineering fee filled in.

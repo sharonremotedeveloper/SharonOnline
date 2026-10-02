@@ -8,11 +8,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from .models import User
 from .serializers import RegisterSerializer, UserSerializer, CustomTokenObtainPairSerializer
+from .throttles import LoginUsernameThrottle
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
     permission_classes = (AllowAny,)
-    throttle_classes = (ScopedRateThrottle,)
+    throttle_classes = (ScopedRateThrottle, LoginUsernameThrottle)
     throttle_scope = 'login'
 
 class RegisterView(generics.CreateAPIView):
@@ -31,18 +32,23 @@ class CurrentUserView(generics.RetrieveUpdateAPIView):
 
 
 class LogoutView(APIView):
-    """Blacklists the supplied refresh token so it can no longer mint access tokens."""
-    permission_classes = (IsAuthenticated,)
+    """
+    Blacklists the supplied refresh token so it can no longer mint access tokens.
+
+    Deliberately not gated on a live access token: the refresh token is itself the proof of ownership, and an
+    expired access token must not leave a 14-day refresh token impossible to revoke.
+    """
+    permission_classes = (AllowAny,)
+    authentication_classes = ()
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'login'
 
     def post(self, request):
-        refresh = request.data.get('refresh')
-        if not refresh:
+        refresh = request.data.get('refresh') if hasattr(request.data, 'get') else None
+        if not refresh or not isinstance(refresh, str):
             return Response({'refresh': 'This field is required.'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            token = RefreshToken(refresh)
-            if str(token.get('user_id')) != str(request.user.pk):
-                return Response({'detail': 'Token does not belong to this user.'}, status=status.HTTP_400_BAD_REQUEST)
-            token.blacklist()
+            RefreshToken(refresh).blacklist()
         except TokenError:
             return Response({'detail': 'Invalid or expired token.'}, status=status.HTTP_400_BAD_REQUEST)
         return Response(status=status.HTTP_205_RESET_CONTENT)

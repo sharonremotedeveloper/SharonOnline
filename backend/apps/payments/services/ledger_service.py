@@ -587,6 +587,41 @@ def record_def501_quarantine_entry(
     )
 
 
+def record_unallocated_payment_entry(
+    payment_transaction: PaymentTransaction,
+    booking=None,
+    user=None,
+    fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR
+) -> List[LedgerEntry]:
+    """
+    Money captured by a gateway that cannot be applied to its booking (duplicate payment, booking already
+    confirmed/completed). Held in the quarantine liability until it is refunded to the payer at the gateway (D-6).
+    Deliberately NO student wallet credit: the funds go back to the original payment method.
+    DR Asset: Gateway Cash -> CR Liability: Quarantined Deposits
+    """
+    amount = Decimal(str(payment_transaction.amount)).quantize(Decimal('0.01'))
+    currency = payment_transaction.currency.upper()
+    asset_account = LedgerAccount.ASSET_GATEWAY_PAYFAST if (payment_transaction.gateway == PaymentTransaction.Gateway.PAYFAST or currency == 'ZAR') else LedgerAccount.ASSET_GATEWAY_PAYPAL
+    ref = payment_transaction.gateway_reference
+    entries = [
+        {'account': asset_account, 'entry_type': LedgerEntry.EntryType.DEBIT, 'amount': amount, 'currency': currency,
+         'description': f"Unallocated payment captured, ref {ref}"},
+        {'account': LedgerAccount.LIABILITY_QUARANTINE_DEPOSIT, 'entry_type': LedgerEntry.EntryType.CREDIT,
+         'amount': amount, 'currency': currency,
+         'description': f"Held pending gateway refund, ref {ref}"},
+    ]
+    return record_journal_entries(
+        entries=entries,
+        event_type=LedgerEntry.EventType.UNALLOCATED_PAYMENT,
+        description=f"Unallocated/duplicate payment held for refund {ref}",
+        booking=booking or payment_transaction.booking,
+        payment_transaction=payment_transaction,
+        user=user or (booking.student if booking else None),
+        currency=currency,
+        fx_rate_to_zar=fx_rate_to_zar
+    )
+
+
 # ============================================================================
 # Audit & Financial Reporting Utilities
 # ============================================================================

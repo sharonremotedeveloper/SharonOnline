@@ -217,11 +217,18 @@ def test_signature_matches_independent_md5():
 
 # ---------- PayPal ----------
 
-PP_HEADERS = {
-    'HTTP_PAYPAL_AUTH_ALGO': 'SHA256withRSA', 'HTTP_PAYPAL_CERT_URL': 'https://api.sandbox.paypal.com/cert',
-    'HTTP_PAYPAL_TRANSMISSION_ID': 'tid', 'HTTP_PAYPAL_TRANSMISSION_SIG': 'sig',
-    'HTTP_PAYPAL_TRANSMISSION_TIME': '2026-10-02T10:00:00Z',
-}
+def _now_iso():
+    return timezone.now().strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def _pp_headers(**overrides):
+    headers = {
+        'HTTP_PAYPAL_AUTH_ALGO': 'SHA256withRSA', 'HTTP_PAYPAL_CERT_URL': 'https://api.sandbox.paypal.com/cert',
+        'HTTP_PAYPAL_TRANSMISSION_ID': 'tid', 'HTTP_PAYPAL_TRANSMISSION_SIG': 'sig',
+        'HTTP_PAYPAL_TRANSMISSION_TIME': _now_iso(),
+    }
+    headers.update(overrides)
+    return headers
 
 
 @pytest.fixture
@@ -233,6 +240,8 @@ def pp(monkeypatch, student_user, pending_booking):
                         'amount': {'value': '9.00', 'currency_code': 'USD'}}
 
     class Resp:
+        status_code = 200
+
         def __init__(self, payload):
             self.payload = payload
 
@@ -243,21 +252,29 @@ def pp(monkeypatch, student_user, pending_booking):
         def json(self):
             return self.payload
 
-    def fake_post(url, **kw):
-        if url.endswith('/oauth2/token'):
-            return Resp({'access_token': 'tok', 'expires_in': 3600})
-        state['verify_calls'].append(kw['json'])
-        return Resp({'verification_status': state['verify']})
+    state['verify_status_code'] = 200
+    state['bodies'] = []
 
-    def fake_get(url, **kw):
+    def fake_token_post(url, **kw):
+        return Resp({'access_token': 'tok', 'expires_in': 3600})
+
+    def fake_request(method, url, **kw):
+        if method == 'POST':
+            state['bodies'].append(kw['data'])
+            state['verify_calls'].append(json.loads(kw['data']))
+            r = Resp({'verification_status': state['verify']})
+            r.status_code = state['verify_status_code']
+            return r
         return Resp(state['capture'])
 
-    monkeypatch.setattr(paypal.requests, 'post', fake_post)
-    monkeypatch.setattr(paypal.requests, 'get', fake_get)
+    monkeypatch.setattr(paypal.requests, 'post', fake_token_post)
+    monkeypatch.setattr(paypal.requests, 'request', fake_request)
 
-    def hook(event_type='PAYMENT.CAPTURE.COMPLETED', headers=PP_HEADERS):
+    def hook(event_type='PAYMENT.CAPTURE.COMPLETED', headers=None, body=None):
         event = {'id': 'WH-EVT', 'event_type': event_type, 'resource': {'id': 'CAP-1', 'amount': {'value': '0.01', 'currency_code': 'USD'}}}
-        return APIClient().generic('POST', PP, json.dumps(event), content_type='application/json', **headers)
+        raw = body if body is not None else json.dumps(event)
+        return APIClient().generic('POST', PP, raw, content_type='application/json',
+                                   **(headers if headers is not None else _pp_headers()))
 
     return hook, state, ref
 

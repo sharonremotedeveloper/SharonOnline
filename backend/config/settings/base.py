@@ -129,13 +129,16 @@ REST_FRAMEWORK = {
         'user': '300/min',
         # Scoped (views opt in with throttle_classes=[ScopedRateThrottle] + throttle_scope)
         'login': '5/min',
+        'login_user': '10/hour',  # per submitted username, so a distributed attack on one account is still limited
         'register': '5/hour',
         'upload': '30/hour',
         'checkout': '20/hour',
         'webhook': '120/min',
     },
-    # Number of reverse proxies in front of Django (so the client IP is read from X-Forwarded-For).
-    'NUM_PROXIES': int(os.environ.get('THROTTLE_NUM_PROXIES', '0')) or None,
+    # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
+    # NEVER map 0 to None: DRF treats None as "trust the whole client-supplied X-Forwarded-For header", which lets
+    # an attacker rotate the header to bypass every IP throttle.
+    'NUM_PROXIES': int(os.environ.get('THROTTLE_NUM_PROXIES', '0')),
 }
 
 # SimpleJWT Authentication
@@ -214,6 +217,9 @@ PAYFAST_SANDBOX = _env_bool('PAYFAST_SANDBOX', True)
 PAYFAST_SKIP_IP_CHECK = _env_bool('PAYFAST_SKIP_IP_CHECK', False)
 PAYFAST_TRUSTED_PROXY_COUNT = int(os.environ.get('PAYFAST_TRUSTED_PROXY_COUNT', '0'))
 PAYFAST_NOTIFY_URL = os.environ.get('PAYFAST_NOTIFY_URL', '')
+# Extra source-IP ranges allowed for ITNs (comma-separated CIDRs). Copy PayFast's currently published ranges here;
+# DNS resolution of PayFast's hosts is used in addition.
+PAYFAST_EXTRA_ALLOWED_CIDRS = [c.strip() for c in os.environ.get('PAYFAST_EXTRA_ALLOWED_CIDRS', '').split(',') if c.strip()]
 # D-1: retail price is platform-set per currency. Until the price table exists (Phase 10),
 # ZAR = USD price x this configurable rate.
 ZAR_PER_USD = float(os.environ.get('ZAR_PER_USD', '18.0'))

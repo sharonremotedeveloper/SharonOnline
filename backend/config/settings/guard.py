@@ -34,16 +34,48 @@ def validate_production_settings(env=os.environ):
     if not env.get('ZOOM_WEBHOOK_SECRET_TOKEN'):
         errors.append('ZOOM_WEBHOOK_SECRET_TOKEN must be set')
 
-    if env.get('PAYFAST_SKIP_IP_CHECK', '').lower() in ('1', 'true', 'yes'):
+    truthy = ('1', 'true', 'yes')
+    no_proxy = env.get('BEHIND_NO_PROXY', '').lower() in truthy
+
+    def _int(name):
+        try:
+            return int(env.get(name, '0') or 0)
+        except ValueError:
+            return -1
+
+    # Client-IP trust. With 0 trusted proxies every request appears to come from the load balancer (one shared
+    # throttle bucket, and PayFast's source-IP check can never match); a wrong number lets clients spoof X-Forwarded-For.
+    if not no_proxy and _int('THROTTLE_NUM_PROXIES') < 1:
+        errors.append('THROTTLE_NUM_PROXIES must be >= 1 behind a reverse proxy (or set BEHIND_NO_PROXY=1 if directly exposed)')
+
+    payfast_configured = bool(env.get('PAYFAST_MERCHANT_ID'))
+    if env.get('PAYFAST_SKIP_IP_CHECK', '').lower() in truthy:
         errors.append('PAYFAST_SKIP_IP_CHECK must not be enabled in production')
-    if env.get('PAYFAST_SANDBOX', 'True').lower() not in ('1', 'true', 'yes'):  # live PayFast
+    payfast_sandbox = env.get('PAYFAST_SANDBOX', 'True').lower() in truthy
+    if payfast_sandbox and payfast_configured and env.get('ALLOW_PAYMENT_SANDBOX_IN_PROD', '').lower() not in truthy:
+        errors.append('PAYFAST_SANDBOX is on in production; set ALLOW_PAYMENT_SANDBOX_IN_PROD=1 only for a deliberate staging deploy')
+    if not payfast_sandbox:  # live PayFast
         for name in ('PAYFAST_MERCHANT_ID', 'PAYFAST_MERCHANT_KEY', 'PAYFAST_PASSPHRASE', 'PAYFAST_NOTIFY_URL'):
             if not env.get(name):
                 errors.append(f'{name} is required when PAYFAST_SANDBOX is false')
         if env.get('PAYFAST_MERCHANT_ID') == SANDBOX_PAYFAST_MERCHANT_ID:
             errors.append('PayFast sandbox merchant id must not be used with PAYFAST_SANDBOX=False')
-    if env.get('PAYPAL_CLIENT_ID') and not env.get('PAYPAL_WEBHOOK_ID'):
-        errors.append('PAYPAL_WEBHOOK_ID is required when PayPal is configured')
+    if payfast_configured:
+        # An empty passphrase makes the ITN signature a plain MD5 of public data that anyone can compute.
+        if not env.get('PAYFAST_PASSPHRASE'):
+            errors.append('PAYFAST_PASSPHRASE is required whenever PayFast is configured')
+        if not no_proxy and _int('PAYFAST_TRUSTED_PROXY_COUNT') < 1:
+            errors.append('PAYFAST_TRUSTED_PROXY_COUNT must be >= 1 behind a reverse proxy, otherwise every ITN fails the source-IP check')
+        notify = env.get('PAYFAST_NOTIFY_URL', '')
+        if notify and not notify.startswith('https://'):
+            errors.append('PAYFAST_NOTIFY_URL must be an https:// URL')
+
+    if env.get('PAYPAL_CLIENT_ID'):
+        if env.get('PAYPAL_MODE', 'sandbox').strip().lower() not in ('live', 'sandbox'):
+            errors.append("PAYPAL_MODE must be exactly 'live' or 'sandbox'")
+        for name in ('PAYPAL_CLIENT_SECRET', 'PAYPAL_WEBHOOK_ID'):
+            if not env.get(name):
+                errors.append(f'{name} is required when PayPal is configured')
 
     if errors:
         raise ImproperlyConfigured('Unsafe production configuration: ' + '; '.join(errors))

@@ -1,6 +1,7 @@
 """PayFast ITN verification: signature, source IP, server-to-server postback."""
 import hashlib
 import hmac
+import ipaddress
 import logging
 import socket
 import time
@@ -12,8 +13,9 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 PAYFAST_HOSTS = ('www.payfast.co.za', 'sandbox.payfast.co.za', 'w1w.payfast.co.za', 'w2w.payfast.co.za')
-_ip_cache = {'ips': set(), 'at': 0.0}
+_ip_cache = {'ips': set(), 'at': 0.0, 'ttl': 0}
 IP_CACHE_SECONDS = 3600
+IP_RETRY_SECONDS = 60  # when DNS fails, remember that briefly instead of re-resolving 4 hosts on every ITN
 
 
 def parse_itn_body(raw_body: bytes) -> list:
@@ -21,10 +23,15 @@ def parse_itn_body(raw_body: bytes) -> list:
     return parse_qsl(raw_body.decode('utf-8', errors='replace'), keep_blank_values=True)
 
 
+def _enc(value: str) -> str:
+    # PayFast signs PHP urlencode() output: spaces -> '+', and '~' -> '%7E' (Python's quote_plus leaves '~' alone).
+    return quote_plus(value.strip()).replace('~', '%7E')
+
+
 def build_param_string(pairs, passphrase: str = '') -> str:
-    parts = [f"{k}={quote_plus(v.strip())}" for k, v in pairs if k != 'signature']
+    parts = [f"{k}={_enc(v)}" for k, v in pairs if k != 'signature']
     if passphrase:
-        parts.append(f"passphrase={quote_plus(passphrase.strip())}")
+        parts.append(f"passphrase={_enc(passphrase)}")
     return '&'.join(parts)
 
 
@@ -37,7 +44,8 @@ def verify_signature(pairs, passphrase: str) -> bool:
 
 
 def get_valid_ips() -> set:
-    if time.time() - _ip_cache['at'] > IP_CACHE_SECONDS or not _ip_cache['ips']:
+    now = time.time()
+    if now - _ip_cache['at'] > _ip_cache['ttl']:
         ips = set()
         for host in PAYFAST_HOSTS:
             try:
@@ -45,9 +53,22 @@ def get_valid_ips() -> set:
             except OSError:
                 logger.warning("Could not resolve PayFast host %s", host)
         if ips:
-            _ip_cache.update(ips=ips, at=time.time())
-        return ips
+            _ip_cache.update(ips=ips, at=now, ttl=IP_CACHE_SECONDS)
+        else:
+            # Keep serving the last known-good set; retry soon rather than on every request.
+            _ip_cache.update(at=now, ttl=IP_RETRY_SECONDS)
     return _ip_cache['ips']
+
+
+def _extra_networks():
+    """Operator-configured CIDR ranges (PAYFAST_EXTRA_ALLOWED_CIDRS, comma-separated) from PayFast's published list."""
+    nets = []
+    for raw in getattr(settings, 'PAYFAST_EXTRA_ALLOWED_CIDRS', []) or []:
+        try:
+            nets.append(ipaddress.ip_network(raw.strip(), strict=False))
+        except ValueError:
+            logger.error("Ignoring invalid PAYFAST_EXTRA_ALLOWED_CIDRS entry %r", raw)
+    return nets
 
 
 def client_ip(request) -> str:
@@ -61,7 +82,14 @@ def client_ip(request) -> str:
 def source_ip_allowed(request) -> bool:
     if getattr(settings, 'PAYFAST_SKIP_IP_CHECK', False):
         return True
-    return client_ip(request) in get_valid_ips()
+    ip = client_ip(request)
+    if ip in get_valid_ips():
+        return True
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return any(addr in net for net in _extra_networks())
 
 
 def _base_url() -> str:

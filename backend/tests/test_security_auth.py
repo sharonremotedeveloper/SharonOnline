@@ -72,8 +72,17 @@ class TestLogout:
         res = APIClient().post('/api/v1/auth/token/refresh/', {'refresh': str(refresh)}, format='json')
         assert res.status_code == 401
 
-    def test_logout_requires_auth(self):
-        assert APIClient().post('/api/v1/auth/logout/', {'refresh': 'x'}, format='json').status_code == 401
+    def test_logout_works_with_only_the_refresh_token(self, student_user):
+        """An expired access token must not make a 14-day refresh token impossible to revoke."""
+        refresh = RefreshToken.for_user(student_user)
+        assert APIClient().post('/api/v1/auth/logout/', {'refresh': str(refresh)}, format='json').status_code == 205
+        res = APIClient().post('/api/v1/auth/token/refresh/', {'refresh': str(refresh)}, format='json')
+        assert res.status_code == 401
+
+    def test_logout_rejects_garbage_and_non_string(self):
+        assert APIClient().post('/api/v1/auth/logout/', {'refresh': 'x'}, format='json').status_code == 400
+        assert APIClient().post('/api/v1/auth/logout/', {'refresh': ['x']}, format='json').status_code == 400
+        assert APIClient().post('/api/v1/auth/logout/', {}, format='json').status_code == 400
 
     def test_logout_invalid_token(self, student_user):
         client = APIClient()
