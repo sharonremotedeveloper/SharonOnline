@@ -21,6 +21,7 @@
     "src/lib/account.ts",
     "src/lib/server/upstream.ts",
     "src/lib/server/handlers.ts",
+    "src/lib/server/config.ts",
     "src/lib/*.test.ts",
     "src/lib/server/*.test.ts"
   ],

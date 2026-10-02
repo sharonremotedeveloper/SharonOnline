@@ -1,4 +1,6 @@
 from rest_framework.views import APIView
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
@@ -17,6 +19,7 @@ from apps.srs.serializers import (
     StudentProfileSerializer,
 )
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class StudentLessonsListView(APIView):
     permission_classes = [IsStudent]
 
@@ -28,6 +31,7 @@ class StudentLessonsListView(APIView):
         return Response(serializer.data)
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class StudentFlashcardsListView(APIView):
     permission_classes = [IsStudent]
 
@@ -37,6 +41,7 @@ class StudentFlashcardsListView(APIView):
         return Response(serializer.data)
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class UpdateFlashcardMasteryView(APIView):
     permission_classes = [IsStudent]
 
@@ -67,6 +72,7 @@ class UpdateFlashcardMasteryView(APIView):
         })
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class SubmitLessonReviewView(APIView):
     permission_classes = [IsStudent]
 
@@ -96,6 +102,7 @@ class SubmitLessonReviewView(APIView):
         })
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class StudentProfileView(APIView):
     permission_classes = [IsStudent]
 

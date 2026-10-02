@@ -1,4 +1,6 @@
 import json
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 import logging
 import dateutil.parser
 from django.db import transaction
@@ -17,6 +19,7 @@ from .zoom import zoom_client
 logger = logging.getLogger(__name__)
 
 
+@extend_schema(exclude=True)  # machine-to-machine webhook, not part of the client API
 class ZoomWebhookReceiverView(APIView):
     """
     Task 6.1 & 6.2: High-reliability Zoom Webhook Ingestion Receiver
@@ -243,6 +246,7 @@ class ZoomWebhookReceiverView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class PresignedUploadURLView(APIView):
     """
     POST /api/v1/integrations/storage/presigned-url/

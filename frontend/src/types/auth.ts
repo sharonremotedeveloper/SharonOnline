@@ -9,10 +9,10 @@ export interface AuthUser {
   role: UserRole;
   country: string;
   timezone: string;
-  avatar_url?: string;
+  avatar_url?: string; // Tutors: profile photo; "" otherwise
   phone_number?: string;
-  credits?: number; // Present if role === 'student'
-  is_verified?: boolean; // Present if role === 'teacher'
+  credits?: number | null; // Remaining lesson credits for students; null for other roles
+  is_verified?: boolean | null; // Tutor vetting status; null for other roles
   email_verified?: boolean; // The address has been confirmed via the e-mailed link
   created_at?: string;
 }

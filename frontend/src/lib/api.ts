@@ -573,8 +573,9 @@ export const api = {
     ];
 
     return {
-      available_credits: 5,
+      total_credits: 5,
       ledger: defaultLedger,
+      bundles: [{ pack_name: "5-Lesson Pack", remaining: 5, total: 5, purchased_at: "2026-09-20T00:00:00Z" }],
     };
   },
 

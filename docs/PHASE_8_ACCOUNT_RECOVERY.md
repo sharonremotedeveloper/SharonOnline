@@ -36,6 +36,12 @@
 
 Local dev without Redis: Celery tasks now run inline (`CELERY_TASK_ALWAYS_EAGER` when `REDIS_URL` is empty) and the mock mail, including the link, prints in the `runserver` console.
 
+## 3b. Contract + schema (Task 8.8, same branch family)
+
+- `GET /auth/me/` adds `credits`, `avatar_url`, `is_verified` (read-only, role-dependent; null/"" when not applicable).
+- `GET /payments/credits/` = `{total_credits, ledger[{id,description,credits_delta,date,type}], bundles[]}`.
+- Regenerate after any API change: `cd backend && python manage.py spectacular --file ../docs/api/openapi.yaml`, then `cd frontend && npm run gen:api`. `tests/test_api_contract.py::test_committed_schema_is_current` fails when the committed YAML is stale.
+
 ## 4. Known limits / follow-ups
 
 - Verification is **not** enforced anywhere yet (login and booking still work unverified). Decide in Phase 9/10 whether booking/payment requires it.

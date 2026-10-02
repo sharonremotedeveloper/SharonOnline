@@ -9,6 +9,8 @@ if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_USE_MOCKS =
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Next 14 needs this flag for src/instrumentation.ts (production config fail-fast, see lib/server/config.ts).
+  experimental: { instrumentationHook: true },
   // One-time reset / verification links carry their credential in the URL: never leak it through the Referer header.
   async headers() {
     const noReferrer = [{ key: 'Referrer-Policy', value: 'no-referrer' }, { key: 'Cache-Control', value: 'no-store' }];

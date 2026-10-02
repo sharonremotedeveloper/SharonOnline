@@ -1,3 +1,4 @@
+from typing import Optional
 from rest_framework import serializers
 from .models import Booking, LessonMemo
 from apps.teachers.models import TeacherProfile
@@ -25,7 +26,7 @@ class BookingStudentSerializer(serializers.Serializer):
     timezone = serializers.CharField()
     country = serializers.CharField()
 
-    def get_full_name(self, obj):
+    def get_full_name(self, obj) -> str:
         return obj.get_full_name() or obj.username
 
     def to_representation(self, instance):
@@ -73,7 +74,7 @@ class BookingDetailSerializer(serializers.ModelSerializer):
         viewer = self._viewer()
         return bool(viewer and viewer.is_authenticated and viewer == obj.teacher.user)
 
-    def get_zoom_url(self, obj):
+    def get_zoom_url(self, obj) -> str:
         viewer = self._viewer()
         if not viewer or not viewer.is_authenticated:
             return ""
@@ -82,34 +83,34 @@ class BookingDetailSerializer(serializers.ModelSerializer):
             return obj.zoom_start_url or obj.zoom_join_url
         return obj.zoom_join_url
 
-    def get_zoom_join_url(self, obj):
+    def get_zoom_join_url(self, obj) -> str:
         return obj.zoom_join_url if self._viewer() and self._viewer().is_authenticated else ""
 
-    def get_zoom_start_url(self, obj):
+    def get_zoom_start_url(self, obj) -> str:
         # The host link grants control of the meeting: ONLY the booking's own tutor ever receives it.
         return obj.zoom_start_url if self._is_host(obj) else ""
 
-    def get_booking_reference(self, obj):
+    def get_booking_reference(self, obj) -> str:
         return f"BK-{str(obj.id).split('-')[0].upper()}"
 
     def _price_usd(self, obj):
         return Decimal(str(obj.teacher.price_per_25min_usd)).quantize(Decimal('0.01'), ROUND_HALF_UP)
 
-    def get_price_usd(self, obj):
+    def get_price_usd(self, obj) -> float:
         return float(self._price_usd(obj))
 
-    def get_price_zar(self, obj):
+    def get_price_zar(self, obj) -> float:
         return float((self._price_usd(obj) * Decimal(str(settings.ZAR_PER_USD))).quantize(Decimal('0.01'), ROUND_HALF_UP))
 
-    def get_lock_expires_at(self, obj):
+    def get_lock_expires_at(self, obj) -> Optional[str]:
         if obj.status != Booking.Status.PENDING_PAYMENT:
             return None
         return (obj.created_at + timedelta(seconds=LOCK_DURATION_SECONDS)).isoformat()
 
-    def get_material_slug(self, obj):
+    def get_material_slug(self, obj) -> Optional[str]:
         return obj.material.slug if obj.material_id else None
 
-    def get_material_title(self, obj):
+    def get_material_title(self, obj) -> Optional[str]:
         return obj.material.title if obj.material_id else None
 
     def _viewer_tz(self):
@@ -120,16 +121,16 @@ class BookingDetailSerializer(serializers.ModelSerializer):
         except (ZoneInfoNotFoundError, ValueError, OSError):
             return ZoneInfo('UTC')
 
-    def get_viewer_timezone(self, obj):
+    def get_viewer_timezone(self, obj) -> str:
         return self._viewer_tz().key
 
-    def get_local_date(self, obj):
+    def get_local_date(self, obj) -> str:
         return obj.start_time_utc.astimezone(self._viewer_tz()).strftime("%Y-%m-%d")
 
-    def get_local_start_time(self, obj):
+    def get_local_start_time(self, obj) -> str:
         return obj.start_time_utc.astimezone(self._viewer_tz()).strftime("%H:%M")
 
-    def get_local_end_time(self, obj):
+    def get_local_end_time(self, obj) -> str:
         return obj.end_time_utc.astimezone(self._viewer_tz()).strftime("%H:%M")
 
 class ReserveSlotRequestSerializer(serializers.Serializer):
