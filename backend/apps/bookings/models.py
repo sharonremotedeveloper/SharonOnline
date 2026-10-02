@@ -22,6 +22,8 @@ class Booking(models.Model):
     material = models.ForeignKey('materials.Material', on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
 
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.PENDING_PAYMENT, db_index=True)
+    # Unique ownership token for atomic Redis compare-and-release/renew operations.
+    slot_lock_token = models.CharField(max_length=64, blank=True, editable=False)
 
     # All booking times are stored strictly in UTC
     start_time_utc = models.DateTimeField(db_index=True)

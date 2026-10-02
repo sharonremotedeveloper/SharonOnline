@@ -6,9 +6,9 @@ from rest_framework import status
 from django.db import transaction
 from django.utils import timezone
 from django.db.models import Sum, Count, Q
+from django.conf import settings
 from datetime import timedelta
 from decimal import Decimal
-import uuid
 
 from apps.users.permissions import IsPlatformAdmin
 from apps.teachers.models import TeacherProfile
@@ -17,7 +17,7 @@ from apps.bookings.services.state_machine import InvalidTransition, transition_b
 from apps.payments.models import PaymentTransaction
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.settlement import successful_transaction
-from apps.admin_api.models import DisputeCase, PayoutBatch
+from apps.admin_api.models import DisputeCase
 from apps.users.models import User
 from apps.admin_api.serializers import (
     AdminTelemetrySerializer,
@@ -41,17 +41,18 @@ class AdminTelemetryView(APIView):
 
         gmv_today = PaymentTransaction.objects.filter(
             status=PaymentTransaction.Status.SUCCESS,
+            currency='USD',
             created_at__gte=today_start
         ).aggregate(total=Sum('amount'))['total'] or 0.0
 
         gmv_month = PaymentTransaction.objects.filter(
             status=PaymentTransaction.Status.SUCCESS,
+            currency='USD',
             created_at__gte=month_start
         ).aggregate(total=Sum('amount'))['total'] or 0.0
 
-        # Include default base volume for realism if DB is newly initialized
-        gmv_today = max(float(gmv_today), 1240.0)
-        gmv_month = max(float(gmv_month), 34850.0)
+        gmv_today = float(gmv_today)
+        gmv_month = float(gmv_month)
 
         # Active Zoom sessions (within +/- 30 minutes of now)
         active_zoom = Booking.objects.filter(
@@ -59,7 +60,6 @@ class AdminTelemetryView(APIView):
             start_time_utc__lte=now + timedelta(minutes=15),
             end_time_utc__gte=now - timedelta(minutes=30)
         ).count()
-        active_zoom_count = max(active_zoom, 3)
 
         open_disputes = DisputeCase.objects.filter(status=DisputeCase.Status.OPEN).count()
         pending_vetting = TeacherProfile.objects.filter(is_verified=False).count()
@@ -77,14 +77,10 @@ class AdminTelemetryView(APIView):
         actual_escrow_zar = float(max(cr_zar - dr_zar, Decimal('0.00')))
         if actual_escrow_zar > 0:
             escrow_zar = round(actual_escrow_zar, 2)
-            escrow_usd = round(actual_escrow_zar / 18.75, 2)
+            escrow_usd = round(actual_escrow_zar / Decimal(str(settings.ZAR_PER_USD)), 2)
         else:
-            escrow_holding_bookings = Booking.objects.filter(
-                status__in=[Booking.Status.CONFIRMED, Booking.Status.COMPLETED],
-                created_at__gte=now - timedelta(hours=24)
-            ).count()
-            escrow_usd = max(escrow_holding_bookings * 8.0, 4890.0)
-            escrow_zar = round(escrow_usd * 18.75, 2)
+            escrow_usd = 0.0
+            escrow_zar = 0.0
 
         total_students = User.objects.filter(role=User.Role.STUDENT).count()
         total_teachers = TeacherProfile.objects.count()
@@ -92,13 +88,13 @@ class AdminTelemetryView(APIView):
         data = {
             'gmv_today_usd': gmv_today,
             'gmv_month_usd': gmv_month,
-            'active_zoom_sessions_count': active_zoom_count,
-            'open_disputes_count': max(open_disputes, 2),
-            'pending_vetting_count': max(pending_vetting, 3),
+            'active_zoom_sessions_count': active_zoom,
+            'open_disputes_count': open_disputes,
+            'pending_vetting_count': pending_vetting,
             'escrow_liability_usd': escrow_usd,
             'escrow_liability_zar': escrow_zar,
-            'total_students_count': max(total_students, 1420),
-            'total_teachers_count': max(total_teachers, 48),
+            'total_students_count': total_students,
+            'total_teachers_count': total_teachers,
         }
         return Response(data)
 
@@ -319,81 +315,44 @@ class PayoutBatchView(APIView):
     permission_classes = [IsPlatformAdmin]
 
     def get(self, request):
-        teachers = TeacherProfile.objects.filter(is_verified=True).select_related('user')[:5]
+        from apps.payments.models import LedgerAccount, LedgerEntry
+
         items = []
-        banks = [
-            ("Capitec Bank", "•••• •••• 7890", "470010"),
-            ("First National Bank (FNB)", "•••• •••• 1142", "250655"),
-            ("Standard Bank", "•••• •••• 9923", "051001"),
-            ("Nedbank", "•••• •••• 4410", "198765"),
-            ("Absa Bank", "•••• •••• 5521", "632005")
-        ]
-
-        if not teachers.exists():
-            return Response([
-                {
-                    'id': "pay-1",
-                    'teacher_id': "tut-1",
-                    'teacher_name': "Sharon M.",
-                    'bank_name': "Capitec Bank",
-                    'account_number_masked': "•••• •••• 7890",
-                    'branch_code': "470010",
-                    'cleared_lessons_count': 20,
-                    'payout_amount_zar': 2400.0,
-                    'status': 'pending'
-                }
-            ])
-
-        for idx, t in enumerate(teachers):
-            bank_info = banks[idx % len(banks)]
-            completed_count = t.bookings.filter(status=Booking.Status.COMPLETED).count()
-            cleared_lessons = max(completed_count, 12 + idx * 2)
-            payout_zar = round(cleared_lessons * 120.0, 2)
-
+        teachers = TeacherProfile.objects.filter(is_verified=True).select_related('user')
+        for t in teachers:
+            totals = LedgerEntry.objects.filter(
+                user=t.user, account=LedgerAccount.LIABILITY_TUTOR_PAYABLE
+            ).aggregate(
+                credits=Sum('amount_zar', filter=Q(entry_type=LedgerEntry.EntryType.CREDIT)),
+                debits=Sum('amount_zar', filter=Q(entry_type=LedgerEntry.EntryType.DEBIT)),
+                lessons=Count('booking', distinct=True, filter=Q(event_type=LedgerEntry.EventType.ESCROW_CLEARED)),
+            )
+            payable = (totals['credits'] or Decimal('0.00')) - (totals['debits'] or Decimal('0.00'))
+            if payable <= 0:
+                continue
             items.append({
-                'id': f"pay-{idx + 1}",
+                'id': f"pay-{t.id}",
                 'teacher_id': str(t.id),
                 'teacher_name': t.user.get_full_name() or t.user.username,
-                'bank_name': bank_info[0],
-                'account_number_masked': bank_info[1],
-                'branch_code': bank_info[2],
-                'cleared_lessons_count': cleared_lessons,
-                'payout_amount_zar': payout_zar,
+                'bank_name': 'Not configured',
+                'account_number_masked': '',
+                'branch_code': '',
+                'cleared_lessons_count': totals['lessons'] or 0,
+                'payout_amount_zar': float(payable),
                 'status': 'pending'
             })
 
         return Response(items)
 
 
-@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class ExecutePayoutBatchView(APIView):
     permission_classes = [IsPlatformAdmin]
 
+    @extend_schema(request=OpenApiTypes.OBJECT, responses={503: OpenApiTypes.OBJECT})
     def post(self, request):
-        batch_ref = f"ACB-BATCH-{uuid.uuid4().hex[:6].upper()}"
-        batch = PayoutBatch.objects.create(
-            batch_reference=batch_ref,
-            total_payout_zar=5520.0,
-            recipients_count=3,
-            status=PayoutBatch.Status.PROCESSED,
-            executed_by=request.user,
-            executed_at=timezone.now()
-        )
-
-        # Record double-entry journal entry for EFT batch payout disbursement
-        from apps.payments.services.ledger_service import record_payout_batch_entry
-        record_payout_batch_entry(
-            payout_batch=batch,
-            amount_zar=batch.total_payout_zar,
-            user=request.user
-        )
-
         return Response({
-            'success': True,
-            'batch_id': batch.batch_reference,
-            'total_payout_zar': float(batch.total_payout_zar),
-            'recipients_count': batch.recipients_count,
-            'status': 'processed',
-            'message': "South African ACB EFT batch executed. Bank transaction files generated."
-        })
+            'success': False,
+            'code': 'payout_execution_disabled',
+            'message': 'Payout execution is disabled until an approved banking rail and maker-checker workflow exist.'
+        }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 

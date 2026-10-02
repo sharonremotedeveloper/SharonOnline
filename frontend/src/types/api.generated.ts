@@ -1419,7 +1419,7 @@ export interface operations {
             };
         };
         responses: {
-            200: {
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
