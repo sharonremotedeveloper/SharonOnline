@@ -1,3 +1,11 @@
+// Mock/fixture mode is a local-development convenience. A production build (or `next start`) with it enabled would
+// ship fabricated data and fake logins to real users, so refuse outright.
+if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_USE_MOCKS === 'true') {
+  throw new Error(
+    'NEXT_PUBLIC_USE_MOCKS=true is not allowed in a production build. Unset it (it only exists for `npm run dev`).'
+  );
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,

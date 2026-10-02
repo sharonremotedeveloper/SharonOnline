@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Mail, ArrowRight, UserCheck, Shield, Sparkles } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { UserRole } from "@/types/auth";
+import { USE_MOCKS } from "@/lib/http";
 
 function LoginForm() {
   const router = useRouter();
@@ -20,7 +21,8 @@ function LoginForm() {
   const [error, setError] = useState("");
 
   const handleLoginSuccess = (role: UserRole) => {
-    if (nextUrl) {
+    // Only follow same-site relative paths ("/x"); "//evil.com", "/\evil.com" and absolute URLs would be an open redirect.
+    if (nextUrl && /^\/(?![/\\])/.test(nextUrl)) {
       router.push(nextUrl);
       return;
     }
@@ -134,7 +136,8 @@ function LoginForm() {
         </div>
       </form>
 
-      {/* Demo Quick Logins for Dry-runs and Testing */}
+      {/* Demo quick-logins exist ONLY in explicit mock mode (NEXT_PUBLIC_USE_MOCKS=true, never in production builds) */}
+      {USE_MOCKS && (
       <div className="pt-4 border-t border-divider space-y-3">
         <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider text-center">
           1-Click Demo Sandbox Profiles
@@ -172,6 +175,7 @@ function LoginForm() {
           </button>
         </div>
       </div>
+      )}
 
       <div className="pt-2 text-center text-xs text-ink-muted">
         Don't have an account?{" "}

@@ -2,14 +2,14 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { AuthTokens, AuthUser, RegisterPayload, UserRole } from "@/types/auth";
-import {
-  clearAuthSession,
-  getStoredTokens,
-  parseJwtPayload,
-  saveAuthSession,
-} from "@/lib/auth";
+import { clearAuthSession, getStoredTokens, saveAuthSession, updateStoredTokens } from "@/lib/auth";
+import { API_BASE, ApiError, USE_MOCKS, errorMessage, request } from "@/lib/http";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+interface AuthResult {
+  success: boolean;
+  error?: string;
+  fieldErrors?: Record<string, string[]>;
+}
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -17,120 +17,69 @@ interface AuthContextType {
   tokens: AuthTokens | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: { username: string; password: string }) => Promise<{ success: boolean; role: UserRole; error?: string }>;
-  register: (payload: RegisterPayload) => Promise<{ success: boolean; error?: string }>;
+  /** Set when a stored session exists but the backend could not be reached to verify it. */
+  sessionError: string | null;
+  login: (credentials: { username: string; password: string }) => Promise<AuthResult & { role: UserRole }>;
+  register: (payload: RegisterPayload) => Promise<AuthResult>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Staging Mock Users for seamless verification & dry-runs
-const MOCK_USERS: Record<string, { user: AuthUser; pass: string }> = {
-  admin: {
-    pass: "password123",
-    user: {
-      id: "usr-admin-01",
-      username: "admin",
-      email: "admin@sharonesl.com",
-      first_name: "Sharon",
-      last_name: "Admin",
-      role: "admin",
-      country: "ZA",
-      timezone: "Africa/Johannesburg",
-      avatar_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80",
-    },
-  },
-  student_aiko: {
-    pass: "password123",
-    user: {
-      id: "usr-student-01",
-      username: "student_aiko",
-      email: "aiko.tanaka@tokyo-corp.jp",
-      first_name: "Aiko",
-      last_name: "Tanaka",
-      role: "student",
-      country: "JP",
-      timezone: "Asia/Tokyo",
-      credits: 6,
-      avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
-    },
-  },
-  teacher_sharon: {
-    pass: "password123",
-    user: {
-      id: "usr-teacher-01",
-      username: "teacher_sharon",
-      email: "sharon.tutor@sharonesl.com",
-      first_name: "Sharon",
-      last_name: "M.",
-      role: "teacher",
-      country: "ZA",
-      timezone: "Africa/Johannesburg",
-      is_verified: true,
-      avatar_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80",
-    },
-  },
-};
+function loginErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 401 || err.status === 400) return "Invalid username or password.";
+    if (err.status === 429) return "Too many attempts. Please wait a minute and try again.";
+  }
+  return errorMessage(err, "Sign-in failed. Please try again.");
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [tokens, setTokens] = useState<AuthTokens | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   const hydrateSession = useCallback(async () => {
     setIsLoading(true);
+    setSessionError(null);
     try {
-      const storedTokens = getStoredTokens();
-      if (!storedTokens) {
+      const stored = getStoredTokens();
+      if (!stored) {
         setUser(null);
         setTokens(null);
-        setIsLoading(false);
         return;
       }
 
-      setTokens(storedTokens);
+      // Mock-mode sessions have no backend to verify against.
+      if (USE_MOCKS && stored.access.startsWith("mock_")) {
+        const cached = localStorage.getItem("user_profile");
+        setTokens(stored);
+        setUser(cached ? JSON.parse(cached) : null);
+        return;
+      }
 
-      // Verify token with backend or fallback to cached profile / decoded payload
       try {
-        const res = await fetch(`${API_BASE}/auth/me/`, {
-          headers: {
-            Authorization: `Bearer ${storedTokens.access}`,
-          },
-        });
-
-        if (res.ok) {
-          const userData = await res.json();
-          setUser(userData);
-          saveAuthSession(storedTokens, userData);
-          setIsLoading(false);
-          return;
-        }
+        // `request` refreshes an expired access token itself; the stored tokens may have changed by the time it returns.
+        const profile = await request<AuthUser>("/auth/me/");
+        const current = getStoredTokens() || stored;
+        setTokens(current);
+        setUser(profile);
+        saveAuthSession(current, profile);
       } catch (err) {
-        // Backend offline, fallback to localStorage/decoded token
-      }
-
-      const cachedProfile = localStorage.getItem("user_profile");
-      if (cachedProfile) {
-        setUser(JSON.parse(cachedProfile));
-      } else {
-        const payload = parseJwtPayload(storedTokens.access);
-        if (payload) {
-          const fallbackUser: AuthUser = {
-            id: payload.user_id || "usr-cached",
-            username: payload.username || "User",
-            email: payload.email || "",
-            first_name: payload.first_name || "",
-            last_name: payload.last_name || "",
-            role: (payload.role as UserRole) || "student",
-            country: payload.country || "JP",
-            timezone: payload.timezone || "Asia/Tokyo",
-          };
-          setUser(fallbackUser);
+        if (err instanceof ApiError && err.isNetworkError) {
+          // Backend unreachable: do NOT wipe the session and do NOT trust a cached/decoded profile.
+          setTokens(stored);
+          setUser(null);
+          setSessionError(errorMessage(err));
+        } else {
+          // 401 after a failed refresh, 403, etc.: the session is genuinely invalid.
+          clearAuthSession();
+          setUser(null);
+          setTokens(null);
         }
       }
-    } catch (e) {
-      console.error("Failed to hydrate auth session:", e);
     } finally {
       setIsLoading(false);
     }
@@ -140,129 +89,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     hydrateSession();
   }, [hydrateSession]);
 
-  const login = async ({ username, password }: { username: string; password: string }) => {
+  const login: AuthContextType["login"] = async ({ username, password }) => {
     setIsLoading(true);
-
-    // 1. Try real Django REST API endpoint
     try {
-      const res = await fetch(`${API_BASE}/auth/token/`, {
+      const data = await request<AuthTokens>("/auth/token/", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
+        skipAuth: true,
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        const access = data.access;
-        const refresh = data.refresh;
-        const newTokens: AuthTokens = { access, refresh };
-
-        // Fetch user profile
-        let userProfile: AuthUser;
-        const meRes = await fetch(`${API_BASE}/auth/me/`, {
-          headers: { Authorization: `Bearer ${access}` },
-        });
-
-        if (meRes.ok) {
-          userProfile = await meRes.json();
-        } else {
-          const claims = parseJwtPayload(access);
-          userProfile = {
-            id: claims.user_id || `usr-${username}`,
-            username: claims.username || username,
-            email: claims.email || `${username}@example.com`,
-            first_name: claims.first_name || username,
-            last_name: claims.last_name || "",
-            role: (claims.role as UserRole) || "student",
-            country: claims.country || "JP",
-            timezone: claims.timezone || "Asia/Tokyo",
-          };
-        }
-
-        saveAuthSession(newTokens, userProfile);
-        setTokens(newTokens);
-        setUser(userProfile);
-        setIsLoading(false);
-        return { success: true, role: userProfile.role };
-      }
+      const newTokens: AuthTokens = { access: data.access, refresh: data.refresh };
+      updateStoredTokens(newTokens); // so the next call carries the new access token
+      const profile = await request<AuthUser>("/auth/me/");
+      saveAuthSession(newTokens, profile);
+      setTokens(newTokens);
+      setUser(profile);
+      setSessionError(null);
+      return { success: true, role: profile.role };
     } catch (err) {
-      // Backend unavailable, fallback to built-in staging credentials
-    }
-
-    // 2. Check built-in mock accounts
-    const mock = MOCK_USERS[username];
-    if (mock && (mock.pass === password || password === "password123")) {
-      const mockTokens: AuthTokens = {
-        access: `mock_jwt_access_${mock.user.role}_${Date.now()}`,
-        refresh: `mock_jwt_refresh_${mock.user.role}_${Date.now()}`,
-      };
-      saveAuthSession(mockTokens, mock.user);
-      setTokens(mockTokens);
-      setUser(mock.user);
+      clearAuthSession();
+      if (USE_MOCKS && err instanceof ApiError && (err.isNetworkError || err.status === 401)) {
+        const { mockLogin } = await import("@/lib/mockAuth");
+        const mock = mockLogin(username, password);
+        if (mock) {
+          saveAuthSession(mock.tokens, mock.user);
+          setTokens(mock.tokens);
+          setUser(mock.user);
+          return { success: true, role: mock.user.role };
+        }
+      }
+      return { success: false, role: "student" as UserRole, error: loginErrorMessage(err) };
+    } finally {
       setIsLoading(false);
-      return { success: true, role: mock.user.role };
     }
-
-    setIsLoading(false);
-    return { success: false, role: "student" as UserRole, error: "Invalid username or password" };
   };
 
-  const register = async (payload: RegisterPayload) => {
+  const register: AuthContextType["register"] = async (payload) => {
     setIsLoading(true);
-
     try {
-      const res = await fetch(`${API_BASE}/auth/register/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        setIsLoading(false);
-        return { success: true };
-      } else {
-        const errData = await res.json();
-        setIsLoading(false);
-        const errorMsg = typeof errData === "object" ? Object.values(errData).flat().join(" ") : "Registration failed";
-        return { success: false, error: errorMsg };
-      }
-    } catch (err) {
-      // Offline fallback: simulate successful registration
-      const newUser: AuthUser = {
-        id: `usr-${Date.now()}`,
-        username: payload.username,
-        email: payload.email,
-        first_name: payload.first_name,
-        last_name: payload.last_name,
-        role: payload.role,
-        country: payload.country,
-        timezone: payload.timezone,
-        credits: payload.role === "student" ? 1 : undefined,
-        is_verified: payload.role === "teacher" ? false : undefined,
-      };
-
-      const mockTokens: AuthTokens = {
-        access: `mock_jwt_access_${payload.role}_${Date.now()}`,
-        refresh: `mock_jwt_refresh_${payload.role}_${Date.now()}`,
-      };
-
-      saveAuthSession(mockTokens, newUser);
-      setTokens(mockTokens);
-      setUser(newUser);
-      setIsLoading(false);
+      await request("/auth/register/", { method: "POST", body: JSON.stringify(payload), skipAuth: true });
       return { success: true };
+    } catch (err) {
+      // No offline "pretend it worked" path: a failed signup must look like a failed signup.
+      const fieldErrors = err instanceof ApiError ? err.fieldErrors : undefined;
+      return { success: false, error: errorMessage(err, "Registration failed."), fieldErrors };
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const logout = () => {
-    // Revoke the refresh token server-side (7.7). keepalive lets the request outlive the redirect below;
-    // local session is always cleared even if the network call fails, so the user is never stuck logged in.
-    if (tokens?.access && tokens?.refresh && !tokens.access.startsWith("mock")) {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-      void fetch(`${apiBase}/auth/logout/`, {
+    // Revoke the refresh token server-side. The endpoint is authenticated by the refresh token itself, so this works
+    // even when the access token has expired. keepalive lets it outlive the redirect below.
+    const current = tokens || getStoredTokens();
+    if (current?.refresh && !current.refresh.startsWith("mock_")) {
+      void fetch(`${API_BASE}/auth/logout/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tokens.access}` },
-        body: JSON.stringify({ refresh: tokens.refresh }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh: current.refresh }),
         keepalive: true,
       }).catch((err) => console.warn("Server-side logout failed; refresh token remains valid until expiry", err));
     }
@@ -274,20 +157,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const refreshUser = async () => {
-    await hydrateSession();
-  };
-
   const value: AuthContextType = {
     user,
     role: user?.role || null,
     tokens,
     isAuthenticated: !!user,
     isLoading,
+    sessionError,
     login,
     register,
     logout,
-    refreshUser,
+    refreshUser: hydrateSession,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

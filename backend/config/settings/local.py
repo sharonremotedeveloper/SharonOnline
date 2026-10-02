@@ -22,9 +22,11 @@ else:
     }
 
 # Celery & Redis
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-CELERY_BROKER_URL = REDIS_URL
-CELERY_RESULT_BACKEND = REDIS_URL
+# Empty by default so plain `runserver` works with SQLite + an in-process cache and no Redis (every request touches
+# the cache for throttling). Docker compose / a real Redis opts in by setting REDIS_URL explicitly.
+REDIS_URL = os.environ.get('REDIS_URL', '')
+CELERY_BROKER_URL = REDIS_URL or 'memory://'
+CELERY_RESULT_BACKEND = REDIS_URL or 'cache+memory://'
 
 # Caching Configuration
 CACHES = {

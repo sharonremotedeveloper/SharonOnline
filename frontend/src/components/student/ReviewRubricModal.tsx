@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Star, ShieldCheck, CheckCircle2, X, Send, Sparkles } from "lucide-react";
 import { submitLessonReview } from "@/lib/api";
+import { InlineError } from "@/components/ui/ErrorState";
 
 interface ReviewRubricModalProps {
   bookingId: string;
@@ -39,6 +40,7 @@ export function ReviewRubricModal({
   const [privateNotes, setPrivateNotes] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<unknown>(null);
 
   if (!isOpen) return null;
 
@@ -51,6 +53,7 @@ export function ReviewRubricModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       await submitLessonReview(bookingId, rating, selectedTags, privateNotes);
       setIsSuccess(true);
@@ -63,6 +66,7 @@ export function ReviewRubricModal({
       }, 1500);
     } catch (err) {
       console.error("Failed to submit review:", err);
+      setSubmitError(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -185,6 +189,8 @@ export function ReviewRubricModal({
                 </span>
               </div>
             </div>
+
+            <InlineError error={submitError} />
 
             {/* Submit Action */}
             <div className="flex items-center justify-end gap-3 pt-2">

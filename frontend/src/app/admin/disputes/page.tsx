@@ -16,33 +16,54 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { DisputeCase } from "@/types/admin";
+import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 
 export default function AdminDisputesPage() {
+  type ResolveAction = "full_refund_student" | "release_tutor" | "split_50_50";
+  const ACTION_LABELS: Record<ResolveAction, string> = {
+    full_refund_student: "100% refund to the student",
+    split_50_50: "a 50/50 goodwill split",
+    release_tutor: "release 100% to the tutor",
+  };
+
   const [disputes, setDisputes] = useState<DisputeCase[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [reloadTick, setReloadTick] = useState(0);
   const [resolvingId, setResolvingId] = useState<string | null>(null);
   const [successNote, setSuccessNote] = useState<string | null>(null);
+  const [resolveError, setResolveError] = useState<{ caseId: string; error: unknown } | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{ caseId: string; action: ResolveAction } | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     async function loadDisputes() {
+      setLoading(true);
+      setLoadError(null);
       try {
         const list = await api.getDisputes();
-        setDisputes(list);
+        if (!cancelled) setDisputes(list);
       } catch (e) {
         console.error("Failed to load disputes:", e);
+        if (!cancelled) {
+          setDisputes([]);
+          setLoadError(e);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     loadDisputes();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadTick]);
 
-  const handleResolve = async (
-    caseId: string,
-    action: "full_refund_student" | "release_tutor" | "split_50_50"
-  ) => {
+  // Money action: runs only after the admin explicitly confirmed; local state changes only after the server accepted it.
+  const handleResolve = async (caseId: string, action: ResolveAction) => {
     setResolvingId(caseId);
     setSuccessNote(null);
+    setResolveError(null);
     try {
       await api.resolveDispute(caseId, action);
       setSuccessNote(
@@ -51,8 +72,10 @@ export default function AdminDisputesPage() {
       setDisputes((prev) =>
         prev.map((d) => (d.id === caseId ? { ...d, status: "resolved", resolution: action } : d))
       );
+      setPendingConfirm(null);
     } catch (e) {
       console.error("Failed to resolve dispute:", e);
+      setResolveError({ caseId, error: e });
     } finally {
       setResolvingId(null);
     }
@@ -63,6 +86,18 @@ export default function AdminDisputesPage() {
       <div className="py-20 text-center space-y-4">
         <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm font-bold text-ink-muted">Loading frozen escrow arbitration tribunal...</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="py-20">
+        <ErrorState
+          error={loadError}
+          title="We couldn't load the dispute tribunal"
+          onRetry={() => setReloadTick((t) => t + 1)}
+        />
       </div>
     );
   }
@@ -102,6 +137,11 @@ export default function AdminDisputesPage() {
       )}
 
       {/* Disputes List */}
+      {disputes.length === 0 && (
+        <div className="bg-white rounded-3xl p-10 border border-divider shadow-card text-center text-sm text-ink-muted">
+          No disputes to review.
+        </div>
+      )}
       <div className="space-y-6">
         {disputes.map((c) => {
           const isResolved = c.status === "resolved";
@@ -202,17 +242,41 @@ export default function AdminDisputesPage() {
               </div>
 
               {/* Adjudication Decision Bar */}
+              {resolveError?.caseId === c.id && <InlineError error={resolveError.error} />}
               {!isResolved && (
                 <div className="pt-4 border-t border-divider flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="text-xs text-ink-muted">
                     Executing an adjudication decision atomically credits/debits the double-entry escrow ledger.
                   </div>
 
+                  {pendingConfirm?.caseId === c.id ? (
+                    <div className="flex flex-wrap items-center gap-2 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
+                      <span className="text-xs font-bold text-rose-900">
+                        Confirm {ACTION_LABELS[pendingConfirm.action]} for {c.booking_ref}? This moves money and cannot be undone.
+                      </span>
+                      <button
+                        type="button"
+                        disabled={resolvingId === c.id}
+                        onClick={() => handleResolve(c.id, pendingConfirm.action)}
+                        className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 disabled:opacity-50"
+                      >
+                        {resolvingId === c.id ? "Executing..." : "Confirm & execute"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={resolvingId === c.id}
+                        onClick={() => setPendingConfirm(null)}
+                        className="px-3 py-1.5 rounded-lg bg-white border border-divider text-xs font-bold text-ink disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      disabled={resolvingId === c.id}
-                      onClick={() => handleResolve(c.id, "full_refund_student")}
+                      disabled={resolvingId === c.id || pendingConfirm?.caseId === c.id}
+                      onClick={() => setPendingConfirm({ caseId: c.id, action: "full_refund_student" })}
                       className="px-4 py-2 rounded-xl bg-teal text-white text-xs font-bold hover:bg-teal-hover transition-colors shadow-xs"
                     >
                       100% Refund to Student
@@ -220,8 +284,8 @@ export default function AdminDisputesPage() {
 
                     <button
                       type="button"
-                      disabled={resolvingId === c.id}
-                      onClick={() => handleResolve(c.id, "split_50_50")}
+                      disabled={resolvingId === c.id || pendingConfirm?.caseId === c.id}
+                      onClick={() => setPendingConfirm({ caseId: c.id, action: "split_50_50" })}
                       className="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-colors shadow-xs"
                     >
                       Split 50/50 Goodwill
@@ -229,13 +293,14 @@ export default function AdminDisputesPage() {
 
                     <button
                       type="button"
-                      disabled={resolvingId === c.id}
-                      onClick={() => handleResolve(c.id, "release_tutor")}
+                      disabled={resolvingId === c.id || pendingConfirm?.caseId === c.id}
+                      onClick={() => setPendingConfirm({ caseId: c.id, action: "release_tutor" })}
                       className="px-4 py-2 rounded-xl bg-ink text-white text-xs font-bold hover:bg-black transition-colors shadow-xs"
                     >
                       Release 100% to Tutor
                     </button>
                   </div>
+                  )}
                 </div>
               )}
             </div>

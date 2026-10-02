@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import {
   Calendar,
@@ -11,51 +11,58 @@ import {
   ArrowRight,
   Send,
   Zap,
-  ShieldCheck,
   Star,
-  Users,
   Award,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { EskomStatus, TeacherWalletData } from "@/types/teacher";
+import { request } from "@/lib/http";
+import { BookingDetail } from "@/types/booking";
 import { EskomStageBanner } from "@/components/teacher/EskomStageBanner";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { useApiData } from "@/hooks/useApiData";
+
+async function loadTeacherBookings(): Promise<{ items: BookingDetail[]; truncated: boolean }> {
+  const res = await request<BookingDetail[] | { results: BookingDetail[]; next?: string | null }>("/bookings/");
+  if (Array.isArray(res)) return { items: res, truncated: false };
+  return { items: res.results ?? [], truncated: Boolean(res.next) };
+}
 
 export default function TeacherDashboardPage() {
-  const [eskomStatus, setEskomStatus] = useState<EskomStatus | null>(null);
-  const [wallet, setWallet] = useState<TeacherWalletData | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Each data source loads independently so one failing source never blanks the others.
+  const eskom = useApiData(() => api.getEskomStatus(), []);
+  const walletQ = useApiData(() => api.getTeacherWallet(), []);
+  const bookingsQ = useApiData(loadTeacherBookings, []);
+  const eskomStatus = eskom.data;
+  const wallet = walletQ.data;
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [eskom, w] = await Promise.all([api.getEskomStatus(), api.getTeacherWallet()]);
-        setEskomStatus(eskom);
-        setWallet(w);
-      } catch (e) {
-        console.error("Failed to load tutor dashboard:", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, []);
+  const { upcomingLesson, pendingMemos, todayLessons, completedThisMonth } = useMemo(() => {
+    const items = bookingsQ.data?.items ?? [];
+    const now = Date.now();
+    const upcoming = items
+      .filter(
+        (b) => (b.status === "confirmed" || b.status === "in_progress") && new Date(b.end_time_utc).getTime() > now
+      )
+      .sort((x, y) => new Date(x.start_time_utc).getTime() - new Date(y.start_time_utc).getTime());
+    const todayStr = new Date().toDateString();
+    const monthNow = new Date();
+    return {
+      upcomingLesson: upcoming[0] ?? null,
+      pendingMemos: items.filter((b) => (b.status as string) === "completed_pending_memo"),
+      todayLessons: upcoming.filter((b) => new Date(b.start_time_utc).toDateString() === todayStr),
+      completedThisMonth: items.filter((b) => {
+        const d = new Date(b.start_time_utc);
+        return (
+          (b.status === "completed" || (b.status as string) === "completed_pending_memo") &&
+          d.getMonth() === monthNow.getMonth() &&
+          d.getFullYear() === monthNow.getFullYear()
+        );
+      }).length,
+    };
+  }, [bookingsQ.data]);
 
-  const upcomingLesson = {
-    bookingId: "BK-884192",
-    studentName: "Aiko Tanaka",
-    studentCountry: "🇯🇵 Japan (Tokyo)",
-    scheduledTime: "Today · 15:00 - 15:25 SAST (22:00 JST)",
-    material: "Global Remote Work & Digital Nomads",
-    materialCefr: "B2",
-    targetFocus: "Conversational fluency & STAR interview phrasing",
-  };
-
-  const pendingMemo = {
-    bookingId: "BK-884185",
-    studentName: "Marco Rossi",
-    lessonTitle: "Mastering Cross-Cultural Negotiations",
-    completedTime: "Today · 14:00 SAST",
-  };
+  const pendingMemo = pendingMemos[0] ?? null;
+  const fmtWhen = (b: BookingDetail) =>
+    `${b.local_date} · ${b.local_start_time} - ${b.local_end_time} (${b.viewer_timezone})`;
 
   return (
     <div className="min-h-screen bg-cream py-8 sm:py-12">
@@ -97,13 +104,23 @@ export default function TeacherDashboardPage() {
               className="px-4 py-2.5 bg-teal hover:bg-teal-hover text-white text-xs font-black rounded-xl shadow-sm flex items-center gap-1.5 transition-colors"
             >
               <DollarSign className="w-3.5 h-3.5" />
-              <span>Wallet: R{wallet ? wallet.cleared_balance_zar.toFixed(0) : "2,400"} ZAR</span>
+              <span>{wallet ? `Wallet: R${wallet.cleared_balance_zar.toFixed(0)} ZAR` : "Wallet"}</span>
             </Link>
           </div>
         </div>
 
         {/* Eskom Stage Banner */}
-        {eskomStatus && <EskomStageBanner status={eskomStatus} />}
+        {eskom.loading ? (
+          <div className="h-16 rounded-2xl bg-white border border-divider animate-pulse" />
+        ) : eskom.error ? (
+          <ErrorState error={eskom.error} title="Eskom Power Guard status isn't available" onRetry={eskom.reload} />
+        ) : (
+          eskomStatus && <EskomStageBanner status={eskomStatus} />
+        )}
+
+        {bookingsQ.error != null && (
+          <ErrorState error={bookingsQ.error} title="We couldn't load your lessons" onRetry={bookingsQ.reload} />
+        )}
 
         {/* Pending Memo Action Alert */}
         {pendingMemo && (
@@ -113,16 +130,18 @@ export default function TeacherDashboardPage() {
                 <Send className="w-5 h-5" />
               </div>
               <div className="space-y-0.5">
-                <div className="text-xs font-bold text-plum">1 Pending Post-Lesson Memo</div>
-                <div className="text-sm font-black text-ink">
-                  {pendingMemo.studentName} — {pendingMemo.lessonTitle}
+                <div className="text-xs font-bold text-plum">
+                  {pendingMemos.length} Pending Post-Lesson Memo{pendingMemos.length === 1 ? "" : "s"}
                 </div>
-                <div className="text-[11px] text-ink-muted">Completed {pendingMemo.completedTime}</div>
+                <div className="text-sm font-black text-ink">
+                  {pendingMemo.student.full_name} — {pendingMemo.material_title || "Lesson"}
+                </div>
+                <div className="text-[11px] text-ink-muted">Lesson on {fmtWhen(pendingMemo)}</div>
               </div>
             </div>
 
             <Link
-              href={`/teacher/bookings/${pendingMemo.bookingId}/memo`}
+              href={`/teacher/bookings/${pendingMemo.id}/memo`}
               className="px-5 py-2.5 bg-plum hover:bg-purple-900 text-white text-xs font-black rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all shrink-0"
             >
               <span>Compose Memo</span>
@@ -132,72 +151,109 @@ export default function TeacherDashboardPage() {
         )}
 
         {/* Next Class Hero Card */}
-        <div className="bg-gradient-to-br from-[#0B3530] via-teal to-[#082622] text-white rounded-3xl p-6 sm:p-10 shadow-card space-y-6 relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="inline-flex items-center gap-2 text-xs font-extrabold bg-white/10 border border-white/20 px-3.5 py-1 rounded-full text-accent-surface">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              Next Class to Host
-            </span>
-            <span className="text-xs text-white/80 font-medium">Staging opens 5m before start</span>
+        {bookingsQ.loading ? (
+          <div className="h-48 rounded-3xl bg-white border border-divider animate-pulse" />
+        ) : bookingsQ.error ? null : !upcomingLesson ? (
+          <div className="bg-white rounded-3xl p-8 border border-divider shadow-card text-center space-y-1">
+            <h3 className="text-lg font-black text-ink font-serif">No upcoming lessons</h3>
+            <p className="text-xs text-ink-muted">Confirmed bookings will appear here once students book your slots.</p>
           </div>
+        ) : (
+          <div className="bg-gradient-to-br from-[#0B3530] via-teal to-[#082622] text-white rounded-3xl p-6 sm:p-10 shadow-card space-y-6 relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-2 text-xs font-extrabold bg-white/10 border border-white/20 px-3.5 py-1 rounded-full text-accent-surface">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                Next Class to Host
+              </span>
+              <span className="text-xs text-white/80 font-medium">Staging opens 5m before start</span>
+            </div>
 
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="space-y-3">
-              <div className="text-2xl sm:text-3xl font-black font-serif">{upcomingLesson.studentName}</div>
-              <div className="text-xs text-white/80 font-medium">{upcomingLesson.studentCountry}</div>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="space-y-3">
+                <div className="text-2xl sm:text-3xl font-black font-serif">{upcomingLesson.student.full_name}</div>
 
-              <div className="flex flex-wrap items-center gap-3 pt-1">
-                <span className="text-xs bg-accent text-ink px-3 py-1 rounded-lg font-bold flex items-center gap-1.5">
-                  <BookOpen className="w-3.5 h-3.5" />
-                  [{upcomingLesson.materialCefr}] {upcomingLesson.material}
-                </span>
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  {upcomingLesson.material_title && (
+                    <span className="text-xs bg-accent text-ink px-3 py-1 rounded-lg font-bold flex items-center gap-1.5">
+                      <BookOpen className="w-3.5 h-3.5" />
+                      {upcomingLesson.material_title}
+                    </span>
+                  )}
 
-                <span className="text-xs text-white/90 flex items-center gap-1.5 font-medium">
-                  <Clock className="w-3.5 h-3.5 text-accent" />
-                  {upcomingLesson.scheduledTime}
-                </span>
+                  <span className="text-xs text-white/90 flex items-center gap-1.5 font-medium">
+                    <Clock className="w-3.5 h-3.5 text-accent" />
+                    {fmtWhen(upcomingLesson)}
+                  </span>
+                </div>
+
+                {upcomingLesson.student.learning_goals && (
+                  <p className="text-xs text-cream/70 italic border-l-2 border-accent pl-3">
+                    Focus: &ldquo;{upcomingLesson.student.learning_goals}&rdquo;
+                  </p>
+                )}
               </div>
 
-              <p className="text-xs text-cream/70 italic border-l-2 border-accent pl-3">
-                Focus: &ldquo;{upcomingLesson.targetFocus}&rdquo;
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-              <Link
-                href={`/teacher/classroom/${upcomingLesson.bookingId}`}
-                className="px-6 py-4 bg-accent hover:bg-amber-600 text-ink font-black rounded-2xl text-xs sm:text-sm transition-all shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01]"
-              >
-                <Video className="w-4 h-4" />
-                <span>Enter Classroom Staging Pad</span>
-                <ArrowRight className="w-4 h-4 ml-1" />
-              </Link>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+                <Link
+                  href={`/teacher/classroom/${upcomingLesson.id}`}
+                  className="px-6 py-4 bg-accent hover:bg-amber-600 text-ink font-black rounded-2xl text-xs sm:text-sm transition-all shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01]"
+                >
+                  <Video className="w-4 h-4" />
+                  <span>Enter Classroom Staging Pad</span>
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* 3 Metric Stat Highlights */}
+        {/* Metric Highlights */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
             <div className="text-xs font-bold text-ink-muted">Tutor Rating</div>
             <div className="text-2xl font-black text-ink flex items-center gap-1.5 font-serif">
               <Star className="w-5 h-5 text-accent fill-accent" />
-              <span>4.98</span>
-              <span className="text-xs font-normal text-ink-muted">(142 reviews)</span>
+              <span>&mdash;</span>
             </div>
-            <p className="text-[11px] text-ink-muted">Top 1% rated native educator</p>
+            <p className="text-[11px] text-ink-muted">Rating summary isn&apos;t available yet.</p>
           </div>
 
           <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
             <div className="text-xs font-bold text-ink-muted">Completed Lessons This Month</div>
-            <div className="text-2xl font-black text-teal font-serif">28 Classes</div>
-            <p className="text-[11px] text-ink-muted">100% on-time attendance score</p>
+            <div className="text-2xl font-black text-teal font-serif">
+              {bookingsQ.data ? `${completedThisMonth} ${completedThisMonth === 1 ? "Class" : "Classes"}` : "—"}
+            </div>
+            <p className="text-[11px] text-ink-muted">
+              {bookingsQ.error != null
+                ? "Couldn't load your lessons."
+                : bookingsQ.data?.truncated
+                ? "Counted from your most recent bookings only."
+                : "Based on your bookings."}
+            </p>
           </div>
 
           <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
-            <div className="text-xs font-bold text-ink-muted">Upcoming Payout</div>
-            <div className="text-2xl font-black text-emerald-800 font-serif">R2,400.00 ZAR</div>
-            <p className="text-[11px] text-ink-muted">Scheduled for batch EFT on the 1st</p>
+            <div className="text-xs font-bold text-ink-muted">Cleared Balance</div>
+            {walletQ.loading ? (
+              <div className="h-8 rounded bg-cream-surface animate-pulse" />
+            ) : wallet ? (
+              <>
+                <div className="text-2xl font-black text-emerald-800 font-serif">
+                  R{wallet.cleared_balance_zar.toFixed(2)} ZAR
+                </div>
+                <p className="text-[11px] text-ink-muted">Paid out in the next batch EFT.</p>
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-black text-ink-muted font-serif">&mdash;</div>
+                <p className="text-[11px] text-error">
+                  Wallet isn&apos;t available yet.{" "}
+                  <button type="button" onClick={walletQ.reload} className="underline font-bold">
+                    Retry
+                  </button>
+                </p>
+              </>
+            )}
           </div>
         </div>
 
@@ -208,60 +264,57 @@ export default function TeacherDashboardPage() {
               <h3 className="text-lg font-black text-ink font-serif">Today&apos;s Class Schedule</h3>
               <p className="text-xs text-ink-muted">All sessions synchronized across timezones</p>
             </div>
-            <span className="text-xs font-bold text-teal bg-teal/10 px-3 py-1 rounded-full">
-              2 Scheduled Lessons
-            </span>
+            {bookingsQ.data && (
+              <span className="text-xs font-bold text-teal bg-teal/10 px-3 py-1 rounded-full">
+                {todayLessons.length} Scheduled {todayLessons.length === 1 ? "Lesson" : "Lessons"}
+              </span>
+            )}
           </div>
 
-          <div className="divide-y divide-divider">
-            <div className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-2xl bg-teal/10 text-teal font-black flex items-center justify-center text-xs">
-                  AT
-                </div>
-                <div>
-                  <h4 className="font-extrabold text-sm text-ink">Aiko Tanaka (Tokyo)</h4>
-                  <div className="text-xs text-ink-muted">15:00 - 15:25 SAST · 25-Min Lesson · B2 Daily News</div>
-                </div>
-              </div>
+          {bookingsQ.loading ? (
+            <div className="h-16 rounded-2xl bg-cream-surface animate-pulse" />
+          ) : bookingsQ.error != null ? (
+            <p className="text-xs text-error">Today&apos;s schedule couldn&apos;t be loaded.</p>
+          ) : todayLessons.length === 0 ? (
+            <p className="text-xs text-ink-muted text-center py-4">No lessons scheduled for today.</p>
+          ) : (
+            <div className="divide-y divide-divider">
+              {todayLessons.map((b, i) => (
+                <div key={b.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-2xl bg-teal/10 text-teal font-black flex items-center justify-center text-xs">
+                      {b.student.full_name
+                        .split(" ")
+                        .map((w) => w[0])
+                        .join("")
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-sm text-ink">{b.student.full_name}</h4>
+                      <div className="text-xs text-ink-muted">
+                        {b.local_start_time} - {b.local_end_time} ({b.viewer_timezone}) · 25-Min Lesson
+                        {b.material_title ? ` · ${b.material_title}` : ""}
+                      </div>
+                    </div>
+                  </div>
 
-              <div className="flex items-center gap-2 self-start sm:self-auto">
-                <span className="text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl">
-                  Staging Ready
-                </span>
-                <Link
-                  href="/teacher/classroom/BK-884192"
-                  className="px-3.5 py-1.5 bg-teal hover:bg-teal-hover text-white text-xs font-bold rounded-xl transition-colors"
-                >
-                  Host Pad
-                </Link>
-              </div>
+                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                    <Link
+                      href={`/teacher/classroom/${b.id}`}
+                      className={
+                        i === 0
+                          ? "px-3.5 py-1.5 bg-teal hover:bg-teal-hover text-white text-xs font-bold rounded-xl transition-colors"
+                          : "px-3.5 py-1.5 bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold rounded-xl border border-divider transition-colors"
+                      }
+                    >
+                      {i === 0 ? "Host Pad" : "Preview"}
+                    </Link>
+                  </div>
+                </div>
+              ))}
             </div>
-
-            <div className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-2xl bg-cream-surface text-ink font-black flex items-center justify-center text-xs border border-divider">
-                  MR
-                </div>
-                <div>
-                  <h4 className="font-extrabold text-sm text-ink">Marco Rossi (Milan)</h4>
-                  <div className="text-xs text-ink-muted">16:00 - 16:25 SAST · 25-Min Lesson · C1 Business English</div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 self-start sm:self-auto">
-                <span className="text-xs font-bold text-ink-muted bg-cream-surface px-3 py-1 rounded-xl border border-divider">
-                  Upcoming
-                </span>
-                <Link
-                  href="/teacher/classroom/BK-884185"
-                  className="px-3.5 py-1.5 bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold rounded-xl border border-divider transition-colors"
-                >
-                  Preview
-                </Link>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

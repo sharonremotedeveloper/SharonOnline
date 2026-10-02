@@ -15,7 +15,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { EskomStatus } from "@/types/teacher";
+import { ErrorState, InlineError } from "@/components/ui/ErrorState";
+import { useApiData } from "@/hooks/useApiData";
 
 const SUBURBS = [
   "City of Johannesburg Block 3 - Rosebank/Sandton",
@@ -27,33 +28,26 @@ const SUBURBS = [
 ];
 
 export default function TeacherPowerGuardPage() {
-  const [status, setStatus] = useState<EskomStatus | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedArea, setSelectedArea] = useState(SUBURBS[0]);
-  const [hasInverter, setHasInverter] = useState(true);
-  const [hasLte, setHasLte] = useState(true);
+  const { data: status, error: loadError, loading, reload } = useApiData(() => api.getEskomStatus(), []);
+  const [selectedArea, setSelectedArea] = useState("");
+  const [hasInverter, setHasInverter] = useState(false);
+  const [hasLte, setHasLte] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<unknown>(null);
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const s = await api.getEskomStatus();
-        setStatus(s);
-        setSelectedArea(s.area_name);
-        setHasInverter(s.has_inverter_backup);
-        setHasLte(s.has_lte_failover);
-      } catch (e) {
-        console.error("Failed to load Eskom status:", e);
-      } finally {
-        setLoading(false);
-      }
+    if (status) {
+      setSelectedArea(status.area_name);
+      setHasInverter(status.has_inverter_backup);
+      setHasLte(status.has_lte_failover);
     }
-    loadData();
-  }, []);
+  }, [status]);
 
   const handleSaveCertification = async () => {
     setSaving(true);
+    setSaved(false);
+    setSaveError(null);
     try {
       await api.updatePowerBackup({
         area_name: selectedArea,
@@ -64,12 +58,13 @@ export default function TeacherPowerGuardPage() {
       setTimeout(() => setSaved(false), 3000);
     } catch (e) {
       console.error("Failed to update power backup:", e);
+      setSaveError(e);
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading || !status) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center py-20">
         <div className="text-center space-y-4">
@@ -79,6 +74,27 @@ export default function TeacherPowerGuardPage() {
       </div>
     );
   }
+
+  if (loadError || !status) {
+    return (
+      <div className="min-h-screen bg-cream py-20">
+        <div className="max-w-xl mx-auto px-4 space-y-4">
+          <ErrorState
+            error={loadError ?? "No Power Guard data returned."}
+            title="Power Guard isn't available right now"
+            onRetry={reload}
+          />
+          <div className="text-center">
+            <Link href="/teacher/dashboard" className="text-xs font-bold text-teal hover:underline">
+              Return to dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const areaOptions = SUBURBS.includes(status.area_name) ? SUBURBS : [status.area_name, ...SUBURBS];
 
   const getStageColor = (stage: number) => {
     if (stage === 0) return "bg-emerald-500 text-white";
@@ -123,6 +139,8 @@ export default function TeacherPowerGuardPage() {
           </button>
         </div>
 
+        <InlineError error={saveError} />
+
         {/* Live Grid Stage Monitor Card */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-divider pb-6">
@@ -165,7 +183,7 @@ export default function TeacherPowerGuardPage() {
                 onChange={(e) => setSelectedArea(e.target.value)}
                 className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink font-semibold focus:outline-none focus:ring-2 focus:ring-teal/30"
               >
-                {SUBURBS.map((sub) => (
+                {areaOptions.map((sub) => (
                   <option key={sub} value={sub}>
                     {sub}
                   </option>
@@ -179,7 +197,9 @@ export default function TeacherPowerGuardPage() {
                 <span>Next Scheduled Outage Window</span>
               </span>
               <p className="text-sm font-extrabold text-ink font-mono">
-                {status.next_outage_start || "18:00"} - {status.next_outage_end || "20:30"} SAST
+                {status.next_outage_start && status.next_outage_end
+                  ? `${status.next_outage_start} - ${status.next_outage_end} SAST`
+                  : "No outage window reported"}
               </p>
               <p className="text-[11px] text-ink-muted">
                 Uncertified tutors have unbooked slots hidden during this block.

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -13,28 +12,17 @@ import {
   Sparkles,
   ExternalLink,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function TeacherProfilePage() {
-  const [fullName, setFullName] = useState("Sharon Mupesa");
-  const [accent, setAccent] = useState("South African (Neutral RP / Oxford Neutral)");
-  const [bio, setBio] = useState(
-    "Passionate certified ESL educator with 6+ years of international teaching experience across Tokyo, Seoul, and Milan. Specializing in business executive communication, natural English intonation, and high-stakes job interview preparation."
-  );
-  const [videoUrl, setVideoUrl] = useState("https://assets.mixkit.co/videos/preview/mixkit-woman-in-online-meeting-41290-large.mp4");
-  const [specialties, setSpecialties] = useState("Business English, STAR Interviews, Pronunciation, FreeTalk, CEFR B1-C2");
-  const [hourlyRate, setHourlyRate] = useState("8.00");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    }, 600);
-  };
+  const { user } = useAuth();
+  const fullName = user ? [user.first_name, user.last_name].filter(Boolean).join(" ") || user.username : "";
+  const initials = fullName
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <div className="min-h-screen bg-cream py-8 sm:py-12">
@@ -57,11 +45,11 @@ export default function TeacherProfilePage() {
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="w-14 h-14 rounded-2xl bg-teal/10 text-teal flex items-center justify-center font-bold text-xl shrink-0">
-              SM
+              {initials || <User className="w-6 h-6" />}
             </div>
             <div>
-              <h1 className="text-2xl font-black text-ink font-serif">{fullName}</h1>
-              <p className="text-xs text-ink-muted">{accent}</p>
+              <h1 className="text-2xl font-black text-ink font-serif">{fullName || "Your profile"}</h1>
+              <p className="text-xs text-ink-muted">{user?.email}</p>
             </div>
           </div>
 
@@ -76,21 +64,19 @@ export default function TeacherProfilePage() {
         </div>
 
         {/* Profile Edit Form */}
-        <form onSubmit={handleSave} className="bg-white rounded-3xl p-6 sm:p-10 border border-divider shadow-card space-y-6">
-          {saved && (
-            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 font-bold flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-600" />
-              <span>Public educator profile updated and synced to global directory.</span>
-            </div>
-          )}
+        <form aria-disabled="true" onSubmit={(e) => e.preventDefault()} className="bg-white rounded-3xl p-6 sm:p-10 border border-divider shadow-card space-y-6">
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-bold">
+            Profile editing is coming soon. Your public listing can&apos;t be changed from here yet, so the fields below
+            are not editable and nothing on this page is saved.
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-ink block">Full Display Name</label>
               <input
+                disabled
                 type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                value={fullName} readOnly
                 className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-bold text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
                 required
               />
@@ -99,9 +85,9 @@ export default function TeacherProfilePage() {
             <div className="space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-ink block">Accent &amp; Dialect</label>
               <input
+                disabled
                 type="text"
-                value={accent}
-                onChange={(e) => setAccent(e.target.value)}
+                value=""
                 className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
                 required
               />
@@ -111,9 +97,9 @@ export default function TeacherProfilePage() {
           <div className="space-y-1.5">
             <label className="text-xs font-bold uppercase tracking-wider text-ink block">Teacher Bio &amp; Pedagogy</label>
             <textarea
+              disabled
               rows={4}
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
+              value=""
               className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/30 leading-relaxed font-sans"
               required
             />
@@ -125,9 +111,9 @@ export default function TeacherProfilePage() {
                 60-Second Video Reel URL (MP4)
               </label>
               <input
+                disabled
                 type="url"
-                value={videoUrl}
-                onChange={(e) => setVideoUrl(e.target.value)}
+                value=""
                 className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
                 required
               />
@@ -140,9 +126,9 @@ export default function TeacherProfilePage() {
               <div className="relative">
                 <DollarSign className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
+                disabled
                   type="text"
-                  value={hourlyRate}
-                  onChange={(e) => setHourlyRate(e.target.value)}
+                  value=""
                   className="w-full pl-9 pr-4 py-3 bg-cream-surface rounded-xl border border-divider text-xs font-bold text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
                   required
                 />
@@ -155,9 +141,9 @@ export default function TeacherProfilePage() {
               Teaching Specialties (Comma Separated)
             </label>
             <input
+                disabled
               type="text"
-              value={specialties}
-              onChange={(e) => setSpecialties(e.target.value)}
+              value=""
               className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
             />
           </div>
@@ -165,11 +151,12 @@ export default function TeacherProfilePage() {
           <div className="pt-4 border-t border-divider flex items-center justify-end">
             <button
               type="submit"
-              disabled={saving}
-              className="px-8 py-3.5 bg-teal hover:bg-teal-hover text-white text-xs font-black rounded-2xl flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
+              disabled
+              title="Profile editing is coming soon"
+              className="px-8 py-3.5 bg-teal text-white text-xs font-black rounded-2xl flex items-center gap-2 shadow-md opacity-50 cursor-not-allowed"
             >
               <Save className="w-4 h-4" />
-              <span>{saving ? "Saving Changes..." : "Save Profile Details"}</span>
+              <span>Save Profile Details (coming soon)</span>
             </button>
           </div>
         </form>

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { teacherCrmApi } from "@/lib/api";
 import { TeacherStudentDossierItem } from "@/types/student";
+import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 
 export default function TeacherStudentsCRMPage() {
   const [students, setStudents] = useState<TeacherStudentDossierItem[]>([]);
@@ -30,68 +31,89 @@ export default function TeacherStudentsCRMPage() {
   const [draftMistake, setDraftMistake] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [saveError, setSaveError] = useState<unknown>(null);
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
     async function loadCRM() {
+      setIsLoading(true);
+      setLoadError(null);
       try {
         const data = await teacherCrmApi.getTeacherStudentsDossier();
-        setStudents(data);
+        if (!cancelled) setStudents(data);
       } catch (err) {
         console.error("Failed to load teacher students CRM:", err);
+        if (!cancelled) {
+          setStudents([]);
+          setLoadError(err);
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     }
     loadCRM();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadTick]);
 
   const handleStartEdit = (student: TeacherStudentDossierItem) => {
     setEditingStudentId(student.student_id);
     setDraftNotes(student.private_pedagogical_notes);
+    setSaveError(null);
   };
 
   const handleSaveNotes = async (studentId: string) => {
     setIsSaving(true);
+    setSaveError(null);
     try {
       await teacherCrmApi.updateTeacherStudentDossier(studentId, draftNotes);
+      const name = students.find((s) => s.student_id === studentId)?.student_name;
       setStudents((prev) =>
         prev.map((s) => (s.student_id === studentId ? { ...s, private_pedagogical_notes: draftNotes } : s))
       );
       setEditingStudentId(null);
-      setSaveSuccessMsg(`Notes updated for ${students.find((s) => s.student_id === studentId)?.student_name}!`);
+      setSaveSuccessMsg(`Notes updated for ${name}!`);
       setTimeout(() => setSaveSuccessMsg(null), 3000);
     } catch (err) {
       console.error("Failed to save dossier notes:", err);
+      setSaveError(err);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleAddMistake = (studentId: string) => {
-    if (!draftMistake.trim()) return;
-    setStudents((prev) =>
-      prev.map((s) =>
-        s.student_id === studentId
-          ? {
-              ...s,
-              common_grammar_mistakes: [...s.common_grammar_mistakes, draftMistake.trim()],
-            }
-          : s
-      )
-    );
-    setDraftMistake("");
+  // Persist the slip list to the server first; local state only changes once the save succeeded.
+  const persistMistakes = async (student: TeacherStudentDossierItem, next: string[]) => {
+    setSaveError(null);
+    try {
+      await teacherCrmApi.updateTeacherStudentDossier(student.student_id, student.private_pedagogical_notes, next);
+      setStudents((prev) =>
+        prev.map((s) => (s.student_id === student.student_id ? { ...s, common_grammar_mistakes: next } : s))
+      );
+      return true;
+    } catch (err) {
+      console.error("Failed to save grammar slips:", err);
+      setSaveError(err);
+      return false;
+    }
   };
 
-  const handleRemoveMistake = (studentId: string, indexToRemove: number) => {
-    setStudents((prev) =>
-      prev.map((s) =>
-        s.student_id === studentId
-          ? {
-              ...s,
-              common_grammar_mistakes: s.common_grammar_mistakes.filter((_, idx) => idx !== indexToRemove),
-            }
-          : s
-      )
+  const handleAddMistake = async (studentId: string) => {
+    const student = students.find((s) => s.student_id === studentId);
+    if (!student || !draftMistake.trim()) return;
+    const ok = await persistMistakes(student, [...student.common_grammar_mistakes, draftMistake.trim()]);
+    if (ok) setDraftMistake("");
+  };
+
+  const handleRemoveMistake = async (studentId: string, indexToRemove: number) => {
+    const student = students.find((s) => s.student_id === studentId);
+    if (!student) return;
+    await persistMistakes(
+      student,
+      student.common_grammar_mistakes.filter((_, idx) => idx !== indexToRemove)
     );
   };
 
@@ -139,6 +161,8 @@ export default function TeacherStudentsCRMPage() {
         </div>
       </div>
 
+      <InlineError error={saveError} />
+
       {saveSuccessMsg && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl flex items-center gap-2 text-xs font-semibold animate-scale-up">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -160,11 +184,24 @@ export default function TeacherStudentsCRMPage() {
         </div>
 
         <div className="text-xs text-ink-500 font-medium">
-          Total Regular Students: <strong className="text-ink-800">{students.length}</strong>
+          Total Regular Students: <strong className="text-ink-800">{loadError ? "—" : students.length}</strong>
         </div>
       </div>
 
       {/* Student Dossier Cards */}
+      {isLoading ? (
+        <div className="bg-white rounded-3xl border border-cream-200 p-10 text-center text-sm text-ink-500 font-medium">
+          Loading your students...
+        </div>
+      ) : loadError ? (
+        <ErrorState error={loadError} title="We couldn't load your students" onRetry={() => setReloadTick((t) => t + 1)} />
+      ) : filteredStudents.length === 0 ? (
+        <div className="bg-white rounded-3xl border border-cream-200 p-10 text-center text-sm text-ink-500">
+          {students.length === 0
+            ? "You don't have any students yet. They'll appear here after their first lesson with you."
+            : "No students match your search."}
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-6">
         {filteredStudents.map((student) => (
           <div
@@ -310,6 +347,7 @@ export default function TeacherStudentsCRMPage() {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

@@ -133,6 +133,7 @@ REST_FRAMEWORK = {
         'register': '5/hour',
         'upload': '30/hour',
         'checkout': '20/hour',
+        'reserve': '30/min',
         'webhook': '120/min',
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Search, BookOpen, Clock, ArrowRight, Download, Sparkles, X, MessageSquare } from "lucide-react";
 import { api } from "@/lib/api";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { MaterialDetail } from "@/types/material";
 import { CefrLevelBadge } from "@/components/materials/CefrLevelBadge";
 import { MaterialCategoryTabs } from "@/components/materials/MaterialCategoryTabs";
@@ -13,24 +14,31 @@ const CEFR_LEVELS = ["All Levels", "A1", "A2", "B1", "B2", "C1", "C2"];
 export default function MaterialsPage() {
   const [materials, setMaterials] = useState<MaterialDetail[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [reloadTick, setReloadTick] = useState(0);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [cefr, setCefr] = useState("All Levels");
 
   useEffect(() => {
+    let cancelled = false;
     async function loadMaterials() {
       setLoading(true);
+      setLoadError(null);
       try {
         const data = await api.getMaterials({
           category: category || undefined,
           cefr: cefr !== "All Levels" ? cefr : undefined,
           search: search.trim() || undefined,
         });
-        setMaterials(Array.isArray(data) ? data : data.results || []);
+        if (cancelled) return;
+        setMaterials(Array.isArray(data) ? data : data?.results || []);
       } catch (err) {
-        console.error("Failed to load materials:", err);
+        if (cancelled) return;
+        setMaterials([]);
+        setLoadError(err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
@@ -38,8 +46,11 @@ export default function MaterialsPage() {
       loadMaterials();
     }, 200);
 
-    return () => clearTimeout(timer);
-  }, [category, cefr, search]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [category, cefr, search, reloadTick]);
 
   const clearFilters = () => {
     setSearch("");
@@ -136,6 +147,12 @@ export default function MaterialsPage() {
             <div className="w-10 h-10 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-sm font-bold text-ink-muted">Loading curriculum materials...</p>
           </div>
+        ) : loadError ? (
+          <ErrorState
+            error={loadError}
+            title="We couldn't load the curriculum"
+            onRetry={() => setReloadTick((t) => t + 1)}
+          />
         ) : materials.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border border-divider p-8 space-y-4">
             <BookOpen className="w-12 h-12 text-ink-muted/50 mx-auto" />

@@ -7,7 +7,8 @@ interface PayFastFormProps {
   amountZar: number;
   bookingReference: string;
   itemDescription: string;
-  onSuccess: () => void;
+  /** Asks the parent to confirm payment with the server. Must reject on failure. */
+  onSuccess: () => void | Promise<void>;
   disabled?: boolean;
 }
 
@@ -20,15 +21,16 @@ export function PayFastForm({
 }: PayFastFormProps) {
   const [processing, setProcessing] = useState(false);
 
-  const handleSimulatedPayFastPayment = (e: React.FormEvent) => {
+  // NOTE: the live PayFast redirect/ITN flow is not integrated yet. No payment is taken here; this only asks the
+  // server to confirm, and the parent shows the server's real answer (it will fail until live payments exist).
+  const handlePayFastPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     setProcessing(true);
-
-    // Simulate PayFast modal checkout and instant ITN confirmation
-    setTimeout(() => {
+    try {
+      await onSuccess();
+    } finally {
       setProcessing(false);
-      onSuccess();
-    }, 1200);
+    }
   };
 
   return (
@@ -60,14 +62,18 @@ export function PayFastForm({
         </div>
       </div>
 
-      <form onSubmit={handleSimulatedPayFastPayment} className="space-y-3">
+      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900">
+        PayFast payments are not switched on yet. Trying to pay will ask the server to confirm and may be declined.
+      </div>
+
+      <form onSubmit={handlePayFastPayment} className="space-y-3">
         <button
           type="submit"
           disabled={disabled || processing}
           className="w-full py-3.5 bg-teal hover:bg-teal-hover text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {processing ? (
-            "Connecting to PayFast Secure Tunnel..."
+            "Confirming with server..."
           ) : (
             <>
               <Lock className="w-3.5 h-3.5" />

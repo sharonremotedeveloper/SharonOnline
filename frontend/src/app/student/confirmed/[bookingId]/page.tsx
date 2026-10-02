@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -17,24 +16,45 @@ import {
 import { api } from "@/lib/api";
 import { BookingDetail } from "@/types/booking";
 import { Avatar } from "@/components/ui/Avatar";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { useApiData } from "@/hooks/useApiData";
 
 export default function BookingConfirmedPage() {
   const params = useParams();
-  const bookingId = (params?.bookingId as string) || "BK-0001";
-  const [booking, setBooking] = useState<BookingDetail | null>(null);
+  const bookingId = params?.bookingId as string;
+  const { data: booking, error, loading, reload } = useApiData<BookingDetail>(() => api.getBooking(bookingId), [bookingId]);
 
-  useEffect(() => {
-    async function loadData() {
-      const data = await api.getBooking(bookingId);
-      setBooking(data);
-    }
-    loadData();
-  }, [bookingId]);
-
-  if (!booking) {
+  if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center text-xs text-ink-muted">
         Loading confirmation details...
+      </div>
+    );
+  }
+
+  if (error || !booking) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-16">
+        <ErrorState error={error ?? "We could not find this booking."} title="We could not load your booking" onRetry={reload} />
+      </div>
+    );
+  }
+
+  // Never claim a lesson is confirmed unless the server says so.
+  if (booking.status !== "confirmed" && booking.status !== "in_progress" && booking.status !== "completed") {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-16 text-center space-y-4">
+        <h1 className="text-xl font-extrabold text-ink font-serif">This lesson is not confirmed</h1>
+        <p className="text-xs text-ink-muted">
+          Booking {booking.booking_reference} is currently &quot;{booking.status.replace(/_/g, " ")}&quot;. If you were
+          trying to pay, the payment has not been confirmed.
+        </p>
+        <Link
+          href={booking.status === "pending_payment" ? `/student/checkout/${booking.id}` : "/student/dashboard"}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal text-white rounded-xl text-xs font-bold"
+        >
+          {booking.status === "pending_payment" ? "Back to checkout" : "Return to dashboard"} <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
       </div>
     );
   }
@@ -54,7 +74,7 @@ export default function BookingConfirmedPage() {
       "PRODID:-//Sharon Online//ESL Platform//EN",
       "BEGIN:VEVENT",
       `SUMMARY:English Lesson with ${booking.teacher.full_name}`,
-      `DESCRIPTION:Join Zoom Classroom: ${booking.zoom_url}`,
+      `DESCRIPTION:Join Zoom Classroom: ${booking.zoom_url || "link available in your student dashboard"}`,
       `DTSTART:${startTime}`,
       `DTEND:${endTime}`,
       `LOCATION:Online Zoom Room`,

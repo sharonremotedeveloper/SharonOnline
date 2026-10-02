@@ -61,10 +61,20 @@ export default async function HomePage() {
               href="/tutors"
               className="inline-flex items-center gap-2 text-xs font-bold text-teal hover:text-teal-hover"
             >
-              Browse All 120+ Tutors <ArrowRight className="w-4 h-4" />
+              Browse All Tutors <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
 
+          {featuredTutors.length === 0 ? (
+            <div className="bg-white rounded-2xl p-8 border border-divider text-center space-y-2">
+              <p className="text-sm text-ink-muted">
+                Our tutor profiles aren&apos;t available to show right now.
+              </p>
+              <Link href="/tutors" className="inline-flex items-center gap-2 text-xs font-bold text-teal hover:text-teal-hover">
+                Browse tutors <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {featuredTutors.map((tutor) => (
               <div
@@ -73,21 +83,23 @@ export default async function HomePage() {
               >
                 <div className="space-y-4">
                   <div className="flex items-start gap-4">
-                    <Avatar src={tutor.avatar} alt={tutor.name} size="lg" />
+                    <Avatar src={tutor.avatar} name={tutor.name} alt={tutor.name} size="lg" />
                     <div>
                       <h3 className="text-lg font-bold text-ink font-serif">{tutor.name}</h3>
-                      <div className="text-xs text-ink-muted font-medium">{tutor.accent}</div>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <StarRating rating={tutor.rating} size="sm" />
-                        <span className="text-xs font-bold text-ink">({tutor.review_count})</span>
-                      </div>
+                      {tutor.accent && <div className="text-xs text-ink-muted font-medium">{tutor.accent}</div>}
+                      {tutor.review_count > 0 && tutor.rating > 0 && (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <StarRating rating={tutor.rating} size="sm" />
+                          <span className="text-xs font-bold text-ink">({tutor.review_count})</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  <p className="text-xs text-ink-muted leading-relaxed line-clamp-3">{tutor.bio}</p>
+                  {tutor.bio && <p className="text-xs text-ink-muted leading-relaxed line-clamp-3">{tutor.bio}</p>}
 
                   <div className="flex flex-wrap gap-1.5">
-                    {tutor.specialties.map((spec) => (
+                    {(tutor.specialties || []).map((spec) => (
                       <Badge key={spec} variant="neutral" size="sm">
                         {spec}
                       </Badge>
@@ -96,13 +108,17 @@ export default async function HomePage() {
                 </div>
 
                 <div className="pt-4 border-t border-divider flex items-center justify-between">
-                  <div>
-                    <span className="text-xs text-ink-muted">Rate: </span>
-                    <span className="text-base font-extrabold text-ink font-serif">
-                      ${Number(tutor.hourly_rate || 8).toFixed(2)}
-                    </span>
-                    <span className="text-[10px] text-ink-muted"> / 25m</span>
-                  </div>
+                  {Number(tutor.hourly_rate) > 0 ? (
+                    <div>
+                      <span className="text-xs text-ink-muted">Rate: </span>
+                      <span className="text-base font-extrabold text-ink font-serif">
+                        ${Number(tutor.hourly_rate).toFixed(2)}
+                      </span>
+                      <span className="text-[10px] text-ink-muted"> / 25m</span>
+                    </div>
+                  ) : (
+                    <div />
+                  )}
 
                   <Link
                     href={`/tutors/${tutor.slug || tutor.id}`}
@@ -114,6 +130,7 @@ export default async function HomePage() {
               </div>
             ))}
           </div>
+          )}
         </div>
       </section>
 

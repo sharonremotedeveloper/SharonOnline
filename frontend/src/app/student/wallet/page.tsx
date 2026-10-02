@@ -13,55 +13,32 @@ import {
   CreditCard,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { CreditLedgerEntry } from "@/types/booking";
 import { DEFAULT_BUNDLES, CURRENCIES, CurrencyCode, detectDefaultCurrency } from "@/lib/currency";
 import { CurrencySwitcher } from "@/components/public/CurrencySwitcher";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { useApiData } from "@/hooks/useApiData";
+
+interface CreditBundleRow {
+  pack_name: string;
+  remaining: number;
+  total: number;
+  purchased_at: string;
+}
+
+interface WalletResponse {
+  total_credits: number;
+  bundles: CreditBundleRow[];
+}
 
 export default function StudentWalletPage() {
-  const [balance, setBalance] = useState(5);
-  const [ledger, setLedger] = useState<CreditLedgerEntry[]>([]);
   const [currency, setCurrency] = useState<CurrencyCode>("USD");
-  const [loading, setLoading] = useState(true);
-  const [purchasing, setPurchasing] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState("");
+  const { data: wallet, error, loading, reload } = useApiData<WalletResponse>(() => api.getStudentWallet(), []);
 
   const curr = CURRENCIES[currency];
 
   useEffect(() => {
     setCurrency(detectDefaultCurrency());
-
-    async function loadWallet() {
-      setLoading(true);
-      try {
-        const data = await api.getStudentWallet();
-        setBalance(data.available_credits);
-        setLedger(data.ledger);
-      } catch (err) {
-        console.error("Failed to load student wallet:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadWallet();
   }, []);
-
-  const handleBuyBundle = (bundle: typeof DEFAULT_BUNDLES[0]) => {
-    setPurchasing(bundle.id);
-    setTimeout(() => {
-      setBalance((prev) => prev + bundle.credits);
-      const newEntry: CreditLedgerEntry = {
-        id: `led-${Date.now()}`,
-        description: `Purchased ${bundle.name} (${bundle.credits} Lessons)`,
-        credits_delta: +bundle.credits,
-        date: new Date().toISOString().split("T")[0],
-        type: "purchase",
-      };
-      setLedger((prev) => [newEntry, ...prev]);
-      setPurchasing(null);
-      setSuccessMessage(`Successfully purchased ${bundle.credits} lesson credits!`);
-      setTimeout(() => setSuccessMessage(""), 4000);
-    }, 1000);
-  };
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -79,14 +56,16 @@ export default function StudentWalletPage() {
         <CurrencySwitcher variant="inline" onCurrencyChange={(c) => setCurrency(c)} />
       </div>
 
-      {successMessage && (
-        <div className="p-4 bg-success/15 border border-success/30 rounded-2xl text-xs text-success font-bold flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
-          <span>{successMessage}</span>
+      {error ? (
+        <ErrorState error={error} title="We could not load your wallet" onRetry={reload} />
+      ) : loading || !wallet ? (
+        <div className="bg-white rounded-3xl p-8 border border-divider text-center text-xs text-ink-muted">
+          Loading your wallet...
         </div>
-      )}
+      ) : null}
 
       {/* Balance Summary Card */}
+      {wallet && (
       <div className="bg-gradient-to-r from-teal to-teal-mid text-white rounded-3xl p-8 shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-bold text-accent-surface border border-white/20">
@@ -95,7 +74,7 @@ export default function StudentWalletPage() {
           </div>
 
           <div className="flex items-baseline gap-3">
-            <span className="text-5xl font-black font-serif text-white">{balance}</span>
+            <span className="text-5xl font-black font-serif text-white">{wallet.total_credits}</span>
             <span className="text-sm font-semibold text-white/80">Available Credits</span>
           </div>
 
@@ -115,6 +94,7 @@ export default function StudentWalletPage() {
           <span className="text-[11px] text-white/70">100% Satisfaction Guarantee</span>
         </div>
       </div>
+      )}
 
       {/* Top-Up Bundle Packs Grid */}
       <div className="space-y-4">
@@ -123,13 +103,15 @@ export default function StudentWalletPage() {
           <p className="text-xs text-ink-muted">
             Save up to 15% with multi-lesson packs. Billed in {currency}.
           </p>
+          <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 inline-block">
+            Buying lesson packs online is not available yet. Prices shown are for reference.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {DEFAULT_BUNDLES.map((bundle) => {
             const rawPrice = bundle.prices[currency];
             const formattedPrice = curr.format(rawPrice);
-            const isProcessing = purchasing === bundle.id;
 
             return (
               <div
@@ -163,16 +145,17 @@ export default function StudentWalletPage() {
                 </div>
 
                 <button
-                  onClick={() => handleBuyBundle(bundle)}
-                  disabled={isProcessing}
-                  className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  type="button"
+                  disabled
+                  title="Online purchase is not available yet"
+                  className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 opacity-50 cursor-not-allowed ${
                     bundle.popular
                       ? "bg-primary hover:bg-primary-hover text-white shadow-sm"
                       : "bg-cream-surface hover:bg-cream-deep text-ink border border-divider"
                   }`}
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
-                  <span>{isProcessing ? "Processing..." : `Add ${bundle.credits} Credits`}</span>
+                  <span>{`Add ${bundle.credits} Credits`}</span>
                 </button>
               </div>
             );
@@ -180,32 +163,39 @@ export default function StudentWalletPage() {
         </div>
       </div>
 
-      {/* Credit Ledger / History */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">
-        <div className="space-y-1 border-b border-divider pb-4">
-          <h2 className="text-xl font-extrabold text-ink font-serif">Credit History & Ledger</h2>
-          <p className="text-xs text-ink-muted">Audit trail of all credits purchased and redeemed</p>
-        </div>
+      {/* Credit packs on the account */}
+      {wallet && (
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">
+          <div className="space-y-1 border-b border-divider pb-4">
+            <h2 className="text-xl font-extrabold text-ink font-serif">Purchased Lesson Packs</h2>
+            <p className="text-xs text-ink-muted">Credit packs on your account and how many lessons remain in each</p>
+          </div>
 
-        <div className="divide-y divide-divider text-xs">
-          {ledger.map((entry) => (
-            <div key={entry.id} className="py-3.5 flex items-center justify-between">
-              <div>
-                <div className="font-bold text-ink">{entry.description}</div>
-                <div className="text-[11px] text-ink-muted">{entry.date}</div>
-              </div>
-
-              <div
-                className={`font-black text-sm font-serif ${
-                  entry.credits_delta > 0 ? "text-success" : "text-primary"
-                }`}
-              >
-                {entry.credits_delta > 0 ? `+${entry.credits_delta}` : entry.credits_delta} Credits
-              </div>
+          {wallet.bundles.length === 0 ? (
+            <div className="py-6 text-center text-xs text-ink-muted">You have not purchased any lesson packs yet.</div>
+          ) : (
+            <div className="divide-y divide-divider text-xs">
+              {wallet.bundles.map((b, idx) => (
+                <div key={`${b.pack_name}-${b.purchased_at}-${idx}`} className="py-3.5 flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-ink">{b.pack_name}</div>
+                    <div className="text-[11px] text-ink-muted">
+                      Purchased {new Date(b.purchased_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className="font-black text-sm font-serif text-teal">
+                    {b.remaining} of {b.total} Credits left
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+
+          <p className="text-[11px] text-ink-muted border-t border-divider pt-4">
+            A per-transaction credit history (redemptions and refunds) is not available yet.
+          </p>
         </div>
-      </div>
+      )}
     </div>
   );
 }

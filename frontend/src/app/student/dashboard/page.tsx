@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   Calendar,
@@ -21,41 +21,28 @@ import {
   FileText,
 } from "lucide-react";
 import { studentApi, bookingApi } from "@/lib/api";
-import { StudentLessonItem, StudentFlashcard } from "@/types/student";
+import { StudentLessonItem, StudentFlashcard, StudentProfileData } from "@/types/student";
 import { LessonMemoModal } from "@/components/student/LessonMemoModal";
 import { ReviewRubricModal } from "@/components/student/ReviewRubricModal";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { useApiData } from "@/hooks/useApiData";
 
 export default function StudentDashboardPage() {
-  const [lessons, setLessons] = useState<StudentLessonItem[]>([]);
-  const [flashcards, setFlashcards] = useState<StudentFlashcard[]>([]);
-  const [wallet, setWallet] = useState<{ available_credits: number } | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Each section loads independently so one failing endpoint never hides (or fakes) the others.
+  const lessonsQ = useApiData<StudentLessonItem[]>(() => studentApi.getStudentLessons(), []);
+  const cardsQ = useApiData<StudentFlashcard[]>(() => studentApi.getStudentFlashcards(), []);
+  const walletQ = useApiData<{ total_credits: number }>(() => bookingApi.getStudentWallet(), []);
+  const profileQ = useApiData<StudentProfileData>(() => studentApi.getStudentProfile(), []);
+
+  const lessons = lessonsQ.data ?? [];
+  const flashcards = cardsQ.data ?? [];
+  const profile = profileQ.data;
 
   // Modals state
   const [selectedMemoLesson, setSelectedMemoLesson] = useState<StudentLessonItem | null>(null);
   const [reviewLesson, setReviewLesson] = useState<StudentLessonItem | null>(null);
 
-  useEffect(() => {
-    async function loadDashboardData() {
-      try {
-        const [fetchedLessons, fetchedCards, fetchedWallet] = await Promise.all([
-          studentApi.getStudentLessons(),
-          studentApi.getStudentFlashcards(),
-          bookingApi.getStudentWallet(),
-        ]);
-        setLessons(fetchedLessons);
-        setFlashcards(fetchedCards);
-        setWallet(fetchedWallet);
-      } catch (err) {
-        console.error("Error loading student dashboard:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadDashboardData();
-  }, []);
-
-  const upcomingLesson = lessons.find((l) => l.status === "confirmed") || lessons[0];
+  const upcomingLesson = lessons.find((l) => l.status === "confirmed");
   const completedLessons = lessons.filter((l) => l.status === "completed");
   const wordsDueCount = flashcards.filter((c) => c.mastery !== "mastered").length;
 
@@ -66,9 +53,6 @@ export default function StudentDashboardPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-ink-900 tracking-tight">Student Command Center</h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200">
-              Active Learner
-            </span>
           </div>
           <p className="text-xs sm:text-sm text-ink-600 mt-1">
             Welcome back! Review your upcoming 25-min lessons, completed teacher memos, and spaced repetition flashcards.
@@ -83,7 +67,11 @@ export default function StudentDashboardPage() {
             <div>
               <span className="text-ink-500 block text-[11px]">Available Credits</span>
               <strong className="text-teal-900 text-sm font-black">
-                {wallet ? `${wallet.available_credits} Lessons` : "3 Lessons"}
+                {walletQ.loading
+                  ? "Loading..."
+                  : walletQ.error || !walletQ.data
+                  ? "Unavailable"
+                  : `${walletQ.data.total_credits} Lessons`}
               </strong>
             </div>
           </div>
@@ -114,7 +102,7 @@ export default function StudentDashboardPage() {
           href="/student/vocabulary"
           className="px-3.5 py-1.5 text-ink-600 hover:text-ink-900 hover:bg-cream-100 font-medium rounded-xl text-xs transition-colors flex items-center gap-1.5"
         >
-          <Layers className="w-3.5 h-3.5 text-amber-600" /> Flashcard Deck ({flashcards.length})
+          <Layers className="w-3.5 h-3.5 text-amber-600" /> Flashcard Deck{cardsQ.data ? ` (${flashcards.length})` : ""}
         </Link>
         <Link
           href="/student/profile"
@@ -125,7 +113,19 @@ export default function StudentDashboardPage() {
       </div>
 
       {/* Spotlight: Upcoming Lesson Card */}
-      {upcomingLesson && (
+      {lessonsQ.error ? (
+        <ErrorState error={lessonsQ.error} title="We could not load your lessons" onRetry={lessonsQ.reload} />
+      ) : lessonsQ.loading ? (
+        <div className="bg-white rounded-3xl border border-cream-200 p-8 text-center text-xs text-ink-500">Loading your lessons...</div>
+      ) : !upcomingLesson ? (
+        <div className="bg-white rounded-3xl border border-cream-200 p-8 text-center space-y-3">
+          <h2 className="text-base font-bold text-ink-900">No upcoming lessons</h2>
+          <p className="text-xs text-ink-500">You do not have a confirmed lesson scheduled yet.</p>
+          <Link href="/tutors" className="inline-flex px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl">
+            Find a tutor
+          </Link>
+        </div>
+      ) : (
         <div className="bg-gradient-to-r from-teal-950 via-teal-900 to-ink-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 relative overflow-hidden">
           <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial-pattern opacity-10 pointer-events-none" />
 
@@ -202,6 +202,16 @@ export default function StudentDashboardPage() {
             </Link>
           </div>
 
+          {cardsQ.error ? (
+            <ErrorState error={cardsQ.error} title="We could not load your flashcards" onRetry={cardsQ.reload} />
+          ) : cardsQ.loading ? (
+            <div className="text-xs text-ink-500 text-center py-6">Loading flashcards...</div>
+          ) : flashcards.length === 0 ? (
+            <div className="text-xs text-ink-500 text-center py-6">
+              No flashcards yet. Words from your tutor&apos;s lesson memos will appear here.
+            </div>
+          ) : (
+          <>
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-cream-50 rounded-2xl p-3.5 border border-cream-200/80 text-center">
               <span className="text-xs text-ink-500 block">Total Cards</span>
@@ -234,6 +244,8 @@ export default function StudentDashboardPage() {
               ))}
             </div>
           </div>
+          </>
+          )}
         </div>
 
         {/* Quick Profile Summary */}
@@ -245,13 +257,23 @@ export default function StudentDashboardPage() {
               </div>
               <div>
                 <h3 className="text-base font-bold text-ink-900">Learning Target</h3>
-                <p className="text-xs text-teal-700 font-semibold">CEFR C1 - Advanced</p>
+                <p className="text-xs text-teal-700 font-semibold">
+                  {profile?.target_level ? `CEFR ${profile.target_level}` : profileQ.loading ? "Loading..." : "No target level set"}
+                </p>
               </div>
             </div>
 
-            <div className="bg-cream-50/60 border border-cream-200/70 p-3.5 rounded-2xl text-xs text-ink-700 leading-relaxed">
-              &ldquo;Mastering cross-border corporate negotiations, tech executive presentation delivery, and natural conversational cadence.&rdquo;
-            </div>
+            {profileQ.error ? (
+              <ErrorState error={profileQ.error} title="We could not load your profile" onRetry={profileQ.reload} />
+            ) : (
+              <div className="bg-cream-50/60 border border-cream-200/70 p-3.5 rounded-2xl text-xs text-ink-700 leading-relaxed">
+                {profileQ.loading
+                  ? "Loading..."
+                  : profile?.learning_goals
+                  ? <>&ldquo;{profile.learning_goals}&rdquo;</>
+                  : "You have not set any learning goals yet."}
+              </div>
+            )}
           </div>
 
           <Link
@@ -274,10 +296,17 @@ export default function StudentDashboardPage() {
             href="/student/history"
             className="text-xs font-semibold text-teal-700 hover:text-teal-900 flex items-center gap-1"
           >
-            Full Lesson Archive ({completedLessons.length}) <ChevronRight className="w-3.5 h-3.5" />
+            Full Lesson Archive{lessonsQ.data ? ` (${completedLessons.length})` : ""} <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
+        {lessonsQ.error ? (
+          <ErrorState error={lessonsQ.error} title="We could not load your lessons" onRetry={lessonsQ.reload} />
+        ) : lessonsQ.loading ? (
+          <div className="text-xs text-ink-500 text-center py-6">Loading lessons...</div>
+        ) : completedLessons.length === 0 ? (
+          <div className="text-xs text-ink-500 text-center py-6">No completed lessons yet.</div>
+        ) : (
         <div className="divide-y divide-cream-100">
           {completedLessons.map((item) => (
             <div
@@ -328,6 +357,7 @@ export default function StudentDashboardPage() {
             </div>
           ))}
         </div>
+        )}
       </div>
 
       {/* Lesson Memo Modal */}
@@ -346,21 +376,9 @@ export default function StudentDashboardPage() {
           teacherName={reviewLesson.teacher.name}
           isOpen={!!reviewLesson}
           onClose={() => setReviewLesson(null)}
-          onReviewSubmitted={(rating, tags) => {
-            setLessons((prev) =>
-              prev.map((l) =>
-                l.id === reviewLesson.id
-                  ? {
-                      ...l,
-                      review: {
-                        rating,
-                        tags,
-                        submitted_at: new Date().toISOString(),
-                      },
-                    }
-                  : l
-              )
-            );
+          onReviewSubmitted={() => {
+            // Re-fetch so the rating shown is what the server actually stored.
+            lessonsQ.reload();
           }}
         />
       )}

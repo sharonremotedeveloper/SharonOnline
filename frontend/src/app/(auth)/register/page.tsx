@@ -30,6 +30,12 @@ function RegisterForm() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+
+  const fieldError = (name: string) =>
+    fieldErrors[name]?.length ? (
+      <p className="text-[11px] text-primary font-medium">{fieldErrors[name].join(" ")}</p>
+    ) : null;
 
   useEffect(() => {
     try {
@@ -49,7 +55,10 @@ function RegisterForm() {
             : "US",
         }));
       }
-    } catch (e) {}
+    } catch (e) {
+      // Timezone detection is best-effort; the visible defaults (and editable country) remain.
+      console.warn("Timezone detection failed; using defaults.", e);
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -61,13 +70,20 @@ function RegisterForm() {
 
     setSubmitting(true);
     setError("");
+    setFieldErrors({});
 
-    const res = await register({
-      ...formData,
-      role,
-    });
-
-    setSubmitting(false);
+    let res: Awaited<ReturnType<typeof register>>;
+    try {
+      res = await register({
+        ...formData,
+        role,
+      });
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Failed to create account");
+      return;
+    } finally {
+      setSubmitting(false);
+    }
 
     if (res.success) {
       if (role === "teacher") {
@@ -76,6 +92,7 @@ function RegisterForm() {
         router.push("/student/dashboard");
       }
     } else {
+      setFieldErrors(res.fieldErrors || {});
       setError(res.error || "Failed to create account");
     }
   };
@@ -133,6 +150,7 @@ function RegisterForm() {
               onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
               className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
             />
+            {fieldError("first_name")}
           </div>
           <div className="space-y-1">
             <label className="text-xs font-bold text-ink">Last Name</label>
@@ -143,6 +161,7 @@ function RegisterForm() {
               onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
               className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
             />
+            {fieldError("last_name")}
           </div>
         </div>
 
@@ -157,6 +176,7 @@ function RegisterForm() {
               placeholder="e.g. aiko_tanaka"
               className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
             />
+            {fieldError("username")}
           </div>
           <div className="space-y-1">
             <label className="text-xs font-bold text-ink">Email Address</label>
@@ -168,6 +188,7 @@ function RegisterForm() {
               placeholder="name@example.com"
               className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
             />
+            {fieldError("email")}
           </div>
         </div>
 
@@ -191,6 +212,7 @@ function RegisterForm() {
               placeholder="e.g. JP, ZA, KR, DE"
               className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
             />
+            {fieldError("country")}
           </div>
         </div>
 
@@ -205,6 +227,7 @@ function RegisterForm() {
               placeholder="••••••••"
               className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
             />
+            {fieldError("password")}
           </div>
           <div className="space-y-1">
             <label className="text-xs font-bold text-ink">Confirm Password</label>
@@ -216,6 +239,7 @@ function RegisterForm() {
               placeholder="••••••••"
               className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
             />
+            {fieldError("password_confirm")}
           </div>
         </div>
 

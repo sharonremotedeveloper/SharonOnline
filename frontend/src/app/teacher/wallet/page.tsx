@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -15,33 +14,34 @@ import {
   Download,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { TeacherWalletData } from "@/types/teacher";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { useApiData } from "@/hooks/useApiData";
 import { EarningsBreakdownCard } from "@/components/teacher/EarningsBreakdownCard";
 
 export default function TeacherWalletPage() {
-  const [wallet, setWallet] = useState<TeacherWalletData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: wallet, error, loading, reload } = useApiData(() => api.getTeacherWallet(), []);
 
-  useEffect(() => {
-    async function loadWallet() {
-      try {
-        const w = await api.getTeacherWallet();
-        setWallet(w);
-      } catch (e) {
-        console.error("Failed to load teacher wallet:", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadWallet();
-  }, []);
-
-  if (loading || !wallet) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center py-20">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm font-bold text-ink-muted">Loading earnings and payout ledger...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !wallet) {
+    return (
+      <div className="min-h-screen bg-cream py-20">
+        <div className="max-w-xl mx-auto px-4 space-y-4">
+          <ErrorState error={error ?? "No wallet data returned."} title="We couldn't load your earnings wallet" onRetry={reload} />
+          <div className="text-center">
+            <Link href="/teacher/dashboard" className="text-xs font-bold text-teal hover:underline">
+              Return to dashboard
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -95,22 +95,33 @@ export default function TeacherWalletPage() {
               <span className="text-xs font-bold uppercase tracking-wider text-ink-muted block">
                 Direct EFT Payout Account
               </span>
-              <h3 className="text-lg font-black text-ink font-serif">
-                {wallet.payout_bank_account?.bank_name} · {wallet.payout_bank_account?.account_number_masked}
-              </h3>
-              <p className="text-xs text-ink-muted">
-                Branch Code: <span className="font-mono font-bold text-ink">{wallet.payout_bank_account?.branch_code}</span> ·{" "}
-                Account Type: <span className="capitalize">{wallet.payout_bank_account?.account_type}</span>
-              </p>
+              {wallet.payout_bank_account ? (
+                <>
+                  <h3 className="text-lg font-black text-ink font-serif">
+                    {wallet.payout_bank_account.bank_name} · {wallet.payout_bank_account.account_number_masked}
+                  </h3>
+                  <p className="text-xs text-ink-muted">
+                    Branch Code: <span className="font-mono font-bold text-ink">{wallet.payout_bank_account.branch_code}</span> ·{" "}
+                    Account Type: <span className="capitalize">{wallet.payout_bank_account.account_type}</span>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-lg font-black text-ink font-serif">No payout account on file</h3>
+                  <p className="text-xs text-ink-muted">Add your bank details to receive payouts.</p>
+                </>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>Verified for Bi-Weekly Auto-Payouts</span>
-            </span>
-          </div>
+          {wallet.payout_bank_account && (
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>Bi-Weekly Payouts</span>
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Transaction History Ledger */}
@@ -123,6 +134,9 @@ export default function TeacherWalletPage() {
             <span className="text-xs font-bold text-ink-muted">Showing {wallet.transactions.length} entries</span>
           </div>
 
+          {wallet.transactions.length === 0 ? (
+            <p className="text-xs text-ink-muted text-center py-6">No transactions yet.</p>
+          ) : (
           <div className="overflow-x-auto rounded-2xl border border-divider">
             <table className="w-full min-w-[700px] border-collapse text-xs">
               <thead>
@@ -165,6 +179,7 @@ export default function TeacherWalletPage() {
               </tbody>
             </table>
           </div>
+          )}
         </div>
       </div>
     </div>

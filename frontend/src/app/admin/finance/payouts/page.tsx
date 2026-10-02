@@ -15,31 +15,47 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { PayoutBatchItem } from "@/types/admin";
+import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 
 export default function AdminPayoutsPage() {
   const [batch, setBatch] = useState<PayoutBatchItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [executedNote, setExecutedNote] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [executeError, setExecuteError] = useState<unknown>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
     async function loadBatch() {
+      setLoading(true);
+      setLoadError(null);
       try {
         const data = await api.getPayoutBatch();
-        setBatch(data);
+        if (!cancelled) setBatch(data);
       } catch (e) {
         console.error("Failed to load payout batch:", e);
+        if (!cancelled) {
+          setBatch([]);
+          setLoadError(e);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     loadBatch();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadTick]);
 
   const totalPayoutZar = batch.reduce((acc, curr) => acc + curr.payout_amount_zar, 0);
 
   // Generate and download verified South African ACB CSV
   const handleExportCsv = () => {
+    if (batch.length === 0) return;
     const headers = "RecipientName,BankName,UniversalBranchCode,AccountNumberMasked,LessonCount,AmountZAR,BatchDate\n";
     const rows = batch
       .map(
@@ -61,14 +77,17 @@ export default function AdminPayoutsPage() {
   const handleExecuteBatch = async () => {
     setProcessing(true);
     setExecutedNote(null);
+    setExecuteError(null);
     try {
       const res = await api.executePayoutBatch();
       setExecutedNote(
         `Batch ${res.batch_id} executed successfully for R${res.total_payout_zar.toFixed(2)} across ${res.recipients_count} educators.`
       );
       setBatch((prev) => prev.map((b) => ({ ...b, status: "processed" })));
+      setConfirming(false);
     } catch (e) {
       console.error("Failed to execute batch:", e);
+      setExecuteError(e);
     } finally {
       setProcessing(false);
     }
@@ -79,6 +98,18 @@ export default function AdminPayoutsPage() {
       <div className="py-20 text-center space-y-4">
         <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm font-bold text-ink-muted">Loading South African EFT batch orchestrator...</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="py-20">
+        <ErrorState
+          error={loadError}
+          title="We could not load the payout batch"
+          onRetry={() => setReloadTick((t) => t + 1)}
+        />
       </div>
     );
   }
@@ -117,17 +148,43 @@ export default function AdminPayoutsPage() {
             <span>Export Bank ACB CSV</span>
           </button>
 
-          <button
-            type="button"
-            disabled={processing || batch.every((b) => b.status === "processed")}
-            onClick={handleExecuteBatch}
-            className="px-5 py-2.5 bg-teal hover:bg-teal-hover text-white text-xs font-black rounded-xl shadow-sm flex items-center gap-2 transition-all"
-          >
-            <CreditCard className="w-4 h-4" />
-            <span>{processing ? "Executing..." : "Execute Payout Batch"}</span>
-          </button>
+          {confirming ? (
+            <div className="flex flex-wrap items-center gap-2 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
+              <span className="text-xs font-bold text-rose-900">
+                Execute payout of R{totalPayoutZar.toFixed(2)} to {batch.length} educator{batch.length === 1 ? "" : "s"}? This moves money and cannot be undone.
+              </span>
+              <button
+                type="button"
+                disabled={processing}
+                onClick={handleExecuteBatch}
+                className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 disabled:opacity-50"
+              >
+                {processing ? "Executing..." : "Confirm & execute"}
+              </button>
+              <button
+                type="button"
+                disabled={processing}
+                onClick={() => setConfirming(false)}
+                className="px-3 py-1.5 rounded-lg bg-white border border-divider text-xs font-bold text-ink disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={processing || batch.length === 0 || batch.every((b) => b.status === "processed")}
+              onClick={() => setConfirming(true)}
+              className="px-5 py-2.5 bg-teal hover:bg-teal-hover text-white text-xs font-black rounded-xl shadow-sm flex items-center gap-2 transition-all disabled:opacity-50"
+            >
+              <CreditCard className="w-4 h-4" />
+              <span>Execute Payout Batch</span>
+            </button>
+          )}
         </div>
       </div>
+
+      <InlineError error={executeError} />
 
       {executedNote && (
         <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-950 flex items-center gap-2.5">
@@ -143,7 +200,7 @@ export default function AdminPayoutsPage() {
           <div className="text-2xl sm:text-3xl font-black text-emerald-800 font-serif">
             R{totalPayoutZar.toLocaleString("en-ZA", { minimumFractionDigits: 2 })} ZAR
           </div>
-          <p className="text-[11px] text-ink-muted">Across {batch.length} verified native tutors</p>
+          <p className="text-[11px] text-ink-muted">Across {batch.length} tutor{batch.length === 1 ? "" : "s"}</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
@@ -172,6 +229,9 @@ export default function AdminPayoutsPage() {
           <span className="text-xs font-bold text-ink-muted">{batch.length} Accounts Queued</span>
         </div>
 
+        {batch.length === 0 ? (
+          <p className="p-8 text-center text-xs text-ink-muted">No cleared balances are waiting for payout.</p>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[750px] border-collapse text-xs">
             <thead>
@@ -212,6 +272,7 @@ export default function AdminPayoutsPage() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
     </div>
   );

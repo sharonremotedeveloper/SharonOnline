@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Clock, Globe, ArrowRight, ShieldCheck, Zap, Lock } from "lucide-react";
 import { api } from "@/lib/api";
 import { Slot, TeacherSlotsResponse } from "@/types";
+import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 
 interface InlineSlotMatrixProps {
   tutorId: string;
@@ -27,7 +28,9 @@ export function InlineSlotMatrix({ tutorId, tutorName, pricePerLesson }: InlineS
   const [loading, setLoading] = useState(true);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
   const [reserving, setReserving] = useState(false);
-  const [reserveError, setReserveError] = useState("");
+  const [reserveError, setReserveError] = useState<unknown>(null);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
     try {
@@ -40,30 +43,36 @@ export function InlineSlotMatrix({ tutorId, tutorName, pricePerLesson }: InlineS
     async function loadSlots() {
       if (!tutorId) return;
       setLoading(true);
+      setLoadError(null);
       try {
         const res = await api.getTeacherSlots(tutorId, timezone, 7);
         setSlotsData(res);
       } catch (err) {
         console.error("Failed to load slots:", err);
+        setSlotsData(null);
+        setLoadError(err);
       } finally {
         setLoading(false);
       }
     }
     loadSlots();
-  }, [tutorId, timezone]);
+  }, [tutorId, timezone, reloadTick]);
 
   const handleSelectSlot = async (slot: Slot) => {
     if (!slot.is_bookable) return;
     setSelectedSlot(slot);
     setReserving(true);
-    setReserveError("");
+    setReserveError(null);
 
     try {
       const res = await api.reserveSlot(tutorId, slot.start_time_utc);
       // Route directly to checkout or student booking summary
-      router.push(`/student/checkout/${res.booking_id || "temp-hold"}`);
-    } catch (err: any) {
-      setReserveError(err.message || "Failed to hold slot. It may be currently reserved.");
+      if (!res?.booking_id) throw new Error("The server did not return a booking for this slot. Please try again.");
+      router.push(`/student/checkout/${res.booking_id}`);
+    } catch (err) {
+      console.error("Failed to reserve slot:", err);
+      setReserveError(err);
+      setSelectedSlot(null);
       setReserving(false);
     }
   };
@@ -95,11 +104,7 @@ export function InlineSlotMatrix({ tutorId, tutorName, pricePerLesson }: InlineS
         </div>
       </div>
 
-      {reserveError && (
-        <div className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-xs text-primary font-medium">
-          {reserveError}
-        </div>
-      )}
+      <InlineError error={reserveError} />
 
       {/* 7-Day Slot Columns */}
       {loading ? (
@@ -108,6 +113,12 @@ export function InlineSlotMatrix({ tutorId, tutorName, pricePerLesson }: InlineS
             <div key={i} className="h-44 bg-cream-surface rounded-2xl border border-divider" />
           ))}
         </div>
+      ) : loadError ? (
+        <ErrorState
+          error={loadError}
+          title="We couldn't load availability"
+          onRetry={() => setReloadTick((t) => t + 1)}
+        />
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">

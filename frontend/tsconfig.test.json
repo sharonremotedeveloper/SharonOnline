@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "noEmit": false,
+    "incremental": false,
+    "isolatedModules": false,
+    "allowJs": false,
+    "outDir": ".test-build",
+    "rootDir": "src",
+    "types": ["node"],
+    "plugins": []
+  },
+  "include": ["src/lib/http.ts", "src/lib/auth.ts", "src/lib/http.test.ts", "src/types/auth.ts"],
+  "exclude": ["node_modules"]
+}

@@ -1,34 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, BookOpen, Clock, User, Calendar } from "lucide-react";
 import { api } from "@/lib/api";
 import { BookingDetail } from "@/types/booking";
 import { MemoComposer } from "@/components/teacher/MemoComposer";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { useApiData } from "@/hooks/useApiData";
+
+function readScratch(id: string): string {
+  try {
+    return sessionStorage.getItem(`scratch:${id}`) || "";
+  } catch {
+    return "";
+  }
+}
 
 export default function TeacherMemoPage() {
   const params = useParams();
-  const bookingId = (params?.id as string) || "BK-DEMO";
+  const bookingId = params?.id as string;
 
-  const [booking, setBooking] = useState<BookingDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function loadBooking() {
-      setLoading(true);
-      try {
-        const b = await api.getBooking(bookingId);
-        setBooking(b);
-      } catch (e) {
-        console.error("Failed to load booking for memo:", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadBooking();
-  }, [bookingId]);
+  const { data: booking, error, loading, reload } = useApiData(() => api.getBooking(bookingId), [bookingId]);
 
   if (loading) {
     return (
@@ -41,18 +34,19 @@ export default function TeacherMemoPage() {
     );
   }
 
-  if (!booking) {
+  if (error || !booking) {
     return (
       <div className="min-h-screen bg-cream py-20">
-        <div className="max-w-xl mx-auto px-4 text-center space-y-6">
-          <h2 className="text-2xl font-black text-ink font-serif">Lesson Not Found</h2>
-          <p className="text-xs text-ink-muted">The requested booking ID does not exist.</p>
-          <Link
-            href="/teacher/dashboard"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-teal text-white text-xs font-bold"
-          >
-            <ArrowLeft className="w-4 h-4" /> Return to Teacher Dashboard
-          </Link>
+        <div className="max-w-xl mx-auto px-4 space-y-6">
+          <ErrorState error={error ?? "Lesson not found."} title="We couldn't load this lesson" onRetry={reload} />
+          <div className="text-center">
+            <Link
+              href="/teacher/dashboard"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-teal text-white text-xs font-bold"
+            >
+              <ArrowLeft className="w-4 h-4" /> Return to Teacher Dashboard
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -85,9 +79,11 @@ export default function TeacherMemoPage() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-black text-ink">{booking.student.full_name}</span>
-                <span className="text-[10px] font-bold text-teal bg-teal/10 px-2 py-0.5 rounded-full">
-                  Target: {booking.student.target_level || "B2 Upper-Int"}
-                </span>
+                {booking.student.target_level && (
+                  <span className="text-[10px] font-bold text-teal bg-teal/10 px-2 py-0.5 rounded-full">
+                    Target: {booking.student.target_level}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-ink-muted">
                 {booking.local_date} · {booking.local_start_time} - {booking.local_end_time} ({booking.viewer_timezone})
@@ -97,7 +93,7 @@ export default function TeacherMemoPage() {
 
           <div className="text-xs text-ink-muted bg-cream-surface px-4 py-2.5 rounded-2xl border border-divider">
             <span className="font-bold text-ink block">Material Covered:</span>
-            <span className="font-medium text-teal">{booking.material_title || "General Conversational Practice"}</span>
+            <span className="font-medium text-teal">{booking.material_title || "No material linked"}</span>
           </div>
         </div>
 
@@ -105,7 +101,8 @@ export default function TeacherMemoPage() {
         <MemoComposer
           bookingId={booking.id}
           studentName={booking.student.full_name}
-          lessonTitle={booking.material_title || "General Conversational Practice"}
+          initialScratchpad={readScratch(bookingId)}
+          lessonTitle={booking.material_title || "No material linked"}
         />
       </div>
     </div>
