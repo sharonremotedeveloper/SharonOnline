@@ -43,3 +43,16 @@ CACHES = {
 
 # Allow all CORS in local debug if needed
 CORS_ALLOW_ALL_ORIGINS = True
+
+# No broker configured => no worker exists to run queued tasks (account e-mails, fulfilment...). Run them inline instead of
+# silently queueing them into an in-process memory broker nobody reads. Docker / real Redis keeps normal async behaviour.
+if not REDIS_URL:
+    CELERY_TASK_ALWAYS_EAGER = True
+
+# Make the dev e-mail mock visible in the runserver console (the reset/verify links are printed there when DEBUG).
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'console': {'class': 'logging.StreamHandler'}},
+    'loggers': {'apps.integrations.email': {'handlers': ['console'], 'level': 'INFO'}},
+}

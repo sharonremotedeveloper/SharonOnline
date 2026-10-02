@@ -1,5 +1,6 @@
 "use client";
 
+import { ChangePasswordCard } from "@/components/account/ChangePasswordCard";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -161,6 +162,7 @@ export default function TeacherProfilePage() {
           </div>
         </form>
       </div>
+      <ChangePasswordCard />
     </div>
   );
 }

@@ -9,6 +9,14 @@ if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_USE_MOCKS =
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // One-time reset / verification links carry their credential in the URL: never leak it through the Referer header.
+  async headers() {
+    const noReferrer = [{ key: 'Referrer-Policy', value: 'no-referrer' }, { key: 'Cache-Control', value: 'no-store' }];
+    return [
+      { source: '/reset-password', headers: noReferrer },
+      { source: '/verify-email', headers: noReferrer },
+    ];
+  },
   images: {
     remotePatterns: [
       {

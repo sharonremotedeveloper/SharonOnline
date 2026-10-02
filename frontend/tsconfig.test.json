@@ -18,6 +18,7 @@
   "include": [
     "src/lib/http.ts",
     "src/lib/session.ts",
+    "src/lib/account.ts",
     "src/lib/server/upstream.ts",
     "src/lib/server/handlers.ts",
     "src/lib/*.test.ts",

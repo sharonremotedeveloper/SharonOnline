@@ -10,6 +10,8 @@ GOOD = {
     'CSRF_TRUSTED_ORIGINS': 'https://sharonesl.com,https://api.sharonesl.com',
     'ZOOM_WEBHOOK_SECRET_TOKEN': 'zoom-secret',
     'THROTTLE_NUM_PROXIES': '1',
+    'FRONTEND_BASE_URL': 'https://sharonesl.com',
+    'RESEND_API_KEY': 're_live_abcdefghijklmnop',
 }
 
 
@@ -19,6 +21,11 @@ def test_valid_env_passes():
 
 @pytest.mark.parametrize('key,value', [
     ('DJANGO_SECRET_KEY', ''),
+    ('FRONTEND_BASE_URL', ''),
+    ('FRONTEND_BASE_URL', 'http://sharonesl.com'),
+    ('FRONTEND_BASE_URL', 'https://localhost:3000'),
+    ('RESEND_API_KEY', ''),
+    ('RESEND_API_KEY', 're_dev_placeholder'),
     ('DJANGO_SECRET_KEY', 'django-insecure-' + 'x' * 60),
     ('DJANGO_SECRET_KEY', 'short'),
     ('DJANGO_ALLOWED_HOSTS', ''),

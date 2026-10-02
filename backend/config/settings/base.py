@@ -134,6 +134,12 @@ REST_FRAMEWORK = {
         'upload': '30/hour',
         'checkout': '20/hour',
         'reserve': '30/min',
+        'password_reset': '5/hour',          # per IP; plus 3/hour per target address (PasswordResetEmailThrottle)
+        'password_reset_email': '3/hour',
+        'password_reset_confirm': '10/hour',
+        'password_change': '10/hour',
+        'email_verify': '5/hour',
+        'email_verify_confirm': '20/hour',
         'webhook': '120/min',
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
@@ -141,6 +147,11 @@ REST_FRAMEWORK = {
     # an attacker rotate the header to bypass every IP throttle.
     'NUM_PROXIES': int(os.environ.get('THROTTLE_NUM_PROXIES', '0')),
 }
+
+# Account e-mails (Task 8.5). Links are always built from FRONTEND_BASE_URL, never from the request Host header.
+FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'http://localhost:3000')
+PASSWORD_RESET_TIMEOUT = 60 * 60  # seconds; reset links are single-use AND short-lived
+EMAIL_VERIFY_MAX_AGE = 3 * 24 * 60 * 60
 
 # SimpleJWT Authentication
 SIMPLE_JWT = {
