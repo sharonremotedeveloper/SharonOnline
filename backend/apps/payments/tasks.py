@@ -10,6 +10,7 @@ from apps.bookings.models import Booking, AttendanceAudit
 from apps.bookings.services.state_machine import transition_booking
 from apps.payments.services.settlement import RELEASABLE_STATUSES, attendance_verified_for_release, settled_exists
 from apps.payments.models import PaymentTransaction
+from apps.payments.services.reconciliation import reconcile_initialized_transaction
 from apps.payments.services.funding import funding_for_settlement
 from apps.admin_api.models import DisputeCase
 from apps.common.locks import distributed_task_lock
@@ -110,19 +111,21 @@ def release_cleared_escrow_task():
 def reconcile_pending_transactions_task():
     """
     Hourly maintenance task:
-    Reconciles orphaned or unconfirmed payment transactions older than 2 hours.
-    Marks abandoned sessions as FAILED to prevent ledger drift.
+    Queries provider-aware reconciliation for old initialized checkouts. A transaction is marked
+    failed only when the provider says so; unavailable or inconclusive status remains initialized
+    and creates a durable anomaly for operator follow-up.
     """
     now = timezone.now()
     cutoff_2h = now - timedelta(hours=2)
 
-    with transaction.atomic():
-        abandoned_txs = PaymentTransaction.objects.select_for_update(skip_locked=True).filter(
-            status=PaymentTransaction.Status.INITIALIZED,
-            created_at__lt=cutoff_2h
-        )
-        count = abandoned_txs.count()
-        abandoned_txs.update(status=PaymentTransaction.Status.FAILED)
+    abandoned_txs = list(PaymentTransaction.objects.filter(
+        status=PaymentTransaction.Status.INITIALIZED,
+        created_at__lt=cutoff_2h
+    ).select_related('booking', 'credit_purchase')[:100])
+    results = {'failed': 0, 'pending': 0, 'unresolved': 0, 'completed': 0}
+    for payment_transaction in abandoned_txs:
+        result = reconcile_initialized_transaction(payment_transaction)
+        results[result.state] = results.get(result.state, 0) + 1
 
-    logger.info(f"Reconciled {count} abandoned payment transactions to FAILED.")
-    return {"reconciled_count": count}
+    logger.info("Gateway reconciliation inspected %s transactions: %s", len(abandoned_txs), results)
+    return {"reconciled_count": len(abandoned_txs), **results}

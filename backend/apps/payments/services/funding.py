@@ -20,7 +20,13 @@ def gateway_fx_snapshot(currency: str) -> tuple[Decimal, str]:
 
 def ensure_gateway_funding(payment_transaction: PaymentTransaction, booking) -> BookingFunding:
     """Persist the immutable amount/currency/FX used for a paid lesson."""
-    fx_rate, fx_source = gateway_fx_snapshot(payment_transaction.currency)
+    fx_rate = payment_transaction.fx_rate_to_zar
+    fx_source = payment_transaction.fx_source
+    if fx_rate is None or not fx_source:
+        fx_rate, fx_source = gateway_fx_snapshot(payment_transaction.currency)
+        payment_transaction.fx_rate_to_zar = fx_rate
+        payment_transaction.fx_source = fx_source
+        payment_transaction.save(update_fields=['fx_rate_to_zar', 'fx_source', 'updated_at'])
     funding, _ = BookingFunding.objects.get_or_create(
         booking=booking,
         defaults={
@@ -33,6 +39,21 @@ def ensure_gateway_funding(payment_transaction: PaymentTransaction, booking) -> 
         },
     )
     return funding
+
+
+def persist_capture_snapshot(payment_transaction: PaymentTransaction) -> tuple[Decimal, str]:
+    """Persist exactly one provider/currency valuation snapshot when capture is accepted."""
+    if payment_transaction.fx_rate_to_zar is not None and payment_transaction.fx_source:
+        return payment_transaction.fx_rate_to_zar, payment_transaction.fx_source
+    if payment_transaction.credit_purchase_id:
+        purchase = payment_transaction.credit_purchase
+        fx_rate, fx_source = purchase.fx_rate_to_zar, purchase.fx_source
+    else:
+        fx_rate, fx_source = gateway_fx_snapshot(payment_transaction.currency)
+    payment_transaction.fx_rate_to_zar = fx_rate
+    payment_transaction.fx_source = fx_source
+    payment_transaction.save(update_fields=['fx_rate_to_zar', 'fx_source', 'updated_at'])
+    return fx_rate, fx_source
 
 
 def funding_for_settlement(booking, *, context: str) -> BookingFunding | None:

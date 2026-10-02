@@ -19,6 +19,10 @@ Ledger amounts are always the **captured amount in its own currency** (a PayFast
 tutor's USD list price), so a booking's escrow account returns to exactly zero. There is no list-price fallback: a missing immutable
 `BookingFunding` snapshot blocks settlement and creates a durable `SettlementAnomaly` for reconciliation.
 
+Capture journals persist the FX rate and named source accepted with the payment. When verified provider data includes a
+processing fee, the gateway asset is debited for the net receipt, account 5030 is debited for the fee, and escrow or wallet
+liability is credited for the gross capture. Every journal must balance independently in its transaction currency and ZAR.
+
 ## Outage reports
 
 * Allowed from **60 min before** the lesson until **30 min after it ends** (`OUTAGE_REPORT_BEFORE_START_SECONDS`, `OUTAGE_REPORT_AFTER_END_SECONDS`). Outside the window: 409. Previously any future booking could be "interrupted" for an instant refund.

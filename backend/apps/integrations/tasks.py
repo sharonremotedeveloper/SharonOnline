@@ -1,11 +1,33 @@
 from celery import shared_task
+from datetime import timedelta
+from django.utils import timezone
 from apps.bookings.models import Booking
+from apps.payments.models import FulfillmentDispatch
 from .zoom import zoom_client
 from .google_calendar import sync_booking_to_teacher_gcal
 from .email import send_booking_confirmation_email
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+@shared_task(name='apps.integrations.tasks.retry_fulfillment_dispatches_task')
+def retry_fulfillment_dispatches_task():
+    """Re-enqueue durable fulfillment failures whose retry time has arrived."""
+    from apps.common.locks import distributed_task_lock
+    from apps.payments.services.webhook_handler import dispatch_fulfillment
+
+    @distributed_task_lock('lock:beat:retry_fulfillment_dispatches', timeout_seconds=240)
+    def _execute():
+        due_ids = list(FulfillmentDispatch.objects.filter(
+            status=FulfillmentDispatch.Status.RETRYABLE,
+            next_retry_at__lte=timezone.now(),
+        ).values_list('booking_id', flat=True)[:100])
+        for booking_id in due_ids:
+            dispatch_fulfillment(str(booking_id))
+        return {'redispatched_count': len(due_ids)}
+
+    return _execute()
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def dispatch_booking_fulfillment(self, booking_id: str):
@@ -21,36 +43,65 @@ def dispatch_booking_fulfillment(self, booking_id: str):
         logger.error(f"Cannot fulfill booking: ID {booking_id} does not exist.")
         return False
 
+    dispatch, _ = FulfillmentDispatch.objects.get_or_create(booking=booking)
+    dispatch.status = FulfillmentDispatch.Status.RUNNING
+    dispatch.attempts += 1
+    dispatch.last_error = ''
+    dispatch.save(update_fields=['status', 'attempts', 'last_error', 'updated_at'])
+
+    def retryable_failure(component, exc):
+        dispatch.status = FulfillmentDispatch.Status.RETRYABLE
+        dispatch.last_error = f'{component}: {exc}'[:2000]
+        dispatch.next_retry_at = timezone.now() + timedelta(seconds=60)
+        dispatch.save(update_fields=['status', 'last_error', 'next_retry_at', 'updated_at'])
+        raise self.retry(exc=exc)
+
     # 1. Provision Zoom Meeting
-    if not booking.zoom_meeting_id:
+    if not dispatch.zoom_completed:
         try:
-            topic = f"Sharon ESL: {booking.student.first_name or booking.student.username} with {booking.teacher.user.first_name or booking.teacher.user.username}"
-            zoom_data = zoom_client.create_meeting(
-                topic=topic,
-                start_time_iso=booking.start_time_utc.strftime('%Y-%m-%dT%H:%M:%SZ'),
-                duration_minutes=25
-            )
-            booking.zoom_meeting_id = zoom_data['meeting_id']
-            booking.zoom_join_url = zoom_data['join_url']
-            booking.zoom_start_url = zoom_data['start_url']
-            booking.zoom_password = zoom_data.get('password', '')
-            booking.save()
+            if not booking.zoom_meeting_id:
+                topic = f"Sharon ESL: {booking.student.first_name or booking.student.username} with {booking.teacher.user.first_name or booking.teacher.user.username}"
+                zoom_data = zoom_client.create_meeting(
+                    topic=topic,
+                    start_time_iso=booking.start_time_utc.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                    duration_minutes=25
+                )
+                booking.zoom_meeting_id = zoom_data['meeting_id']
+                booking.zoom_join_url = zoom_data['join_url']
+                booking.zoom_start_url = zoom_data['start_url']
+                booking.zoom_password = zoom_data.get('password', '')
+                booking.save()
+            dispatch.zoom_completed = True
+            dispatch.save(update_fields=['zoom_completed', 'updated_at'])
             logger.info(f"Zoom meeting provisioned successfully for booking={booking_id}: ID={booking.zoom_meeting_id}")
         except Exception as exc:
             logger.error(f"Error provisioning Zoom room for booking {booking_id}: {exc}")
-            raise self.retry(exc=exc)
+            retryable_failure('zoom', exc)
 
     # 2. Sync to Teacher Google Calendar
-    try:
-        sync_booking_to_teacher_gcal(booking)
-    except Exception as exc:
-        logger.warning(f"Google Calendar sync warning for booking {booking_id}: {exc}")
+    if not dispatch.calendar_completed:
+        try:
+            sync_booking_to_teacher_gcal(booking)
+            dispatch.calendar_completed = True
+            dispatch.save(update_fields=['calendar_completed', 'updated_at'])
+        except Exception as exc:
+            logger.warning(f"Google Calendar sync warning for booking {booking_id}: {exc}")
+            retryable_failure('calendar', exc)
 
     # 3. Send Transactional Confirmation Email with .ics Invite
-    try:
-        send_booking_confirmation_email(booking)
-    except Exception as exc:
-        logger.warning(f"Email dispatch warning for booking {booking_id}: {exc}")
+    if not dispatch.email_completed:
+        try:
+            send_booking_confirmation_email(booking)
+            dispatch.email_completed = True
+            dispatch.save(update_fields=['email_completed', 'updated_at'])
+        except Exception as exc:
+            logger.warning(f"Email dispatch warning for booking {booking_id}: {exc}")
+            retryable_failure('email', exc)
+
+    dispatch.status = FulfillmentDispatch.Status.SUCCEEDED
+    dispatch.last_error = ''
+    dispatch.next_retry_at = None
+    dispatch.save(update_fields=['status', 'last_error', 'next_retry_at', 'updated_at'])
 
     return True
 

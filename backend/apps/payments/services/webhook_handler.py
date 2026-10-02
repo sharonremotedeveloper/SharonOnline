@@ -1,8 +1,10 @@
 from django.db import transaction, IntegrityError
 from django.utils import timezone
+from decimal import Decimal
+from datetime import timedelta
 from apps.payments.services.credits import capture_credit_purchase, grant_credit
-from apps.payments.models import CreditPurchase, PaymentTransaction, GatewayAnomaly
-from apps.payments.services.funding import ensure_gateway_funding, gateway_fx_snapshot
+from apps.payments.models import CreditPurchase, PaymentTransaction, GatewayAnomaly, FulfillmentDispatch
+from apps.payments.services.funding import ensure_gateway_funding, gateway_fx_snapshot, persist_capture_snapshot
 from apps.payments.services.ledger_service import (
     record_payment_capture_entry, record_def501_quarantine_entry, record_unallocated_payment_entry)
 from apps.bookings.models import Booking
@@ -52,17 +54,30 @@ def record_unallocated_payment(*, booking, gateway: str, transaction_id: str, am
 
 
 def dispatch_fulfillment(booking_id: str) -> None:
+    dispatch, _ = FulfillmentDispatch.objects.get_or_create(booking_id=booking_id)
+    if dispatch.status == FulfillmentDispatch.Status.SUCCEEDED:
+        return
+    dispatch.status = FulfillmentDispatch.Status.QUEUED
+    dispatch.last_error = ''
+    dispatch.next_retry_at = None
+    dispatch.save(update_fields=['status', 'last_error', 'next_retry_at', 'updated_at'])
     try:
         from apps.integrations.tasks import dispatch_booking_fulfillment
         dispatch_booking_fulfillment.delay(booking_id)
-    except Exception:
-        # The booking is already CONFIRMED and paid; a lost dispatch means no Zoom link/email. Make it loud.
+    except Exception as exc:
+        dispatch.status = FulfillmentDispatch.Status.RETRYABLE
+        dispatch.attempts += 1
+        dispatch.last_error = str(exc)[:2000]
+        dispatch.next_retry_at = timezone.now() + timedelta(minutes=1)
+        dispatch.save(update_fields=['status', 'attempts', 'last_error', 'next_retry_at', 'updated_at'])
         logger.exception("Could not dispatch fulfillment for booking %s - needs manual or reconcile re-dispatch", booking_id)
+        return
 
 
 @transaction.atomic
 def process_payment_webhook(*, booking_id=None, credit_purchase_id=None, gateway: str, transaction_id: str,
-                            amount: float, currency: str, status: str, raw_payload: dict) -> dict:
+                            amount: float, currency: str, status: str, raw_payload: dict,
+                            provider_fee_amount=None, provider_fee_currency: str = '') -> dict:
     """
     Idempotent payment webhook ingestion.
     Guarantees that multiple retries from payment gateways (PayFast/PayPal)
@@ -86,6 +101,16 @@ def process_payment_webhook(*, booking_id=None, credit_purchase_id=None, gateway
     if not created and tx.status in (PaymentTransaction.Status.SUCCESS, PaymentTransaction.Status.UNALLOCATED):
         logger.info(f"Duplicate webhook ignored for transaction_id={transaction_id}")
         return {"status": "already_processed"}
+
+    if status == PaymentTransaction.Status.SUCCESS:
+        persist_capture_snapshot(tx)
+        if provider_fee_amount is not None:
+            fee = abs(Decimal(str(provider_fee_amount))).quantize(Decimal('0.01'))
+            if fee > tx.amount:
+                raise ValueError('Provider fee cannot exceed the captured amount.')
+            tx.provider_fee_amount = fee
+            tx.provider_fee_currency = (provider_fee_currency or tx.currency).upper()
+            tx.save(update_fields=['provider_fee_amount', 'provider_fee_currency', 'updated_at'])
 
     if status == PaymentTransaction.Status.SUCCESS and (credit_purchase_id or tx.credit_purchase_id):
         purchase_id = credit_purchase_id or tx.credit_purchase_id

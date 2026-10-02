@@ -41,9 +41,15 @@ class PaymentTransaction(models.Model):
     merchant_reference = models.CharField(max_length=64, unique=True, null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=3, default='USD')
+    fx_rate_to_zar = models.DecimalField(max_digits=12, decimal_places=6, null=True, blank=True)
+    fx_source = models.CharField(max_length=64, blank=True)
+    provider_fee_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    provider_fee_currency = models.CharField(max_length=3, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.INITIALIZED, db_index=True)
     escrow_cleared = models.BooleanField(default=False, db_index=True)
     raw_webhook_payload = models.JSONField(default=dict)
+    reconciliation_attempts = models.PositiveIntegerField(default=0)
+    last_reconciled_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -246,6 +252,28 @@ class SettlementAnomaly(models.Model):
         ordering = ['-created_at']
 
 
+class FulfillmentDispatch(models.Model):
+    """Durable, retryable state for post-payment lesson provisioning."""
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending dispatch'
+        QUEUED = 'queued', 'Queued'
+        RUNNING = 'running', 'Running'
+        RETRYABLE = 'retryable', 'Retryable failure'
+        SUCCEEDED = 'succeeded', 'Succeeded'
+        FAILED = 'failed', 'Terminal failure'
+
+    booking = models.OneToOneField('bookings.Booking', on_delete=models.PROTECT, related_name='fulfillment_dispatch')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
+    attempts = models.PositiveIntegerField(default=0)
+    zoom_completed = models.BooleanField(default=False)
+    calendar_completed = models.BooleanField(default=False)
+    email_completed = models.BooleanField(default=False)
+    last_error = models.TextField(blank=True)
+    next_retry_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
 class LedgerAccount(models.TextChoices):
     # Assets (1000s)
     ASSET_GATEWAY_PAYFAST = '1010_asset_gateway_payfast', '1010 - Asset: Gateway Cash (PayFast ZAR)'
@@ -300,7 +328,8 @@ class LedgerEntry(models.Model):
     currency = models.CharField(max_length=3, default='USD')
 
     # SARB / SARS Statutory Valuation
-    fx_rate_to_zar = models.DecimalField(max_digits=10, decimal_places=4, default=Decimal('18.7500'))
+    fx_rate_to_zar = models.DecimalField(max_digits=12, decimal_places=6, default=Decimal('18.750000'))
+    fx_source = models.CharField(max_length=64, default='legacy_default')
     amount_zar = models.DecimalField(max_digits=12, decimal_places=2)
 
     event_type = models.CharField(max_length=40, choices=EventType.choices, db_index=True)
