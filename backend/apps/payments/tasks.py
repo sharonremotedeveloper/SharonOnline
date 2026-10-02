@@ -14,6 +14,7 @@ from apps.payments.services.reconciliation import reconcile_initialized_transact
 from apps.payments.services.funding import funding_for_settlement
 from apps.admin_api.models import DisputeCase
 from apps.common.locks import distributed_task_lock
+from apps.integrations.services.attendance import TEACHER, credited_attendance_minutes
 
 logger = logging.getLogger(__name__)
 
@@ -53,11 +54,7 @@ def release_cleared_escrow_task():
 
         for booking in candidates:
             # Dual verification: check attendance minutes
-            teacher_email = booking.teacher.user.email
-            teacher_minutes = AttendanceAudit.objects.filter(
-                booking=booking,
-                participant_email=teacher_email
-            ).aggregate(total=Sum('total_minutes'))['total'] or 0
+            teacher_minutes = credited_attendance_minutes(booking, TEACHER, through=booking.end_time_utc)
 
             if not attendance_verified_for_release(booking, teacher_minutes):
                 logger.warning(

@@ -241,7 +241,7 @@ A four-way audit (backend, frontend, spec-vs-roadmap, infra) found that Phases 1
 | :--- | :--- | :--- |
 | **Phase 7** | Security emergency + spec freeze (decisions D-1..D-12) | `7A + 7B DONE (7.1-7.9, adversarial-review fixes; 220 tests); 7.10 + D-3,4,7-12 awaiting Anesu` |
 | **Phase 8** | Honest frontend + real auth | `IN PROGRESS - 8.1-8.8 + 9.2 done (honest client, HttpOnly cookie sessions via Next BFF proxy, signed-session middleware, real reserve->booking_id, password reset/change, e-mail verification, login by e-mail); 8.9 Next.js major upgrade open` |
-| **Phase 9** | Booking core (`transition_booking()`, reserve → book) | `IN PROGRESS - 9.1 (state machine + audit trail), 9.2, 9.4 (in-flight payments keep their hold) and 9.3 (slot grid shows every taken slot), 9.7 (settlement paths, no double payout), 9.9 (validated, atomic lesson memo) and 9.10 (one private, once-only review endpoint) and 9.5 (filtered, scoped booking list) done; 9.6, 9.8 open` |
+| **Phase 9** | Booking core (`transition_booking()`, reserve → book) | `IN PROGRESS - 9.1 (state machine + audit trail), 9.2, 9.4 (in-flight payments keep their hold) and 9.3 (slot grid shows every taken slot), 9.7 (settlement paths, no double payout), 9.9 (validated, atomic lesson memo) and 9.10 (one private, once-only review endpoint) 9.5 (filtered, scoped booking list) and 9.8 (verified Zoom attendance mapping) done; 9.6 open (needs D-6)` |
 | **Phase 10** | Real payments (PayPal/PayFast sandbox, credits, refunds, multi-currency ledger) | `NOT STARTED` |
 | **Phase 11** | Tutor lifecycle + real payouts | `NOT STARTED` |
 | **Phase 12** | Integrations + notifications (Zoom, Resend, GCal, Eskom) | `NOT STARTED` |
@@ -259,7 +259,7 @@ A four-way audit (backend, frontend, spec-vs-roadmap, infra) found that Phases 1
 | **1** | Honest admin financial data, disabled payout mutation, ownership-safe booking and Celery locks | `CODE COMPLETE - backend 679/679, focused 74/74, frontend 88/88, Django/migration checks and production build passed; real Redis CI execution pending Batch 8 infrastructure` |
 | **2** | Funding provenance, credit catalog, wallet history, credit redemption, dual-target checkout | `COMPLETE - backend 688 passed/2 Redis CI skips, focused 9/9 + 4/4, frontend 88/88, Django/migration checks and production build passed` |
 | **3** | FX, balanced journals, fees, reconciliation, DB immutability, durable fulfillment | `COMPLETE - backend 693 passed/3 infrastructure skips, focused 103/103, frontend 88/88 and production build passed; PostgreSQL trigger CI execution pending Batch 8` |
-| **4** | Zoom participant identity and attendance correctness | `NOT STARTED - reconcile Claude's parallel attendance work before implementation` |
+| **4** | Zoom participant identity and attendance correctness | `COMPLETE - Claude commit reconciled and extended; focused 91/91, backend 734 passed/3 infrastructure skips, frontend 88/88 and production build passed` |
 | **5** | Student profiles, support inquiries, generated API contracts, timezone/count corrections | `NOT STARTED` |
 | **6** | Tutor wallet and encrypted payout settings; payout execution remains disabled | `NOT STARTED` |
 | **7** | Provider-backed Eskom Power Guard | `NOT STARTED` |
@@ -270,3 +270,5 @@ Batch 1 replaced every fabricated admin telemetry floor and payout preview row w
 Batch 2 made captured funding the sole settlement authority. Every paid booking has an immutable funding snapshot; missing funding creates a durable anomaly and blocks settlement. The launch credit catalog, purchases, wallet history, atomic oldest-credit redemption, discounted per-credit funding, and dual-target checkout are database-backed. Gateway webhooks now determine success while the UI polls authoritative booking or purchase state.
 
 Batch 3 persists capture-time FX and provider-fee provenance, posts gateway fees to account 5030, balances journals in both transaction currency and ZAR, and installs PostgreSQL ledger mutation triggers. Reconciliation no longer guesses that old checkouts failed, and fulfillment dispatch failures now remain durable and retryable.
+
+Batch 4 stores complete Zoom identity/event evidence with explicit teacher/student/unknown classification. Unknown guests cannot affect lesson state or money, event retries and reordering converge safely, Zoom timestamps remain authoritative, and five-minute reconnect grace is applied consistently to no-show and settlement decisions.

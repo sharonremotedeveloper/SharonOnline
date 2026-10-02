@@ -5,9 +5,9 @@ This is the cross-agent handoff for the eight approved Sharon Online remediation
 ## Current state
 
 - Integration branch: `remediation/tech-debt`
-- Active branch: `feature/batch-3-payment-ledger-hardening`
+- Active branch: `feature/batch-4-zoom-attendance-correctness`
 - Isolated worktree: `C:\Dev\Active Projects\Notion\sharon-remediation`
-- Shared checkout was deliberately left unchanged because it contains Claude's uncommitted Zoom attendance work.
+- Shared checkout was deliberately left unchanged. Claude's Zoom attendance work was imported from commit `2181dbd` and augmented on this isolated branch.
 
 ## Batch 1 - containment and ownership-safe locks
 
@@ -60,9 +60,9 @@ External-action boundary:
 
 - No gateway, email, hosting, database-cloud, or other external-provider action was performed in this batch. Sandbox verification remains gated by account confirmation and Anesu's explicit approval.
 
-## Parallel-work warning
+## Parallel-work reconciliation
 
-Claude's shared checkout currently contains uncommitted Batch 4-related attendance identity changes, including a migration numbered `0010`. Reconcile that work only at the Batch 4 boundary and renumber migrations if necessary; do not overwrite or clean the shared checkout.
+Claude's `feature/task-9-8-zoom-attendance` commit `2181dbd` was cherry-picked at the Batch 4 boundary. Its bookings migration was renumbered from `0010` to `0011` behind the Batch 1 lock-token migration; the expanded identity migration is `0012`. The shared checkout was not modified.
 
 ## Batch 3 - payment and ledger hardening
 
@@ -87,3 +87,28 @@ Verification:
 External-action boundary:
 
 - Gateway reconciliation logic was verified with injected provider results only. No PayFast, PayPal, hosting, or other external-provider request was made.
+
+## Batch 4 - Zoom attendance correctness
+
+Implemented:
+
+- Removed the unknown-participant-to-student fallback and centralized identity classification as explicit `teacher`, `student`, or `unknown`.
+- Persisted participant ID, registrant ID, reported email, host ID, event IDs, session ID, match method, raw payload, and event timestamps.
+- Made join/leave handling idempotent across retries, reconnects, reused participant IDs, and leave-before-join delivery.
+- Used Zoom join/leave/start/end timestamps; malformed timestamps fall back visibly without failing webhook ingestion.
+- Unknown participants remain visible in Django administration but cannot start a booking, satisfy attendance, prevent a no-show, or authorize settlement.
+- Removed participant-count inference from the active probe. Only an authoritative started meeting can corroborate tutor presence.
+- Applied the five-minute disconnect grace to T+10 presence and merged short reconnect gaps into completion/settlement attendance minutes.
+- Imported Claude's late-telemetry dispute guard, host-start handling, malformed-payload hardening, and explicit Zoom API errors.
+
+Verification:
+
+- Focused Zoom/no-show/settlement suite: 91 passed.
+- Complete backend regression: 734 passed, 3 infrastructure-specific tests skipped.
+- Frontend tests: 88 passed; Next.js production build passed.
+- `manage.py check`: no issues.
+- `manage.py makemigrations --check --dry-run`: no changes.
+
+External-action boundary:
+
+- All Zoom behavior was verified with signed local webhook fixtures and injected client responses. No Zoom account, API, or sandbox was accessed.
