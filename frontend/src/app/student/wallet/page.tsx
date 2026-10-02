@@ -13,22 +13,14 @@ import {
   CreditCard,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import type { components } from "@/types/api.generated";
 import { DEFAULT_BUNDLES, CURRENCIES, CurrencyCode, detectDefaultCurrency } from "@/lib/currency";
 import { CurrencySwitcher } from "@/components/public/CurrencySwitcher";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
 
-interface CreditBundleRow {
-  pack_name: string;
-  remaining: number;
-  total: number;
-  purchased_at: string;
-}
-
-interface WalletResponse {
-  total_credits: number;
-  bundles: CreditBundleRow[];
-}
+// Generated from the backend OpenAPI schema (`npm run gen:api`), so a contract change breaks the build instead of the page.
+type WalletResponse = components["schemas"]["Wallet"];
 
 export default function StudentWalletPage() {
   const [currency, setCurrency] = useState<CurrencyCode>("USD");

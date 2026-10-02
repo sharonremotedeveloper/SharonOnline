@@ -1,0 +1,2350 @@
+openapi: 3.0.3
+info:
+  title: Sharon Online API
+  version: 1.0.0
+  description: 25-minute 1-on-1 ESL marketplace API.
+paths:
+  /api/v1/admin/attendance/live/:
+    get:
+      operationId: v1_admin_attendance_live_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/admin/disputes/:
+    get:
+      operationId: v1_admin_disputes_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/admin/disputes/{id}/resolve/:
+    post:
+      operationId: v1_admin_disputes_resolve_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/admin/finance/ledger/:
+    get:
+      operationId: v1_admin_finance_ledger_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/admin/payouts/batch/:
+    get:
+      operationId: v1_admin_payouts_batch_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/admin/payouts/execute-batch/:
+    post:
+      operationId: v1_admin_payouts_execute_batch_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/admin/teachers/{id}/verify/:
+    patch:
+      operationId: v1_admin_teachers_verify_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/admin/teachers/pending-vetting/:
+    get:
+      operationId: v1_admin_teachers_pending_vetting_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/admin/telemetry/:
+    get:
+      operationId: v1_admin_telemetry_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/auth/logout/:
+    post:
+      operationId: v1_auth_logout_create
+      description: |-
+        Blacklists the supplied refresh token so it can no longer mint access tokens.
+
+        Deliberately not gated on a live access token: the refresh token is itself the proof of ownership, and an
+        expired access token must not leave a 14-day refresh token impossible to revoke.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LogoutRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LogoutRequestRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '205':
+          description: No response body
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/auth/me/:
+    get:
+      operationId: v1_auth_me_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: v1_auth_me_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: v1_auth_me_partial_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/v1/auth/password-change/:
+    post:
+      operationId: v1_auth_password_change_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/auth/password-reset/:
+    post:
+      operationId: v1_auth_password_reset_create
+      description: |-
+        Always answers 202 with the same body, whether or not the address belongs to an account (no enumeration).
+        The e-mail is sent by a Celery task after commit, so response time does not reveal it either.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequestRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/auth/password-reset/confirm/:
+    post:
+      operationId: v1_auth_password_reset_confirm_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/auth/register/:
+    post:
+      operationId: v1_auth_register_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Register'
+          description: ''
+  /api/v1/auth/token/:
+    post:
+      operationId: v1_auth_token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPairRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPairRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPairRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/token/refresh/:
+    post:
+      operationId: v1_auth_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/auth/verify-email/:
+    post:
+      operationId: v1_auth_verify_email_create
+      description: (Re)send the verification e-mail for the signed-in user's current
+        address.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/auth/verify-email/confirm/:
+    post:
+      operationId: v1_auth_verify_email_confirm_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailVerifyConfirmRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmailVerifyConfirmRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmailVerifyConfirmRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/bookings/:
+    get:
+      operationId: v1_bookings_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBookingDetailList'
+          description: ''
+    post:
+      operationId: v1_bookings_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BookingCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BookingCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingCreate'
+          description: ''
+  /api/v1/bookings/{booking_id}/memo/:
+    post:
+      operationId: v1_bookings_memo_create
+      description: Allows a teacher to submit the post-lesson feedback memo.
+      parameters:
+      - in: path
+        name: booking_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/bookings/{booking_id}/report-outage/:
+    post:
+      operationId: v1_bookings_report_outage_create
+      description: |-
+        Handles Eskom load shedding / grid power interruption during or before a lesson:
+        1. Marks booking as INTERRUPTED_POWER.
+        2. Refunds 1 lesson credit to student's wallet (or increments active CreditBundle).
+        3. Waives any cancellation penalty for the teacher.
+      parameters:
+      - in: path
+        name: booking_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/bookings/{booking_id}/review/:
+    post:
+      operationId: v1_bookings_review_create
+      description: Allows a student to submit a 1-5 star rating and optional written
+        review.
+      parameters:
+      - in: path
+        name: booking_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/bookings/{id}/:
+    get:
+      operationId: v1_bookings_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetail'
+          description: ''
+  /api/v1/bookings/reserve/:
+    post:
+      operationId: v1_bookings_reserve_create
+      description: |-
+        Validates a slot, takes the 10-minute Redis hold and creates the PENDING_PAYMENT booking in one step.
+        The returned `booking_id` is what checkout pays for. Retrying the same request returns the existing live hold.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReserveRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReserveRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReserveRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+          description: ''
+  /api/v1/bookings/slots/{teacher_id}/:
+    get:
+      operationId: v1_bookings_slots_retrieve
+      description: Returns concrete 25-minute slots for a given teacher projected
+        into the requested timezone.
+      parameters:
+      - in: path
+        name: teacher_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/integrations/r2/presigned-url/:
+    post:
+      operationId: v1_integrations_r2_presigned_url_create
+      description: |-
+        POST /api/v1/integrations/storage/presigned-url/
+        POST /api/v1/integrations/r2/presigned-url/
+        Generates presigned upload or download URLs for Cloudflare R2 object storage with zero egress fees.
+        Direct-to-storage client upload architecture eliminates backend Gunicorn/Celery worker blocking.
+        Enforces strict role-based access control (RBAC), Tier 1 vs Tier 2 separation, and path traversal protection.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/integrations/storage/presigned-url/:
+    post:
+      operationId: v1_integrations_storage_presigned_url_create
+      description: |-
+        POST /api/v1/integrations/storage/presigned-url/
+        POST /api/v1/integrations/r2/presigned-url/
+        Generates presigned upload or download URLs for Cloudflare R2 object storage with zero egress fees.
+        Direct-to-storage client upload architecture eliminates backend Gunicorn/Celery worker blocking.
+        Enforces strict role-based access control (RBAC), Tier 1 vs Tier 2 separation, and path traversal protection.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/materials/:
+    get:
+      operationId: v1_materials_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMaterialListList'
+          description: ''
+  /api/v1/materials/{slug}/:
+    get:
+      operationId: v1_materials_retrieve
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialDetail'
+          description: ''
+  /api/v1/payments/checkout/init/:
+    post:
+      operationId: v1_payments_checkout_init_create
+      description: |-
+        Initializes checkout for PayFast (ZAR) or PayPal (USD). Persists an INITIALIZED transaction holding the
+        server-computed expected amount; webhooks are verified against it, never against client/gateway-supplied totals.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/payments/credits/:
+    get:
+      operationId: v1_payments_credits_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+          description: ''
+  /api/v1/student/bookings/{id}/review/:
+    post:
+      operationId: v1_student_bookings_review_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/student/flashcards/:
+    get:
+      operationId: v1_student_flashcards_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/student/flashcards/{id}/mastery/:
+    post:
+      operationId: v1_student_flashcards_mastery_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/student/lessons/:
+    get:
+      operationId: v1_student_lessons_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/student/profile/:
+    get:
+      operationId: v1_student_profile_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+    patch:
+      operationId: v1_student_profile_partial_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/teacher/students/:
+    get:
+      operationId: v1_teacher_students_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/teacher/students/{student_id}/dossier/:
+    patch:
+      operationId: v1_teacher_students_dossier_partial_update
+      parameters:
+      - in: path
+        name: student_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/teachers/:
+    get:
+      operationId: v1_teachers_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTeacherListList'
+          description: ''
+  /api/v1/teachers/{id}/:
+    get:
+      operationId: v1_teachers_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherDetail'
+          description: ''
+  /api/v1/teachers/availability/manage/:
+    get:
+      operationId: v1_teachers_availability_manage_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTeacherAvailabilityList'
+          description: ''
+    post:
+      operationId: v1_teachers_availability_manage_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailabilityRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailabilityRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherAvailabilityRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+components:
+  schemas:
+    AccentEnum:
+      enum:
+      - ZA
+      - UK
+      - US
+      - OTHER
+      type: string
+      description: |-
+        * `ZA` - South African
+        * `UK` - British
+        * `US` - American
+        * `OTHER` - International
+    BookingCreate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        start_time_utc:
+          type: string
+          format: date-time
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          readOnly: true
+      required:
+      - id
+      - start_time_utc
+      - status
+    BookingCreateRequest:
+      type: object
+      properties:
+        teacher_id:
+          type: string
+          format: uuid
+          writeOnly: true
+        material_id:
+          type: string
+          format: uuid
+          writeOnly: true
+          nullable: true
+        start_time_utc:
+          type: string
+          format: date-time
+      required:
+      - start_time_utc
+      - teacher_id
+    BookingDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        booking_reference:
+          type: string
+          readOnly: true
+        teacher:
+          allOf:
+          - $ref: '#/components/schemas/TeacherList'
+          readOnly: true
+        student:
+          allOf:
+          - $ref: '#/components/schemas/BookingStudent'
+          readOnly: true
+        material:
+          type: string
+          format: uuid
+          nullable: true
+        material_slug:
+          type: string
+          nullable: true
+          readOnly: true
+        material_title:
+          type: string
+          nullable: true
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusEnum'
+          default: pending_payment
+        start_time_utc:
+          type: string
+          format: date-time
+        end_time_utc:
+          type: string
+          format: date-time
+        local_date:
+          type: string
+          readOnly: true
+        local_start_time:
+          type: string
+          readOnly: true
+        local_end_time:
+          type: string
+          readOnly: true
+        viewer_timezone:
+          type: string
+          readOnly: true
+        price_usd:
+          type: number
+          format: double
+          readOnly: true
+        price_zar:
+          type: number
+          format: double
+          readOnly: true
+        lock_expires_at:
+          type: string
+          nullable: true
+          readOnly: true
+        zoom_url:
+          type: string
+          readOnly: true
+        zoom_join_url:
+          type: string
+          readOnly: true
+        zoom_start_url:
+          type: string
+          readOnly: true
+        zoom_meeting_id:
+          type: string
+          maxLength: 64
+        zoom_password:
+          type: string
+          maxLength: 32
+        student_rating:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: 1 to 5 star rating
+        student_review:
+          type: string
+          description: Written review visible to admin and teacher
+        memo:
+          allOf:
+          - $ref: '#/components/schemas/LessonMemo'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - booking_reference
+      - created_at
+      - end_time_utc
+      - id
+      - local_date
+      - local_end_time
+      - local_start_time
+      - lock_expires_at
+      - material_slug
+      - material_title
+      - memo
+      - price_usd
+      - price_zar
+      - start_time_utc
+      - student
+      - teacher
+      - viewer_timezone
+      - zoom_join_url
+      - zoom_start_url
+      - zoom_url
+    BookingStudent:
+      type: object
+      description: Minimal student view embedded in a booking. Contact details are
+        only for the student themselves/staff.
+      properties:
+        id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+          readOnly: true
+        first_name:
+          type: string
+        timezone:
+          type: string
+        country:
+          type: string
+      required:
+      - country
+      - first_name
+      - full_name
+      - id
+      - timezone
+    CategoryEnum:
+      enum:
+      - daily_news
+      - freetalk
+      - business
+      - test_prep
+      type: string
+      description: |-
+        * `daily_news` - Daily News & Discussion
+        * `freetalk` - FreeTalk Conversation Prompts
+        * `business` - Business English & Professional
+        * `test_prep` - Job Interview & Test Prep
+    CefrLevelEnum:
+      enum:
+      - A1
+      - A2
+      - B1
+      - B2
+      - C1
+      - C2
+      type: string
+      description: |-
+        * `A1` - Beginner A1
+        * `A2` - Elementary A2
+        * `B1` - Intermediate B1
+        * `B2` - Upper-Intermediate B2
+        * `C1` - Advanced C1
+        * `C2` - Proficient C2
+    CreditBundleRow:
+      type: object
+      properties:
+        pack_name:
+          type: string
+        remaining:
+          type: integer
+        total:
+          type: integer
+        purchased_at:
+          type: string
+          format: date-time
+      required:
+      - pack_name
+      - purchased_at
+      - remaining
+      - total
+    CreditLedgerEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        description:
+          type: string
+        credits_delta:
+          type: integer
+        date:
+          type: string
+          format: date
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+      required:
+      - credits_delta
+      - date
+      - description
+      - id
+      - type
+    CustomTokenObtainPairRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - password
+      - username
+    Detail:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    EmailVerifyConfirmRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 512
+      required:
+      - token
+    LessonMemo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        booking:
+          type: string
+          format: uuid
+          readOnly: true
+        teacher:
+          type: string
+          format: uuid
+          readOnly: true
+        student:
+          type: string
+          format: uuid
+          readOnly: true
+        feedback_text:
+          type: string
+          description: Grammar corrections, speaking feedback, overall commentary
+        vocabulary_words:
+          description: 'List of words: [{''word'': ''resilience'', ''definition'':
+            ''...''}]'
+        pronunciation_notes:
+          type: string
+        homework:
+          type: string
+        submitted_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - booking
+      - feedback_text
+      - id
+      - student
+      - submitted_at
+      - teacher
+    LogoutRequestRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    MaterialDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        slug:
+          type: string
+          maxLength: 255
+          pattern: ^[-a-zA-Z0-9_]+$
+        category:
+          $ref: '#/components/schemas/CategoryEnum'
+        category_display:
+          type: string
+          readOnly: true
+        cefr_level:
+          $ref: '#/components/schemas/CefrLevelEnum'
+        cefr_display:
+          type: string
+          readOnly: true
+        description:
+          type: string
+        pdf_file_url:
+          type: string
+          readOnly: true
+        audio_snippet_url:
+          type: string
+          readOnly: true
+        content_html:
+          type: string
+          description: 'Structured HTML content: article text, vocab definitions,
+            discussion questions'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - audio_snippet_url
+      - category
+      - category_display
+      - cefr_display
+      - cefr_level
+      - created_at
+      - id
+      - pdf_file_url
+      - slug
+      - title
+      - updated_at
+    MaterialList:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        title:
+          type: string
+          maxLength: 255
+        slug:
+          type: string
+          maxLength: 255
+          pattern: ^[-a-zA-Z0-9_]+$
+        category:
+          $ref: '#/components/schemas/CategoryEnum'
+        category_display:
+          type: string
+          readOnly: true
+        cefr_level:
+          $ref: '#/components/schemas/CefrLevelEnum'
+        cefr_display:
+          type: string
+          readOnly: true
+        description:
+          type: string
+        pdf_file_url:
+          type: string
+          readOnly: true
+        audio_snippet_url:
+          type: string
+          readOnly: true
+      required:
+      - audio_snippet_url
+      - category
+      - category_display
+      - cefr_display
+      - cefr_level
+      - id
+      - pdf_file_url
+      - slug
+      - title
+    PaginatedBookingDetailList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookingDetail'
+    PaginatedMaterialListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MaterialList'
+    PaginatedTeacherAvailabilityList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeacherAvailability'
+    PaginatedTeacherListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeacherList'
+    PasswordChangeRequest:
+      type: object
+      properties:
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 128
+        new_password_confirm:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 128
+        old_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 128
+      required:
+      - new_password
+      - new_password_confirm
+      - old_password
+    PasswordResetConfirmRequest:
+      type: object
+      properties:
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 128
+        new_password_confirm:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 128
+        uid:
+          type: string
+          minLength: 1
+          maxLength: 128
+        token:
+          type: string
+          minLength: 1
+          maxLength: 256
+      required:
+      - new_password
+      - new_password_confirm
+      - token
+      - uid
+    PasswordResetRequestRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+      required:
+      - email
+    PatchedUserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          title: Email address
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        country:
+          type: string
+          description: ISO 3166-1 alpha-2 code (e.g. ZA, JP, KR, DE)
+          maxLength: 2
+        timezone:
+          type: string
+          minLength: 1
+          description: IANA Timezone, e.g. Asia/Tokyo
+          maxLength: 64
+        phone_number:
+          type: string
+          maxLength: 32
+    Register:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RegisterRoleEnum'
+          default: student
+        country:
+          type: string
+          description: ISO 3166-1 alpha-2 code (e.g. ZA, JP, KR, DE)
+          maxLength: 2
+        timezone:
+          type: string
+          description: IANA Timezone, e.g. Asia/Tokyo
+          maxLength: 64
+      required:
+      - email
+      - id
+      - username
+    RegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password_confirm:
+          type: string
+          writeOnly: true
+          minLength: 1
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RegisterRoleEnum'
+          default: student
+        country:
+          type: string
+          description: ISO 3166-1 alpha-2 code (e.g. ZA, JP, KR, DE)
+          maxLength: 2
+        timezone:
+          type: string
+          minLength: 1
+          description: IANA Timezone, e.g. Asia/Tokyo
+          maxLength: 64
+      required:
+      - email
+      - password
+      - password_confirm
+      - username
+    RegisterRoleEnum:
+      enum:
+      - student
+      - teacher
+      type: string
+      description: |-
+        * `student` - student
+        * `teacher` - teacher
+    Reservation:
+      type: object
+      properties:
+        booking_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        teacher_id:
+          type: string
+          format: uuid
+        start_time_utc:
+          type: string
+          format: date-time
+        end_time_utc:
+          type: string
+          format: date-time
+        lock_ttl_seconds:
+          type: integer
+        lock_expires_at:
+          type: string
+          format: date-time
+        message:
+          type: string
+      required:
+      - booking_id
+      - end_time_utc
+      - lock_expires_at
+      - lock_ttl_seconds
+      - message
+      - start_time_utc
+      - status
+      - teacher_id
+    ReserveRequestRequest:
+      type: object
+      properties:
+        teacher_id:
+          type: string
+          format: uuid
+        start_time_utc:
+          type: string
+          format: date-time
+      required:
+      - start_time_utc
+      - teacher_id
+    StatusEnum:
+      enum:
+      - pending_payment
+      - confirmed
+      - in_progress
+      - completed
+      - cancelled
+      - disputed
+      - interrupted_power
+      - student_no_show
+      - teacher_no_show
+      - completed_pending_memo
+      - completed_memo_forfeited
+      type: string
+      description: |-
+        * `pending_payment` - Pending Payment
+        * `confirmed` - Confirmed
+        * `in_progress` - In Progress
+        * `completed` - Completed
+        * `cancelled` - Cancelled
+        * `disputed` - Disputed
+        * `interrupted_power` - Interrupted (Power Outage)
+        * `student_no_show` - Student No Show
+        * `teacher_no_show` - Teacher No Show
+        * `completed_pending_memo` - Completed (Pending Memo)
+        * `completed_memo_forfeited` - Completed (Memo Forfeited)
+    TeacherAvailability:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        day_of_week:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday, 4=Friday, 5=Saturday,
+            6=Sunday
+        start_time:
+          type: string
+          format: time
+          description: Start time in teacher local clock, e.g. 09:00:00
+        end_time:
+          type: string
+          format: time
+          description: End time in teacher local clock, e.g. 17:00:00
+        is_active:
+          type: boolean
+      required:
+      - day_of_week
+      - end_time
+      - id
+      - start_time
+    TeacherAvailabilityRequest:
+      type: object
+      properties:
+        day_of_week:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday, 4=Friday, 5=Saturday,
+            6=Sunday
+        start_time:
+          type: string
+          format: time
+          description: Start time in teacher local clock, e.g. 09:00:00
+        end_time:
+          type: string
+          format: time
+          description: End time in teacher local clock, e.g. 17:00:00
+        is_active:
+          type: boolean
+      required:
+      - day_of_week
+      - end_time
+      - start_time
+    TeacherDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user_id:
+          type: string
+          format: uuid
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+        first_name:
+          type: string
+          readOnly: true
+        last_name:
+          type: string
+          readOnly: true
+        headline:
+          type: string
+          description: e.g. Certified TEFL Tutor · 5+ Yrs Experience
+          maxLength: 255
+        accent:
+          $ref: '#/components/schemas/AccentEnum'
+        intro_video_thumbnail:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 200
+          - type: string
+            maxLength: 0
+        avatar_url:
+          type: string
+          readOnly: true
+        intro_audio_url:
+          type: string
+          readOnly: true
+        rating_avg:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,2})?$
+        rating_count:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        price_per_25min_usd:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+        specialties:
+          description: 'List of tags: [''FreeTalk'', ''Business English'', ''Daily
+            News'', ''TOEIC'']'
+        country:
+          type: string
+          readOnly: true
+        is_verified:
+          type: boolean
+        bio:
+          type: string
+        intro_video_url:
+          description: Cloudflare Stream HLS or preview MP4 URL
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 200
+          - type: string
+            maxLength: 0
+        timezone:
+          type: string
+          readOnly: true
+        availabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeacherAvailability'
+          readOnly: true
+      required:
+      - availabilities
+      - avatar_url
+      - country
+      - first_name
+      - full_name
+      - id
+      - intro_audio_url
+      - last_name
+      - timezone
+      - user_id
+    TeacherList:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        user_id:
+          type: string
+          format: uuid
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+        first_name:
+          type: string
+          readOnly: true
+        last_name:
+          type: string
+          readOnly: true
+        headline:
+          type: string
+          description: e.g. Certified TEFL Tutor · 5+ Yrs Experience
+          maxLength: 255
+        accent:
+          $ref: '#/components/schemas/AccentEnum'
+        intro_video_thumbnail:
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 200
+          - type: string
+            maxLength: 0
+        avatar_url:
+          type: string
+          readOnly: true
+        intro_audio_url:
+          type: string
+          readOnly: true
+        rating_avg:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,2})?$
+        rating_count:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+        price_per_25min_usd:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+        specialties:
+          description: 'List of tags: [''FreeTalk'', ''Business English'', ''Daily
+            News'', ''TOEIC'']'
+        country:
+          type: string
+          readOnly: true
+        is_verified:
+          type: boolean
+      required:
+      - avatar_url
+      - country
+      - first_name
+      - full_name
+      - id
+      - intro_audio_url
+      - last_name
+      - user_id
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    TypeEnum:
+      enum:
+      - purchase
+      - redemption
+      - refund
+      - bonus
+      type: string
+      description: |-
+        * `purchase` - purchase
+        * `redemption` - redemption
+        * `refund` - refund
+        * `bonus` - bonus
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          title: Email address
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        email_verified:
+          type: boolean
+          readOnly: true
+          description: True once the user proved control of `email` (verification
+            or password-reset link).
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        role:
+          allOf:
+          - $ref: '#/components/schemas/UserRoleEnum'
+          readOnly: true
+        country:
+          type: string
+          description: ISO 3166-1 alpha-2 code (e.g. ZA, JP, KR, DE)
+          maxLength: 2
+        timezone:
+          type: string
+          description: IANA Timezone, e.g. Asia/Tokyo
+          maxLength: 64
+        phone_number:
+          type: string
+          maxLength: 32
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        credits:
+          type: integer
+          nullable: true
+          readOnly: true
+          description: Remaining lesson credits (students only; otherwise null).
+        avatar_url:
+          type: string
+          readOnly: true
+          description: Tutor profile photo URL (tutors only; otherwise empty).
+        is_verified:
+          type: boolean
+          nullable: true
+          readOnly: true
+          description: Vetting status (tutors only; otherwise null).
+      required:
+      - avatar_url
+      - created_at
+      - credits
+      - email_verified
+      - id
+      - is_verified
+      - role
+      - username
+    UserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          title: Email address
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        first_name:
+          type: string
+          maxLength: 150
+        last_name:
+          type: string
+          maxLength: 150
+        country:
+          type: string
+          description: ISO 3166-1 alpha-2 code (e.g. ZA, JP, KR, DE)
+          maxLength: 2
+        timezone:
+          type: string
+          minLength: 1
+          description: IANA Timezone, e.g. Asia/Tokyo
+          maxLength: 64
+        phone_number:
+          type: string
+          maxLength: 32
+      required:
+      - username
+    UserRoleEnum:
+      enum:
+      - student
+      - teacher
+      - admin
+      type: string
+      description: |-
+        * `student` - Student
+        * `teacher` - Teacher
+        * `admin` - Administrator
+    Wallet:
+      type: object
+      properties:
+        total_credits:
+          type: integer
+        ledger:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreditLedgerEntry'
+        bundles:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreditBundleRow'
+      required:
+      - bundles
+      - ledger
+      - total_credits
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

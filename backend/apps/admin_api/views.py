@@ -1,4 +1,6 @@
 from rest_framework.views import APIView
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
@@ -24,6 +26,7 @@ from apps.admin_api.serializers import (
     PayoutBatchItemSerializer,
 )
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class AdminTelemetryView(APIView):
     permission_classes = [IsPlatformAdmin]
 
@@ -96,6 +99,7 @@ class AdminTelemetryView(APIView):
         return Response(data)
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class PendingTeachersListView(APIView):
     permission_classes = [IsPlatformAdmin]
 
@@ -105,6 +109,7 @@ class PendingTeachersListView(APIView):
         return Response(serializer.data)
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class VerifyTeacherView(APIView):
     permission_classes = [IsPlatformAdmin]
 
@@ -131,6 +136,7 @@ class VerifyTeacherView(APIView):
             return Response({'error': 'Teacher profile not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class LiveSessionsView(APIView):
     permission_classes = [IsPlatformAdmin]
 
@@ -145,6 +151,7 @@ class LiveSessionsView(APIView):
         return Response(serializer.data)
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class DisputesListView(APIView):
     permission_classes = [IsPlatformAdmin]
 
@@ -154,6 +161,7 @@ class DisputesListView(APIView):
         return Response(serializer.data)
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class ResolveDisputeView(APIView):
     permission_classes = [IsPlatformAdmin]
 
@@ -214,6 +222,7 @@ class ResolveDisputeView(APIView):
             return Response({'error': 'Dispute case not found'}, status=status.HTTP_404_NOT_FOUND)
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class EscrowLedgerView(APIView):
     permission_classes = [IsPlatformAdmin]
 
@@ -288,6 +297,7 @@ class EscrowLedgerView(APIView):
         })
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class PayoutBatchView(APIView):
     permission_classes = [IsPlatformAdmin]
 
@@ -338,6 +348,7 @@ class PayoutBatchView(APIView):
         return Response(items)
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class ExecutePayoutBatchView(APIView):
     permission_classes = [IsPlatformAdmin]
 

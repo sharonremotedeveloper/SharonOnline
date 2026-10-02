@@ -25,7 +25,7 @@ class TeacherListSerializer(serializers.ModelSerializer):
             'country', 'is_verified'
         )
 
-    def get_full_name(self, obj):
+    def get_full_name(self, obj) -> str:
         return obj.user.get_full_name() or obj.user.username
 
 class TeacherDetailSerializer(TeacherListSerializer):

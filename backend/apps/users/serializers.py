@@ -1,6 +1,8 @@
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.db.models import Sum
+from drf_spectacular.utils import extend_schema_field
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
@@ -41,10 +43,32 @@ def validate_iana_timezone(value):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    # Role-specific extras the UI needs on every page (navbar, checkout). Null-ish for roles they do not apply to.
+    credits = serializers.SerializerMethodField(help_text='Remaining lesson credits (students only; otherwise null).')
+    avatar_url = serializers.SerializerMethodField(help_text='Tutor profile photo URL (tutors only; otherwise empty).')
+    is_verified = serializers.SerializerMethodField(help_text='Vetting status (tutors only; otherwise null).')
+
+    @extend_schema_field(serializers.IntegerField(allow_null=True))
+    def get_credits(self, user):
+        if user.role != User.Role.STUDENT:
+            return None
+        return user.credit_bundles.aggregate(total=Sum('remaining_credits'))['total'] or 0
+
+    @extend_schema_field(serializers.CharField())
+    def get_avatar_url(self, user):
+        profile = getattr(user, 'teacher_profile', None) if user.role == User.Role.TEACHER else None
+        return profile.resolved_avatar_url if profile else ''
+
+    @extend_schema_field(serializers.BooleanField(allow_null=True))
+    def get_is_verified(self, user):
+        profile = getattr(user, 'teacher_profile', None) if user.role == User.Role.TEACHER else None
+        return profile.is_verified if profile else None
+
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'email_verified', 'first_name', 'last_name', 'role', 'country', 'timezone', 'phone_number', 'created_at')
-        read_only_fields = ('id', 'role', 'email_verified', 'created_at')
+        fields = ('id', 'username', 'email', 'email_verified', 'first_name', 'last_name', 'role', 'country', 'timezone', 'phone_number', 'created_at',
+                  'credits', 'avatar_url', 'is_verified')
+        read_only_fields = ('id', 'role', 'email_verified', 'created_at', 'credits', 'avatar_url', 'is_verified')
         extra_kwargs = {
             'email': {'validators': [UniqueValidator(queryset=User.objects.all(), lookup='iexact', message='A user with this email already exists.')]},
             'username': {'validators': [UnicodeUsernameValidator(), UniqueValidator(queryset=User.objects.all(), lookup='iexact', message='A user with that username already exists.')]},

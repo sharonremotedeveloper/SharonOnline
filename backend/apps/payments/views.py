@@ -1,4 +1,7 @@
 import json
+from apps.common.schema import WalletSerializer
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 import logging
 import uuid
 from decimal import Decimal, ROUND_HALF_UP
@@ -50,6 +53,7 @@ def _bind_gateway_reference(tx: PaymentTransaction, gateway_reference: str, raw_
     return True
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class CheckoutInitializeView(APIView):
     """
     Initializes checkout for PayFast (ZAR) or PayPal (USD). Persists an INITIALIZED transaction holding the
@@ -122,6 +126,7 @@ class CheckoutInitializeView(APIView):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
+@extend_schema(exclude=True)  # machine-to-machine webhook, not part of the client API
 class PayFastWebhookView(APIView):
     """PayFast ITN. Trusted only after signature + source IP + amount match + server postback all pass."""
     permission_classes = (permissions.AllowAny,)
@@ -201,6 +206,7 @@ class PayFastWebhookView(APIView):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
+@extend_schema(exclude=True)  # machine-to-machine webhook, not part of the client API
 class PayPalWebhookView(APIView):
     """PayPal webhook. Verified via PayPal's signature API, then amounts re-read from PayPal itself."""
     permission_classes = (permissions.AllowAny,)
@@ -285,6 +291,7 @@ class PayPalWebhookView(APIView):
         return Response({"status": "received"}, status=status.HTTP_200_OK)
 
 
+@extend_schema(responses=WalletSerializer)
 class CreditBalanceView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -293,6 +300,17 @@ class CreditBalanceView(APIView):
         total_available = sum(b.remaining_credits for b in bundles)
         return Response({
             "total_credits": total_available,
+            # Purchase history, newest first. Redemptions/refunds are added when credit spending exists (Task 10.6).
+            "ledger": [
+                {
+                    "id": str(b.id),
+                    "description": f"{b.pack_name} purchase",
+                    "credits_delta": b.total_credits,
+                    "date": b.created_at.date().isoformat(),
+                    "type": "purchase",
+                }
+                for b in bundles.order_by('-created_at')
+            ],
             "bundles": [
                 {
                     "pack_name": b.pack_name,

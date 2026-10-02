@@ -1,4 +1,6 @@
 from rest_framework.views import APIView
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
@@ -10,6 +12,7 @@ from apps.users.models import User
 from apps.bookings.models import Booking
 from apps.teachers.models import TeacherProfile
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class TeacherStudentDossierListView(APIView):
     permission_classes = [IsTeacherOrAdmin]
 
@@ -25,6 +28,7 @@ class TeacherStudentDossierListView(APIView):
         return Response(serializer.data)
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class TeacherStudentDossierUpdateView(APIView):
     permission_classes = [IsTeacherOrAdmin]
 

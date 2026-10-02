@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
+    'drf_spectacular',
     'rest_framework_simplejwt.token_blacklist',
     'storages',
 
@@ -111,6 +112,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Django REST Framework
 REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -152,6 +154,17 @@ REST_FRAMEWORK = {
 FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'http://localhost:3000')
 PASSWORD_RESET_TIMEOUT = 60 * 60  # seconds; reset links are single-use AND short-lived
 EMAIL_VERIFY_MAX_AGE = 3 * 24 * 60 * 60
+
+# OpenAPI schema (Task 8.8). The served schema is admin-only; the committed copy + generated TS types come from
+# `manage.py spectacular` / `npm run gen:api`.
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Sharon Online API',
+    'DESCRIPTION': '25-minute 1-on-1 ESL marketplace API.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.IsAdminUser'],
+    'COMPONENT_SPLIT_REQUEST': True,
+}
 
 # SimpleJWT Authentication
 SIMPLE_JWT = {

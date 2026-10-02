@@ -1,4 +1,6 @@
-from rest_framework import generics, permissions, status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from apps.common.schema import DetailSerializer
+from rest_framework import generics, permissions, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.throttling import ScopedRateThrottle
@@ -40,6 +42,7 @@ class CurrentUserView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
 
+@extend_schema(request=inline_serializer('LogoutRequest', {'refresh': serializers.CharField()}), responses={205: None, 400: DetailSerializer})
 class LogoutView(APIView):
     """
     Blacklists the supplied refresh token so it can no longer mint access tokens.
@@ -63,6 +66,7 @@ class LogoutView(APIView):
         return Response(status=status.HTTP_205_RESET_CONTENT)
 
 
+@extend_schema(request=PasswordResetRequestSerializer, responses={202: DetailSerializer})
 class PasswordResetRequestView(APIView):
     """
     Always answers 202 with the same body, whether or not the address belongs to an account (no enumeration).
@@ -83,6 +87,7 @@ class PasswordResetRequestView(APIView):
         return Response({'detail': 'If an account exists for that address, a reset link is on its way.'}, status=status.HTTP_202_ACCEPTED)
 
 
+@extend_schema(request=PasswordResetConfirmSerializer, responses={200: DetailSerializer})
 class PasswordResetConfirmView(APIView):
     permission_classes = (AllowAny,)
     authentication_classes = ()
@@ -100,6 +105,7 @@ class PasswordResetConfirmView(APIView):
         return Response({'detail': 'Password updated. Please sign in.'})
 
 
+@extend_schema(request=PasswordChangeSerializer, responses={200: DetailSerializer})
 class PasswordChangeView(APIView):
     permission_classes = (IsAuthenticated,)
     throttle_classes = (ScopedRateThrottle,)
@@ -115,6 +121,7 @@ class PasswordChangeView(APIView):
         return Response({'detail': 'Password changed. Please sign in again.'})
 
 
+@extend_schema(request=None, responses={202: DetailSerializer})
 class EmailVerifyRequestView(APIView):
     """(Re)send the verification e-mail for the signed-in user's current address."""
     permission_classes = (IsAuthenticated,)
@@ -127,6 +134,7 @@ class EmailVerifyRequestView(APIView):
         return Response({'detail': 'If your e-mail is not yet verified, a link is on its way.'}, status=status.HTTP_202_ACCEPTED)
 
 
+@extend_schema(request=EmailVerifyConfirmSerializer, responses={200: DetailSerializer})
 class EmailVerifyConfirmView(APIView):
     permission_classes = (AllowAny,)
     authentication_classes = ()

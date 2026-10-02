@@ -1,4 +1,7 @@
 from rest_framework import generics, permissions, status
+from apps.common.schema import ReserveRequestSerializer, ReservationSerializer
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.throttling import ScopedRateThrottle
@@ -19,6 +22,7 @@ from .services.lock_service import acquire_slot_lock, release_slot_lock
 from .services.reservation import ReservationError, reservation_payload, reserve_slot
 from apps.materials.models import Material
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class TeacherSlotsView(APIView):
     """
     Returns concrete 25-minute slots for a given teacher projected into the requested timezone.
@@ -43,6 +47,7 @@ class TeacherSlotsView(APIView):
             "slots": slots
         })
 
+@extend_schema(request=ReserveRequestSerializer, responses={201: ReservationSerializer, 200: ReservationSerializer})
 class ReserveSlotView(APIView):
     """
     Validates a slot, takes the 10-minute Redis hold and creates the PENDING_PAYMENT booking in one step.
@@ -111,6 +116,7 @@ class BookingDetailView(generics.RetrieveAPIView):
             return Booking.objects.filter(teacher=user.teacher_profile)
         return Booking.objects.filter(student=user)
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class SubmitMemoView(APIView):
     """
     Allows a teacher to submit the post-lesson feedback memo.
@@ -184,6 +190,7 @@ class SubmitMemoView(APIView):
 
         return Response(LessonMemoSerializer(memo).data, status=status.HTTP_200_OK)
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class SubmitReviewView(APIView):
     """
     Allows a student to submit a 1-5 star rating and optional written review.
@@ -213,6 +220,7 @@ class SubmitReviewView(APIView):
 
         return Response({"status": "review_recorded", "rating_avg": teacher.rating_avg}, status=status.HTTP_200_OK)
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class ReportOutageView(APIView):
     """
     Handles Eskom load shedding / grid power interruption during or before a lesson:
