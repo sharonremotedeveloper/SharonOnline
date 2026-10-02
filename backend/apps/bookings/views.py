@@ -31,7 +31,10 @@ from .services.reviews import ReviewError, submit_review
 from .services.state_machine import InvalidTransition, transition_booking
 from apps.users.permissions import IsStudent
 from apps.payments.services.credits import grant_credit
+from apps.payments.services.credits import CreditRedemptionError, redeem_booking_credit
 from apps.payments.services.settlement import successful_transaction
+from apps.payments.services.funding import funding_for_settlement
+from apps.payments.models import CreditWalletEntry
 from apps.materials.models import Material
 
 MAX_SLOT_DAYS = 14
@@ -155,6 +158,27 @@ class BookingDetailView(generics.RetrieveAPIView):
         if user.role == 'teacher' and hasattr(user, 'teacher_profile'):
             return Booking.objects.filter(teacher=user.teacher_profile)
         return Booking.objects.filter(student=user)
+
+
+@extend_schema(request=None, responses=OpenApiTypes.OBJECT)
+class RedeemCreditView(APIView):
+    permission_classes = (IsStudent,)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'checkout'
+
+    def post(self, request, booking_id):
+        booking = get_object_or_404(Booking, pk=booking_id, student=request.user)
+        try:
+            booking, changed = redeem_booking_credit(booking=booking, student=request.user)
+        except CreditRedemptionError as exc:
+            return Response({'error': exc.message}, status=exc.status_code)
+        return Response({
+            'success': True,
+            'booking_id': str(booking.id),
+            'status': booking.status,
+            'redeemed': changed,
+            'message': '1 lesson credit redeemed successfully.' if changed else 'Credit was already redeemed.',
+        })
 
 # A memo is only for lessons that have actually ended. CONFIRMED / IN_PROGRESS lessons are settled by the attendance job
 # first (which decides completed-pending-memo vs disputed), so a tutor cannot skip that check by posting a memo early.
@@ -288,11 +312,21 @@ class ReportOutageView(APIView):
                                           f"{settings.OUTAGE_REPORT_AFTER_END_SECONDS // 60} minutes after it ends."},
                                 status=status.HTTP_409_CONFLICT)
 
+            funding = funding_for_settlement(booking, context='power_outage_refund')
+            if funding is None:
+                return Response({'error': 'This booking has no verified funding record; support review is required.'},
+                                status=status.HTTP_409_CONFLICT)
             result = transition_booking(booking, Booking.Status.INTERRUPTED_POWER, actor=request.user, reason=reason)
             if result.changed:
                 # The lesson did not run: return the student's money as a wallet credit and drain the booking's escrow
                 # in the ledger by exactly what was captured (the tutor is not paid for an interrupted lesson).
-                grant_credit(booking.student, credits=1, pack_name="Eskom Outage Refund Credit")
+                grant_credit(
+                    booking.student, credits=1, pack_name="Eskom Outage Refund Credit",
+                    unit_amount=funding.captured_amount, currency=funding.currency,
+                    fx_rate_to_zar=funding.fx_rate_to_zar, fx_source=funding.fx_source,
+                    entry_type=CreditWalletEntry.EntryType.REFUND, booking=booking,
+                    idempotency_key=f'outage-refund:{booking.id}',
+                )
                 from apps.payments.services.ledger_service import record_outage_refund_entry
                 record_outage_refund_entry(booking=booking, user=booking.student,
                                            payment_transaction=successful_transaction(booking))

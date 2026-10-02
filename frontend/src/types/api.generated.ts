@@ -364,6 +364,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bookings/{booking_id}/redeem-credit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_bookings_redeem_credit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/bookings/{booking_id}/report-outage/": {
         parameters: {
             query?: never;
@@ -551,6 +567,38 @@ export interface paths {
          *     server-computed expected amount; webhooks are verified against it, never against client/gateway-supplied totals.
          */
         post: operations["v1_payments_checkout_init_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/credit-packs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_payments_credit_packs_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/credit-purchases/{purchase_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_payments_credit_purchases_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1212,13 +1260,14 @@ export interface components {
             refresh: string;
         };
         /**
-         * @description * `purchase` - purchase
+         * @description * `opening` - opening
+         *     * `purchase` - purchase
          *     * `redemption` - redemption
          *     * `refund` - refund
          *     * `bonus` - bonus
          * @enum {string}
          */
-        TypeEnum: "purchase" | "redemption" | "refund" | "bonus";
+        TypeEnum: "opening" | "purchase" | "redemption" | "refund" | "bonus";
         User: {
             /** Format: uuid */
             readonly id: string;
@@ -1888,6 +1937,29 @@ export interface operations {
             };
         };
     };
+    v1_bookings_redeem_credit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     v1_bookings_report_outage_create: {
         parameters: {
             query?: never;
@@ -2156,6 +2228,50 @@ export interface operations {
                 };
             };
         };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    v1_payments_credit_packs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    v1_payments_credit_purchases_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchase_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             200: {
                 headers: {

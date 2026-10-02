@@ -530,18 +530,30 @@ export const api = {
     };
   },
 
-  async confirmPayment(bookingId: string, paymentData: any) {
-    const live = await liveRequest(`${API_BASE}/payments/checkout/confirm/`, {
+  async initializeCheckout(payload: {
+    gateway: "payfast" | "paypal";
+    booking_id?: string;
+    credit_pack_id?: number;
+    currency?: "USD" | "ZAR" | "EUR" | "JPY";
+  }) {
+    const live = await liveRequest(`${API_BASE}/payments/checkout/init/`, {
         method: "POST",
-        body: JSON.stringify({ booking_id: bookingId, ...paymentData }),
+        body: JSON.stringify(payload),
       });
     if (live !== MOCK) return live;
+    throw new Error("Checkout initialization is unavailable in mock mode.");
+  },
 
-    return {
-      success: true,
-      booking_id: bookingId,
-      status: "confirmed",
-    };
+  async getCreditPacks() {
+    const live = await liveRequest(`${API_BASE}/payments/credit-packs/`, { skipAuth: true });
+    if (live !== MOCK) return live;
+    return [];
+  },
+
+  async getCreditPurchase(purchaseId: string) {
+    const live = await liveRequest(`${API_BASE}/payments/credit-purchases/${purchaseId}/`, {});
+    if (live !== MOCK) return live;
+    throw new Error("Credit purchase status is unavailable in mock mode.");
   },
 
   async getStudentWallet() {

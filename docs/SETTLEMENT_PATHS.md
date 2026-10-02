@@ -16,8 +16,8 @@ ledger, not from a flag that could be forgotten).
 | `disputed` -> `completed` | admin: *50/50 split* | 1 courtesy credit (platform expense) | 80 % | `dispute_resolved` (+ marked cleared) |
 
 Ledger amounts are always the **captured amount in its own currency** (a PayFast R168.75 payment is settled as R168.75, not as the
-tutor's USD list price), so a booking's escrow account returns to exactly zero. The list price is only a fallback when no captured
-payment exists.
+tutor's USD list price), so a booking's escrow account returns to exactly zero. There is no list-price fallback: a missing immutable
+`BookingFunding` snapshot blocks settlement and creates a durable `SettlementAnomaly` for reconciliation.
 
 ## Outage reports
 
@@ -30,7 +30,7 @@ payment exists.
 1. **Tutor paid twice after arbitration.** *Release tutor* / *50-50 split* paid the tutor through `record_dispute_settlement_entry`, left `escrow_cleared_at` empty, and the 24 h job then paid the same lesson again (escrow liability driven negative). Now arbitration marks the booking/transaction cleared **and** the job skips anything with a prior settlement entry.
 2. **Student no-shows were never paid out** (status missing from the release filter), leaving their escrow in limbo; the outage branch of the attendance check was dead code. Both fixed.
 3. **`CreditBundle.objects.get_or_create(user=...)` crashes with `MultipleObjectsReturned`** for any student who has bought two packs - hit by dispute resolution, tutor no-show, memo forfeiture and DEF-501 handling. All six sites now use `payments/services/credits.py::grant_credit()` (latest bundle, F() updates, `remaining <= total`).
-4. Arbitration and the teacher no-show refund booked the **USD list price** instead of the captured amount/currency (escrow never reconciled for ZAR payments); fixed as above.
+4. Arbitration and the teacher no-show refund booked the **USD list price** instead of the captured amount/currency (escrow never reconciled for ZAR payments); all settlement paths now require the immutable booking-funding snapshot.
 5. The admin escrow view omitted interrupted/no-show lessons and showed arbitrated payouts as "holding".
 
 ## Open questions for Anesu (D-6, not decided in code)
@@ -41,5 +41,5 @@ payment exists.
 
 ## Follow-ups
 
-* Phase 10 refund service should replace wallet-credit refunds where D-6 requires gateway refunds, and handle credit-funded bookings (no gateway transaction, nothing in escrow).
+* Explicit cash refunds still require a separately approved gateway-refund service. Operational restitution remains wallet credit and credit-funded bookings settle from their immutable funding snapshot.
 * The release job and memo-SLA job still both act at 24 h (Task 9.9).

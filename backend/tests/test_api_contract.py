@@ -74,7 +74,7 @@ class TestWalletContract:
         assert body['total_credits'] == 4
         entry = body['ledger'][0]
         assert set(entry) == {'id', 'description', 'credits_delta', 'date', 'type'}
-        assert (entry['credits_delta'], entry['type']) == (5, 'purchase')
+        assert (entry['credits_delta'], entry['type']) == (4, 'opening')
         assert set(body['bundles'][0]) == {'pack_name', 'remaining', 'total', 'purchased_at'}
 
     def test_empty_wallet(self, student_user):

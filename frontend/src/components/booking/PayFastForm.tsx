@@ -7,7 +7,7 @@ interface PayFastFormProps {
   amountZar: number;
   bookingReference: string;
   itemDescription: string;
-  /** Asks the parent to confirm payment with the server. Must reject on failure. */
+  /** Initializes the signed PayFast redirect. Booking success still comes only from the ITN webhook. */
   onSuccess: () => void | Promise<void>;
   disabled?: boolean;
 }
@@ -21,8 +21,7 @@ export function PayFastForm({
 }: PayFastFormProps) {
   const [processing, setProcessing] = useState(false);
 
-  // NOTE: the live PayFast redirect/ITN flow is not integrated yet. No payment is taken here; this only asks the
-  // server to confirm, and the parent shows the server's real answer (it will fail until live payments exist).
+  // The server returns signed redirect fields; only PayFast's verified ITN can confirm the booking.
   const handlePayFastPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     setProcessing(true);
@@ -63,7 +62,7 @@ export function PayFastForm({
       </div>
 
       <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900">
-        PayFast payments are not switched on yet. Trying to pay will ask the server to confirm and may be declined.
+        You will be redirected to PayFast. This page waits for the verified ITN before showing success.
       </div>
 
       <form onSubmit={handlePayFastPayment} className="space-y-3">
@@ -73,7 +72,7 @@ export function PayFastForm({
           className="w-full py-3.5 bg-teal hover:bg-teal-hover text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {processing ? (
-            "Confirming with server..."
+            "Starting PayFast..."
           ) : (
             <>
               <Lock className="w-3.5 h-3.5" />

@@ -10,6 +10,7 @@ from apps.bookings.models import Booking, AttendanceAudit
 from apps.bookings.services.state_machine import transition_booking
 from apps.payments.services.settlement import RELEASABLE_STATUSES, attendance_verified_for_release, settled_exists
 from apps.payments.models import PaymentTransaction
+from apps.payments.services.funding import funding_for_settlement
 from apps.admin_api.models import DisputeCase
 from apps.common.locks import distributed_task_lock
 
@@ -63,16 +64,14 @@ def release_cleared_escrow_task():
                 )
                 continue
 
-            # Find matching successful transaction
-            tx = PaymentTransaction.objects.filter(
-                booking=booking,
-                status=PaymentTransaction.Status.SUCCESS,
-                escrow_cleared=False
-            ).first()
-
-            amount_usd = tx.amount if tx else booking.teacher.price_per_25min_usd
-            tutor_net_usd = (amount_usd * Decimal('0.80')).quantize(Decimal('0.01'))
-            platform_fee_usd = amount_usd - tutor_net_usd
+            funding = funding_for_settlement(booking, context='release_cleared_escrow_task')
+            if funding is None:
+                logger.error('Escrow release stopped for booking %s: missing funding provenance.', booking.id)
+                continue
+            tx = funding.payment_transaction
+            gross = funding.captured_amount
+            tutor_net = (gross * Decimal('0.80')).quantize(Decimal('0.01'))
+            platform_fee = gross - tutor_net
 
             if tx:
                 tx.escrow_cleared = True
@@ -89,14 +88,15 @@ def release_cleared_escrow_task():
             record_escrow_clearance_entry(
                 booking=booking,
                 payment_transaction=tx,
-                amount_usd=amount_usd
+                funding=funding,
             )
 
             cleared_count += 1
-            total_cleared_usd += tutor_net_usd
+            if funding.currency == 'USD':
+                total_cleared_usd += tutor_net
             logger.info(
-                f"[ESCROW CLEARED] Booking {booking.id}: Net ${tutor_net_usd} to tutor "
-                f"{booking.teacher.user.username}, fee ${platform_fee_usd} to platform."
+                f"[ESCROW CLEARED] Booking {booking.id}: Net {tutor_net} {funding.currency} to tutor "
+                f"{booking.teacher.user.username}, fee {platform_fee} {funding.currency} to platform."
             )
 
     return {

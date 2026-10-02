@@ -14,6 +14,7 @@ from apps.payments.models import CreditBundle, LedgerAccount, LedgerEntry, Payme
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.webhook_handler import process_payment_webhook
 from apps.payments.tasks import release_cleared_escrow_task
+from apps.payments.services.funding import ensure_gateway_funding
 
 S = Booking.Status
 User = get_user_model()
@@ -28,8 +29,14 @@ def _client(user):
 
 def lesson(teacher, student, start_in_min, status=S.PENDING_PAYMENT):
     start = timezone.now() + start_in_min * MIN
-    return Booking.objects.create(teacher=teacher, student=student, start_time_utc=start,
-                                  end_time_utc=start + 25 * MIN, status=status)
+    booking = Booking.objects.create(teacher=teacher, student=student, start_time_utc=start,
+                                     end_time_utc=start + 25 * MIN, status=status)
+    if status != S.PENDING_PAYMENT:
+        tx = PaymentTransaction.objects.create(
+            booking=booking, gateway='paypal', gateway_reference=f'TEST-{booking.id}',
+            amount=Decimal('9.00'), currency='USD', status='success')
+        ensure_gateway_funding(tx, booking)
+    return booking
 
 
 def captured(teacher, student, start_in_min, *, gateway='payfast', amount='168.75', currency='ZAR', ref='CAP-1'):
@@ -74,8 +81,8 @@ class TestGrantCredit:
         for _ in range(2):
             CreditBundle.objects.create(user=student_user, total_credits=5, remaining_credits=2, amount_paid=40)
         b = grant_credit(student_user, credits=2)
-        assert CreditBundle.objects.filter(user=student_user).count() == 2
-        assert (b.total_credits, b.remaining_credits) == (7, 4) and b.remaining_credits <= b.total_credits
+        assert CreditBundle.objects.filter(user=student_user).count() == 3
+        assert (b.total_credits, b.remaining_credits) == (2, 2) and b.remaining_credits <= b.total_credits
         assert sum(x.remaining_credits for x in CreditBundle.objects.filter(user=student_user)) == 6
 
     def test_rejects_nonsense(self, student_user):

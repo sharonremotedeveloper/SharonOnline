@@ -257,7 +257,7 @@ A four-way audit (backend, frontend, spec-vs-roadmap, infra) found that Phases 1
 | Batch | Scope | Status |
 | :--- | :--- | :--- |
 | **1** | Honest admin financial data, disabled payout mutation, ownership-safe booking and Celery locks | `CODE COMPLETE - backend 679/679, focused 74/74, frontend 88/88, Django/migration checks and production build passed; real Redis CI execution pending Batch 8 infrastructure` |
-| **2** | Funding provenance, credit catalog, wallet history, credit redemption, dual-target checkout | `NOT STARTED` |
+| **2** | Funding provenance, credit catalog, wallet history, credit redemption, dual-target checkout | `COMPLETE - backend 688 passed/2 Redis CI skips, focused 9/9 + 4/4, frontend 88/88, Django/migration checks and production build passed` |
 | **3** | FX, balanced journals, fees, reconciliation, DB immutability, durable fulfillment | `NOT STARTED` |
 | **4** | Zoom participant identity and attendance correctness | `NOT STARTED - reconcile Claude's parallel attendance work before implementation` |
 | **5** | Student profiles, support inquiries, generated API contracts, timezone/count corrections | `NOT STARTED` |
@@ -266,3 +266,5 @@ A four-way audit (backend, frontend, spec-vs-roadmap, infra) found that Phases 1
 | **8** | CI and final stabilization | `NOT STARTED` |
 
 Batch 1 replaced every fabricated admin telemetry floor and payout preview row with database/ledger results. Empty state is now explicit, `POST /api/v1/admin/payouts/execute-batch/` is a non-mutating `503 payout_execution_disabled`, and the frontend action is visibly disabled. Reservation locks now persist unique ownership tokens and use atomic compare-and-delete/expire operations; periodic task locks also use unique ownership and cannot release a successor's lock.
+
+Batch 2 made captured funding the sole settlement authority. Every paid booking has an immutable funding snapshot; missing funding creates a durable anomaly and blocks settlement. The launch credit catalog, purchases, wallet history, atomic oldest-credit redemption, discounted per-credit funding, and dual-target checkout are database-backed. Gateway webhooks now determine success while the UI polls authoritative booking or purchase state.

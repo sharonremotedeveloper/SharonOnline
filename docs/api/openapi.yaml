@@ -613,6 +613,28 @@ paths:
               schema:
                 $ref: '#/components/schemas/LessonMemo'
           description: ''
+  /api/v1/bookings/{booking_id}/redeem-credit/:
+    post:
+      operationId: v1_bookings_redeem_credit_create
+      parameters:
+      - in: path
+        name: booking_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/bookings/{booking_id}/report-outage/:
     post:
       operationId: v1_bookings_report_outage_create
@@ -906,6 +928,44 @@ paths:
             schema:
               type: object
               additionalProperties: {}
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/payments/credit-packs/:
+    get:
+      operationId: v1_payments_credit_packs_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/payments/credit-purchases/{purchase_id}/:
+    get:
+      operationId: v1_payments_credit_purchases_retrieve
+      parameters:
+      - in: path
+        name: purchase_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
       security:
       - jwtAuth: []
       responses:
@@ -2329,12 +2389,14 @@ components:
       - refresh
     TypeEnum:
       enum:
+      - opening
       - purchase
       - redemption
       - refund
       - bonus
       type: string
       description: |-
+        * `opening` - opening
         * `purchase` - purchase
         * `redemption` - redemption
         * `refund` - refund

@@ -14,23 +14,88 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { components } from "@/types/api.generated";
-import { DEFAULT_BUNDLES, CURRENCIES, CurrencyCode, detectDefaultCurrency } from "@/lib/currency";
+import { CURRENCIES, CurrencyCode, detectDefaultCurrency } from "@/lib/currency";
 import { CurrencySwitcher } from "@/components/public/CurrencySwitcher";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
 
 // Generated from the backend OpenAPI schema (`npm run gen:api`), so a contract change breaks the build instead of the page.
 type WalletResponse = components["schemas"]["Wallet"];
+type CreditPack = {
+  id: number;
+  code: string;
+  name: string;
+  credits: number;
+  prices: Record<CurrencyCode, string>;
+};
 
 export default function StudentWalletPage() {
   const [currency, setCurrency] = useState<CurrencyCode>("USD");
   const { data: wallet, error, loading, reload } = useApiData<WalletResponse>(() => api.getStudentWallet(), []);
+  const { data: packs, error: packsError } = useApiData<CreditPack[]>(() => api.getCreditPacks(), []);
+  const [buyingPack, setBuyingPack] = useState<number | null>(null);
+  const [purchaseNotice, setPurchaseNotice] = useState<string>("");
+  const [pendingPurchaseId, setPendingPurchaseId] = useState<string | null>(null);
 
   const curr = CURRENCIES[currency];
 
   useEffect(() => {
     setCurrency(detectDefaultCurrency());
   }, []);
+
+  useEffect(() => {
+    if (!pendingPurchaseId) return;
+    const timer = window.setInterval(async () => {
+      try {
+        const purchase = await api.getCreditPurchase(pendingPurchaseId);
+        if (purchase.status === "success") {
+          window.clearInterval(timer);
+          setPendingPurchaseId(null);
+          setPurchaseNotice(`${purchase.pack.name} was confirmed and the credits are now in your wallet.`);
+          reload();
+        } else if (purchase.status === "failed" || purchase.status === "refunded") {
+          window.clearInterval(timer);
+          setPendingPurchaseId(null);
+          setPurchaseNotice(`Purchase ${pendingPurchaseId} is ${purchase.status}; no new credits were added.`);
+        }
+      } catch (err) {
+        console.error("Credit purchase status poll failed:", err);
+      }
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [pendingPurchaseId, reload]);
+
+  const startPackPurchase = async (pack: CreditPack) => {
+    setBuyingPack(pack.id);
+    setPurchaseNotice("");
+    try {
+      const gateway = currency === "ZAR" ? "payfast" : "paypal";
+      const checkout = await api.initializeCheckout({ credit_pack_id: pack.id, gateway, currency });
+      setPendingPurchaseId(checkout.target_id);
+      if (gateway === "payfast" && checkout?.action_url && checkout?.fields) {
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = checkout.action_url;
+        for (const [name, value] of Object.entries(checkout.fields)) {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = name;
+          input.value = String(value);
+          form.appendChild(input);
+        }
+        document.body.appendChild(form);
+        form.submit();
+        return;
+      }
+      setPurchaseNotice(
+        `Purchase ${checkout.target_id} is awaiting a verified ${gateway} capture. Credits appear only after the webhook confirms it.`
+      );
+    } catch (err) {
+      setPurchaseNotice(`Could not start pack checkout: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      setBuyingPack(null);
+    }
+  };
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
@@ -95,21 +160,20 @@ export default function StudentWalletPage() {
           <p className="text-xs text-ink-muted">
             Save up to 15% with multi-lesson packs. Billed in {currency}.
           </p>
-          <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 inline-block">
-            Buying lesson packs online is not available yet. Prices shown are for reference.
-          </p>
+          {purchaseNotice && <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 inline-block">{purchaseNotice}</p>}
+          {packsError ? <p className="text-[11px] text-primary">Credit packs could not be loaded.</p> : null}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {DEFAULT_BUNDLES.map((bundle) => {
-            const rawPrice = bundle.prices[currency];
+          {(packs ?? []).map((bundle) => {
+            const rawPrice = Number(bundle.prices[currency]);
             const formattedPrice = curr.format(rawPrice);
 
             return (
               <div
                 key={bundle.id}
                 className={`bg-white rounded-3xl p-6 border flex flex-col justify-between space-y-4 transition-all ${
-                  bundle.popular
+                  bundle.credits === 10
                     ? "border-accent ring-2 ring-accent/30 shadow-card-hover"
                     : "border-divider shadow-card hover:shadow-card-hover"
                 }`}
@@ -119,9 +183,9 @@ export default function StudentWalletPage() {
                     <span className="text-xs font-bold text-ink-muted uppercase tracking-wider">
                       {bundle.name}
                     </span>
-                    {bundle.discount && (
+                    {bundle.credits > 1 && (
                       <span className="px-2 py-0.5 rounded-full bg-success/15 text-success text-[10px] font-bold">
-                        {bundle.discount}
+                        Pack savings
                       </span>
                     )}
                   </div>
@@ -133,21 +197,21 @@ export default function StudentWalletPage() {
                     </div>
                   </div>
 
-                  <p className="text-xs text-ink-muted">{bundle.tagline}</p>
+                  <p className="text-xs text-ink-muted">{bundle.credits} private 25-minute lessons</p>
                 </div>
 
                 <button
                   type="button"
-                  disabled
-                  title="Online purchase is not available yet"
-                  className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 opacity-50 cursor-not-allowed ${
-                    bundle.popular
+                  disabled={buyingPack !== null}
+                  onClick={() => startPackPurchase(bundle)}
+                  className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 ${
+                    bundle.credits === 10
                       ? "bg-primary hover:bg-primary-hover text-white shadow-sm"
                       : "bg-cream-surface hover:bg-cream-deep text-ink border border-divider"
                   }`}
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
-                  <span>{`Add ${bundle.credits} Credits`}</span>
+                  <span>{buyingPack === bundle.id ? "Starting checkout..." : `Add ${bundle.credits} Credits`}</span>
                 </button>
               </div>
             );
