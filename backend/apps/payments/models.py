@@ -1,7 +1,21 @@
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from decimal import Decimal
 import uuid
+
+
+class LedgerImmutabilityError(ValidationError):
+    """Raised when an immutable financial record is changed or deleted."""
+    pass
+
+
+class ImmutableFinancialQuerySet(models.QuerySet):
+    def update(self, **kwargs):
+        raise LedgerImmutabilityError('Immutable financial records cannot be updated.')
+
+    def delete(self):
+        raise LedgerImmutabilityError('Immutable financial records cannot be deleted.')
 
 class PaymentTransaction(models.Model):
     class Gateway(models.TextChoices):
@@ -18,7 +32,9 @@ class PaymentTransaction(models.Model):
         UNALLOCATED = 'unallocated', 'Unallocated (refund pending)'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    booking = models.ForeignKey('bookings.Booking', on_delete=models.CASCADE, related_name='transactions')
+    booking = models.ForeignKey('bookings.Booking', on_delete=models.PROTECT, null=True, blank=True, related_name='transactions')
+    credit_purchase = models.ForeignKey('payments.CreditPurchase', on_delete=models.PROTECT, null=True, blank=True,
+                                        related_name='transactions')
     gateway = models.CharField(max_length=20, choices=Gateway.choices)
     gateway_reference = models.CharField(max_length=255, unique=True, db_index=True)
     # Our own reference (sent to the gateway as m_payment_id / custom_id) so webhooks can find the expected amount.
@@ -33,6 +49,15 @@ class PaymentTransaction(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    (models.Q(booking__isnull=False) & models.Q(credit_purchase__isnull=True)) |
+                    (models.Q(booking__isnull=True) & models.Q(credit_purchase__isnull=False))
+                ),
+                name='payment_transaction_exactly_one_target',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.gateway.upper()} {self.amount} {self.currency} - {self.status} ({self.gateway_reference})"
@@ -63,6 +88,54 @@ class GatewayAnomaly(models.Model):
         return f"{self.gateway} {self.reason} {self.reference} ({'resolved' if self.resolved else 'OPEN'})"
 
 
+class CreditPack(models.Model):
+    """Server-authoritative, versionable launch catalog."""
+    code = models.CharField(max_length=32, unique=True)
+    name = models.CharField(max_length=64)
+    credits = models.PositiveSmallIntegerField()
+    price_usd = models.DecimalField(max_digits=10, decimal_places=2)
+    price_zar = models.DecimalField(max_digits=10, decimal_places=2)
+    price_eur = models.DecimalField(max_digits=10, decimal_places=2)
+    price_jpy = models.DecimalField(max_digits=10, decimal_places=2)
+    is_active = models.BooleanField(default=True, db_index=True)
+    display_order = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['display_order', 'credits']
+
+    def price_for(self, currency: str) -> Decimal:
+        field = f'price_{currency.lower()}'
+        if field not in {'price_usd', 'price_zar', 'price_eur', 'price_jpy'}:
+            raise ValueError(f'Unsupported credit-pack currency: {currency}')
+        return getattr(self, field)
+
+    def __str__(self):
+        return f"{self.name} ({self.credits} credits)"
+
+
+class CreditPurchase(models.Model):
+    class Status(models.TextChoices):
+        INITIALIZED = 'initialized', 'Initialized'
+        SUCCESS = 'success', 'Successful'
+        FAILED = 'failed', 'Failed'
+        REFUNDED = 'refunded', 'Refunded'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='credit_purchases')
+    pack = models.ForeignKey(CreditPack, on_delete=models.PROTECT, related_name='purchases')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=3)
+    fx_rate_to_zar = models.DecimalField(max_digits=12, decimal_places=6)
+    fx_source = models.CharField(max_length=64, default='credit_catalog')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.INITIALIZED, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
 class CreditBundle(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='credit_bundles')
@@ -71,10 +144,106 @@ class CreditBundle(models.Model):
     remaining_credits = models.PositiveIntegerField(default=5)
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=3, default='USD')
+    credit_purchase = models.OneToOneField(CreditPurchase, on_delete=models.PROTECT, null=True, blank=True,
+                                           related_name='credit_bundle')
+    unit_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    fx_rate_to_zar = models.DecimalField(max_digits=12, decimal_places=6, default=Decimal('1.000000'))
+    fx_source = models.CharField(max_length=64, default='legacy_opening')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.remaining_credits}/{self.total_credits} credits"
+
+
+class CreditWalletEntry(models.Model):
+    class EntryType(models.TextChoices):
+        OPENING = 'opening', 'Opening balance'
+        PURCHASE = 'purchase', 'Pack purchase'
+        REDEMPTION = 'redemption', 'Lesson redemption'
+        REFUND = 'refund', 'Operational refund'
+        BONUS = 'bonus', 'Operational bonus'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='credit_wallet_entries')
+    bundle = models.ForeignKey(CreditBundle, on_delete=models.PROTECT, related_name='wallet_entries')
+    entry_type = models.CharField(max_length=20, choices=EntryType.choices, db_index=True)
+    credit_delta = models.IntegerField()
+    balance_after = models.PositiveIntegerField()
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    currency = models.CharField(max_length=3, default='USD')
+    fx_rate_to_zar = models.DecimalField(max_digits=12, decimal_places=6, default=Decimal('1.000000'))
+    fx_source = models.CharField(max_length=64, default='legacy_opening')
+    booking = models.ForeignKey('bookings.Booking', on_delete=models.PROTECT, null=True, blank=True,
+                                related_name='credit_wallet_entries')
+    credit_purchase = models.ForeignKey(CreditPurchase, on_delete=models.PROTECT, null=True, blank=True,
+                                        related_name='wallet_entries')
+    description = models.CharField(max_length=255)
+    idempotency_key = models.CharField(max_length=128, unique=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    objects = ImmutableFinancialQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise LedgerImmutabilityError('Credit wallet entries are immutable.')
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise LedgerImmutabilityError('Credit wallet entries are immutable.')
+
+
+class BookingFunding(models.Model):
+    class SourceType(models.TextChoices):
+        GATEWAY = 'gateway', 'Gateway payment'
+        CREDIT = 'credit', 'Wallet credit'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    booking = models.OneToOneField('bookings.Booking', on_delete=models.PROTECT, related_name='funding')
+    source_type = models.CharField(max_length=20, choices=SourceType.choices)
+    captured_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=3)
+    fx_rate_to_zar = models.DecimalField(max_digits=12, decimal_places=6)
+    fx_source = models.CharField(max_length=64)
+    payment_transaction = models.OneToOneField(PaymentTransaction, on_delete=models.PROTECT, null=True, blank=True,
+                                               related_name='booking_funding')
+    credit_wallet_entry = models.OneToOneField(CreditWalletEntry, on_delete=models.PROTECT, null=True, blank=True,
+                                               related_name='booking_funding')
+    created_at = models.DateTimeField(auto_now_add=True)
+    objects = ImmutableFinancialQuerySet.as_manager()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    (models.Q(payment_transaction__isnull=False) & models.Q(credit_wallet_entry__isnull=True)) |
+                    (models.Q(payment_transaction__isnull=True) & models.Q(credit_wallet_entry__isnull=False))
+                ),
+                name='booking_funding_exactly_one_source',
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise LedgerImmutabilityError('Booking funding snapshots are immutable.')
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise LedgerImmutabilityError('Booking funding snapshots are immutable.')
+
+
+class SettlementAnomaly(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    booking = models.ForeignKey('bookings.Booking', on_delete=models.PROTECT, related_name='settlement_anomalies')
+    code = models.CharField(max_length=64, db_index=True)
+    detail = models.TextField(blank=True)
+    resolved = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
 
 
 class LedgerAccount(models.TextChoices):
@@ -98,12 +267,6 @@ class LedgerAccount(models.TextChoices):
     EXPENSE_GATEWAY_FEES = '5030_expense_gateway_fees', '5030 - Expense: Payment Gateway Processing Fees'
 
 
-from django.core.exceptions import ValidationError
-
-class LedgerImmutabilityError(ValidationError):
-    """Raised when an operation attempts to update or delete immutable LedgerEntry records."""
-    pass
-
 class LedgerEntryQuerySet(models.QuerySet):
     def update(self, **kwargs):
         raise LedgerImmutabilityError("Ledger entries are strictly immutable and cannot be updated.")
@@ -119,6 +282,7 @@ class LedgerEntry(models.Model):
 
     class EventType(models.TextChoices):
         PAYMENT_CAPTURED = 'payment_captured', 'Payment Captured'
+        CREDIT_REDEEMED = 'credit_redeemed', 'Credit Redeemed into Escrow'
         ESCROW_CLEARED = 'escrow_cleared', 'Escrow Cleared (Dual-Verified)'
         PAYOUT_EXECUTED = 'payout_executed', 'Tutor EFT Payout Executed'
         REFUND_ISSUED = 'refund_issued', 'Refund Issued'

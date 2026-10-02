@@ -9,6 +9,7 @@ from apps.payments.models import PaymentTransaction, CreditBundle
 from apps.bookings.services.slot_generator import generate_teacher_slots
 from apps.bookings.services.lock_service import acquire_slot_lock, release_slot_lock, is_slot_locked
 from apps.payments.services.webhook_handler import process_payment_webhook
+from apps.payments.services.funding import ensure_gateway_funding
 from apps.integrations.tasks import dispatch_booking_fulfillment
 from rest_framework.test import APIRequestFactory, force_authenticate
 from apps.bookings.views import ReportOutageView
@@ -186,7 +187,6 @@ def test_database_double_booking_constraint_prevents_race_condition(teacher_user
         end_time_utc=start_utc + timedelta(minutes=25),
         status=Booking.Status.CONFIRMED
     )
-
     # 2. Second student attempts to create a confirmed booking for the identical teacher and slot
     another_student = User.objects.create_user(
         username="another_student",
@@ -220,6 +220,15 @@ def test_eskom_power_outage_interruption_and_refund(teacher_user, student_user):
         end_time_utc=start_utc + timedelta(minutes=25),
         status=Booking.Status.CONFIRMED
     )
+    tx = PaymentTransaction.objects.create(
+        booking=booking,
+        gateway=PaymentTransaction.Gateway.PAYFAST,
+        gateway_reference="tx-eskom-operational-credit",
+        amount=9.00,
+        currency="USD",
+        status=PaymentTransaction.Status.SUCCESS,
+    )
+    ensure_gateway_funding(tx, booking)
 
     # Initialize student credit bundle with 0 remaining credits
     bundle = CreditBundle.objects.create(
@@ -253,4 +262,8 @@ def test_eskom_power_outage_interruption_and_refund(teacher_user, student_user):
 
     # Student credit refunded
     bundle.refresh_from_db()
-    assert bundle.remaining_credits == 1
+    assert bundle.remaining_credits == 0
+    assert sum(
+        lot.remaining_credits
+        for lot in CreditBundle.objects.filter(user=student_user)
+    ) == 1

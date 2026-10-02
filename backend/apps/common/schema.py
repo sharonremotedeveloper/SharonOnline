@@ -18,7 +18,7 @@ class CreditLedgerEntrySerializer(serializers.Serializer):
     description = serializers.CharField()
     credits_delta = serializers.IntegerField()
     date = serializers.DateField()
-    type = serializers.ChoiceField(choices=['purchase', 'redemption', 'refund', 'bonus'])
+    type = serializers.ChoiceField(choices=['opening', 'purchase', 'redemption', 'refund', 'bonus'])
 
 
 class WalletSerializer(serializers.Serializer):

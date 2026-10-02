@@ -7,6 +7,7 @@ from django.core.cache import cache
 from apps.bookings.models import Booking, AttendanceAudit
 from apps.bookings.services.lock_service import acquire_slot_lock, is_slot_locked
 from apps.payments.models import PaymentTransaction, CreditBundle
+from apps.payments.services.funding import ensure_gateway_funding
 from apps.admin_api.models import DisputeCase
 from apps.teachers.models import TeacherProfile
 
@@ -90,7 +91,6 @@ class TestCeleryBeatAutomation:
             end_time_utc=lesson_end,
             status=Booking.Status.COMPLETED_PENDING_MEMO,
         )
-
         # Successful payment transaction
         tx = PaymentTransaction.objects.create(
             booking=booking,
@@ -253,6 +253,15 @@ class TestCeleryBeatAutomation:
             end_time_utc=lesson_end,
             status=Booking.Status.COMPLETED_PENDING_MEMO,
         )
+        tx = PaymentTransaction.objects.create(
+            booking=booking,
+            gateway=PaymentTransaction.Gateway.PAYFAST,
+            gateway_reference="tx-memo-sla-compensation",
+            amount=Decimal("9.00"),
+            currency="USD",
+            status=PaymentTransaction.Status.SUCCESS,
+        )
+        ensure_gateway_funding(tx, booking)
 
         teacher_user.sla_strikes = 0
         teacher_user.save()
@@ -311,6 +320,15 @@ class TestCeleryBeatAutomation:
             end_time_utc=end_time,
             status=Booking.Status.CONFIRMED,
         )
+        tx = PaymentTransaction.objects.create(
+            booking=booking,
+            gateway=PaymentTransaction.Gateway.PAYFAST,
+            gateway_reference="tx-teacher-no-show-compensation",
+            amount=Decimal("9.00"),
+            currency="USD",
+            status=PaymentTransaction.Status.SUCCESS,
+        )
+        ensure_gateway_funding(tx, booking)
 
         teacher_user.sla_strikes = 0
         teacher_user.save()

@@ -11,6 +11,8 @@ from apps.bookings.services.lock_service import release_slot_lock
 from apps.bookings.services.state_machine import InvalidTransition, transition_booking
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.settlement import successful_transaction
+from apps.payments.services.funding import funding_for_settlement
+from apps.payments.models import CreditWalletEntry
 from apps.common.locks import distributed_task_lock
 
 logger = logging.getLogger(__name__)
@@ -167,8 +169,18 @@ def audit_attendance_and_noshows_task():
                     teacher.is_active = False
                 teacher.save(update_fields=['sla_strikes', 'is_active'])
 
-                # Instant student restitution: 100% refund + 1 bonus credit (2 total)
-                grant_credit(booking.student, credits=2, pack_name='Teacher no-show restitution')
+                funding = funding_for_settlement(booking, context='teacher_no_show_restitution')
+                if funding is None:
+                    logger.error('Teacher no-show restitution stopped for booking %s: missing funding.', booking.id)
+                    continue
+                # Instant student restitution: 100% refund + 1 bonus credit (2 total), valued from captured funding.
+                grant_credit(
+                    booking.student, credits=2, pack_name='Teacher no-show restitution',
+                    unit_amount=funding.captured_amount, currency=funding.currency,
+                    fx_rate_to_zar=funding.fx_rate_to_zar, fx_source=funding.fx_source,
+                    entry_type=CreditWalletEntry.EntryType.REFUND, booking=booking,
+                    idempotency_key=f'teacher-no-show:{booking.id}',
+                )
 
                 # Record double-entry ledger journal entries for no-show refund and platform compensation
                 from apps.payments.services.ledger_service import record_compensation_entry, record_student_refund_entry
@@ -176,14 +188,12 @@ def audit_attendance_and_noshows_task():
                 record_student_refund_entry(
                     booking=booking,
                     payment_transaction=paid,
-                    amount_usd=None if paid else booking.teacher.price_per_25min_usd,
                     refund_method='wallet_credit',
                     reason="Teacher no-show full refund"
                 )
                 record_compensation_entry(
                     user=booking.student,
                     booking=booking,
-                    amount_usd=booking.teacher.price_per_25min_usd,
                     reason="Teacher no-show bonus compensation"
                 )
 
@@ -365,15 +375,24 @@ def enforce_memo_sla_task():
                 teacher.is_active = False
             teacher.save(update_fields=['sla_strikes', 'is_active'])
 
-            # Compensate student with 1 free apology credit
-            grant_credit(booking.student, credits=1, pack_name='Memo SLA apology credit')
+            funding = funding_for_settlement(booking, context='memo_sla_compensation')
+            if funding is None:
+                logger.error('Memo SLA compensation stopped for booking %s: missing funding.', booking.id)
+                continue
+            # Compensate student with 1 free apology credit valued from the booking's immutable funding.
+            grant_credit(
+                booking.student, credits=1, pack_name='Memo SLA apology credit',
+                unit_amount=funding.captured_amount, currency=funding.currency,
+                fx_rate_to_zar=funding.fx_rate_to_zar, fx_source=funding.fx_source,
+                entry_type=CreditWalletEntry.EntryType.BONUS, booking=booking,
+                idempotency_key=f'memo-sla:{booking.id}',
+            )
 
             # Record platform-absorbed compensation entry
             from apps.payments.services.ledger_service import record_compensation_entry
             record_compensation_entry(
                 user=booking.student,
                 booking=booking,
-                amount_usd=booking.teacher.price_per_25min_usd,
                 reason="Tutor 24h memo SLA forfeiture compensation"
             )
 

@@ -14,9 +14,10 @@ from apps.users.permissions import IsPlatformAdmin
 from apps.teachers.models import TeacherProfile
 from apps.bookings.models import Booking
 from apps.bookings.services.state_machine import InvalidTransition, transition_booking
-from apps.payments.models import PaymentTransaction
+from apps.payments.models import CreditWalletEntry, PaymentTransaction
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.settlement import successful_transaction
+from apps.payments.services.funding import funding_for_settlement
 from apps.admin_api.models import DisputeCase
 from apps.users.models import User
 from apps.admin_api.serializers import (
@@ -184,6 +185,10 @@ class ResolveDisputeView(APIView):
             if booking.status != Booking.Status.DISPUTED:
                 return Response({'error': f"Booking is '{booking.status}', not awaiting arbitration."},
                                 status=status.HTTP_409_CONFLICT)
+            funding = funding_for_settlement(booking, context='admin_dispute_resolution')
+            if funding is None:
+                return Response({'error': 'Settlement stopped: booking funding provenance is missing.'},
+                                status=status.HTTP_409_CONFLICT)
 
             target = (Booking.Status.CANCELLED if resolution == DisputeCase.Resolution.FULL_REFUND_STUDENT
                       else Booking.Status.COMPLETED)
@@ -200,11 +205,21 @@ class ResolveDisputeView(APIView):
 
             # Financial settlement execution
             if resolution == DisputeCase.Resolution.FULL_REFUND_STUDENT:
-                grant_credit(dispute.student, pack_name='Refunded Dispute Credit')
+                grant_credit(
+                    dispute.student, pack_name='Refunded Dispute Credit', unit_amount=funding.captured_amount,
+                    currency=funding.currency, fx_rate_to_zar=funding.fx_rate_to_zar,
+                    fx_source=funding.fx_source, entry_type=CreditWalletEntry.EntryType.REFUND,
+                    booking=booking, idempotency_key=f'dispute-refund:{dispute.id}',
+                )
 
             elif resolution == DisputeCase.Resolution.SPLIT_50_50:
                 # Platform absorbs cost: student receives 1 credit refund AND tutor receives cleared payout
-                grant_credit(dispute.student, pack_name='Dispute Settlement Credit')
+                grant_credit(
+                    dispute.student, pack_name='Dispute Settlement Credit', unit_amount=funding.captured_amount,
+                    currency=funding.currency, fx_rate_to_zar=funding.fx_rate_to_zar,
+                    fx_source=funding.fx_source, entry_type=CreditWalletEntry.EntryType.REFUND,
+                    booking=booking, idempotency_key=f'dispute-split:{dispute.id}',
+                )
 
             # Record immutable GAAP/SARB double-entry ledger entries
             from apps.payments.services.ledger_service import record_dispute_settlement_entry
@@ -250,15 +265,20 @@ class EscrowLedgerView(APIView):
                 Booking.Status.TEACHER_NO_SHOW,
                 Booking.Status.INTERRUPTED_POWER,
             ]
-        ).select_related('teacher', 'teacher__user', 'student')[:30]
+        ).select_related('teacher', 'teacher__user', 'student', 'funding')[:30]
 
         items = []
         for b in bookings:
             release_time = b.start_time_utc + timedelta(hours=24)
             is_holding = (now < release_time) and (b.escrow_cleared_at is None)
-            gross_usd = float(b.teacher.price_per_25min_usd)
+            funding = getattr(b, 'funding', None)
+            if funding is None:
+                funding_for_settlement(b, context='admin_escrow_view')
+                continue
+            gross_zar = Decimal(funding.captured_amount) * Decimal(funding.fx_rate_to_zar)
+            gross_usd = float(gross_zar / Decimal(str(settings.ZAR_PER_USD)))
             platform_fee = round(gross_usd * 0.20, 2)
-            net_tutor_zar = round((gross_usd * 0.80) * 18.75, 2)
+            net_tutor_zar = round(float(gross_zar * Decimal('0.80')), 2)
 
             has_cleared_entry = LedgerEntry.objects.filter(
                 booking=b,

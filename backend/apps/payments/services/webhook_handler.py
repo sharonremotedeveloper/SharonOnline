@@ -1,7 +1,8 @@
 from django.db import transaction, IntegrityError
 from django.utils import timezone
-from apps.payments.services.credits import grant_credit
-from apps.payments.models import PaymentTransaction, GatewayAnomaly
+from apps.payments.services.credits import capture_credit_purchase, grant_credit
+from apps.payments.models import CreditPurchase, PaymentTransaction, GatewayAnomaly
+from apps.payments.services.funding import ensure_gateway_funding, gateway_fx_snapshot
 from apps.payments.services.ledger_service import (
     record_payment_capture_entry, record_def501_quarantine_entry, record_unallocated_payment_entry)
 from apps.bookings.models import Booking
@@ -50,7 +51,7 @@ def record_unallocated_payment(*, booking, gateway: str, transaction_id: str, am
     return {"status": "unallocated", "reason": reason, "transaction_id": transaction_id}
 
 
-def _dispatch_fulfillment(booking_id: str) -> None:
+def dispatch_fulfillment(booking_id: str) -> None:
     try:
         from apps.integrations.tasks import dispatch_booking_fulfillment
         dispatch_booking_fulfillment.delay(booking_id)
@@ -60,7 +61,8 @@ def _dispatch_fulfillment(booking_id: str) -> None:
 
 
 @transaction.atomic
-def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, amount: float, currency: str, status: str, raw_payload: dict) -> dict:
+def process_payment_webhook(*, booking_id=None, credit_purchase_id=None, gateway: str, transaction_id: str,
+                            amount: float, currency: str, status: str, raw_payload: dict) -> dict:
     """
     Idempotent payment webhook ingestion.
     Guarantees that multiple retries from payment gateways (PayFast/PayPal)
@@ -72,6 +74,7 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
         gateway_reference=transaction_id,
         defaults={
             'booking_id': booking_id,
+            'credit_purchase_id': credit_purchase_id,
             'gateway': gateway,
             'amount': amount,
             'currency': currency,
@@ -83,6 +86,16 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
     if not created and tx.status in (PaymentTransaction.Status.SUCCESS, PaymentTransaction.Status.UNALLOCATED):
         logger.info(f"Duplicate webhook ignored for transaction_id={transaction_id}")
         return {"status": "already_processed"}
+
+    if status == PaymentTransaction.Status.SUCCESS and (credit_purchase_id or tx.credit_purchase_id):
+        purchase_id = credit_purchase_id or tx.credit_purchase_id
+        try:
+            purchase = CreditPurchase.objects.select_for_update().select_related('pack', 'user').get(pk=purchase_id)
+        except CreditPurchase.DoesNotExist:
+            logger.error('Credit purchase %s referenced in transaction %s does not exist', purchase_id, transaction_id)
+            return {'error': 'credit_purchase_not_found'}
+        capture_credit_purchase(purchase, tx)
+        return {'status': 'success', 'transaction_id': transaction_id, 'credit_purchase_id': str(purchase.id)}
 
     if status == PaymentTransaction.Status.SUCCESS:
         try:
@@ -128,7 +141,12 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
                                reason=f'DEF-501: {reason}')
 
             # Restitution: credit student 1 lesson credit so funds are not lost
-            grant_credit(booking.student, credits=1, pack_name='DEF-501 restitution')
+            fx_rate, fx_source = gateway_fx_snapshot(tx.currency)
+            grant_credit(
+                booking.student, credits=1, pack_name='DEF-501 restitution', unit_amount=tx.amount,
+                currency=tx.currency, fx_rate_to_zar=fx_rate, fx_source=fx_source,
+                entry_type='refund', booking=booking, idempotency_key=f'def501:{tx.id}',
+            )
 
             # Open a DisputeCase for admin review in tribunal
             DisputeCase.objects.get_or_create(
@@ -177,7 +195,12 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
             transition_booking(booking, Booking.Status.DISPUTED, actor=f'system:{gateway}_webhook',
                                reason='DEF-501: IntegrityError race on confirmation')
 
-            grant_credit(booking.student, credits=1, pack_name='DEF-501 race restitution')
+            fx_rate, fx_source = gateway_fx_snapshot(tx.currency)
+            grant_credit(
+                booking.student, credits=1, pack_name='DEF-501 race restitution', unit_amount=tx.amount,
+                currency=tx.currency, fx_rate_to_zar=fx_rate, fx_source=fx_source,
+                entry_type='refund', booking=booking, idempotency_key=f'def501-race:{tx.id}',
+            )
 
             DisputeCase.objects.get_or_create(
                 booking=booking,
@@ -199,7 +222,11 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
             }
 
         # Record standard payment capture in general ledger
-        record_payment_capture_entry(payment_transaction=tx, booking=booking, user=booking.student)
+        funding = ensure_gateway_funding(tx, booking)
+        record_payment_capture_entry(
+            payment_transaction=tx, booking=booking, user=booking.student,
+            fx_rate_to_zar=funding.fx_rate_to_zar,
+        )
 
         # Release the temporary Redis lock now that it's permanently confirmed in PostgreSQL
         start_iso = booking.start_time_utc.isoformat()
@@ -209,7 +236,7 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
         # Trigger background fulfillment (Zoom, GCal, Resend) only AFTER the commit, so the worker can never
         # observe the booking still PENDING_PAYMENT, and a rolled-back payment never queues a task.
         booking_id_str = str(booking.id)
-        transaction.on_commit(lambda: _dispatch_fulfillment(booking_id_str))
+        transaction.on_commit(lambda: dispatch_fulfillment(booking_id_str))
 
     return {"status": "success", "transaction_id": transaction_id}
 
