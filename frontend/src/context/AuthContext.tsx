@@ -27,7 +27,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function loginErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
-    if (err.status === 401 || err.status === 400) return "Invalid username or password.";
+    if (err.status === 401 || err.status === 400) return "Invalid username/e-mail or password.";
     if (err.status === 429) return "Too many attempts. Please wait a minute and try again.";
   }
   return errorMessage(err, "Sign-in failed. Please try again.");

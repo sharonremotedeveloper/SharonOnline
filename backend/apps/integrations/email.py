@@ -5,6 +5,34 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+class EmailDeliveryError(Exception):
+    """The provider refused or could not be reached; callers (Celery tasks) retry."""
+
+
+def send_email(to: str, subject: str, html: str, text: str = '') -> None:
+    """
+    Generic transactional send through Resend. Raises EmailDeliveryError on failure (never swallows it).
+    Without a real key (dev/test) it logs instead of sending; the body (which holds links) is only logged when DEBUG.
+    """
+    from django.conf import settings
+    api_key = os.environ.get('RESEND_API_KEY')
+    if not api_key or api_key.startswith('re_dev'):
+        logger.info("[DEV EMAIL MOCK] to=%s subject=%r%s", to, subject, f"\n{text}" if (settings.DEBUG and text) else "")
+        return
+    try:
+        resp = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={"from": os.environ.get('DEFAULT_FROM_EMAIL', 'Sharon ESL <bookings@sharonesl.com>'),
+                  "to": [to], "subject": subject, "html": html, **({"text": text} if text else {})},
+            timeout=10,
+        )
+    except requests.RequestException as exc:
+        raise EmailDeliveryError(str(exc)) from exc
+    if resp.status_code >= 300:
+        raise EmailDeliveryError(f"Resend returned {resp.status_code}")
+
 def generate_ics_content(booking) -> bytes:
     """
     Generates standard RFC 5545 .ics calendar data for the 25-minute lesson.

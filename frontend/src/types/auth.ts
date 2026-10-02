@@ -13,6 +13,7 @@ export interface AuthUser {
   phone_number?: string;
   credits?: number; // Present if role === 'student'
   is_verified?: boolean; // Present if role === 'teacher'
+  email_verified?: boolean; // The address has been confirmed via the e-mailed link
   created_at?: string;
 }
 

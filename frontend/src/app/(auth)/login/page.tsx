@@ -12,6 +12,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const nextUrl = searchParams.get("next");
   const isRegistered = searchParams.get("registered");
+  const isReset = searchParams.get("reset");
 
   const { login, isLoading } = useAuth();
   const [username, setUsername] = useState("");
@@ -46,7 +47,7 @@ function LoginForm() {
     if (res.success) {
       handleLoginSuccess(res.role);
     } else {
-      setError(res.error || "Invalid username or password");
+      setError(res.error || "Invalid username/e-mail or password");
     }
   };
 
@@ -66,6 +67,12 @@ function LoginForm() {
         </div>
       )}
 
+      {isReset && (
+        <div role="status" className="p-3 bg-success/15 border border-success/30 rounded-xl text-xs text-success font-medium text-center">
+          Password updated. Please sign in with your new password.
+        </div>
+      )}
+
       {error && (
         <div className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-xs text-primary font-medium">
           {error}
@@ -82,7 +89,7 @@ function LoginForm() {
               required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. student_aiko or admin"
+              placeholder="you@example.com or username"
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
             />
           </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { ChangePasswordCard } from "@/components/account/ChangePasswordCard";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -284,6 +285,7 @@ export default function StudentProfilePage() {
           </button>
         </div>
       </form>
+      <ChangePasswordCard />
     </div>
   );
 }

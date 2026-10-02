@@ -31,6 +31,13 @@ def validate_production_settings(env=os.environ):
         elif any(_is_local_origin(o) or not o.startswith('https://') for o in origins):
             errors.append(f'{name} must be https:// origins and must not include localhost')
 
+    frontend = env.get('FRONTEND_BASE_URL', '')
+    if not frontend.startswith('https://') or _is_local_origin(frontend):
+        errors.append('FRONTEND_BASE_URL must be the public https:// site URL (it is the base of every password-reset / verification link)')
+    resend_key = env.get('RESEND_API_KEY', '')
+    if not resend_key or resend_key.startswith('re_dev'):
+        errors.append('RESEND_API_KEY must be a real key: without it password-reset and verification e-mails are silently not sent')
+
     if not env.get('ZOOM_WEBHOOK_SECRET_TOKEN'):
         errors.append('ZOOM_WEBHOOK_SECRET_TOKEN must be set')
 

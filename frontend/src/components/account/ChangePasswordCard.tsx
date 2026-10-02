@@ -1,0 +1,87 @@
+"use client";
+
+import { useState } from "react";
+import { KeyRound } from "lucide-react";
+import { changePassword } from "@/lib/account";
+import { ApiError, errorMessage } from "@/lib/http";
+import { useAuth } from "@/context/AuthContext";
+
+const FIELDS = [
+  ["old_password", "Current password", "current-password"],
+  ["new_password", "New password", "new-password"],
+  ["new_password_confirm", "Confirm new password", "new-password"],
+] as const;
+
+export function ChangePasswordCard() {
+  const { logout } = useAuth();
+  const [values, setValues] = useState({ old_password: "", new_password: "", new_password_confirm: "" });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setFieldErrors({});
+    if (values.new_password !== values.new_password_confirm) {
+      setFieldErrors({ new_password_confirm: ["Passwords don't match."] });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await changePassword(values);
+      // The server ended every session, including this one, so sign out cleanly and send them to the login page.
+      setDone(true);
+      setTimeout(logout, 1800);
+    } catch (err) {
+      if (err instanceof ApiError && Object.keys(err.fieldErrors).length) setFieldErrors(err.fieldErrors);
+      else setError(errorMessage(err));
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="bg-white rounded-2xl border border-divider shadow-card p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <KeyRound className="w-4 h-4 text-teal" aria-hidden="true" />
+        <h2 className="text-sm font-extrabold text-ink">Change password</h2>
+      </div>
+      {done ? (
+        <p role="status" className="text-xs text-success font-medium">
+          Password changed. For your safety you&apos;re being signed out everywhere - please sign in again.
+        </p>
+      ) : (
+        <>
+          {error && (
+            <div role="alert" className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-xs text-primary font-medium">
+              {error}
+            </div>
+          )}
+          {FIELDS.map(([name, label, autoComplete]) => (
+            <div key={name} className="space-y-1">
+              <label htmlFor={`cp-${name}`} className="text-xs font-bold text-ink">{label}</label>
+              <input
+                id={`cp-${name}`}
+                type="password"
+                required
+                autoComplete={autoComplete}
+                value={values[name]}
+                onChange={(e) => setValues({ ...values, [name]: e.target.value })}
+                className="w-full p-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
+              />
+              {fieldErrors[name]?.length ? <p className="text-[11px] text-primary font-medium">{fieldErrors[name].join(" ")}</p> : null}
+            </div>
+          ))}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="px-5 py-2.5 bg-teal text-white text-xs font-bold rounded-xl shadow-sm disabled:opacity-50"
+          >
+            {submitting ? "Updating..." : "Update password"}
+          </button>
+        </>
+      )}
+    </form>
+  );
+}
