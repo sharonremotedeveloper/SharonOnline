@@ -1,3 +1,7 @@
 [mcp_servers.Neon]
 type = "http"
 url = "https://mcp.neon.tech/mcp?projectId=sweet-bonus-69458238"
+
+[mcp_servers.cloudflare]
+type = "http"
+url = "https://mcp.cloudflare.com/mcp"
