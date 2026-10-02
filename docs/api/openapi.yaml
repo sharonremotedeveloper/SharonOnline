@@ -195,6 +195,34 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/auth/inquiries/:
+    post:
+      operationId: v1_auth_inquiries_create
+      description: Persist the request before queueing its notification, so provider
+        failure cannot lose it.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupportInquiryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SupportInquiryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SupportInquiryRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupportInquiryAccepted'
+          description: ''
   /api/v1/auth/logout/:
     post:
       operationId: v1_auth_logout_create
@@ -1104,8 +1132,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/StudentProfile'
           description: ''
     patch:
       operationId: v1_student_profile_partial_update
@@ -1115,16 +1142,13 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/PatchedStudentProfileRequest'
           application/x-www-form-urlencoded:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/PatchedStudentProfileRequest'
           multipart/form-data:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/PatchedStudentProfileRequest'
       security:
       - jwtAuth: []
       responses:
@@ -1132,8 +1156,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/StudentProfile'
           description: ''
   /api/v1/teacher/students/:
     get:
@@ -1416,13 +1439,11 @@ components:
           description: 1 to 5 star rating
         student_review:
           type: string
-          readOnly: true
-          description: 'PRIVATE written review: staff only. Never shown to the tutor
-            or other students.'
         memo:
           allOf:
           - $ref: '#/components/schemas/LessonMemo'
           readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -1446,7 +1467,6 @@ components:
       - status
       - student
       - student_rating
-      - student_review
       - teacher
       - viewer_timezone
       - zoom_join_url
@@ -1471,11 +1491,22 @@ components:
           type: string
         country:
           type: string
+        email:
+          type: string
+          format: email
+        target_level:
+          type: string
+          readOnly: true
+        learning_goals:
+          type: string
+          readOnly: true
       required:
       - country
       - first_name
       - full_name
       - id
+      - learning_goals
+      - target_level
       - timezone
     CategoryEnum:
       enum:
@@ -1900,6 +1931,26 @@ components:
           maxLength: 254
       required:
       - email
+    PatchedStudentProfileRequest:
+      type: object
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 301
+        country:
+          type: string
+          maxLength: 2
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 64
+        target_level:
+          type: string
+          maxLength: 64
+        learning_goals:
+          type: string
+          maxLength: 2000
     PatchedUserRequest:
       type: object
       properties:
@@ -2137,6 +2188,80 @@ components:
         * `teacher_no_show` - Teacher No Show
         * `completed_pending_memo` - Completed (Pending Memo)
         * `completed_memo_forfeited` - Completed (Memo Forfeited)
+    StudentProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        full_name:
+          type: string
+          maxLength: 301
+        email:
+          type: string
+          format: email
+          readOnly: true
+        country:
+          type: string
+          maxLength: 2
+        timezone:
+          type: string
+          maxLength: 64
+        target_level:
+          type: string
+          maxLength: 64
+        learning_goals:
+          type: string
+          maxLength: 2000
+      required:
+      - country
+      - email
+      - full_name
+      - id
+      - learning_goals
+      - target_level
+      - timezone
+    SupportInquiryAccepted:
+      type: object
+      properties:
+        detail:
+          type: string
+        inquiry_id:
+          type: string
+          format: uuid
+      required:
+      - detail
+      - inquiry_id
+    SupportInquiryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        user_type:
+          allOf:
+          - $ref: '#/components/schemas/UserTypeEnum'
+          default: other
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 200
+        message:
+          type: string
+          minLength: 1
+          maxLength: 5000
+      required:
+      - email
+      - message
+      - name
+      - subject
     TagsEnum:
       enum:
       - Patience & Empathy
@@ -2523,6 +2648,16 @@ components:
         * `student` - Student
         * `teacher` - Teacher
         * `admin` - Administrator
+    UserTypeEnum:
+      enum:
+      - student
+      - teacher
+      - other
+      type: string
+      description: |-
+        * `student` - Student
+        * `teacher` - Teacher
+        * `other` - Other
     Wallet:
       type: object
       properties:

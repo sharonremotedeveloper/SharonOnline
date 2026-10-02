@@ -144,7 +144,7 @@ Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done.
 - [ ] **Task 12.5 (M, ARCH)** Eskom: real EskomSePush client (quota-aware, cached), area mapping per tutor, real 4h shield logic; endpoints `GET /integrations/eskom/status/` and `PATCH /teachers/profile/power-backup/` the frontend already expects; power-backup slot filter in public search.
 - [ ] **Task 12.6 (M, CODEX)** Frontend Zoom join: gate by `LessonCountDownClock` window, use backend-provided join/start URLs only, remove `window.confirm` hack and simulated latency; decide Meeting SDK embed vs deep link.
 - [ ] **Task 12.7 (M, CODEX)** In-app notification centre + polling (SSE/WebSocket later), notification preferences.
-- [ ] **Task 12.8 (S, ARCH)** Support inquiries: `POST /auth/inquiries/` model + admin inbox + confirmation email; fix `/support`.
+- [x] **Task 12.8 (S, ARCH)** Support inquiries: durable `POST /auth/inquiries/`, admin inbox, throttling, and retryable support-team notification; `/support` now reaches a real persisted workflow. *(Batch 5)*
 - [ ] **Task 12.9 (M, ARCH)** 7-day recording purge and 90-day telemetry purge Celery jobs (per D-8 and compliance).
 
 ## Phase 13 - Platform ops (parallel track)
@@ -183,8 +183,8 @@ Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done.
 - [ ] **Task 15.6 (M, CODEX)** Accessibility pass: axe in CI, Modal focus trap, labelled icon buttons, contrast, skip links, keyboard support in `SlotGrid`, reduced motion; Lighthouse budgets (mobile > 90).
 - [ ] **Task 15.7 (L, CODEX)** Frontend tests: ESLint + Prettier config, Vitest + Testing Library (api client, AuthContext, middleware), MSW contract tests, Playwright E2E (register → book → pay → join → memo → review; admin vetting; payout).
 - [ ] **Task 15.8 (M, ARCH)** Backend test gaps: users/teachers/materials suites, permission matrix, throttling, `check --deploy`, production settings load test, payout endpoints on real data, coverage tooling (`pytest-cov`) and factories; run concurrency tests against real Postgres + Redis.
-- [ ] **Task 15.9 (M, ARCH)** `drf-spectacular` OpenAPI schema + generated TS client; CI diff check so contracts can't drift.
-- [ ] **Task 15.10 (S, ARCH)** Fix route-order, `StudentProfileView` persistence (`target_level`, `learning_goals`), unvalidated `timezone`/`country`, `LiveSessionsView` ordering/filter.
+- [x] **Task 15.9 (M, ARCH)** `drf-spectacular` OpenAPI schema + generated TS client; CI diff check so contracts can't drift. *(Batch 5)*
+- [ ] **Task 15.10 (S, ARCH)** Student profile persistence and country/timezone validation are complete in Batch 5; route-order and `LiveSessionsView` ordering/filter remain.
 - [ ] **Task 15.11 (M, CODEX)** Timezone/currency correctness in UI: default to browser/user timezone (not `Asia/Tokyo`), date-fns-tz everywhere, backend-driven price display.
 - [ ] **Task 15.12 (nice-to-have)** i18n (ja/ko/de/fr), real-time presence via WebSockets/SSE, push/LINE notifications, SM-2 spaced repetition, PWA, Storybook.
 

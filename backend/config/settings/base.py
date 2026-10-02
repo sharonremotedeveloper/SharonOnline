@@ -143,6 +143,7 @@ REST_FRAMEWORK = {
         'password_change': '10/hour',
         'email_verify': '5/hour',
         'email_verify_confirm': '20/hour',
+        'inquiry': '5/hour',
         'webhook': '120/min',
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
@@ -155,6 +156,7 @@ REST_FRAMEWORK = {
 FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'http://localhost:3000')
 PASSWORD_RESET_TIMEOUT = 60 * 60  # seconds; reset links are single-use AND short-lived
 EMAIL_VERIFY_MAX_AGE = 3 * 24 * 60 * 60
+SUPPORT_TO_EMAIL = os.environ.get('SUPPORT_TO_EMAIL', 'support@sharonesl.com')
 
 # Slot holds (Task 9.4): a started-but-unfinished payment keeps its hold this long past the 10-minute base window,
 # and no hold (however many payment attempts) outlives the hard cap.

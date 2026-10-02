@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from apps.srs.models import StudentFlashcard
 from apps.bookings.models import Booking, LessonMemo
-from apps.users.models import User
 
 class StudentFlashcardSerializer(serializers.ModelSerializer):
     class Meta:
@@ -95,19 +94,3 @@ class StudentLessonItemSerializer(serializers.ModelSerializer):
             'tags': obj.student_review_tags,      # what the student actually picked; the written text stays staff-only
             'submitted_at': (obj.reviewed_at or obj.updated_at).isoformat()
         }
-
-
-class StudentProfileSerializer(serializers.ModelSerializer):
-    full_name = serializers.SerializerMethodField()
-    target_level = serializers.CharField(required=False, allow_blank=True)
-    learning_goals = serializers.CharField(required=False, allow_blank=True)
-
-    class Meta:
-        model = User
-        fields = [
-            'id', 'full_name', 'email', 'country', 'timezone',
-            'target_level', 'learning_goals'
-        ]
-
-    def get_full_name(self, obj):
-        return obj.get_full_name() or obj.username

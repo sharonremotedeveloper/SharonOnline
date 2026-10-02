@@ -3,6 +3,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     RegisterView, CurrentUserView, CustomTokenObtainPairView, LogoutView, PasswordResetRequestView, PasswordResetConfirmView,
     PasswordChangeView, EmailVerifyRequestView, EmailVerifyConfirmView,
+    SupportInquiryView,
 )
 
 urlpatterns = [
@@ -16,4 +17,5 @@ urlpatterns = [
     path('password-change/', PasswordChangeView.as_view(), name='auth-password-change'),
     path('verify-email/', EmailVerifyRequestView.as_view(), name='auth-verify-email-request'),
     path('verify-email/confirm/', EmailVerifyConfirmView.as_view(), name='auth-verify-email-confirm'),
+    path('inquiries/', SupportInquiryView.as_view(), name='auth-support-inquiry'),
 ]

@@ -260,7 +260,7 @@ A four-way audit (backend, frontend, spec-vs-roadmap, infra) found that Phases 1
 | **2** | Funding provenance, credit catalog, wallet history, credit redemption, dual-target checkout | `COMPLETE - backend 688 passed/2 Redis CI skips, focused 9/9 + 4/4, frontend 88/88, Django/migration checks and production build passed` |
 | **3** | FX, balanced journals, fees, reconciliation, DB immutability, durable fulfillment | `COMPLETE - backend 693 passed/3 infrastructure skips, focused 103/103, frontend 88/88 and production build passed; PostgreSQL trigger CI execution pending Batch 8` |
 | **4** | Zoom participant identity and attendance correctness | `COMPLETE - Claude commit reconciled and extended; focused 91/91, backend 734 passed/3 infrastructure skips, frontend 88/88 and production build passed` |
-| **5** | Student profiles, support inquiries, generated API contracts, timezone/count corrections | `NOT STARTED` |
+| **5** | Student profiles, support inquiries, generated API contracts, timezone/count corrections | `COMPLETE - focused 74/74, backend 749 passed/3 infrastructure skips, frontend 90/90, contract drift check, Django/migration checks and production build passed` |
 | **6** | Tutor wallet and encrypted payout settings; payout execution remains disabled | `NOT STARTED` |
 | **7** | Provider-backed Eskom Power Guard | `NOT STARTED` |
 | **8** | CI and final stabilization | `NOT STARTED` |
@@ -272,3 +272,5 @@ Batch 2 made captured funding the sole settlement authority. Every paid booking 
 Batch 3 persists capture-time FX and provider-fee provenance, posts gateway fees to account 5030, balances journals in both transaction currency and ZAR, and installs PostgreSQL ledger mutation triggers. Reconciliation no longer guesses that old checkouts failed, and fulfillment dispatch failures now remain durable and retryable.
 
 Batch 4 stores complete Zoom identity/event evidence with explicit teacher/student/unknown classification. Unknown guests cannot affect lesson state or money, event retries and reordering converge safely, Zoom timestamps remain authoritative, and five-minute reconnect grace is applied consistently to no-show and settlement decisions.
+
+Batch 5 replaces fabricated student-profile defaults with durable one-to-one data and one validated GET/PATCH serializer. Support requests are persisted before a retryable Resend notification is queued. Booking/profile/wallet frontend contracts now derive from OpenAPI with CI drift protection, and tutor dashboard day/month metrics use the viewer timezone plus server counts.

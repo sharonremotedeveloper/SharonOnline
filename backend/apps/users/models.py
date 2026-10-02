@@ -1,4 +1,5 @@
 import uuid
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -20,3 +21,61 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"
+
+
+class StudentProfile(models.Model):
+    """Student-owned learning preferences; blank means the student has not supplied the value."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='student_profile',
+        primary_key=True,
+    )
+    target_level = models.CharField(max_length=64, blank=True)
+    learning_goals = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Student profile: {self.user.username}"
+
+
+class SupportInquiry(models.Model):
+    class Status(models.TextChoices):
+        OPEN = 'open', 'Open'
+        IN_PROGRESS = 'in_progress', 'In progress'
+        RESOLVED = 'resolved', 'Resolved'
+        CLOSED = 'closed', 'Closed'
+
+    class DeliveryState(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        RETRYABLE = 'retryable', 'Retryable'
+        SENT = 'sent', 'Sent'
+
+    class SenderType(models.TextChoices):
+        STUDENT = 'student', 'Student'
+        TEACHER = 'teacher', 'Teacher'
+        OTHER = 'other', 'Other'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN, db_index=True)
+    sender_name = models.CharField(max_length=150)
+    sender_email = models.EmailField()
+    sender_type = models.CharField(max_length=20, choices=SenderType.choices, default=SenderType.OTHER)
+    subject = models.CharField(max_length=200)
+    message = models.TextField()
+    delivery_state = models.CharField(
+        max_length=20, choices=DeliveryState.choices, default=DeliveryState.PENDING, db_index=True,
+    )
+    delivery_attempts = models.PositiveIntegerField(default=0)
+    last_delivery_error = models.CharField(max_length=500, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('-created_at',)
+
+    def __str__(self):
+        return f"{self.subject} ({self.sender_email})"

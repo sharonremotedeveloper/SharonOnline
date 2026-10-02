@@ -5,7 +5,7 @@ This is the cross-agent handoff for the eight approved Sharon Online remediation
 ## Current state
 
 - Integration branch: `remediation/tech-debt`
-- Active branch: `feature/batch-4-zoom-attendance-correctness`
+- Active branch: `feature/batch-5-profiles-support-contracts`
 - Isolated worktree: `C:\Dev\Active Projects\Notion\sharon-remediation`
 - Shared checkout was deliberately left unchanged. Claude's Zoom attendance work was imported from commit `2181dbd` and augmented on this isolated branch.
 
@@ -112,3 +112,26 @@ Verification:
 External-action boundary:
 
 - All Zoom behavior was verified with signed local webhook fixtures and injected client responses. No Zoom account, API, or sandbox was accessed.
+
+## Batch 5 - profiles, support, and API contracts
+
+Implemented:
+
+- Added one-to-one student profiles and backfilled every existing student with blank learning fields rather than invented defaults.
+- Replaced the ad-hoc profile GET/PATCH path with one serializer that persists learning goals and validates full name, ISO country, IANA timezone, and field lengths.
+- Added durable support inquiries, a public throttled submission endpoint, administration inbox, and post-commit Resend notification with retryable delivery state.
+- Regenerated OpenAPI and frontend types. Booking status now derives from all backend states, conditional student e-mail is optional, and profile/student-wallet contracts are schema-derived.
+- Added a generated-type drift command and an API-contract CI workflow.
+- Corrected tutor dashboard day/month boundaries to use the authenticated viewer timezone and server pagination counts.
+
+Verification:
+
+- Focused profile/support/booking/contract suite: 74 passed.
+- Complete backend regression: 749 passed, 3 infrastructure-specific tests skipped.
+- Frontend tests: 90 passed; generated-contract check and Next.js production build passed.
+- `manage.py check`: no issues.
+- `manage.py makemigrations --check --dry-run`: no changes.
+
+External-action boundary:
+
+- Resend behavior was verified with an injected local sender only. No Resend account, provider API, remote Git, or cloud service was accessed.

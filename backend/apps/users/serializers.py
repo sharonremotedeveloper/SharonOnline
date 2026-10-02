@@ -1,6 +1,7 @@
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.db import transaction
 from django.db.models import Sum
 from drf_spectacular.utils import extend_schema_field
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -8,7 +9,9 @@ from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
-from .models import User
+from pytz import country_names
+
+from .models import StudentProfile, SupportInquiry, User
 from .services import queue_verification_email
 from .tokens import check_reset_token, user_from_uid
 
@@ -42,6 +45,14 @@ def validate_iana_timezone(value):
     return value
 
 
+def validate_iso_country(value):
+    """Accept blank or a real ISO 3166-1 alpha-2 country code and store it canonically."""
+    value = value.strip().upper()
+    if value and value not in country_names:
+        raise serializers.ValidationError('Enter a valid ISO 3166-1 alpha-2 country code, e.g. "ZA" or "JP".')
+    return value
+
+
 class UserSerializer(serializers.ModelSerializer):
     # Role-specific extras the UI needs on every page (navbar, checkout). Null-ish for roles they do not apply to.
     credits = serializers.SerializerMethodField(help_text='Remaining lesson credits (students only; otherwise null).')
@@ -64,6 +75,9 @@ class UserSerializer(serializers.ModelSerializer):
         profile = getattr(user, 'teacher_profile', None) if user.role == User.Role.TEACHER else None
         return profile.is_verified if profile else None
 
+    def validate_country(self, value):
+        return validate_iso_country(value)
+
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'email_verified', 'first_name', 'last_name', 'role', 'country', 'timezone', 'phone_number', 'created_at',
@@ -73,6 +87,7 @@ class UserSerializer(serializers.ModelSerializer):
             'email': {'validators': [UniqueValidator(queryset=User.objects.all(), lookup='iexact', message='A user with this email already exists.')]},
             'username': {'validators': [UnicodeUsernameValidator(), UniqueValidator(queryset=User.objects.all(), lookup='iexact', message='A user with that username already exists.')]},
             'timezone': {'validators': [validate_iana_timezone]},
+            'country': {'validators': [validate_iso_country]},
         }
 
     def update(self, instance, validated_data):
@@ -110,6 +125,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'username': {'validators': [UnicodeUsernameValidator(), validate_username_without_at, UniqueValidator(queryset=User.objects.all(), lookup='iexact', message='A user with that username already exists.')]},
             'timezone': {'validators': [validate_iana_timezone]},
+            'country': {'validators': [validate_iso_country]},
         }
 
     def validate(self, attrs):
@@ -123,6 +139,9 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"password": list(exc.messages)})
         return attrs
 
+    def validate_country(self, value):
+        return validate_iso_country(value)
+
     def create(self, validated_data):
         validated_data.pop('password_confirm')
         user = User.objects.create_user(
@@ -135,6 +154,8 @@ class RegisterSerializer(serializers.ModelSerializer):
             country=validated_data.get('country', ''),
             timezone=validated_data.get('timezone', 'UTC')
         )
+        if user.role == User.Role.STUDENT:
+            StudentProfile.objects.create(user=user)
         return user
 
 
@@ -186,3 +207,100 @@ class PasswordChangeSerializer(_NewPasswordMixin):
 
 class EmailVerifyConfirmSerializer(serializers.Serializer):
     token = serializers.CharField(max_length=512)
+
+
+class StudentProfileSerializer(serializers.Serializer):
+    id = serializers.UUIDField(read_only=True)
+    full_name = serializers.CharField(max_length=301)
+    email = serializers.EmailField(read_only=True)
+    country = serializers.CharField(max_length=2, allow_blank=True, validators=[validate_iso_country])
+    timezone = serializers.CharField(max_length=64, validators=[validate_iana_timezone])
+    target_level = serializers.CharField(max_length=64, allow_blank=True)
+    learning_goals = serializers.CharField(max_length=2000, allow_blank=True)
+
+    def to_representation(self, user):
+        profile = getattr(user, 'student_profile', None)
+        return {
+            'id': str(user.id),
+            'full_name': user.get_full_name() or user.username,
+            'email': user.email,
+            'country': user.country,
+            'timezone': user.timezone,
+            'target_level': profile.target_level if profile else '',
+            'learning_goals': profile.learning_goals if profile else '',
+        }
+
+    def validate_full_name(self, value):
+        value = ' '.join(value.split())
+        if not value:
+            raise serializers.ValidationError('Enter your full name.')
+        return value
+
+    def validate_country(self, value):
+        return validate_iso_country(value)
+
+    def update(self, user, validated_data):
+        if user.role != User.Role.STUDENT:
+            raise serializers.ValidationError({'role': 'Only student accounts have a student profile.'})
+        profile_data = {
+            key: validated_data.pop(key)
+            for key in ('target_level', 'learning_goals')
+            if key in validated_data
+        }
+        with transaction.atomic():
+            full_name = validated_data.pop('full_name', None)
+            if full_name is not None:
+                first_name, _, last_name = full_name.partition(' ')
+                user.first_name = first_name
+                user.last_name = last_name
+            for field in ('country', 'timezone'):
+                if field in validated_data:
+                    setattr(user, field, validated_data[field])
+            user.save(update_fields=['first_name', 'last_name', 'country', 'timezone', 'updated_at'])
+            profile, _ = StudentProfile.objects.get_or_create(user=user)
+            if profile_data:
+                for field, value in profile_data.items():
+                    setattr(profile, field, value)
+                profile.save(update_fields=[*profile_data, 'updated_at'])
+        return user
+
+
+class SupportInquirySerializer(serializers.ModelSerializer):
+    user_type = serializers.ChoiceField(
+        source='sender_type', choices=SupportInquiry.SenderType.choices,
+        required=False, default=SupportInquiry.SenderType.OTHER,
+    )
+    name = serializers.CharField(source='sender_name', max_length=150)
+    email = serializers.EmailField(source='sender_email', max_length=254)
+
+    class Meta:
+        model = SupportInquiry
+        fields = ('id', 'name', 'email', 'user_type', 'subject', 'message', 'status', 'delivery_state', 'created_at')
+        read_only_fields = ('id', 'status', 'delivery_state', 'created_at')
+        extra_kwargs = {
+            'subject': {'max_length': 200},
+            'message': {'max_length': 5000},
+        }
+
+    def validate_name(self, value):
+        value = ' '.join(value.split())
+        if not value:
+            raise serializers.ValidationError('Enter your name.')
+        return value
+
+    def validate_subject(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError('Enter a subject.')
+        return value
+
+    def validate_message(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError('Enter a message.')
+        return value
+
+
+class SupportInquiryAcceptedSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+    inquiry_id = serializers.UUIDField()
