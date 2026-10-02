@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework.permissions import AllowAny
+from rest_framework.throttling import ScopedRateThrottle
 
 from apps.bookings.models import Booking, AttendanceAudit
 from apps.admin_api.models import DisputeCase
@@ -24,6 +25,8 @@ class ZoomWebhookReceiverView(APIView):
     """
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'webhook'
 
     def post(self, request, *args, **kwargs):
         # 1. Parse JSON payload
@@ -249,15 +252,15 @@ class PresignedUploadURLView(APIView):
     Enforces strict role-based access control (RBAC), Tier 1 vs Tier 2 separation, and path traversal protection.
     """
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'upload'
 
     def post(self, request):
+        from apps.common.upload_policy import policy_for_key, clamp_expires
         action = request.data.get('action', 'upload')  # 'upload' or 'download'
         key = str(request.data.get('key') or '').strip()
-        content_type = request.data.get('content_type', 'application/octet-stream')
-        try:
-            expires_in = int(request.data.get('expires_in', 900))
-        except (ValueError, TypeError):
-            expires_in = 900
+        content_type = request.data.get('content_type')
+        expires_in = clamp_expires(request.data.get('expires_in', 900))
 
         if not key:
             return Response(
@@ -266,7 +269,7 @@ class PresignedUploadURLView(APIView):
             )
 
         # Path traversal guard
-        if '..' in key or key.startswith('/') or '\\' in key:
+        if '..' in key or key.startswith('/') or '\\' in key or '//' in key or '%' in key or any(ord(c) < 32 for c in key):
             return Response(
                 {"error": "Invalid object key path."},
                 status=status.HTTP_400_BAD_REQUEST
@@ -291,7 +294,7 @@ class PresignedUploadURLView(APIView):
                 if user_role in ['student', 'teacher']:
                     allowed_prefixes.append(f"students/avatars/{user_id_str}")
 
-                if not any(key.startswith(p) for p in allowed_prefixes):
+                if not any(key.startswith(p + '/') for p in allowed_prefixes):
                     return Response(
                         {"error": f"Permission denied to upload to key '{key}'."},
                         status=status.HTTP_403_FORBIDDEN
@@ -306,7 +309,7 @@ class PresignedUploadURLView(APIView):
                         f"private/vetting/{user_id_str}",
                         f"private/{user_id_str}",
                     ]
-                    if not any(key.startswith(p) for p in allowed_private_prefixes):
+                    if not any(key.startswith(p + '/') for p in allowed_private_prefixes):
                         return Response(
                             {"error": f"Permission denied to download private document '{key}'."},
                             status=status.HTTP_403_FORBIDDEN
@@ -324,7 +327,19 @@ class PresignedUploadURLView(APIView):
         )
 
         if action == 'upload':
-            res = generate_presigned_upload_url(object_key=key, content_type=content_type, expires_in=expires_in)
+            policy = policy_for_key(key)
+            if policy is None:
+                return Response({"error": "No upload policy exists for this key prefix."}, status=status.HTTP_400_BAD_REQUEST)
+            allowed_types, max_bytes = policy
+            if content_type not in allowed_types:
+                return Response({"error": f"content_type must be one of {sorted(allowed_types)}."}, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                size = int(request.data.get('size'))
+            except (ValueError, TypeError):
+                return Response({"error": "'size' (bytes) is required."}, status=status.HTTP_400_BAD_REQUEST)
+            if size <= 0 or size > max_bytes:
+                return Response({"error": f"size must be between 1 and {max_bytes} bytes."}, status=status.HTTP_400_BAD_REQUEST)
+            res = generate_presigned_upload_url(object_key=key, content_type=content_type, expires_in=expires_in, content_length=size)
             res['public_cdn_url'] = get_public_r2_url(key)
             return Response(res, status=status.HTTP_200_OK)
         elif action == 'download':

@@ -13,11 +13,16 @@ class PaymentTransaction(models.Model):
         SUCCESS = 'success', 'Successful'
         FAILED = 'failed', 'Failed'
         REFUNDED = 'refunded', 'Refunded'
+        # Money captured by the gateway that could not be applied to its booking (duplicate payment, booking already
+        # confirmed/completed). Held in ledger acct 2030 pending a gateway refund; never enters escrow or payouts.
+        UNALLOCATED = 'unallocated', 'Unallocated (refund pending)'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     booking = models.ForeignKey('bookings.Booking', on_delete=models.CASCADE, related_name='transactions')
     gateway = models.CharField(max_length=20, choices=Gateway.choices)
     gateway_reference = models.CharField(max_length=255, unique=True, db_index=True)
+    # Our own reference (sent to the gateway as m_payment_id / custom_id) so webhooks can find the expected amount.
+    merchant_reference = models.CharField(max_length=64, unique=True, null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=3, default='USD')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.INITIALIZED, db_index=True)
@@ -31,6 +36,31 @@ class PaymentTransaction(models.Model):
 
     def __str__(self):
         return f"{self.gateway.upper()} {self.amount} {self.currency} - {self.status} ({self.gateway_reference})"
+
+
+class GatewayAnomaly(models.Model):
+    """
+    Durable record of a gateway notification that passed authentication (signature/IP) but could not be applied
+    (amount mismatch, unknown reference, duplicate payment...). Money may have moved, so these need a human or the
+    reconciliation job - a log line is not enough. Only written AFTER authentication, so unauthenticated callers cannot
+    fill this table.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    gateway = models.CharField(max_length=20, choices=PaymentTransaction.Gateway.choices)
+    reference = models.CharField(max_length=255, blank=True, db_index=True)
+    reason = models.CharField(max_length=64, db_index=True)
+    detail = models.TextField(blank=True)
+    booking = models.ForeignKey('bookings.Booking', on_delete=models.SET_NULL, null=True, blank=True, related_name='gateway_anomalies')
+    payment_transaction = models.ForeignKey(PaymentTransaction, on_delete=models.SET_NULL, null=True, blank=True, related_name='anomalies')
+    payload = models.JSONField(default=dict)
+    resolved = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.gateway} {self.reason} {self.reference} ({'resolved' if self.resolved else 'OPEN'})"
 
 
 class CreditBundle(models.Model):
@@ -96,6 +126,7 @@ class LedgerEntry(models.Model):
         COMPENSATION_AWARDED = 'compensation_awarded', 'Apology / Goodwill Compensation'
         OUTAGE_REFUND = 'outage_refund', 'Eskom Outage Force Majeure Refund'
         LATE_PAYMENT_QUARANTINE = 'late_payment_quarantine', 'DEF-501 Late Payment Quarantine'
+        UNALLOCATED_PAYMENT = 'unallocated_payment', 'Unallocated / Duplicate Payment Held for Refund'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     journal_batch_id = models.UUIDField(db_index=True, help_text="Groups balancing debits and credits of a single transaction")

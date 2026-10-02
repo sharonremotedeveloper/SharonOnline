@@ -1,6 +1,8 @@
 from rest_framework import generics, permissions, filters, status
 from rest_framework.response import Response
 from django.db.models import Q
+from rest_framework.exceptions import PermissionDenied
+from apps.users.permissions import IsTeacher
 from .models import TeacherProfile, TeacherAvailability
 from .serializers import TeacherListSerializer, TeacherDetailSerializer, TeacherAvailabilitySerializer
 
@@ -51,14 +53,14 @@ class TeacherListView(generics.ListAPIView):
         return queryset.order_by('-rating_avg', '-rating_count')
 
 class TeacherDetailView(generics.RetrieveAPIView):
-    queryset = TeacherProfile.objects.filter(is_active=True).select_related('user').prefetch_related('availabilities')
+    queryset = TeacherProfile.objects.filter(is_active=True, is_verified=True).select_related('user').prefetch_related('availabilities')
     serializer_class = TeacherDetailSerializer
     permission_classes = (permissions.AllowAny,)
     lookup_field = 'id'
 
 class TeacherAvailabilityManageView(generics.ListCreateAPIView):
     serializer_class = TeacherAvailabilitySerializer
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (permissions.IsAuthenticated, IsTeacher)
 
     def get_queryset(self):
         user = self.request.user
@@ -67,4 +69,6 @@ class TeacherAvailabilityManageView(generics.ListCreateAPIView):
         return TeacherAvailability.objects.filter(teacher=user.teacher_profile)
 
     def perform_create(self, serializer):
+        if not hasattr(self.request.user, 'teacher_profile'):
+            raise PermissionDenied('A teacher profile is required (your application has not been set up yet).')
         serializer.save(teacher=self.request.user.teacher_profile)

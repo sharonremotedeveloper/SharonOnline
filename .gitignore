@@ -64,3 +64,11 @@ postgres_data/
 !.env.example
 celerybeat-schedule*
 backend/celerybeat-schedule*
+
+# Local agent/tool configs that may hold tokens (7.10)
+.mcp.json
+.claude/
+.codex/
+.agents/
+.env.*
+!.env.example

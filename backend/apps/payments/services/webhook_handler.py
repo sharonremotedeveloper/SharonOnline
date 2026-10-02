@@ -1,13 +1,61 @@
 from django.db import transaction, IntegrityError
 from django.utils import timezone
-from apps.payments.models import PaymentTransaction, CreditBundle
-from apps.payments.services.ledger_service import record_payment_capture_entry, record_def501_quarantine_entry
+from apps.payments.models import PaymentTransaction, CreditBundle, GatewayAnomaly
+from apps.payments.services.ledger_service import (
+    record_payment_capture_entry, record_def501_quarantine_entry, record_unallocated_payment_entry)
 from apps.bookings.models import Booking
 from apps.bookings.services.lock_service import release_slot_lock
 from apps.admin_api.models import DisputeCase
 import logging
 
 logger = logging.getLogger(__name__)
+
+# A payment may only confirm a booking that is still waiting for it (or whose hold just expired -> DEF-501 path).
+# Any other state (already confirmed / in progress / completed / disputed ...) means this money is surplus and must
+# NOT touch the booking, otherwise a second payment could flip a COMPLETED lesson to DISPUTED and freeze payouts.
+PAYABLE_BOOKING_STATES = (Booking.Status.PENDING_PAYMENT, Booking.Status.CANCELLED)
+
+
+def _hold_unallocated(tx, booking, reason: str, detail: str = '') -> None:
+    """Park captured-but-unappliable money in ledger acct 2030 and raise a durable anomaly for follow-up/refund."""
+    tx.status = PaymentTransaction.Status.UNALLOCATED
+    tx.save(update_fields=['status', 'updated_at'])
+    record_unallocated_payment_entry(payment_transaction=tx, booking=booking, user=booking.student)
+    GatewayAnomaly.objects.create(
+        gateway=tx.gateway, reference=tx.gateway_reference, reason=reason, detail=detail,
+        booking=booking, payment_transaction=tx, payload=tx.raw_webhook_payload or {})
+    logger.error("[UNALLOCATED PAYMENT] %s %s %s on booking %s: %s (refund required)",
+                 tx.gateway, tx.gateway_reference, f"{tx.amount} {tx.currency}", booking.id, reason)
+
+
+@transaction.atomic
+def record_unallocated_payment(*, booking, gateway: str, transaction_id: str, amount, currency: str,
+                               raw_payload: dict, reason: str, detail: str = '') -> dict:
+    """Idempotently record an authenticated surplus/duplicate payment that has no transaction row yet."""
+    tx, created = PaymentTransaction.objects.select_for_update().get_or_create(
+        gateway_reference=transaction_id,
+        defaults={'booking': booking, 'gateway': gateway, 'amount': amount, 'currency': currency,
+                  'status': PaymentTransaction.Status.UNALLOCATED, 'raw_webhook_payload': raw_payload})
+    if not created:
+        return {"status": "already_processed"}
+    # The row was created UNALLOCATED; post the ledger legs + anomaly (without re-saving status).
+    record_unallocated_payment_entry(payment_transaction=tx, booking=booking, user=booking.student)
+    GatewayAnomaly.objects.create(
+        gateway=gateway, reference=transaction_id, reason=reason, detail=detail,
+        booking=booking, payment_transaction=tx, payload=raw_payload or {})
+    logger.error("[UNALLOCATED PAYMENT] %s %s %s on booking %s: %s (refund required)",
+                 gateway, transaction_id, f"{amount} {currency}", booking.id, reason)
+    return {"status": "unallocated", "reason": reason, "transaction_id": transaction_id}
+
+
+def _dispatch_fulfillment(booking_id: str) -> None:
+    try:
+        from apps.integrations.tasks import dispatch_booking_fulfillment
+        dispatch_booking_fulfillment.delay(booking_id)
+    except Exception:
+        # The booking is already CONFIRMED and paid; a lost dispatch means no Zoom link/email. Make it loud.
+        logger.exception("Could not dispatch fulfillment for booking %s - needs manual or reconcile re-dispatch", booking_id)
+
 
 @transaction.atomic
 def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, amount: float, currency: str, status: str, raw_payload: dict) -> dict:
@@ -30,25 +78,24 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
         }
     )
 
-    if not created and tx.status == PaymentTransaction.Status.SUCCESS:
+    if not created and tx.status in (PaymentTransaction.Status.SUCCESS, PaymentTransaction.Status.UNALLOCATED):
         logger.info(f"Duplicate webhook ignored for transaction_id={transaction_id}")
         return {"status": "already_processed"}
 
     if status == PaymentTransaction.Status.SUCCESS:
-        tx.status = PaymentTransaction.Status.SUCCESS
-        tx.save()
-
         try:
             booking = Booking.objects.select_for_update().select_related('teacher', 'student').get(id=booking_id)
         except Booking.DoesNotExist:
             logger.error(f"Booking {booking_id} referenced in transaction {transaction_id} does not exist")
             return {"error": "booking_not_found"}
 
-        # If already confirmed, nothing more to do
-        if booking.status == Booking.Status.CONFIRMED:
-            start_iso = booking.start_time_utc.isoformat()
-            release_slot_lock(str(booking.teacher_id), start_iso, str(booking.student_id))
-            return {"status": "success", "transaction_id": transaction_id}
+        # Surplus payment (booking already confirmed/in progress/completed/disputed...): hold it, never touch the booking.
+        if booking.status not in PAYABLE_BOOKING_STATES:
+            _hold_unallocated(tx, booking, 'booking_not_payable', f"booking status is '{booking.status}'")
+            return {"status": "unallocated", "reason": "booking_not_payable", "transaction_id": transaction_id}
+
+        tx.status = PaymentTransaction.Status.SUCCESS
+        tx.save()
 
         # Concurrency Guard (DEF-501): Check if slot expired or was re-booked by another student
         active_statuses = [
@@ -167,12 +214,10 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
         start_iso = booking.start_time_utc.isoformat()
         release_slot_lock(str(booking.teacher_id), start_iso, str(booking.student_id))
 
-        # Trigger asynchronous background task for external APIs (Zoom, GCal, Resend)
-        try:
-            from apps.integrations.tasks import dispatch_booking_fulfillment
-            dispatch_booking_fulfillment.delay(str(booking.id))
-        except Exception as e:
-            logger.warning(f"Could not dispatch async Celery task (will run or retry): {e}")
+        # Trigger background fulfillment (Zoom, GCal, Resend) only AFTER the commit, so the worker can never
+        # observe the booking still PENDING_PAYMENT, and a rolled-back payment never queues a task.
+        booking_id_str = str(booking.id)
+        transaction.on_commit(lambda: _dispatch_fulfillment(booking_id_str))
 
     return {"status": "success", "transaction_id": transaction_id}
 

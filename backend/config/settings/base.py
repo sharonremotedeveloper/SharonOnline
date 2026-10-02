@@ -8,6 +8,12 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-key-change
 
 DEBUG = False
 
+# Zoom webhook HMAC secret. Never derived from SECRET_KEY; production requires it explicitly.
+ZOOM_WEBHOOK_SECRET_TOKEN = os.environ.get('ZOOM_WEBHOOK_SECRET_TOKEN', '')
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()
+]
+
 ALLOWED_HOSTS = [host.strip() for host in os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,0.0.0.0,backend').split(',')]
 
 # Custom User Model
@@ -26,6 +32,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'storages',
 
     # Local Domain Apps
@@ -106,13 +113,32 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
     ),
+    # Secure by default: public endpoints must opt in with permission_classes = [AllowAny].
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+        'rest_framework.permissions.IsAuthenticated',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/min',
+        'user': '300/min',
+        # Scoped (views opt in with throttle_classes=[ScopedRateThrottle] + throttle_scope)
+        'login': '5/min',
+        'login_user': '10/hour',  # per submitted username, so a distributed attack on one account is still limited
+        'register': '5/hour',
+        'upload': '30/hour',
+        'checkout': '20/hour',
+        'webhook': '120/min',
+    },
+    # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
+    # NEVER map 0 to None: DRF treats None as "trust the whole client-supplied X-Forwarded-For header", which lets
+    # an attacker rotate the header to bypass every IP throttle.
+    'NUM_PROXIES': int(os.environ.get('THROTTLE_NUM_PROXIES', '0')),
 }
 
 # SimpleJWT Authentication
@@ -179,3 +205,26 @@ else:
         }
     }
 
+
+# Payment gateways. Production guard (config/settings/guard.py) rejects unsafe values.
+def _env_bool(name, default=False):
+    return os.environ.get(name, str(default)).strip().lower() in ('1', 'true', 'yes')
+
+PAYFAST_MERCHANT_ID = os.environ.get('PAYFAST_MERCHANT_ID', '')
+PAYFAST_MERCHANT_KEY = os.environ.get('PAYFAST_MERCHANT_KEY', '')
+PAYFAST_PASSPHRASE = os.environ.get('PAYFAST_PASSPHRASE', '')
+PAYFAST_SANDBOX = _env_bool('PAYFAST_SANDBOX', True)
+PAYFAST_SKIP_IP_CHECK = _env_bool('PAYFAST_SKIP_IP_CHECK', False)
+PAYFAST_TRUSTED_PROXY_COUNT = int(os.environ.get('PAYFAST_TRUSTED_PROXY_COUNT', '0'))
+PAYFAST_NOTIFY_URL = os.environ.get('PAYFAST_NOTIFY_URL', '')
+# Extra source-IP ranges allowed for ITNs (comma-separated CIDRs). Copy PayFast's currently published ranges here;
+# DNS resolution of PayFast's hosts is used in addition.
+PAYFAST_EXTRA_ALLOWED_CIDRS = [c.strip() for c in os.environ.get('PAYFAST_EXTRA_ALLOWED_CIDRS', '').split(',') if c.strip()]
+# D-1: retail price is platform-set per currency. Until the price table exists (Phase 10),
+# ZAR = USD price x this configurable rate.
+ZAR_PER_USD = float(os.environ.get('ZAR_PER_USD', '18.0'))
+
+PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', '')
+PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', '')
+PAYPAL_MODE = os.environ.get('PAYPAL_MODE', 'sandbox')
+PAYPAL_WEBHOOK_ID = os.environ.get('PAYPAL_WEBHOOK_ID', '')

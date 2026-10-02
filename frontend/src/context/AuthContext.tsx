@@ -255,6 +255,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    // Revoke the refresh token server-side (7.7). keepalive lets the request outlive the redirect below;
+    // local session is always cleared even if the network call fails, so the user is never stuck logged in.
+    if (tokens?.access && tokens?.refresh && !tokens.access.startsWith("mock")) {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+      void fetch(`${apiBase}/auth/logout/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${tokens.access}` },
+        body: JSON.stringify({ refresh: tokens.refresh }),
+        keepalive: true,
+      }).catch((err) => console.warn("Server-side logout failed; refresh token remains valid until expiry", err));
+    }
     clearAuthSession();
     setUser(null);
     setTokens(null);

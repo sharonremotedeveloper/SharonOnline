@@ -14,7 +14,7 @@ User = get_user_model()
 
 @pytest.mark.django_db
 @patch('apps.integrations.tasks.dispatch_booking_fulfillment.delay')
-def test_webhook_idempotency(mock_dispatch, teacher_user, student_user):
+def test_webhook_idempotency(mock_dispatch, teacher_user, student_user, django_capture_on_commit_callbacks):
     # Create pending booking
     start_utc = timezone.now() + timedelta(days=2)
     booking = Booking.objects.create(
@@ -28,16 +28,17 @@ def test_webhook_idempotency(mock_dispatch, teacher_user, student_user):
     tx_ref = "PAYPAL-TEST-ORDER-12345"
     payload = {"order_id": tx_ref, "amount": 9.00}
 
-    # 1. First webhook delivery
-    res1 = process_payment_webhook(
-        booking_id=str(booking.id),
-        gateway="paypal",
-        transaction_id=tx_ref,
-        amount=9.00,
-        currency="USD",
-        status="success",
-        raw_payload=payload
-    )
+    # 1. First webhook delivery (fulfillment is dispatched on commit)
+    with django_capture_on_commit_callbacks(execute=True):
+        res1 = process_payment_webhook(
+            booking_id=str(booking.id),
+            gateway="paypal",
+            transaction_id=tx_ref,
+            amount=9.00,
+            currency="USD",
+            status="success",
+            raw_payload=payload
+        )
     assert res1["status"] == "success"
 
     booking.refresh_from_db()
@@ -46,15 +47,16 @@ def test_webhook_idempotency(mock_dispatch, teacher_user, student_user):
     assert mock_dispatch.call_count == 1
 
     # 2. Duplicate webhook retry (e.g. network retry from PayPal)
-    res2 = process_payment_webhook(
-        booking_id=str(booking.id),
-        gateway="paypal",
-        transaction_id=tx_ref,
-        amount=9.00,
-        currency="USD",
-        status="success",
-        raw_payload=payload
-    )
+    with django_capture_on_commit_callbacks(execute=True):
+        res2 = process_payment_webhook(
+            booking_id=str(booking.id),
+            gateway="paypal",
+            transaction_id=tx_ref,
+            amount=9.00,
+            currency="USD",
+            status="success",
+            raw_payload=payload
+        )
     assert res2["status"] == "already_processed"
 
     # Verify no duplicate task dispatch was triggered
@@ -182,7 +184,7 @@ def test_def501_late_payment_past_lesson_window_quarantined(mock_dispatch, teach
 
 @pytest.mark.django_db
 @patch('apps.integrations.tasks.dispatch_booking_fulfillment.delay')
-def test_def501_late_payment_uncontested_slot_revived(mock_dispatch, teacher_user, student_user):
+def test_def501_late_payment_uncontested_slot_revived(mock_dispatch, teacher_user, student_user, django_capture_on_commit_callbacks):
     """
     DEF-501 Concurrency Guard:
     Late payment arrives for a cancelled booking, BUT no one took the slot and lesson
@@ -200,15 +202,16 @@ def test_def501_late_payment_uncontested_slot_revived(mock_dispatch, teacher_use
     )
 
     tx_ref = "PAYPAL-DEF501-REVIVE-003"
-    res = process_payment_webhook(
-        booking_id=str(booking.id),
-        gateway="paypal",
-        transaction_id=tx_ref,
-        amount=9.00,
-        currency="USD",
-        status="success",
-        raw_payload={"id": tx_ref}
-    )
+    with django_capture_on_commit_callbacks(execute=True):
+        res = process_payment_webhook(
+            booking_id=str(booking.id),
+            gateway="paypal",
+            transaction_id=tx_ref,
+            amount=9.00,
+            currency="USD",
+            status="success",
+            raw_payload={"id": tx_ref}
+        )
 
     assert res["status"] == "success"
 

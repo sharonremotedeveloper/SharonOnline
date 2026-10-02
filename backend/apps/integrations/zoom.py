@@ -102,11 +102,7 @@ class ZoomClient:
     @staticmethod
     def get_webhook_secret() -> str:
         from django.conf import settings
-        return (
-            getattr(settings, 'ZOOM_WEBHOOK_SECRET_TOKEN', '')
-            or os.environ.get('ZOOM_WEBHOOK_SECRET_TOKEN', '')
-            or getattr(settings, 'SECRET_KEY', 'zoom-dev-secret')
-        )
+        return getattr(settings, 'ZOOM_WEBHOOK_SECRET_TOKEN', '') or ''
 
     @classmethod
     def verify_webhook_signature(cls, headers: dict, raw_body: bytes) -> tuple[bool, str]:
@@ -130,6 +126,9 @@ class ZoomClient:
             return False, "Request timestamp out of allowable window (replay guard)"
 
         secret = cls.get_webhook_secret()
+        if not secret:
+            logger.error("ZOOM_WEBHOOK_SECRET_TOKEN is not configured; rejecting webhook")
+            return False, "Zoom webhook secret not configured"
         body_str = raw_body.decode('utf-8', errors='replace')
         message = f"v0:{zm_timestamp}:{body_str}"
         computed_hash = hmac.new(

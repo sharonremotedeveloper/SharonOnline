@@ -4,6 +4,10 @@ import os
 
 DEBUG = False
 
+from .guard import validate_production_settings
+
+validate_production_settings()
+
 # Production Neon PostgreSQL
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if not DATABASE_URL:

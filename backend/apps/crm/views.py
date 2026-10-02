@@ -7,6 +7,7 @@ from apps.users.permissions import IsTeacherOrAdmin
 from apps.crm.models import StudentTutorDossier
 from apps.crm.serializers import TeacherStudentDossierSerializer, DossierUpdateSerializer
 from apps.users.models import User
+from apps.bookings.models import Booking
 from apps.teachers.models import TeacherProfile
 
 class TeacherStudentDossierListView(APIView):
@@ -35,10 +36,19 @@ class TeacherStudentDossierUpdateView(APIView):
 
         if hasattr(request.user, 'teacher_profile'):
             teacher = request.user.teacher_profile
+            # A tutor may only keep notes on students they actually teach (or already have a dossier for).
+            has_relationship = (
+                Booking.objects.filter(teacher=teacher, student=student).exists()
+                or StudentTutorDossier.objects.filter(teacher=teacher, student=student).exists()
+            )
+            if not has_relationship:
+                return Response({'error': 'You have no lesson history with this student.'}, status=status.HTTP_403_FORBIDDEN)
         else:
-            teacher = TeacherProfile.objects.first()
+            # Platform admin: must explicitly name the tutor; never guess.
+            teacher_id = request.data.get('teacher_id')
+            teacher = TeacherProfile.objects.filter(pk=teacher_id).first() if teacher_id else None
             if not teacher:
-                return Response({'error': 'No teacher profile available'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'teacher_id is required for admin edits'}, status=status.HTTP_400_BAD_REQUEST)
 
         dossier, _ = StudentTutorDossier.objects.get_or_create(
             teacher=teacher,

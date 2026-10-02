@@ -15,6 +15,8 @@ def test_environment_settings(settings):
             'LOCATION': 'isolated-test-cache',
         }
     }
+    from django.core.cache import cache
+    cache.clear()  # throttle counters / locks must not leak between tests
     settings.CELERY_TASK_ALWAYS_EAGER = True
     settings.CELERY_TASK_EAGER_PROPAGATES = True
     settings.CELERY_BROKER_URL = 'memory://'
