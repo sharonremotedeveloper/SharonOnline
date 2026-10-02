@@ -8,6 +8,7 @@ from celery import shared_task
 
 from apps.bookings.models import Booking, AttendanceAudit
 from apps.bookings.services.state_machine import transition_booking
+from apps.payments.services.settlement import RELEASABLE_STATUSES, attendance_verified_for_release, settled_exists
 from apps.payments.models import PaymentTransaction
 from apps.admin_api.models import DisputeCase
 from apps.common.locks import distributed_task_lock
@@ -21,9 +22,9 @@ def release_cleared_escrow_task():
     """
     Periodic task running every 15 minutes:
     Dual verification escrow release engine:
-    1. 24 hours have elapsed since lesson completion (end_time_utc <= now - 24h).
-    2. Attendance validated: tutor logged at least 20 minutes in session (or excused power outage).
-    3. Excludes any booking with an active open DisputeCase.
+    1. 24 hours have elapsed since lesson end (end_time_utc <= now - 24h).
+    2. Attendance validated: tutor logged >= 20 minutes (completed lessons) or was present at T+10m (student no-show).
+    3. Excludes bookings with an open DisputeCase and bookings whose escrow is already settled (arbitration, refund, outage).
     4. Settles 80% net to tutor and marks transaction escrow_cleared = True.
     """
     now = timezone.now()
@@ -39,15 +40,12 @@ def release_cleared_escrow_task():
         candidates = list(
             Booking.objects.select_for_update(of=('self',), skip_locked=True)
             .filter(
-                status__in=[
-                    Booking.Status.COMPLETED,
-                    Booking.Status.COMPLETED_PENDING_MEMO,
-                    Booking.Status.COMPLETED_MEMO_FORFEITED
-                ],
+                status__in=RELEASABLE_STATUSES,
                 end_time_utc__lte=cutoff_24h,
                 escrow_cleared_at__isnull=True
             )
             .exclude(id__in=open_dispute_booking_ids)
+            .exclude(settled_exists())  # arbitration / refunds may already have settled this booking's escrow
             .select_related('teacher__user')[:50]
         )
 
@@ -59,10 +57,7 @@ def release_cleared_escrow_task():
                 participant_email=teacher_email
             ).aggregate(total=Sum('total_minutes'))['total'] or 0
 
-            # Allow escrow clearance if teacher attended >= 20 mins or if power outage was excused
-            is_attendance_verified = (teacher_minutes >= 20) or (booking.status == Booking.Status.INTERRUPTED_POWER)
-
-            if not is_attendance_verified:
+            if not attendance_verified_for_release(booking, teacher_minutes):
                 logger.warning(
                     f"Escrow release held for booking {booking.id}: teacher attendance was {teacher_minutes}m (<20m)."
                 )

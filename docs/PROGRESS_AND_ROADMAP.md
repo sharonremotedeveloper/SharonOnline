@@ -241,7 +241,7 @@ A four-way audit (backend, frontend, spec-vs-roadmap, infra) found that Phases 1
 | :--- | :--- | :--- |
 | **Phase 7** | Security emergency + spec freeze (decisions D-1..D-12) | `7A + 7B DONE (7.1-7.9, adversarial-review fixes; 220 tests); 7.10 + D-3,4,7-12 awaiting Anesu` |
 | **Phase 8** | Honest frontend + real auth | `IN PROGRESS - 8.1-8.8 + 9.2 done (honest client, HttpOnly cookie sessions via Next BFF proxy, signed-session middleware, real reserve->booking_id, password reset/change, e-mail verification, login by e-mail); 8.9 Next.js major upgrade open` |
-| **Phase 9** | Booking core (`transition_booking()`, reserve → book) | `IN PROGRESS - 9.1 (state machine + audit trail), 9.2 and 9.4 (in-flight payments keep their hold) done; 9.3, 9.5-9.10 open` |
+| **Phase 9** | Booking core (`transition_booking()`, reserve → book) | `IN PROGRESS - 9.1 (state machine + audit trail), 9.2, 9.4 (in-flight payments keep their hold) and 9.7 (settlement paths, no double payout) done; 9.3, 9.5, 9.6, 9.8-9.10 open` |
 | **Phase 10** | Real payments (PayPal/PayFast sandbox, credits, refunds, multi-currency ledger) | `NOT STARTED` |
 | **Phase 11** | Tutor lifecycle + real payouts | `NOT STARTED` |
 | **Phase 12** | Integrations + notifications (Zoom, Resend, GCal, Eskom) | `NOT STARTED` |

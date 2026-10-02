@@ -212,7 +212,7 @@ def test_eskom_power_outage_interruption_and_refund(teacher_user, student_user):
     When a power cut interrupts a lesson, the booking transitions to INTERRUPTED_POWER,
     and the student is automatically credited back 1 lesson credit with zero tutor penalty.
     """
-    start_utc = timezone.now() + timedelta(days=1)
+    start_utc = timezone.now() + timedelta(minutes=10)  # outage reports are only accepted around the lesson (Task 9.7)
     booking = Booking.objects.create(
         teacher=teacher_user,
         student=student_user,

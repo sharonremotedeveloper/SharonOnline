@@ -160,6 +160,10 @@ EMAIL_VERIFY_MAX_AGE = 3 * 24 * 60 * 60
 PAYMENT_INFLIGHT_GRACE_SECONDS = int(os.environ.get('PAYMENT_INFLIGHT_GRACE_SECONDS', '900'))
 PAYMENT_HOLD_MAX_SECONDS = int(os.environ.get('PAYMENT_HOLD_MAX_SECONDS', '1800'))
 
+# Power-outage reports (Task 9.7): only around the lesson itself, so an "outage" cannot be used as a free cancellation.
+OUTAGE_REPORT_BEFORE_START_SECONDS = int(os.environ.get('OUTAGE_REPORT_BEFORE_START_SECONDS', '3600'))
+OUTAGE_REPORT_AFTER_END_SECONDS = int(os.environ.get('OUTAGE_REPORT_AFTER_END_SECONDS', '1800'))
+
 # OpenAPI schema (Task 8.8). The served schema is admin-only; the committed copy + generated TS types come from
 # `manage.py spectacular` / `npm run gen:api`.
 SPECTACULAR_SETTINGS = {

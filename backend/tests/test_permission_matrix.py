@@ -48,6 +48,9 @@ class TestBookingIDOR:
         assert booking.status == Booking.Status.CONFIRMED
 
     def test_outage_cannot_be_reported_twice(self, booking, student_user):
+        booking.start_time_utc = timezone.now() + timedelta(minutes=5)  # inside the reporting window
+        booking.end_time_utc = booking.start_time_utc + timedelta(minutes=25)
+        booking.save()
         c = _client(student_user)
         assert c.post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 200
         assert c.post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 409
