@@ -28,10 +28,17 @@ Whenever an error, test breakage, build failure, or unexpected API behavior occu
 | `ERR-006` | 2026-10-02 | Backend (local dev) | `High` | `redis.exceptions.ConnectionError: Error 10061 connecting to localhost:6379` on every API request (`/api/v1/teachers/` -> 500) | `local.py` defaulted `REDIS_URL` to `redis://localhost:6379/0`, so with no Redis the cache was Redis; since Phase 7A throttling touches the cache on EVERY request. Default is now empty -> LocMem cache + `memory://` Celery broker; Docker/Redis opts in via `REDIS_URL`. |
 | `ERR-007` | 2026-10-02 | Frontend (runtime) | `High` | `TypeError: tutor.rating_avg.toFixed is not a function` on `/student/book/[tutorId]` | Django `DecimalField`s (`rating_avg`, `price_per_25min_usd`) serialise as STRINGS; the page was only ever exercised against fabricated numeric fixtures. Fixed at the source: `normalizeTutor()` in `lib/api.ts` coerces them once. |
 | `ERR-008` | 2026-10-02 | Frontend/Backend contract | `High` | `TypeError: Cannot read properties of undefined (reading 'toFixed')` on `/student/checkout/[bookingId]` | `BookingDetail` (frontend type) required `price_usd`, `price_zar`, `lock_expires_at`, `booking_reference`, local times, etc. that `BookingDetailSerializer` never returned; masked by the fake-booking fallback. Serializer now supplies the full contract (host `zoom_start_url` only to the booking's tutor; student email only to the student) and is pinned by `tests/test_booking_detail.py`. |
+| `ERR-009` | 2026-10-02 | Frontend (security, pre-release) | `Critical` | Response header `x-middleware-set-cookie: sharon_refresh=eyJ...` on `/api/session/login` (also in the PRODUCTION build) | Setting cookies with Next's `NextResponse.cookies.set()` also mirrors them into the internal `x-middleware-set-cookie` response header, which browser JS can read - it would have exposed the refresh token to any XSS and defeated HttpOnly. Found by inspecting raw headers of a live production build before release. Fix: cookies are serialised by our own tested `serializeCookie()` and appended as plain `Set-Cookie`; `noStore()` also strips the header; verified 0 leaks on a rebuilt production server. |
 
 ---
 
 ## 🔎 Detailed Error Resolution Case Studies
+
+### `ERR-009`: Token mirrored into a JS-readable header (Task 8.4)
+
+Caught before any release by checking raw response headers of a `next start` build, not just the browser's cookie jar (which correctly showed HttpOnly cookies). **Lesson:** verify HttpOnly claims at the HTTP layer; a cookie being HttpOnly says nothing about the same value appearing elsewhere in the response. Regression guard: `serializeCookie` unit tests, plus the manual check "no `eyJ` outside `Set-Cookie`" recorded in `docs/PHASE_8_SESSION_COOKIES.md`.
+
+---
 
 ### `ERR-006`/`ERR-007`/`ERR-008`: Defects exposed once fake data was removed (Phase 8)
 

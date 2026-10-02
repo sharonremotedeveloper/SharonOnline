@@ -1,20 +1,22 @@
 /**
- * HTTP core for the Django API.
+ * Browser/server HTTP client for the Django API.
  *
- * - Attaches the access token, parses DRF errors into a typed `ApiError`.
- * - On a 401 it refreshes the access token ONCE (single-flight, so N parallel calls share one refresh) and retries;
- *   if the refresh fails the session is cleared and the user is sent to /login.
- * - NEVER fabricates data. Fixtures are only reachable when `NEXT_PUBLIC_USE_MOCKS=true` (dev only; the production
- *   build refuses to start with it - see next.config.mjs).
+ * - In the browser every call goes to our own origin (`/api/proxy/...`). The proxy route handler holds the HttpOnly
+ *   auth cookies, attaches the token, refreshes it when needed and forwards to Django - this code never sees a token.
+ * - On the server (SSR of public pages) it calls Django directly, unauthenticated.
+ * - Failures THROW a typed `ApiError`. It NEVER fabricates data. Fixtures are only reachable when
+ *   `NEXT_PUBLIC_USE_MOCKS=true` (dev only; the production build refuses to start with it - see next.config.mjs).
  */
-import { clearAuthSession, getStoredTokens, updateStoredTokens } from "./auth";
+import { LEGACY_COOKIES } from "./session";
 
 export const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
 
+export const PROXY_BASE = "/api/proxy";
+
 export const API_BASE =
   typeof window === "undefined"
-    ? process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"
-    : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+    ? (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/+$/, "")
+    : PROXY_BASE;
 
 /** Sentinel returned by `liveRequest` in explicit mock mode when the live call failed. */
 export const MOCK = Symbol("mock");
@@ -33,9 +35,9 @@ export class ApiError extends Error {
     this.fieldErrors = fieldErrors;
   }
 
-  /** True when the backend could not be reached at all (status 0). */
+  /** True when the server could not be reached at all (status 0) or answered 502/504 from the proxy. */
   get isNetworkError(): boolean {
-    return this.status === 0;
+    return this.status === 0 || this.status === 502 || this.status === 504;
   }
 }
 
@@ -45,6 +47,7 @@ export function errorMessage(err: unknown, fallback = "Something went wrong. Ple
     if (err.isNetworkError) return "We couldn't reach the server. Check your connection and try again.";
     if (err.status === 403) return "You don't have permission to do that.";
     if (err.status === 404) return "We couldn't find what you were looking for.";
+    if (err.status === 429) return "Too many requests. Please wait a moment and try again.";
     if (err.status >= 500) return "The server hit a problem. Please try again shortly.";
     return err.message || fallback;
   }
@@ -79,48 +82,25 @@ export function parseDrfError(status: number, body: unknown): { message: string;
   return { message, fieldErrors };
 }
 
-let refreshInFlight: Promise<string | null> | null = null;
-
-/** Exchange the refresh token for a new access token. Returns the new access token or null. */
-export function refreshAccessToken(): Promise<string | null> {
-  if (refreshInFlight) return refreshInFlight;
-  const tokens = getStoredTokens();
-  if (!tokens?.refresh) return Promise.resolve(null);
-
-  refreshInFlight = (async () => {
-    try {
-      const res = await fetch(`${API_BASE}/auth/token/refresh/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh: tokens.refresh }),
-      });
-      if (!res.ok) return null;
-      const data = await res.json();
-      if (!data?.access) return null;
-      // ROTATE_REFRESH_TOKENS: the old refresh token is blacklisted, so the new one MUST be stored.
-      updateStoredTokens({ access: data.access, refresh: data.refresh || tokens.refresh });
-      return data.access as string;
-    } catch {
-      return null;
-    } finally {
-      // Allow the next expiry to refresh again (set after the promise settles).
-      setTimeout(() => {
-        refreshInFlight = null;
-      }, 0);
-    }
-  })();
-  return refreshInFlight;
-}
-
 function endSession(): void {
-  clearAuthSession();
   if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
     const next = encodeURIComponent(window.location.pathname + window.location.search);
     window.location.href = `/login?next=${next}`;
   }
 }
 
-const AUTH_ENDPOINTS = ["/auth/token/", "/auth/token/refresh/", "/auth/register/", "/auth/logout/"];
+/** One-time cleanup of the tokens/cookies the previous (JS-readable) implementation left in the browser. */
+export function purgeLegacyBrowserSession(): void {
+  if (typeof window === "undefined") return;
+  try {
+    for (const key of ["access_token", "refresh_token", "user_role", "user_profile"]) window.localStorage.removeItem(key);
+  } catch {
+    /* storage unavailable */
+  }
+  if (typeof document !== "undefined") {
+    for (const name of LEGACY_COOKIES) document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax`;
+  }
+}
 
 async function readBody(res: Response): Promise<unknown> {
   if (res.status === 204 || res.status === 205) return null;
@@ -134,43 +114,48 @@ async function readBody(res: Response): Promise<unknown> {
 }
 
 /**
- * Perform an API request. `url` may be absolute or start with "/" (relative to API_BASE).
+ * Next.js 308-redirects `/api/proxy/x/` to `/api/proxy/x`, which would double every API round trip. The browser therefore
+ * asks the proxy for the slash-less form; the proxy handler re-adds the slash Django's routes require.
+ */
+export function stripProxyTrailingSlash(url: string): string {
+  if (!url.startsWith(`${PROXY_BASE}/`)) return url;
+  const q = url.indexOf("?");
+  const path = q === -1 ? url : url.slice(0, q);
+  const query = q === -1 ? "" : url.slice(q);
+  return path.replace(/\/+$/, "") + query;
+}
+
+function resolve(url: string): string {
+  if (/^https?:\/\//.test(url) || url.startsWith("/api/")) return stripProxyTrailingSlash(url);
+  return stripProxyTrailingSlash(`${API_BASE}${url}`);
+}
+
+/**
+ * Perform an API request. `url` may be absolute, an app route (`/api/session/...`), or start with "/" relative to the API.
  * Resolves with the parsed JSON body (null for 204/205), rejects with `ApiError`.
+ * `skipAuth` marks calls where a 401 is an expected answer (login, session probe) rather than "your session died".
  */
 export async function request<T = any>(url: string, init: RequestInit & { skipAuth?: boolean } = {}): Promise<T> {
-  const target = url.startsWith("http") ? url : `${API_BASE}${url}`;
-  const isAuthEndpoint = AUTH_ENDPOINTS.some((p) => target.includes(`/api/v1${p}`) || target.endsWith(p));
   const { skipAuth, ...rest } = init;
+  const headers = new Headers(rest.headers);
+  if (rest.body && !(rest.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
 
-  const send = async (accessToken: string | null): Promise<Response> => {
-    const headers = new Headers(rest.headers);
-    if (rest.body && !(rest.body instanceof FormData) && !headers.has("Content-Type")) {
-      headers.set("Content-Type", "application/json");
-    }
-    if (accessToken && !skipAuth) headers.set("Authorization", `Bearer ${accessToken}`);
-    try {
-      return await fetch(target, { ...rest, headers });
-    } catch (e) {
-      throw new ApiError(0, "Network error", e);
-    }
-  };
-
-  const tokens = getStoredTokens();
-  let res = await send(tokens?.access ?? null);
-
-  if (res.status === 401 && tokens?.refresh && !skipAuth && !isAuthEndpoint) {
-    const fresh = await refreshAccessToken();
-    if (fresh) {
-      res = await send(fresh);
-    }
-    if (!fresh || res.status === 401) {
-      endSession();
-      throw new ApiError(401, "Your session has expired. Please sign in again.");
-    }
+  let res: Response;
+  try {
+    res = await fetch(resolve(url), { ...rest, headers, credentials: "same-origin" });
+  } catch (e) {
+    throw new ApiError(0, "Network error", e);
   }
 
   const body = await readBody(res);
   if (!res.ok) {
+    // The proxy already tried to refresh; a 401 here means the session is genuinely over (cookies were cleared).
+    if (res.status === 401 && !skipAuth) {
+      endSession();
+      throw new ApiError(401, "Your session has expired. Please sign in again.", body);
+    }
     const { message, fieldErrors } = parseDrfError(res.status, body);
     throw new ApiError(res.status, message, body, fieldErrors);
   }

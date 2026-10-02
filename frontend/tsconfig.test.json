@@ -10,9 +10,20 @@
     "allowJs": false,
     "outDir": ".test-build",
     "rootDir": "src",
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "plugins": []
   },
-  "include": ["src/lib/http.ts", "src/lib/auth.ts", "src/lib/http.test.ts", "src/types/auth.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "src/lib/http.ts",
+    "src/lib/session.ts",
+    "src/lib/server/upstream.ts",
+    "src/lib/server/handlers.ts",
+    "src/lib/*.test.ts",
+    "src/lib/server/*.test.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

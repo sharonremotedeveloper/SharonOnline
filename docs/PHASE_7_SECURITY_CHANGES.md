@@ -92,8 +92,8 @@ Migration `payments/0007`: `PaymentTransaction.Status.UNALLOCATED`, `LedgerEntry
 
 - Gateways are verified against faked HTTP only. A real PayFast/PayPal **sandbox** run is Phase 10 and needs the account checks in `TOOL_ACCESS_AND_ACCOUNTS.md`.
 - R2 has no presigned POST, so the size cap relies on the signed `Content-Length`. Verified live (wrong size and wrong type rejected, correct upload accepted).
-- Access token lifetime stays 60 min: the frontend has no refresh flow yet. Move to 15 min in Phase 8.
-- The `sharon_user_role` cookie is client-controlled and only drives UI routing; the backend is the only security boundary.
+- ~~Access token lifetime stays 60 min~~ Done in Task 8.4: 15 min, with transparent refresh in the Next.js proxy.
+- ~~The `sharon_user_role` cookie is client-controlled~~ Removed in Task 8.4: roles now come from an HMAC-signed `sharon_session` cookie (see PHASE_8_SESSION_COOKIES.md). The backend is still the only real security boundary.
 - A self-registered `teacher` has no `TeacherProfile` until Phase 11 adds the application flow; such users can authenticate but cannot manage availability.
 - `ReportOutageView` still refunds a credit; D-6 ("gateway refund only") conflicts with that and is open in `DECISIONS_D1_D12.md`.
 - No DB-level case-insensitive unique email constraint yet (serializer enforced). Add after confirming no duplicate rows exist.
