@@ -6,6 +6,7 @@ from django.db.models import Sum
 from celery import shared_task
 
 from apps.bookings.models import Booking, AttendanceAudit, LessonMemo
+from apps.bookings.services.holds import live_hold_q
 from apps.bookings.services.lock_service import release_slot_lock
 from apps.bookings.services.state_machine import InvalidTransition, transition_booking
 from apps.payments.models import CreditBundle
@@ -19,18 +20,19 @@ logger = logging.getLogger(__name__)
 def purge_expired_reservations_task():
     """
     Periodic task running every 60s:
-    Finds PENDING_PAYMENT bookings older than 10 minutes (TTL expired),
-    atomically transitions their status to CANCELLED, and clears any
-    associated Redis reservation slot lock so the inventory is freed immediately.
+    Finds PENDING_PAYMENT bookings that no longer hold their slot (services.holds.live_hold_q: the 10-minute window has
+    passed AND no payment is in flight), atomically transitions them to CANCELLED, and clears the Redis slot lock so the
+    inventory is freed immediately. A booking whose customer is mid-payment is left alone until the gateway answers or the
+    grace/hard cap runs out (Task 9.4); rows locked by a payment webhook are skipped this round.
     """
     now = timezone.now()
-    cutoff = now - timedelta(minutes=10)
     purged_count = 0
 
     with transaction.atomic():
         expired_bookings = list(
-            Booking.objects.select_for_update(skip_locked=True)
-            .filter(status=Booking.Status.PENDING_PAYMENT, created_at__lt=cutoff)[:100]
+            Booking.objects.select_for_update(skip_locked=True, of=('self',))
+            .filter(status=Booking.Status.PENDING_PAYMENT)
+            .exclude(live_hold_q(now))[:100]
         )
 
         for booking in expired_bookings:

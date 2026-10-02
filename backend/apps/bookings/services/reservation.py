@@ -13,7 +13,8 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.bookings.models import Booking
-from apps.bookings.services.lock_service import LOCK_DURATION_SECONDS, acquire_slot_lock, release_slot_lock
+from apps.bookings.services.holds import hold_expires_at, live_hold_q
+from apps.bookings.services.lock_service import acquire_slot_lock, release_slot_lock
 from apps.bookings.services.slot_generator import LESSON_DURATION_MINUTES, generate_teacher_slots
 from apps.teachers.models import TeacherProfile
 
@@ -26,15 +27,6 @@ class ReservationError(Exception):
         super().__init__(message)
         self.status_code = status_code
         self.message = message
-
-
-def hold_expires_at(booking: Booking):
-    """Same clock the purge task uses (created_at + 10 min), so UI timer and server expiry agree."""
-    return booking.created_at + timedelta(seconds=LOCK_DURATION_SECONDS)
-
-
-def _live_pending_q(now):
-    return Q(status=Booking.Status.PENDING_PAYMENT, created_at__gte=now - timedelta(seconds=LOCK_DURATION_SECONDS))
 
 
 def reserve_slot(*, student, teacher_id, start_time_utc, material=None) -> Tuple[Booking, bool]:
@@ -55,7 +47,7 @@ def reserve_slot(*, student, teacher_id, start_time_utc, material=None) -> Tuple
 
     # Safe retry / page refresh: return the student's own live hold instead of failing on their own lock.
     existing = (Booking.objects.filter(student=student, teacher=teacher, start_time_utc=start)
-                .filter(_live_pending_q(now)).first())
+                .filter(live_hold_q(now)).first())
     if existing:
         return existing, False
 
@@ -67,11 +59,16 @@ def reserve_slot(*, student, teacher_id, start_time_utc, material=None) -> Tuple
     if not slot['is_bookable']:
         raise ReservationError(409, "This 25-minute slot was just taken. Please choose another.")
 
+    # The Redis lock can lapse while another student's payment is still in flight: the database is the second opinion.
+    if (Booking.objects.filter(teacher=teacher, start_time_utc=start).exclude(student=student)
+            .filter(live_hold_q(now) | Q(status__in=[Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS])).exists()):
+        raise ReservationError(409, "This 25-minute slot was just taken. Please choose another.")
+
     mine = Booking.objects.filter(student=student).filter(
-        _live_pending_q(now) | Q(status__in=[Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS]))
+        live_hold_q(now) | Q(status__in=[Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS]))
     if mine.filter(start_time_utc__lt=end, end_time_utc__gt=start).exists():
         raise ReservationError(409, "You already have a lesson at that time.")
-    if mine.filter(_live_pending_q(now)).count() >= MAX_PENDING_PER_STUDENT:
+    if mine.filter(live_hold_q(now)).count() >= MAX_PENDING_PER_STUDENT:
         raise ReservationError(409, "You have several unpaid reservations. Complete or wait for them to expire first.")
 
     # Use the generator's own timestamp string so the lock key matches the one it checks for "reserved" slots.

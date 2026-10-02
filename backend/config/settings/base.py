@@ -155,6 +155,11 @@ FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'http://localhost:3000')
 PASSWORD_RESET_TIMEOUT = 60 * 60  # seconds; reset links are single-use AND short-lived
 EMAIL_VERIFY_MAX_AGE = 3 * 24 * 60 * 60
 
+# Slot holds (Task 9.4): a started-but-unfinished payment keeps its hold this long past the 10-minute base window,
+# and no hold (however many payment attempts) outlives the hard cap.
+PAYMENT_INFLIGHT_GRACE_SECONDS = int(os.environ.get('PAYMENT_INFLIGHT_GRACE_SECONDS', '900'))
+PAYMENT_HOLD_MAX_SECONDS = int(os.environ.get('PAYMENT_HOLD_MAX_SECONDS', '1800'))
+
 # OpenAPI schema (Task 8.8). The served schema is admin-only; the committed copy + generated TS types come from
 # `manage.py spectacular` / `npm run gen:api`.
 SPECTACULAR_SETTINGS = {
