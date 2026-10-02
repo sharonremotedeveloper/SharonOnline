@@ -23,7 +23,7 @@ class BookingAdmin(admin.ModelAdmin):
     list_filter = ('status', 'start_time_utc')
     search_fields = ('teacher__user__username', 'student__username', 'zoom_meeting_id')
     # `status` is changed only through services.state_machine.transition_booking (validated + audited), never by form edit.
-    readonly_fields = ('status', 'created_at', 'updated_at')
+    readonly_fields = ('status', 'student_rating', 'student_review', 'student_review_tags', 'reviewed_at', 'created_at', 'updated_at')
     inlines = [LessonMemoInline, StatusChangeInline]
 
 @admin.register(LessonMemo)

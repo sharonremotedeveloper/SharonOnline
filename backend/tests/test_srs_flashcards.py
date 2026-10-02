@@ -137,7 +137,7 @@ def test_submit_lesson_review_updates_teacher_rating(teacher_user, student_user)
         f'/api/v1/student/bookings/{booking.id}/review/',
         {
             "rating": 5,
-            "tags": ["Clear Pronunciation", "Patient"],
+            "tags": ["Clear Pronunciation", "Patience & Empathy"],
             "private_notes": "Loved the conversational examples!"
         },
         format='json'

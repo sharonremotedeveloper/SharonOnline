@@ -100,7 +100,7 @@ Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done.
 - [x] **Task 9.7 (S, ARCH)** *(done 2026-10-02, see `SETTLEMENT_PATHS.md`; open policy questions for Anesu listed there)* `ReportOutageView`: require booking in a valid window, actor checks, idempotent (one credit per booking); fix escrow so `INTERRUPTED_POWER`/`STUDENT_NO_SHOW` reach the correct settlement path (`payments/tasks.py:41-62`).
 - [ ] **Task 9.8 (M, ARCH)** Zoom attendance mapping: map participants by `zoom_user_id`/registrant to teacher vs student (no "default guest = student"); idempotent join events; use Zoom `end_time`; handle `meeting.started`. Teacher uses host link, not guessed email.
 - [x] **Task 9.9 (S, ARCH)** *(done 2026-10-02: `LessonMemoInputSerializer`, lesson tutor only, finished lessons only, flashcards atomic and non-destructive, `grammar_notes` field added)* Memo endpoint: input serializer (validate vocabulary words), only the booking's teacher, only valid states; stop swallowing flashcard-creation errors (`except Exception: pass`).
-- [ ] **Task 9.10 (S, ARCH)** Merge the duplicate review endpoints (`bookings/<id>/review` vs `student/bookings/<id>/review`) into one: completed bookings only, one review per booking, use `Avg`, keep `written_feedback` out of student/teacher-facing serializers per the asymmetric-privacy invariant.
+- [x] **Task 9.10 (S, ARCH)** *(done 2026-10-02, see `LESSON_REVIEWS.md`)* Merge the duplicate review endpoints (`bookings/<id>/review` vs `student/bookings/<id>/review`) into one: completed bookings only, one review per booking, use `Avg`, keep `written_feedback` out of student/teacher-facing serializers per the asymmetric-privacy invariant.
 
 ## Phase 10 - Real payments
 

@@ -27,6 +27,12 @@ class WalletSerializer(serializers.Serializer):
     bundles = CreditBundleRowSerializer(many=True)
 
 
+class ReviewResultSerializer(serializers.Serializer):
+    success = serializers.BooleanField()
+    status = serializers.CharField()
+    message = serializers.CharField()
+
+
 class ReserveRequestSerializer(serializers.Serializer):
     teacher_id = serializers.UUIDField()
     start_time_utc = serializers.DateTimeField()

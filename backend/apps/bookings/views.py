@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions, status
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from apps.users.serializers import validate_iana_timezone
-from apps.common.schema import ReserveRequestSerializer, ReservationSerializer
+from apps.common.schema import ReserveRequestSerializer, ReservationSerializer, ReviewResultSerializer
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
@@ -21,12 +21,14 @@ from .serializers import (
     ReserveSlotRequestSerializer,
     LessonMemoInputSerializer,
     LessonMemoSerializer,
-    ReviewSubmitSerializer
+    ReviewInputSerializer
 )
 from .services.slot_generator import generate_teacher_slots
 from .services.lock_service import acquire_slot_lock, release_slot_lock
 from .services.reservation import ReservationError, reservation_payload, reserve_slot
+from .services.reviews import ReviewError, submit_review
 from .services.state_machine import InvalidTransition, transition_booking
+from apps.users.permissions import IsStudent
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.settlement import successful_transaction
 from apps.materials.models import Material
@@ -206,35 +208,33 @@ class SubmitMemoView(APIView):
         return Response(LessonMemoSerializer(memo).data, status=status.HTTP_200_OK)
 
 
-@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
+@extend_schema(request=ReviewInputSerializer, responses={200: ReviewResultSerializer})
 class SubmitReviewView(APIView):
     """
-    Allows a student to submit a 1-5 star rating and optional written review.
+    A student rates a lesson that took place: 1-5 stars, optional rubric tags and private notes. One review per lesson;
+    the written text is private to staff. Canonical URL: POST /student/bookings/<id>/review/.
     """
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (IsStudent,)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'review'
 
-    def post(self, request, booking_id):
-        booking = get_object_or_404(Booking, id=booking_id, student=request.user)
-        serializer = ReviewSubmitSerializer(data=request.data)
+    def post(self, request, booking_id=None, pk=None):
+        serializer = ReviewInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        try:
+            submit_review(booking_id=booking_id or pk, student=request.user, rating=data['rating'],
+                          tags=data['tags'], notes=data['notes'])
+        except ReviewError as exc:
+            return Response({"error": exc.message}, status=exc.status_code)
+        return Response({"success": True, "status": "review_recorded",
+                         "message": "Thank you! Your confidential review has been recorded."})
 
-        rating = serializer.validated_data['rating']
-        review = serializer.validated_data.get('review', '')
 
-        booking.student_rating = rating
-        booking.student_review = review
-        booking.save()
+@extend_schema(deprecated=True, request=ReviewInputSerializer, responses={200: ReviewResultSerializer})
+class LegacySubmitReviewView(SubmitReviewView):
+    """Old URL (POST /bookings/<id>/review/), kept for existing clients; identical behaviour."""
 
-        # Update teacher aggregate stats
-        teacher = booking.teacher
-        total_ratings = Booking.objects.filter(teacher=teacher, student_rating__isnull=False)
-        count = total_ratings.count()
-        avg = sum(b.student_rating for b in total_ratings) / count if count > 0 else 5.0
-        teacher.rating_count = count
-        teacher.rating_avg = round(avg, 2)
-        teacher.save()
-
-        return Response({"status": "review_recorded", "rating_avg": teacher.rating_avg}, status=status.HTTP_200_OK)
 
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class ReportOutageView(APIView):

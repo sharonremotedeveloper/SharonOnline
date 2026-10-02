@@ -619,8 +619,8 @@ paths:
   /api/v1/bookings/{booking_id}/review/:
     post:
       operationId: v1_bookings_review_create
-      description: Allows a student to submit a 1-5 star rating and optional written
-        review.
+      description: Old URL (POST /bookings/<id>/review/), kept for existing clients;
+        identical behaviour.
       parameters:
       - in: path
         name: booking_id
@@ -634,25 +634,23 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/ReviewInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/ReviewInputRequest'
           multipart/form-data:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/ReviewInputRequest'
+        required: true
       security:
       - jwtAuth: []
+      deprecated: true
       responses:
         '200':
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/ReviewResult'
           description: ''
   /api/v1/bookings/{id}/:
     get:
@@ -897,6 +895,9 @@ paths:
   /api/v1/student/bookings/{id}/review/:
     post:
       operationId: v1_student_bookings_review_create
+      description: |-
+        A student rates a lesson that took place: 1-5 stars, optional rubric tags and private notes. One review per lesson;
+        the written text is private to staff. Canonical URL: POST /student/bookings/<id>/review/.
       parameters:
       - in: path
         name: id
@@ -910,16 +911,14 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/ReviewInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/ReviewInputRequest'
           multipart/form-data:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/ReviewInputRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
@@ -927,8 +926,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/ReviewResult'
           description: ''
   /api/v1/student/flashcards/:
     get:
@@ -1251,6 +1249,7 @@ components:
         material:
           type: string
           format: uuid
+          readOnly: true
           nullable: true
         material_slug:
           type: string
@@ -1263,13 +1262,16 @@ components:
         status:
           allOf:
           - $ref: '#/components/schemas/StatusEnum'
+          readOnly: true
           default: pending_payment
         start_time_utc:
           type: string
           format: date-time
+          readOnly: true
         end_time_utc:
           type: string
           format: date-time
+          readOnly: true
         local_date:
           type: string
           readOnly: true
@@ -1305,20 +1307,20 @@ components:
           readOnly: true
         zoom_meeting_id:
           type: string
-          maxLength: 64
+          readOnly: true
         zoom_password:
           type: string
-          maxLength: 32
+          readOnly: true
         student_rating:
           type: integer
-          maximum: 9223372036854775807
-          minimum: 0
-          format: int64
+          readOnly: true
           nullable: true
           description: 1 to 5 star rating
         student_review:
           type: string
-          description: Written review visible to admin and teacher
+          readOnly: true
+          description: 'PRIVATE written review: staff only. Never shown to the tutor
+            or other students.'
         memo:
           allOf:
           - $ref: '#/components/schemas/LessonMemo'
@@ -1336,16 +1338,22 @@ components:
       - local_end_time
       - local_start_time
       - lock_expires_at
+      - material
       - material_slug
       - material_title
       - memo
       - price_usd
       - price_zar
       - start_time_utc
+      - status
       - student
+      - student_rating
+      - student_review
       - teacher
       - viewer_timezone
       - zoom_join_url
+      - zoom_meeting_id
+      - zoom_password
       - zoom_start_url
       - zoom_url
     BookingStudent:
@@ -1967,6 +1975,44 @@ components:
       required:
       - start_time_utc
       - teacher_id
+    ReviewInputRequest:
+      type: object
+      description: A student's review. `review` is the legacy name of `private_notes`
+        (older clients).
+      properties:
+        rating:
+          type: integer
+          maximum: 5
+          minimum: 1
+        tags:
+          type: array
+          items:
+            $ref: '#/components/schemas/TagsEnum'
+          maxItems: 8
+        private_notes:
+          type: string
+          default: ''
+          maxLength: 2000
+        review:
+          type: string
+          writeOnly: true
+          default: ''
+          maxLength: 2000
+      required:
+      - rating
+    ReviewResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        status:
+          type: string
+        message:
+          type: string
+      required:
+      - message
+      - status
+      - success
     StatusEnum:
       enum:
       - pending_payment
@@ -1993,6 +2039,26 @@ components:
         * `teacher_no_show` - Teacher No Show
         * `completed_pending_memo` - Completed (Pending Memo)
         * `completed_memo_forfeited` - Completed (Memo Forfeited)
+    TagsEnum:
+      enum:
+      - Patience & Empathy
+      - Clear Pronunciation
+      - Great Corrections
+      - Conversational Flow
+      - Encouraging Atmosphere
+      - Deep Topic Expertise
+      - Ideal Pacing
+      - Helpful Examples
+      type: string
+      description: |-
+        * `Patience & Empathy` - Patience & Empathy
+        * `Clear Pronunciation` - Clear Pronunciation
+        * `Great Corrections` - Great Corrections
+        * `Conversational Flow` - Conversational Flow
+        * `Encouraging Atmosphere` - Encouraging Atmosphere
+        * `Deep Topic Expertise` - Deep Topic Expertise
+        * `Ideal Pacing` - Ideal Pacing
+        * `Helpful Examples` - Helpful Examples
     TeacherAvailability:
       type: object
       properties:

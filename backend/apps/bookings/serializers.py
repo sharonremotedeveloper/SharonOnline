@@ -1,6 +1,7 @@
 from typing import Optional
 from rest_framework import serializers
 from .models import Booking, LessonMemo
+from .services.reviews import REVIEW_TAGS
 from apps.teachers.models import TeacherProfile
 from apps.materials.models import Material
 from apps.teachers.serializers import TeacherListSerializer
@@ -110,6 +111,15 @@ class BookingDetailSerializer(serializers.ModelSerializer):
             'zoom_url', 'zoom_join_url', 'zoom_start_url', 'zoom_meeting_id', 'zoom_password',
             'student_rating', 'student_review', 'memo', 'created_at'
         )
+        read_only_fields = fields
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        viewer = self._viewer()
+        # The student's written review is private to staff: not to the tutor it is about, nor to anyone else.
+        if not (viewer and viewer.is_authenticated and viewer.is_staff):
+            data.pop('student_review', None)
+        return data
 
     def _viewer(self):
         request = self.context.get('request')
@@ -211,6 +221,16 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         )
         return booking
 
-class ReviewSubmitSerializer(serializers.Serializer):
-    rating = serializers.IntegerField(min_value=1, max_value=5, required=True)
-    review = serializers.CharField(required=False, allow_blank=True)
+class ReviewInputSerializer(serializers.Serializer):
+    """A student's review. `review` is the legacy name of `private_notes` (older clients)."""
+    rating = serializers.IntegerField(min_value=1, max_value=5)
+    tags = serializers.ListField(child=serializers.ChoiceField(choices=REVIEW_TAGS), required=False, default=list, max_length=len(REVIEW_TAGS))
+    private_notes = serializers.CharField(max_length=2000, required=False, allow_blank=True, default='')
+    review = serializers.CharField(max_length=2000, required=False, allow_blank=True, default='', write_only=True)
+
+    def validate_tags(self, tags):
+        return list(dict.fromkeys(tags))  # drop repeats, keep order
+
+    def validate(self, attrs):
+        attrs['notes'] = attrs.get('private_notes') or attrs.get('review') or ''
+        return attrs

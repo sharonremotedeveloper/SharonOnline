@@ -46,7 +46,9 @@ class Booking(models.Model):
 
     # Asymmetric Feedback & Rating
     student_rating = models.PositiveSmallIntegerField(null=True, blank=True, help_text="1 to 5 star rating")
-    student_review = models.TextField(blank=True, help_text="Written review visible to admin and teacher")
+    student_review = models.TextField(blank=True, help_text="PRIVATE written review: staff only. Never shown to the tutor or other students.")
+    student_review_tags = models.JSONField(default=list, blank=True, help_text="Rubric tags the student picked (services.reviews.REVIEW_TAGS)")
+    reviewed_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
