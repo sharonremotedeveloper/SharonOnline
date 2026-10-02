@@ -136,6 +136,7 @@ REST_FRAMEWORK = {
         'upload': '30/hour',
         'checkout': '20/hour',
         'reserve': '30/min',
+        'review': '30/hour',
         'password_reset': '5/hour',          # per IP; plus 3/hour per target address (PasswordResetEmailThrottle)
         'password_reset_email': '3/hour',
         'password_reset_confirm': '10/hour',

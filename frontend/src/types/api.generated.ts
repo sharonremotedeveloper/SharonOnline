@@ -352,7 +352,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Allows a teacher to submit the post-lesson feedback memo. */
+        /**
+         * @description The lesson's own tutor submits (or later corrects) the post-lesson memo. Everything below succeeds or fails together:
+         *     the validated memo, the booking's move to COMPLETED, and the student's flashcards.
+         */
         post: operations["v1_bookings_memo_create"];
         delete?: never;
         options?: never;
@@ -391,7 +394,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Allows a student to submit a 1-5 star rating and optional written review. */
+        /**
+         * @deprecated
+         * @description Old URL (POST /bookings/<id>/review/), kept for existing clients; identical behaviour.
+         */
         post: operations["v1_bookings_review_create"];
         delete?: never;
         options?: never;
@@ -575,6 +581,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /**
+         * @description A student rates a lesson that took place: 1-5 stars, optional rubric tags and private notes. One review per lesson;
+         *     the written text is private to staff. Canonical URL: POST /student/bookings/<id>/review/.
+         */
         post: operations["v1_student_bookings_review_create"];
         delete?: never;
         options?: never;
@@ -760,15 +770,15 @@ export interface components {
             readonly teacher: components["schemas"]["TeacherList"];
             readonly student: components["schemas"]["BookingStudent"];
             /** Format: uuid */
-            material?: string | null;
+            readonly material: string | null;
             readonly material_slug: string | null;
             readonly material_title: string | null;
             /** @default pending_payment */
-            status: components["schemas"]["StatusEnum"];
+            readonly status: components["schemas"]["StatusEnum"];
             /** Format: date-time */
-            start_time_utc: string;
+            readonly start_time_utc: string;
             /** Format: date-time */
-            end_time_utc: string;
+            readonly end_time_utc: string;
             readonly local_date: string;
             readonly local_start_time: string;
             readonly local_end_time: string;
@@ -781,15 +791,12 @@ export interface components {
             readonly zoom_url: string;
             readonly zoom_join_url: string;
             readonly zoom_start_url: string;
-            zoom_meeting_id?: string;
-            zoom_password?: string;
-            /**
-             * Format: int64
-             * @description 1 to 5 star rating
-             */
-            student_rating?: number | null;
-            /** @description Written review visible to admin and teacher */
-            student_review?: string;
+            readonly zoom_meeting_id: string;
+            readonly zoom_password: string;
+            /** @description 1 to 5 star rating */
+            readonly student_rating: number | null;
+            /** @description PRIVATE written review: staff only. Never shown to the tutor or other students. */
+            readonly student_review: string;
             readonly memo: components["schemas"]["LessonMemo"];
             /** Format: date-time */
             readonly created_at: string;
@@ -860,9 +867,25 @@ export interface components {
             /** @description List of words: [{'word': 'resilience', 'definition': '...'}] */
             vocabulary_words?: unknown;
             pronunciation_notes?: string;
+            /** @description Grammar points to remember (shown to the student next to the vocabulary) */
+            grammar_notes?: string;
             homework?: string;
             /** Format: date-time */
             readonly submitted_at: string;
+        };
+        /**
+         * @description What a tutor may submit after a lesson. Unknown keys (e.g. the UI's `booking_id`, `next_steps`) are ignored.
+         *     (DRF's CharField already rejects NUL characters - PostgreSQL cannot store them; the vocabulary items are checked by hand.)
+         */
+        LessonMemoInputRequest: {
+            feedback_text: string;
+            vocabulary_words?: unknown[];
+            /** @default  */
+            pronunciation_notes: string;
+            /** @default  */
+            grammar_notes: string;
+            /** @default  */
+            homework: string;
         };
         LogoutRequestRequest: {
             refresh: string;
@@ -1046,6 +1069,20 @@ export interface components {
             /** Format: date-time */
             start_time_utc: string;
         };
+        /** @description A student's review. `review` is the legacy name of `private_notes` (older clients). */
+        ReviewInputRequest: {
+            rating: number;
+            tags?: components["schemas"]["TagsEnum"][];
+            /** @default  */
+            private_notes: string;
+            /** @default  */
+            review: string;
+        };
+        ReviewResult: {
+            success: boolean;
+            status: string;
+            message: string;
+        };
         /**
          * @description * `pending_payment` - Pending Payment
          *     * `confirmed` - Confirmed
@@ -1061,6 +1098,18 @@ export interface components {
          * @enum {string}
          */
         StatusEnum: "pending_payment" | "confirmed" | "in_progress" | "completed" | "cancelled" | "disputed" | "interrupted_power" | "student_no_show" | "teacher_no_show" | "completed_pending_memo" | "completed_memo_forfeited";
+        /**
+         * @description * `Patience & Empathy` - Patience & Empathy
+         *     * `Clear Pronunciation` - Clear Pronunciation
+         *     * `Great Corrections` - Great Corrections
+         *     * `Conversational Flow` - Conversational Flow
+         *     * `Encouraging Atmosphere` - Encouraging Atmosphere
+         *     * `Deep Topic Expertise` - Deep Topic Expertise
+         *     * `Ideal Pacing` - Ideal Pacing
+         *     * `Helpful Examples` - Helpful Examples
+         * @enum {string}
+         */
+        TagsEnum: "Patience & Empathy" | "Clear Pronunciation" | "Great Corrections" | "Conversational Flow" | "Encouraging Atmosphere" | "Deep Topic Expertise" | "Ideal Pacing" | "Helpful Examples";
         TeacherAvailability: {
             /** Format: uuid */
             readonly id: string;
@@ -1808,17 +1857,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-                "application/x-www-form-urlencoded": {
-                    [key: string]: unknown;
-                };
-                "multipart/form-data": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["LessonMemoInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["LessonMemoInputRequest"];
+                "multipart/form-data": components["schemas"]["LessonMemoInputRequest"];
             };
         };
         responses: {
@@ -1827,9 +1870,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["LessonMemo"];
                 };
             };
         };
@@ -1878,17 +1919,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-                "application/x-www-form-urlencoded": {
-                    [key: string]: unknown;
-                };
-                "multipart/form-data": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["ReviewInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReviewInputRequest"];
+                "multipart/form-data": components["schemas"]["ReviewInputRequest"];
             };
         };
         responses: {
@@ -1897,9 +1932,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ReviewResult"];
                 };
             };
         };
@@ -2151,17 +2184,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-                "application/x-www-form-urlencoded": {
-                    [key: string]: unknown;
-                };
-                "multipart/form-data": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["ReviewInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReviewInputRequest"];
+                "multipart/form-data": components["schemas"]["ReviewInputRequest"];
             };
         };
         responses: {
@@ -2170,9 +2197,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["ReviewResult"];
                 };
             };
         };

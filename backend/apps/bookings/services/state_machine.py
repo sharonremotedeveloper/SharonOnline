@@ -35,7 +35,6 @@ ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
     S.IN_PROGRESS: frozenset({
         S.COMPLETED_PENDING_MEMO, S.DISPUTED, S.INTERRUPTED_POWER,
         S.STUDENT_NO_SHOW,          # active Zoom probe revived a "teacher absent" case, but the student never joined
-        S.COMPLETED,                # memo submitted straight away
     }),
     # Adjudicated absences can be overturned by late attendance telemetry -> admin arbitration.
     S.TEACHER_NO_SHOW: frozenset({S.DISPUTED}),

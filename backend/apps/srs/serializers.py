@@ -82,7 +82,7 @@ class StudentLessonItemSerializer(serializers.ModelSerializer):
             'feedback_text': memo.feedback_text,
             'vocabulary_words': memo.vocabulary_words,
             'pronunciation_notes': memo.pronunciation_notes,
-            'grammar_notes': memo.homework or "Focus on natural conversational phrasing.",
+            'grammar_notes': memo.grammar_notes,
             'homework': memo.homework,
             'submitted_at': memo.submitted_at.isoformat()
         }
@@ -92,15 +92,9 @@ class StudentLessonItemSerializer(serializers.ModelSerializer):
             return None
         return {
             'rating': obj.student_rating,
-            'tags': ["Clear Pronunciation", "Great Corrections", "Patience"],
-            'submitted_at': obj.updated_at.isoformat()
+            'tags': obj.student_review_tags,      # what the student actually picked; the written text stays staff-only
+            'submitted_at': (obj.reviewed_at or obj.updated_at).isoformat()
         }
-
-
-class SubmitLessonReviewSerializer(serializers.Serializer):
-    rating = serializers.IntegerField(min_value=1, max_value=5)
-    tags = serializers.ListField(child=serializers.CharField(), required=False, default=list)
-    private_notes = serializers.CharField(required=False, allow_blank=True, default="")
 
 
 class StudentProfileSerializer(serializers.ModelSerializer):

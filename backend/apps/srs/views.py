@@ -6,7 +6,6 @@ from rest_framework import status
 from django.utils import timezone
 from datetime import timedelta
 from django.shortcuts import get_object_or_404
-from django.db.models import Avg
 
 from apps.users.permissions import IsStudent
 from apps.srs.models import StudentFlashcard
@@ -15,7 +14,6 @@ from apps.srs.serializers import (
     StudentFlashcardSerializer,
     FlashcardMasteryUpdateSerializer,
     StudentLessonItemSerializer,
-    SubmitLessonReviewSerializer,
     StudentProfileSerializer,
 )
 
@@ -69,36 +67,6 @@ class UpdateFlashcardMasteryView(APIView):
             'success': True,
             'nextReview': card.next_review_due.strftime('%Y-%m-%d'),
             'mastery': card.mastery
-        })
-
-
-@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
-class SubmitLessonReviewView(APIView):
-    permission_classes = [IsStudent]
-
-    def post(self, request, pk):
-        booking = get_object_or_404(Booking, pk=pk, student=request.user)
-        serializer = SubmitLessonReviewSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        rating = serializer.validated_data['rating']
-        private_notes = serializer.validated_data.get('private_notes', '')
-
-        booking.student_rating = rating
-        booking.student_review = private_notes
-        booking.save()
-
-        # Recalculate teacher rolling average
-        teacher = booking.teacher
-        reviews = Booking.objects.filter(teacher=teacher, student_rating__isnull=False)
-        avg_rating = reviews.aggregate(avg=Avg('student_rating'))['avg'] or 5.0
-        teacher.rating_avg = round(avg_rating, 2)
-        teacher.rating_count = reviews.count()
-        teacher.save()
-
-        return Response({
-            'success': True,
-            'message': "Thank you! Your confidential 5-star rubric review has been recorded."
         })
 
 

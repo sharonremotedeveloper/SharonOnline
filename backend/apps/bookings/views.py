@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions, status
 from rest_framework.exceptions import ValidationError as DRFValidationError
 from apps.users.serializers import validate_iana_timezone
-from apps.common.schema import ReserveRequestSerializer, ReservationSerializer
+from apps.common.schema import ReserveRequestSerializer, ReservationSerializer, ReviewResultSerializer
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
@@ -13,18 +13,22 @@ from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
 from .models import Booking, LessonMemo
+from apps.srs.models import StudentFlashcard
 from apps.teachers.models import TeacherProfile
 from .serializers import (
     BookingDetailSerializer,
     BookingCreateSerializer,
     ReserveSlotRequestSerializer,
+    LessonMemoInputSerializer,
     LessonMemoSerializer,
-    ReviewSubmitSerializer
+    ReviewInputSerializer
 )
 from .services.slot_generator import generate_teacher_slots
 from .services.lock_service import acquire_slot_lock, release_slot_lock
 from .services.reservation import ReservationError, reservation_payload, reserve_slot
+from .services.reviews import ReviewError, submit_review
 from .services.state_machine import InvalidTransition, transition_booking
+from apps.users.permissions import IsStudent
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.settlement import successful_transaction
 from apps.materials.models import Material
@@ -137,31 +141,50 @@ class BookingDetailView(generics.RetrieveAPIView):
             return Booking.objects.filter(teacher=user.teacher_profile)
         return Booking.objects.filter(student=user)
 
-@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
+# A memo is only for lessons that have actually ended. CONFIRMED / IN_PROGRESS lessons are settled by the attendance job
+# first (which decides completed-pending-memo vs disputed), so a tutor cannot skip that check by posting a memo early.
+MEMO_ALLOWED_STATUSES = (
+    Booking.Status.COMPLETED_PENDING_MEMO, Booking.Status.COMPLETED, Booking.Status.COMPLETED_MEMO_FORFEITED,
+)
+
+
+def _sync_flashcards(booking, words):
+    """One card per distinct word. Existing cards are left alone so correcting a memo never resets a student's progress."""
+    lesson_source = (f"{booking.material.title if booking.material else 'Conversation'} "
+                     f"({booking.teacher.user.get_full_name() or booking.teacher.user.username})")[:255]
+    today = timezone.now().date()
+    for entry in words:
+        StudentFlashcard.objects.get_or_create(
+            student=booking.student, word=entry['word'],
+            defaults={
+                'definition': entry['definition'] or "Practiced during lesson",
+                'phonetic': entry['phonetic'],
+                'part_of_speech': entry['part_of_speech'],
+                'lesson_source': lesson_source,
+                'mastery': StudentFlashcard.Mastery.NEW,
+                'next_review_due': today,
+            })
+
+
+@extend_schema(request=LessonMemoInputSerializer, responses=LessonMemoSerializer)
 class SubmitMemoView(APIView):
     """
-    Allows a teacher to submit the post-lesson feedback memo.
+    The lesson's own tutor submits (or later corrects) the post-lesson memo. Everything below succeeds or fails together:
+    the validated memo, the booking's move to COMPLETED, and the student's flashcards.
     """
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, booking_id):
-        booking = get_object_or_404(Booking, id=booking_id)
-        if booking.teacher.user != request.user and not request.user.is_staff:
-            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
-
-        # Only lessons that actually took place can carry a memo (a merely CONFIRMED lesson has not happened yet).
-        memo_allowed = {
-            Booking.Status.IN_PROGRESS, Booking.Status.COMPLETED,
-            Booking.Status.COMPLETED_PENDING_MEMO, Booking.Status.COMPLETED_MEMO_FORFEITED,
-        }
-        if booking.status not in memo_allowed:
+        booking = get_object_or_404(Booking.objects.select_related('teacher__user', 'student', 'material'), id=booking_id)
+        if booking.teacher.user_id != request.user.id:
+            return Response({"error": "Only this lesson's tutor can submit its memo."}, status=status.HTTP_403_FORBIDDEN)
+        if booking.status not in MEMO_ALLOWED_STATUSES:
             return Response({"error": f"A memo cannot be submitted for a booking in status '{booking.status}'."},
                             status=status.HTTP_409_CONFLICT)
 
-        feedback_text = request.data.get('feedback_text', '')
-        vocabulary_words = request.data.get('vocabulary_words', [])
-        pronunciation_notes = request.data.get('pronunciation_notes', '')
-        homework = request.data.get('homework', '')
+        serializer = LessonMemoInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
         try:
             with transaction.atomic():
@@ -171,78 +194,47 @@ class SubmitMemoView(APIView):
                     defaults={
                         'teacher': booking.teacher,
                         'student': booking.student,
-                        'feedback_text': feedback_text,
-                        'vocabulary_words': vocabulary_words,
-                        'pronunciation_notes': pronunciation_notes,
-                        'homework': homework
+                        'feedback_text': data['feedback_text'],
+                        'vocabulary_words': data['vocabulary_words'],
+                        'pronunciation_notes': data['pronunciation_notes'],
+                        'grammar_notes': data['grammar_notes'],
+                        'homework': data['homework'],
                     }
                 )
+                _sync_flashcards(booking, data['vocabulary_words'])
         except InvalidTransition:
             return Response({"error": "The booking's status changed; refresh and try again."}, status=status.HTTP_409_CONFLICT)
 
-        # Automatically populate / update student's spaced repetition flashcard deck
-        try:
-            from apps.srs.models import StudentFlashcard
-            lesson_source = f"{booking.material.title if booking.material else 'Conversation'} ({booking.teacher.user.get_full_name() or booking.teacher.user.username})"
-            for vocab in vocabulary_words:
-                if isinstance(vocab, dict):
-                    word = vocab.get('word', '').strip()
-                    definition = vocab.get('definition', '').strip()
-                    phonetic = vocab.get('phonetic', '').strip()
-                    part_of_speech = vocab.get('part_of_speech', '').strip()
-                else:
-                    word = str(vocab).strip()
-                    definition = "Practiced during lesson"
-                    phonetic = ""
-                    part_of_speech = ""
-
-                if word:
-                    StudentFlashcard.objects.update_or_create(
-                        student=booking.student,
-                        word=word,
-                        defaults={
-                            'definition': definition or "Practiced during lesson",
-                            'phonetic': phonetic,
-                            'part_of_speech': part_of_speech,
-                            'lesson_source': lesson_source,
-                            'mastery': StudentFlashcard.Mastery.NEW,
-                            'next_review_due': timezone.now().date()
-                        }
-                    )
-        except Exception:
-            pass
-
         return Response(LessonMemoSerializer(memo).data, status=status.HTTP_200_OK)
 
-@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
+
+@extend_schema(request=ReviewInputSerializer, responses={200: ReviewResultSerializer})
 class SubmitReviewView(APIView):
     """
-    Allows a student to submit a 1-5 star rating and optional written review.
+    A student rates a lesson that took place: 1-5 stars, optional rubric tags and private notes. One review per lesson;
+    the written text is private to staff. Canonical URL: POST /student/bookings/<id>/review/.
     """
-    permission_classes = (permissions.IsAuthenticated,)
+    permission_classes = (IsStudent,)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'review'
 
-    def post(self, request, booking_id):
-        booking = get_object_or_404(Booking, id=booking_id, student=request.user)
-        serializer = ReviewSubmitSerializer(data=request.data)
+    def post(self, request, booking_id=None, pk=None):
+        serializer = ReviewInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        try:
+            submit_review(booking_id=booking_id or pk, student=request.user, rating=data['rating'],
+                          tags=data['tags'], notes=data['notes'])
+        except ReviewError as exc:
+            return Response({"error": exc.message}, status=exc.status_code)
+        return Response({"success": True, "status": "review_recorded",
+                         "message": "Thank you! Your confidential review has been recorded."})
 
-        rating = serializer.validated_data['rating']
-        review = serializer.validated_data.get('review', '')
 
-        booking.student_rating = rating
-        booking.student_review = review
-        booking.save()
+@extend_schema(deprecated=True, request=ReviewInputSerializer, responses={200: ReviewResultSerializer})
+class LegacySubmitReviewView(SubmitReviewView):
+    """Old URL (POST /bookings/<id>/review/), kept for existing clients; identical behaviour."""
 
-        # Update teacher aggregate stats
-        teacher = booking.teacher
-        total_ratings = Booking.objects.filter(teacher=teacher, student_rating__isnull=False)
-        count = total_ratings.count()
-        avg = sum(b.student_rating for b in total_ratings) / count if count > 0 else 5.0
-        teacher.rating_count = count
-        teacher.rating_avg = round(avg, 2)
-        teacher.save()
-
-        return Response({"status": "review_recorded", "rating_avg": teacher.rating_avg}, status=status.HTTP_200_OK)
 
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class ReportOutageView(APIView):
