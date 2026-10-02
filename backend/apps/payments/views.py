@@ -265,7 +265,8 @@ class PayFastWebhookView(APIView):
                 credit_purchase_id=str(tx.credit_purchase_id) if tx.credit_purchase_id else None,
                 gateway=PaymentTransaction.Gateway.PAYFAST,
                 transaction_id=pf_payment_id, amount=tx.amount, currency='ZAR',
-                status=PaymentTransaction.Status.SUCCESS, raw_payload=data)
+                status=PaymentTransaction.Status.SUCCESS, raw_payload=data,
+                provider_fee_amount=data.get('amount_fee'), provider_fee_currency='ZAR')
         return Response("OK", status=status.HTTP_200_OK)
 
 
@@ -357,7 +358,9 @@ class PayPalWebhookView(APIView):
                 credit_purchase_id=str(tx.credit_purchase_id) if tx.credit_purchase_id else None,
                 gateway=PaymentTransaction.Gateway.PAYPAL,
                 transaction_id=capture_id, amount=tx.amount, currency=tx.currency,
-                status=PaymentTransaction.Status.SUCCESS, raw_payload=event)
+                status=PaymentTransaction.Status.SUCCESS, raw_payload=event,
+                provider_fee_amount=((capture.get('seller_receivable_breakdown') or {}).get('paypal_fee') or {}).get('value'),
+                provider_fee_currency=((capture.get('seller_receivable_breakdown') or {}).get('paypal_fee') or {}).get('currency_code', ''))
         return Response({"status": "received"}, status=status.HTTP_200_OK)
 
 

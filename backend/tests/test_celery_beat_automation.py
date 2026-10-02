@@ -6,7 +6,7 @@ from django.core.cache import cache
 
 from apps.bookings.models import Booking, AttendanceAudit
 from apps.bookings.services.lock_service import acquire_slot_lock, is_slot_locked
-from apps.payments.models import PaymentTransaction, CreditBundle
+from apps.payments.models import PaymentTransaction, CreditBundle, GatewayAnomaly
 from apps.payments.services.funding import ensure_gateway_funding
 from apps.admin_api.models import DisputeCase
 from apps.teachers.models import TeacherProfile
@@ -447,7 +447,7 @@ class TestCeleryBeatAutomation:
 
     def test_reconcile_pending_transactions(self, teacher_user, student_user):
         """
-        Verifies that orphaned payment sessions older than 2 hours are marked FAILED.
+        Verifies that an old checkout is not guessed failed when the gateway has no status lookup.
         """
         now = timezone.now()
         booking = Booking.objects.create(
@@ -469,9 +469,13 @@ class TestCeleryBeatAutomation:
 
         res = reconcile_pending_transactions_task()
         assert res["reconciled_count"] >= 1
+        assert res["unresolved"] >= 1
 
         abandoned_tx.refresh_from_db()
-        assert abandoned_tx.status == PaymentTransaction.Status.FAILED
+        assert abandoned_tx.status == PaymentTransaction.Status.INITIALIZED
+        assert abandoned_tx.reconciliation_attempts == 1
+        assert GatewayAnomaly.objects.filter(
+            payment_transaction=abandoned_tx, reason='reconciliation_unresolved', resolved=False).exists()
 
     def test_distributed_task_lock_concurrency(self):
         """

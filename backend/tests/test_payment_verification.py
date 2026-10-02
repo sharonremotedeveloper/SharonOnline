@@ -10,7 +10,7 @@ from rest_framework.test import APIClient
 
 from apps.bookings.models import Booking
 from apps.payments.gateways import payfast, paypal
-from apps.payments.models import PaymentTransaction
+from apps.payments.models import LedgerAccount, LedgerEntry, PaymentTransaction
 
 PASSPHRASE = 'unit-test-passphrase'
 MERCHANT = '10000100'
@@ -136,6 +136,14 @@ class TestPayFastITN:
         assert pending_booking.status == Booking.Status.CONFIRMED
         tx = PaymentTransaction.objects.get(merchant_reference=ref)
         assert tx.status == 'success' and tx.gateway_reference == '1089250'
+        assert tx.fx_rate_to_zar == Decimal('1.000000')
+        assert tx.fx_source == 'transaction_currency'
+        assert tx.provider_fee_amount == Decimal('3.72') and tx.provider_fee_currency == 'ZAR'
+        assert LedgerEntry.objects.filter(
+            payment_transaction=tx,
+            account=LedgerAccount.EXPENSE_GATEWAY_FEES,
+            amount=Decimal('3.72'),
+        ).exists()
         assert PaymentTransaction.objects.count() == 1
         assert calls['postback'] == 1 and 'sandbox.payfast.co.za' in calls['url']
 

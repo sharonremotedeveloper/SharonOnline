@@ -30,6 +30,7 @@ def record_journal_entries(
     user=None,
     currency: str = 'USD',
     fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR,
+    fx_source: str = 'legacy_default',
     journal_batch_id: Optional[uuid.UUID] = None,
 ) -> List[LedgerEntry]:
     """
@@ -42,8 +43,7 @@ def record_journal_entries(
 
     batch_id = journal_batch_id or uuid.uuid4()
     
-    total_debits = Decimal('0.00')
-    total_credits = Decimal('0.00')
+    totals_by_currency = {}
 
     prepared_records = []
     for item in entries:
@@ -55,10 +55,12 @@ def record_journal_entries(
         if amount <= Decimal('0.00'):
             raise ValueError(f"Ledger entry amount must be positive, got {amount} for {account}")
 
+        currency_totals = totals_by_currency.setdefault(
+            item_currency, {'debit': Decimal('0.00'), 'credit': Decimal('0.00')})
         if entry_type == LedgerEntry.EntryType.DEBIT:
-            total_debits += amount
+            currency_totals['debit'] += amount
         elif entry_type == LedgerEntry.EntryType.CREDIT:
-            total_credits += amount
+            currency_totals['credit'] += amount
         else:
             raise ValueError(f"Invalid entry_type: {entry_type}")
 
@@ -75,6 +77,7 @@ def record_journal_entries(
             'amount': amount,
             'currency': item_currency,
             'fx_rate_to_zar': fx_rate_to_zar,
+            'fx_source': fx_source,
             'amount_zar': amount_zar,
             'event_type': event_type,
             'description': item.get('description', description),
@@ -85,12 +88,13 @@ def record_journal_entries(
             'user': user or (booking.student if booking else (payment_transaction.booking.student if payment_transaction and payment_transaction.booking else None)),
         })
 
-    # Zero-sum invariant assertion (Transaction Currency)
-    if total_debits != total_credits:
-        raise UnbalancedJournalEntryError(
-            f"Unbalanced journal entry batch {batch_id}: Total Debits ({total_debits} {currency}) "
-            f"!= Total Credits ({total_credits} {currency}). Event: {event_type}"
-        )
+    # Zero-sum invariant assertion for every transaction currency represented in the journal.
+    for item_currency, totals in totals_by_currency.items():
+        if totals['debit'] != totals['credit']:
+            raise UnbalancedJournalEntryError(
+                f"Unbalanced journal entry batch {batch_id}: Total Debits ({totals['debit']} {item_currency}) "
+                f"!= Total Credits ({totals['credit']} {item_currency}). Event: {event_type}"
+            )
 
     # Statutory SARB zero-sum invariant assertion & sub-cent rounding balance
     total_debits_zar = sum(r['amount_zar'] for r in prepared_records if r['entry_type'] == LedgerEntry.EntryType.DEBIT)
@@ -102,6 +106,20 @@ def record_journal_entries(
                 if rec['entry_type'] == LedgerEntry.EntryType.CREDIT:
                     rec['amount_zar'] += diff
                     break
+    total_debits_zar = sum(r['amount_zar'] for r in prepared_records if r['entry_type'] == LedgerEntry.EntryType.DEBIT)
+    total_credits_zar = sum(r['amount_zar'] for r in prepared_records if r['entry_type'] == LedgerEntry.EntryType.CREDIT)
+    if total_debits_zar != total_credits_zar:
+        raise UnbalancedJournalEntryError(
+            f"Unbalanced ZAR valuation for journal {batch_id}: {total_debits_zar} != {total_credits_zar}."
+        )
+    journal_currencies = set(totals_by_currency)
+    if len(journal_currencies) != 1:
+        raise UnbalancedJournalEntryError(
+            f"Journal {batch_id} must use exactly one transaction currency; got {sorted(journal_currencies)}."
+        )
+    journal_currency = next(iter(journal_currencies))
+    if journal_currency not in {'USD', 'ZAR'} and fx_source == 'legacy_default':
+        raise ValueError(f'An explicit FX snapshot is required for {journal_currency}.')
 
 
     with transaction.atomic():
@@ -111,7 +129,7 @@ def record_journal_entries(
 
     logger.info(
         f"[LEDGER JOURNAL RECORDED] Batch {batch_id} | Event: {event_type} | "
-        f"Balanced {total_debits} {currency} ({len(created_entries)} lines)"
+        f"Balanced {totals_by_currency} ({len(created_entries)} lines)"
     )
     return created_entries
 
@@ -124,7 +142,8 @@ def record_payment_capture_entry(
     payment_transaction: PaymentTransaction,
     booking=None,
     user=None,
-    fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR
+    fx_rate_to_zar: Optional[Decimal] = None,
+    fx_source: Optional[str] = None,
 ) -> List[LedgerEntry]:
     """
     Triggered when a student checkout succeeds.
@@ -133,28 +152,42 @@ def record_payment_capture_entry(
     """
     amount = Decimal(str(payment_transaction.amount)).quantize(Decimal('0.01'))
     currency = payment_transaction.currency.upper()
+    fx_rate_to_zar = fx_rate_to_zar or payment_transaction.fx_rate_to_zar or DEFAULT_FX_USD_TO_ZAR
+    fx_source = fx_source or payment_transaction.fx_source or 'legacy_default'
     
     if payment_transaction.gateway == PaymentTransaction.Gateway.PAYFAST or currency == 'ZAR':
         asset_account = LedgerAccount.ASSET_GATEWAY_PAYFAST
     else:
         asset_account = LedgerAccount.ASSET_GATEWAY_PAYPAL
 
-    entries = [
-        {
+    fee = payment_transaction.provider_fee_amount or Decimal('0.00')
+    if fee and (payment_transaction.provider_fee_currency or currency).upper() != currency:
+        raise ValueError('Provider fee currency must match the captured transaction currency.')
+    net_asset = amount - fee
+    entries = []
+    if net_asset > 0:
+        entries.append({
             'account': asset_account,
             'entry_type': LedgerEntry.EntryType.DEBIT,
-            'amount': amount,
+            'amount': net_asset,
             'currency': currency,
             'description': f"Captured customer deposit via {payment_transaction.gateway.upper()} ref {payment_transaction.gateway_reference}"
-        },
-        {
+        })
+    if fee > 0:
+        entries.append({
+            'account': LedgerAccount.EXPENSE_GATEWAY_FEES,
+            'entry_type': LedgerEntry.EntryType.DEBIT,
+            'amount': fee,
+            'currency': currency,
+            'description': f"Gateway processing fee for {payment_transaction.gateway_reference}",
+        })
+    entries.append({
             'account': LedgerAccount.LIABILITY_STUDENT_ESCROW,
             'entry_type': LedgerEntry.EntryType.CREDIT,
             'amount': amount,
             'currency': currency,
             'description': f"Escrow liability hold for booking {booking.id if booking else 'bundle'}"
-        }
-    ]
+        })
 
     return record_journal_entries(
         entries=entries,
@@ -164,7 +197,8 @@ def record_payment_capture_entry(
         payment_transaction=payment_transaction,
         user=user or (booking.student if booking else None),
         currency=currency,
-        fx_rate_to_zar=fx_rate_to_zar
+        fx_rate_to_zar=fx_rate_to_zar,
+        fx_source=fx_source,
     )
 
 
@@ -177,29 +211,42 @@ def record_credit_purchase_capture_entry(payment_transaction, purchase) -> List[
         if payment_transaction.gateway == PaymentTransaction.Gateway.PAYFAST or currency == 'ZAR'
         else LedgerAccount.ASSET_GATEWAY_PAYPAL
     )
-    return record_journal_entries(
-        entries=[
-            {
+    fee = payment_transaction.provider_fee_amount or Decimal('0.00')
+    if fee and (payment_transaction.provider_fee_currency or currency).upper() != currency:
+        raise ValueError('Provider fee currency must match the captured transaction currency.')
+    entries = []
+    if amount - fee > 0:
+        entries.append({
                 'account': asset_account,
                 'entry_type': LedgerEntry.EntryType.DEBIT,
-                'amount': amount,
+                'amount': amount - fee,
                 'currency': currency,
                 'description': f'Captured credit pack payment {payment_transaction.gateway_reference}',
-            },
-            {
+            })
+    if fee > 0:
+        entries.append({
+            'account': LedgerAccount.EXPENSE_GATEWAY_FEES,
+            'entry_type': LedgerEntry.EntryType.DEBIT,
+            'amount': fee,
+            'currency': currency,
+            'description': f'Gateway processing fee for {payment_transaction.gateway_reference}',
+        })
+    entries.append({
                 'account': LedgerAccount.LIABILITY_STUDENT_WALLET,
                 'entry_type': LedgerEntry.EntryType.CREDIT,
                 'amount': amount,
                 'currency': currency,
                 'description': f'Wallet liability for {purchase.pack.name}',
-            },
-        ],
+            })
+    return record_journal_entries(
+        entries=entries,
         event_type=LedgerEntry.EventType.PAYMENT_CAPTURED,
         description=f'Credit purchase capture {payment_transaction.gateway_reference}',
         payment_transaction=payment_transaction,
         user=purchase.user,
         currency=currency,
         fx_rate_to_zar=purchase.fx_rate_to_zar,
+        fx_source=purchase.fx_source,
     )
 
 
@@ -229,6 +276,7 @@ def record_credit_redemption_entry(*, booking, funding) -> List[LedgerEntry]:
         user=booking.student,
         currency=funding.currency,
         fx_rate_to_zar=funding.fx_rate_to_zar,
+        fx_source=funding.fx_source,
     )
 def record_escrow_clearance_entry(
     booking,
@@ -255,6 +303,7 @@ def record_escrow_clearance_entry(
 
     currency = funding.currency
     fx_rate_to_zar = funding.fx_rate_to_zar
+    fx_source = funding.fx_source
     payment_transaction = funding.payment_transaction
 
     entries = [
@@ -289,7 +338,8 @@ def record_escrow_clearance_entry(
         payment_transaction=payment_transaction,
         user=booking.teacher.user,
         currency=currency,
-        fx_rate_to_zar=fx_rate_to_zar
+        fx_rate_to_zar=fx_rate_to_zar,
+        fx_source=fx_source,
     )
 
 
@@ -331,7 +381,8 @@ def record_payout_batch_entry(
         payout_batch=payout_batch,
         user=user,
         currency='ZAR',
-        fx_rate_to_zar=Decimal('1.0000')
+        fx_rate_to_zar=Decimal('1.000000'),
+        fx_source='transaction_currency',
     )
 
 
@@ -360,6 +411,7 @@ def record_student_refund_entry(
     gross_amount = Decimal(str(funding.captured_amount)).quantize(Decimal('0.01'))
     currency = funding.currency
     fx_rate_to_zar = funding.fx_rate_to_zar
+    fx_source = funding.fx_source
     payment_transaction = funding.payment_transaction
 
     if refund_method == 'gateway':
@@ -397,7 +449,8 @@ def record_student_refund_entry(
         payment_transaction=payment_transaction,
         user=booking.student,
         currency=currency,
-        fx_rate_to_zar=fx_rate_to_zar
+        fx_rate_to_zar=fx_rate_to_zar,
+        fx_source=fx_source,
     )
 
 
@@ -419,6 +472,7 @@ def record_dispute_settlement_entry(
     amount_usd = Decimal(str(funding.captured_amount)).quantize(Decimal('0.01'))
     currency = funding.currency
     fx_rate_to_zar = funding.fx_rate_to_zar
+    fx_source = funding.fx_source
     payment_transaction = funding.payment_transaction
 
     if resolution == 'full_refund_student':
@@ -521,7 +575,8 @@ def record_dispute_settlement_entry(
         payment_transaction=payment_transaction,
         user=dispute_case.student,
         currency=currency,
-        fx_rate_to_zar=fx_rate_to_zar
+        fx_rate_to_zar=fx_rate_to_zar,
+        fx_source=fx_source,
     )
 
 
@@ -544,6 +599,7 @@ def record_outage_refund_entry(
     amount = Decimal(str(funding.captured_amount)).quantize(Decimal('0.01'))
     currency = funding.currency
     fx_rate_to_zar = funding.fx_rate_to_zar
+    fx_source = funding.fx_source
     payment_transaction = funding.payment_transaction
 
     entries = [
@@ -571,7 +627,8 @@ def record_outage_refund_entry(
         payment_transaction=payment_transaction,
         user=user or booking.student,
         currency=currency,
-        fx_rate_to_zar=fx_rate_to_zar
+        fx_rate_to_zar=fx_rate_to_zar,
+        fx_source=fx_source,
     )
 
 
@@ -588,6 +645,7 @@ def record_compensation_entry(
     CR Liability: Student Wallet Credits (Customer Credit Wallet)
     """
     currency = 'USD'
+    fx_source = 'explicit_compensation_rate'
     if amount_usd is None:
         if booking is None:
             raise ValueError('Compensation requires an explicit amount or funded booking.')
@@ -597,6 +655,7 @@ def record_compensation_entry(
             raise ValueError(f'Booking {booking.id} has no funding provenance; compensation stopped.')
         amount_usd = funding.captured_amount
         fx_rate_to_zar = funding.fx_rate_to_zar
+        fx_source = funding.fx_source
         currency = funding.currency
     amount = Decimal(str(amount_usd)).quantize(Decimal('0.01'))
 
@@ -624,7 +683,8 @@ def record_compensation_entry(
         booking=booking,
         user=user,
         currency=currency,
-        fx_rate_to_zar=fx_rate_to_zar
+        fx_rate_to_zar=fx_rate_to_zar,
+        fx_source=fx_source,
     )
 
 
@@ -642,6 +702,8 @@ def record_def501_quarantine_entry(
     """
     amount = Decimal(str(payment_transaction.amount)).quantize(Decimal('0.01'))
     currency = payment_transaction.currency.upper()
+    fx_rate_to_zar = payment_transaction.fx_rate_to_zar or fx_rate_to_zar
+    fx_source = payment_transaction.fx_source or 'legacy_default'
     asset_account = LedgerAccount.ASSET_GATEWAY_PAYFAST if (payment_transaction.gateway == PaymentTransaction.Gateway.PAYFAST or currency == 'ZAR') else LedgerAccount.ASSET_GATEWAY_PAYPAL
 
     entries = [
@@ -685,7 +747,8 @@ def record_def501_quarantine_entry(
         payment_transaction=payment_transaction,
         user=user or (booking.student if booking else None),
         currency=currency,
-        fx_rate_to_zar=fx_rate_to_zar
+        fx_rate_to_zar=fx_rate_to_zar,
+        fx_source=fx_source,
     )
 
 
@@ -703,6 +766,8 @@ def record_unallocated_payment_entry(
     """
     amount = Decimal(str(payment_transaction.amount)).quantize(Decimal('0.01'))
     currency = payment_transaction.currency.upper()
+    fx_rate_to_zar = payment_transaction.fx_rate_to_zar or fx_rate_to_zar
+    fx_source = payment_transaction.fx_source or 'legacy_default'
     asset_account = LedgerAccount.ASSET_GATEWAY_PAYFAST if (payment_transaction.gateway == PaymentTransaction.Gateway.PAYFAST or currency == 'ZAR') else LedgerAccount.ASSET_GATEWAY_PAYPAL
     ref = payment_transaction.gateway_reference
     entries = [
@@ -720,7 +785,8 @@ def record_unallocated_payment_entry(
         payment_transaction=payment_transaction,
         user=user or (booking.student if booking else None),
         currency=currency,
-        fx_rate_to_zar=fx_rate_to_zar
+        fx_rate_to_zar=fx_rate_to_zar,
+        fx_source=fx_source,
     )
 
 

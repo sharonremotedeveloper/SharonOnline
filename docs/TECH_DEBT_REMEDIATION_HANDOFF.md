@@ -5,7 +5,7 @@ This is the cross-agent handoff for the eight approved Sharon Online remediation
 ## Current state
 
 - Integration branch: `remediation/tech-debt`
-- Active branch: `feature/batch-2-funding-credits-checkout`
+- Active branch: `feature/batch-3-payment-ledger-hardening`
 - Isolated worktree: `C:\Dev\Active Projects\Notion\sharon-remediation`
 - Shared checkout was deliberately left unchanged because it contains Claude's uncommitted Zoom attendance work.
 
@@ -63,3 +63,27 @@ External-action boundary:
 ## Parallel-work warning
 
 Claude's shared checkout currently contains uncommitted Batch 4-related attendance identity changes, including a migration numbered `0010`. Reconcile that work only at the Batch 4 boundary and renumber migrations if necessary; do not overwrite or clean the shared checkout.
+
+## Batch 3 - payment and ledger hardening
+
+Implemented:
+
+- Persisted capture-time FX rate/source and provider-fee snapshots on payment transactions; ledger rows retain the valuation source.
+- Gateway fee data now posts to account 5030 while preserving a balanced gross customer liability and net gateway asset.
+- Enforced balancing independently in transaction currency and ZAR, and rejected mixed-currency journals or non-USD currency without an explicit FX snapshot.
+- Replaced age-based transaction failure with provider-aware reconciliation. Only an authoritative failed provider state marks a transaction failed; inconclusive PayFast/PayPal state stays initialized with a durable unresolved anomaly.
+- Added a PostgreSQL update/delete rejection trigger for the append-only ledger, complementing application-level guards.
+- Added durable post-payment fulfillment dispatch state, component progress, retryable error details, and a periodic retry dispatcher. Queue state is committed before dispatch so a fast worker cannot be overwritten by its producer.
+
+Verification:
+
+- Focused payment/ledger/fulfillment/lifecycle suite: 103 passed, 1 PostgreSQL-only test skipped.
+- Complete backend regression: 693 passed, 3 environment-specific tests skipped (2 Redis and 1 PostgreSQL trigger test).
+- Frontend tests: 88 passed; Next.js production build passed.
+- `manage.py check`: no issues.
+- `manage.py makemigrations --check --dry-run`: no changes.
+- PostgreSQL trigger execution remains a required Batch 8 CI service gate; the migration safely no-ops on SQLite.
+
+External-action boundary:
+
+- Gateway reconciliation logic was verified with injected provider results only. No PayFast, PayPal, hosting, or other external-provider request was made.

@@ -58,6 +58,11 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(minute=45),
         'options': {'queue': 'financial_escrow', 'expires': 3000},
     },
+    'retry-fulfillment-dispatches-5min': {
+        'task': 'apps.integrations.tasks.retry_fulfillment_dispatches_task',
+        'schedule': 300.0,
+        'options': {'queue': 'critical_io', 'expires': 240},
+    },
 }
 
 # Task Queue Routing Definition
@@ -71,4 +76,5 @@ CELERY_TASK_ROUTES = {
     'apps.integrations.tasks.sync_eskom_stages_task': {'queue': 'scheduler_beat'},
     'apps.integrations.tasks.reconcile_teacher_gcal_task': {'queue': 'scheduler_beat'},
     'apps.integrations.tasks.dispatch_booking_fulfillment': {'queue': 'critical_io'},
+    'apps.integrations.tasks.retry_fulfillment_dispatches_task': {'queue': 'critical_io'},
 }

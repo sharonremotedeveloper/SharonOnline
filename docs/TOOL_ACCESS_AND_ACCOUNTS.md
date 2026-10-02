@@ -116,6 +116,7 @@ One line per confirmation or change. Newest last. Do not delete entries.
 | 2026-10-02 | Claude | Cloudflare R2 (S3 API, local `.env`) | Bucket `esl-platform-assets`, account `c3f9198712a0df8a75049e7d5374b1dd` | — | Live presigned-upload test passed: wrong size 403, wrong content-type 403, correct PUT 200, read-back 200, test object deleted. Anesu created the scoped token and `.env` himself; values never read by Claude. `.env.apikeys` is 0 bytes (no tokens). |
 | 2026-10-02 | Codex | Local Git configuration | `sharonremotedeveloper@gmail.com` | dev | Verified with repository-local `git config --show-origin --get-regexp ^user\.email$` before creating the isolated remediation worktree and branches. No remote Git or external provider action performed. |
 | 2026-10-03 | Codex | Batch 2 local implementation | — | dev | Used only the local worktree, existing project virtual environment, and local test/build tools. No external provider, sandbox gateway, remote Git, or cloud database action performed. |
+| 2026-10-03 | Codex | Batch 3 local implementation | — | dev | Provider reconciliation was tested only through injected local results. No PayFast, PayPal, cloud PostgreSQL, remote Git, or other external-provider action performed. |
 
 ---
 
