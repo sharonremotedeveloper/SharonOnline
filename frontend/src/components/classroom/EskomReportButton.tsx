@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Zap, AlertTriangle, ShieldCheck, X, CheckCircle2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { InlineError } from "@/components/ui/ErrorState";
 
 interface EskomReportButtonProps {
   bookingId: string;
@@ -20,10 +21,12 @@ export function EskomReportButton({
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reported, setReported] = useState(isInterrupted);
+  const [reportError, setReportError] = useState<unknown>(null);
   const [reportNote, setReportNote] = useState("Sudden municipal load shedding / power trip");
 
   const handleConfirmReport = async () => {
     setSubmitting(true);
+    setReportError(null);
     try {
       await api.reportPowerOutage(bookingId, reportNote);
       setReported(true);
@@ -31,6 +34,7 @@ export function EskomReportButton({
       if (onReported) onReported();
     } catch (e) {
       console.error("Failed to report outage:", e);
+      setReportError(e);
     } finally {
       setSubmitting(false);
     }
@@ -108,6 +112,8 @@ export function EskomReportButton({
                 className="w-full px-3.5 py-2.5 rounded-xl bg-cream-surface border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
+
+            <InlineError error={reportError} />
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button

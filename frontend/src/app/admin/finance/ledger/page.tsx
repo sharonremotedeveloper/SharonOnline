@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -13,25 +12,12 @@ import {
   Download,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { FinanceEscrowItem } from "@/types/admin";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { useApiData } from "@/hooks/useApiData";
 
 export default function AdminLedgerPage() {
-  const [items, setItems] = useState<FinanceEscrowItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function loadLedger() {
-      try {
-        const data = await api.getEscrowLedger();
-        setItems(data);
-      } catch (e) {
-        console.error("Failed to load escrow ledger:", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadLedger();
-  }, []);
+  const { data, error, loading, reload } = useApiData(() => api.getEscrowLedger(), []);
+  const items = data ?? [];
 
   const totalHoldingUsd = items
     .filter((i) => i.escrow_status === "holding")
@@ -40,6 +26,26 @@ export default function AdminLedgerPage() {
   const totalHoldingZar = items
     .filter((i) => i.escrow_status === "holding")
     .reduce((acc, curr) => acc + curr.amount_zar, 0);
+
+  const clearedCount = items.filter((i) => i.escrow_status !== "holding").length;
+  const holdingCount = items.length - clearedCount;
+
+  if (loading) {
+    return (
+      <div className="py-20 text-center space-y-4">
+        <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm font-bold text-ink-muted">Loading escrow ledger...</p>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="py-20">
+        <ErrorState error={error ?? "No ledger data returned."} title="We could not load the escrow ledger" onRetry={reload} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
@@ -84,18 +90,18 @@ export default function AdminLedgerPage() {
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-2">
-          <span className="text-xs font-bold text-ink-muted">Platform Gross Fee Take</span>
-          <div className="text-2xl sm:text-3xl font-black text-teal font-serif">20.0% Net</div>
-          <p className="text-[11px] text-ink-muted">$1.60 USD per 25-minute lesson processed</p>
+          <span className="text-xs font-bold text-ink-muted">Entries Holding in Escrow</span>
+          <div className="text-2xl sm:text-3xl font-black text-teal font-serif">{holdingCount}</div>
+          <p className="text-[11px] text-ink-muted">Awaiting the 24-hour clearance window</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-2">
-          <span className="text-xs font-bold text-ink-muted">Escrow Audit Status</span>
+          <span className="text-xs font-bold text-ink-muted">Entries Cleared for Payout</span>
           <div className="text-2xl sm:text-3xl font-black text-emerald-700 font-serif flex items-center gap-2">
             <ShieldCheck className="w-7 h-7 text-emerald-600" />
-            <span>100% Balanced</span>
+            <span>{clearedCount}</span>
           </div>
-          <p className="text-[11px] text-ink-muted">Zero orphaned student or tutor balances</p>
+          <p className="text-[11px] text-ink-muted">Counted from the entries listed below</p>
         </div>
       </div>
 
@@ -109,6 +115,9 @@ export default function AdminLedgerPage() {
           <span className="text-xs font-bold text-ink-muted">{items.length} Transactions</span>
         </div>
 
+        {items.length === 0 ? (
+          <p className="p-8 text-center text-xs text-ink-muted">No escrow ledger entries yet.</p>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[750px] border-collapse text-xs">
             <thead>
@@ -149,6 +158,7 @@ export default function AdminLedgerPage() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
     </div>
   );

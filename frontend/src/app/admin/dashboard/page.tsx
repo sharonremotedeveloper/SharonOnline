@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   TrendingUp,
@@ -17,25 +16,19 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { AdminTelemetry } from "@/types/admin";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { useApiData } from "@/hooks/useApiData";
 
 export default function AdminDashboardPage() {
-  const [telemetry, setTelemetry] = useState<AdminTelemetry | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: telemetry, error, loading, reload } = useApiData(() => api.getAdminTelemetry(), []);
 
-  useEffect(() => {
-    async function loadTelemetry() {
-      try {
-        const data = await api.getAdminTelemetry();
-        setTelemetry(data);
-      } catch (e) {
-        console.error("Failed to load admin telemetry:", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadTelemetry();
-  }, []);
+  if (error || (!loading && !telemetry)) {
+    return (
+      <div className="py-20">
+        <ErrorState error={error ?? "No telemetry returned."} title="We couldn't load platform telemetry" onRetry={reload} />
+      </div>
+    );
+  }
 
   if (loading || !telemetry) {
     return (
@@ -76,9 +69,6 @@ export default function AdminDashboardPage() {
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
             <span>Gross Volume Today</span>
-            <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-[10px] font-bold">
-              +14% vs yesterday
-            </span>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-ink font-serif">
             ${telemetry.gmv_today_usd.toLocaleString("en-US", { minimumFractionDigits: 2 })}
@@ -155,7 +145,7 @@ export default function AdminDashboardPage() {
             href="/admin/teachers/vetting"
             className="w-full py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
           >
-            <span>Review 3 Pending Applications</span>
+            <span>Review {telemetry.pending_vetting_count} Pending Application{telemetry.pending_vetting_count === 1 ? "" : "s"}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -176,7 +166,7 @@ export default function AdminDashboardPage() {
             href="/admin/disputes"
             className="w-full py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
           >
-            <span>Arbitrate 2 Frozen Cases</span>
+            <span>Arbitrate {telemetry.open_disputes_count} Open Case{telemetry.open_disputes_count === 1 ? "" : "s"}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

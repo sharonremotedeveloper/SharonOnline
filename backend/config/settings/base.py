@@ -133,6 +133,7 @@ REST_FRAMEWORK = {
         'register': '5/hour',
         'upload': '30/hour',
         'checkout': '20/hour',
+        'reserve': '30/min',
         'webhook': '120/min',
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
@@ -143,7 +144,7 @@ REST_FRAMEWORK = {
 
 # SimpleJWT Authentication
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),  # safe now: the Next.js proxy refreshes transparently (Task 8.4)
     'REFRESH_TOKEN_LIFETIME': timedelta(days=14),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,

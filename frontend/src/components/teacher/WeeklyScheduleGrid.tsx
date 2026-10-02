@@ -1,8 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Save, Clock, Copy, Sparkles, AlertCircle, Info } from "lucide-react";
 import { api } from "@/lib/api";
+import { request } from "@/lib/http";
+import { ErrorState, InlineError } from "@/components/ui/ErrorState";
+import { useApiData } from "@/hooks/useApiData";
+
+interface AvailabilityRow {
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  is_active: boolean;
+}
+
+interface AvailabilityPage {
+  rows: AvailabilityRow[];
+  truncated: boolean;
+}
+
+async function loadAvailability(): Promise<AvailabilityPage> {
+  const res = await request<AvailabilityRow[] | { results: AvailabilityRow[]; next?: string | null }>(
+    "/teachers/availability/manage/"
+  );
+  if (Array.isArray(res)) return { rows: res, truncated: false };
+  return { rows: res.results ?? [], truncated: Boolean(res.next) };
+}
 
 const DAYS = [
   { id: 0, label: "Mon", full: "Monday" },
@@ -30,19 +53,31 @@ const TIME_BLOCKS = [
 ];
 
 export function WeeklyScheduleGrid() {
-  // Matrix state: dayIdx (0-6) -> array of boolean blocks (0-11)
-  const [schedule, setSchedule] = useState<{ [day: number]: boolean[] }>({
-    0: [true, true, true, true, true, true, true, true, false, false, false, false], // Mon
-    1: [true, true, true, true, true, true, true, true, false, false, false, false], // Tue
-    2: [true, true, true, true, true, true, true, true, false, false, false, false], // Wed
-    3: [true, true, true, true, true, true, true, true, false, false, false, false], // Thu
-    4: [true, true, true, true, true, true, true, true, false, false, false, false], // Fri
-    5: [false, false, true, true, true, false, false, false, false, false, false, false], // Sat
-    6: [false, false, false, false, false, false, false, false, false, false, false, false], // Sun
-  });
+  // Matrix state: dayIdx (0-6) -> array of boolean blocks, built from the availability saved on the server.
+  const { data: availability, error: loadError, loading, reload } = useApiData(loadAvailability, []);
+  const [schedule, setSchedule] = useState<{ [day: number]: boolean[] }>({});
+
+  useEffect(() => {
+    if (!availability) return;
+    const next: { [day: number]: boolean[] } = {};
+    DAYS.forEach((d) => {
+      next[d.id] = TIME_BLOCKS.map((range) => {
+        const [from, to] = range.split(" - ");
+        return availability.rows.some(
+          (r) =>
+            r.is_active &&
+            r.day_of_week === d.id &&
+            r.start_time.slice(0, 5) <= from &&
+            r.end_time.slice(0, 5) >= to
+        );
+      });
+    });
+    setSchedule(next);
+  }, [availability]);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<unknown>(null);
 
   const toggleSlot = (dayIdx: number, blockIdx: number) => {
     setSchedule((prev) => {
@@ -54,7 +89,7 @@ export function WeeklyScheduleGrid() {
   };
 
   const copyMondayToWeekdays = () => {
-    const mondaySlots = [...schedule[0]];
+    const mondaySlots = [...(schedule[0] || new Array(TIME_BLOCKS.length).fill(false))];
     setSchedule((prev) => ({
       ...prev,
       1: [...mondaySlots],
@@ -89,16 +124,31 @@ export function WeeklyScheduleGrid() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaved(false);
+    setSaveError(null);
     try {
       await api.saveTeacherAvailability(schedule);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (e) {
       console.error("Failed to save schedule:", e);
+      setSaveError(e);
     } finally {
       setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-3xl p-10 border border-divider shadow-card text-center text-sm font-bold text-ink-muted">
+        Loading your saved availability...
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return <ErrorState error={loadError} title="We couldn't load your availability" onRetry={reload} />;
+  }
 
   // Count active weekly hours
   let activeHours = 0;
@@ -165,6 +215,13 @@ export function WeeklyScheduleGrid() {
           </button>
         </div>
       </div>
+
+      <InlineError error={saveError} />
+      {availability?.truncated && (
+        <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+          Only part of your saved availability could be loaded, so this grid may be incomplete. Do not save from here.
+        </p>
+      )}
 
       {/* Summary Indicator */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-cream-surface border border-divider text-xs">

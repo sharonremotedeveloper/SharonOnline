@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/Badge";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, isAuthenticated, logout, role } = useAuth();
+  const { user, isAuthenticated, logout, role, isLoading, sessionError } = useAuth();
 
   const getDashboardLink = () => {
     if (role === "admin") return "/admin/dashboard";
@@ -70,7 +70,9 @@ export function Navbar() {
         <div className="hidden lg:flex items-center space-x-3">
           <CurrencySwitcher variant="badge" />
 
-          {isAuthenticated && user ? (
+          {isLoading ? (
+            <div className="w-24 h-8 rounded-xl bg-white/10 animate-pulse" aria-label="Checking session" />
+          ) : isAuthenticated && user ? (
             <div className="flex items-center space-x-3 pl-2 border-l border-white/20">
               {role === "student" && user.credits !== undefined && (
                 <div className="flex items-center gap-1 px-2.5 py-1 bg-white/10 rounded-xl text-xs font-bold text-gold-bright border border-white/15">
@@ -114,6 +116,14 @@ export function Navbar() {
             </div>
           ) : (
             <div className="flex items-center space-x-2">
+              {sessionError && (
+                <span
+                  title={sessionError}
+                  className="text-[10px] font-bold text-gold-bright bg-white/10 border border-white/20 rounded-lg px-2 py-1"
+                >
+                  Session unavailable
+                </span>
+              )}
               <Link
                 href="/login"
                 className="text-xs font-bold text-white hover:text-gold-bright px-3 py-2 flex items-center gap-1"

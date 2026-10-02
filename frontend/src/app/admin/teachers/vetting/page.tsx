@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { PendingTeacherApplication } from "@/types/admin";
+import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 
 export default function AdminVettingPage() {
   const [applications, setApplications] = useState<PendingTeacherApplication[]>([]);
@@ -25,41 +26,66 @@ export default function AdminVettingPage() {
   const [selectedApp, setSelectedApp] = useState<PendingTeacherApplication | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [actionError, setActionError] = useState<unknown>(null);
+  const [reloadTick, setReloadTick] = useState(0);
+  const [pendingDecision, setPendingDecision] = useState<{ id: string; approve: boolean } | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
     async function loadApplications() {
+      setLoading(true);
+      setLoadError(null);
       try {
         const list = await api.getPendingTeachers();
+        if (cancelled) return;
         setApplications(list);
-        if (list.length > 0) {
-          setSelectedApp(list[0]);
-        }
+        setSelectedApp(list.length > 0 ? list[0] : null);
       } catch (e) {
         console.error("Failed to load vetting applications:", e);
+        if (!cancelled) {
+          setApplications([]);
+          setSelectedApp(null);
+          setLoadError(e);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     loadApplications();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadTick]);
 
+  // Publishing/declining a tutor is a consequential action: it only runs after an explicit confirm, and the
+  // application is only removed from the queue once the server accepted the decision.
   const handleVerify = async (id: string, isApproved: boolean) => {
+    const target = applications.find((a) => a.id === id);
+    if (!isApproved && !rejectionReason.trim()) {
+      setActionError("Please give the applicant a short reason for the rejection.");
+      return;
+    }
     setProcessingId(id);
     setSuccessMessage(null);
+    setActionError(null);
     try {
-      const res = await api.verifyTeacher(id, isApproved);
+      await api.verifyTeacher(id, isApproved, isApproved ? undefined : rejectionReason.trim());
       setSuccessMessage(
         isApproved
-          ? `Tutor ${selectedApp?.full_name} has been approved and published to public search.`
-          : `Application for ${selectedApp?.full_name} has been declined.`
+          ? `Tutor ${target?.full_name} has been approved and published to public search.`
+          : `Application for ${target?.full_name} has been declined.`
       );
 
-      // Remove from pending list
       const remaining = applications.filter((a) => a.id !== id);
       setApplications(remaining);
       setSelectedApp(remaining.length > 0 ? remaining[0] : null);
+      setPendingDecision(null);
+      setRejectionReason("");
     } catch (e) {
       console.error("Failed to verify teacher:", e);
+      setActionError(e);
     } finally {
       setProcessingId(null);
     }
@@ -70,6 +96,18 @@ export default function AdminVettingPage() {
       <div className="py-20 text-center space-y-4">
         <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm font-bold text-ink-muted">Loading pending tutor audition reels...</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="py-20">
+        <ErrorState
+          error={loadError}
+          title="We could not load the pending applications"
+          onRetry={() => setReloadTick((t) => t + 1)}
+        />
       </div>
     );
   }
@@ -98,6 +136,8 @@ export default function AdminVettingPage() {
           </div>
         </div>
       </div>
+
+      <InlineError error={actionError} />
 
       {successMessage && (
         <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-950 flex items-center gap-2.5">
@@ -137,7 +177,11 @@ export default function AdminVettingPage() {
                   <button
                     key={app.id}
                     type="button"
-                    onClick={() => setSelectedApp(app)}
+                    onClick={() => {
+                      setSelectedApp(app);
+                      setPendingDecision(null);
+                      setActionError(null);
+                    }}
                     className={`w-full text-left p-3.5 rounded-2xl border transition-all space-y-1.5 ${
                       isSelected
                         ? "bg-teal/10 border-teal text-ink shadow-xs"
@@ -226,7 +270,7 @@ export default function AdminVettingPage() {
                   <span className="font-bold text-ink flex items-center gap-1.5">
                     <BatteryCharging className="w-4 h-4 text-amber-600" /> Municipal Power Declaration
                   </span>
-                  <p className="text-[11px] text-ink-muted">Area: {selectedApp.eskom_area || "Gauteng Region"}</p>
+                  <p className="text-[11px] text-ink-muted">Area: {selectedApp.eskom_area || "Not provided"}</p>
                   <div className="pt-1">
                     {selectedApp.has_inverter ? (
                       <span className="text-emerald-800 font-bold flex items-center gap-1 text-[11px]">
@@ -263,27 +307,77 @@ export default function AdminVettingPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-6 border-t border-divider flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  disabled={processingId === selectedApp.id}
-                  onClick={() => handleVerify(selectedApp.id, false)}
-                  className="px-6 py-3 rounded-2xl border border-rose-300 text-rose-700 hover:bg-rose-50 text-xs font-bold flex items-center gap-2 transition-colors"
-                >
-                  <XCircle className="w-4 h-4" />
-                  <span>Reject with Feedback</span>
-                </button>
+              {pendingDecision?.id === selectedApp.id ? (
+                <div className="pt-6 border-t border-divider space-y-3">
+                  <p className="text-xs font-bold text-ink">
+                    {pendingDecision.approve
+                      ? `Approve ${selectedApp.full_name} and publish their profile to public search?`
+                      : `Reject ${selectedApp.full_name}'s application?`}
+                  </p>
+                  {!pendingDecision.approve && (
+                    <textarea
+                      rows={3}
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
+                      placeholder="Feedback for the applicant (required)..."
+                      className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+                    />
+                  )}
+                  <div className="flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      disabled={processingId === selectedApp.id}
+                      onClick={() => {
+                        setPendingDecision(null);
+                        setActionError(null);
+                      }}
+                      className="px-5 py-2.5 rounded-2xl bg-white border border-divider text-xs font-bold text-ink disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={processingId === selectedApp.id}
+                      onClick={() => handleVerify(selectedApp.id, pendingDecision.approve)}
+                      className={`px-6 py-2.5 rounded-2xl text-white text-xs font-black disabled:opacity-50 ${
+                        pendingDecision.approve ? "bg-teal hover:bg-teal-hover" : "bg-rose-600 hover:bg-rose-700"
+                      }`}
+                    >
+                      {processingId === selectedApp.id
+                        ? "Submitting..."
+                        : pendingDecision.approve
+                        ? "Confirm approval"
+                        : "Confirm rejection"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="pt-6 border-t border-divider flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPendingDecision({ id: selectedApp.id, approve: false });
+                      setActionError(null);
+                    }}
+                    className="px-6 py-3 rounded-2xl border border-rose-300 text-rose-700 hover:bg-rose-50 text-xs font-bold flex items-center gap-2 transition-colors"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    <span>Reject with Feedback</span>
+                  </button>
 
-                <button
-                  type="button"
-                  disabled={processingId === selectedApp.id}
-                  onClick={() => handleVerify(selectedApp.id, true)}
-                  className="px-8 py-3.5 rounded-2xl bg-teal hover:bg-teal-hover text-white text-xs font-black flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>{processingId === selectedApp.id ? "Publishing..." : "Approve & Publish Live"}</span>
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPendingDecision({ id: selectedApp.id, approve: true });
+                      setActionError(null);
+                    }}
+                    className="px-8 py-3.5 rounded-2xl bg-teal hover:bg-teal-hover text-white text-xs font-black flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Approve &amp; Publish Live</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

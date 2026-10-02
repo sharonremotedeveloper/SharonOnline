@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Send, Plus, X, Sparkles, CheckCircle2, BookOpen, Volume2, Award, FileText } from "lucide-react";
+import { InlineError } from "@/components/ui/ErrorState";
 import { api } from "@/lib/api";
 import { PostLessonMemoInput, VocabularyTagItem } from "@/types/teacher";
 
@@ -16,54 +17,36 @@ interface MemoComposerProps {
 export function MemoComposer({
   bookingId,
   studentName,
-  lessonTitle = "General Conversational Practice",
+  lessonTitle = "No material linked",
   initialScratchpad = "",
   onSubmitted,
 }: MemoComposerProps) {
   const [feedbackText, setFeedbackText] = useState(
-    initialScratchpad
-      ? `Great focus today on conversational intonation! Notes from lesson:\n${initialScratchpad}`
-      : "Excellent session today! You spoke with great confidence and natural phrasing. Keep focusing on linking words smoothly when expressing opinions."
+    initialScratchpad ? `Notes from lesson:
+${initialScratchpad}` : ""
   );
 
-  const [vocabList, setVocabList] = useState<VocabularyTagItem[]>([
-    {
-      id: "v-1",
-      word: "Articulate",
-      definition: "Expressing ideas clearly and effectively in speech.",
-    },
-    {
-      id: "v-2",
-      word: "Pragmatic",
-      definition: "Dealing with things sensibly and realistically based on practical considerations.",
-    },
-  ]);
+  const [vocabList, setVocabList] = useState<VocabularyTagItem[]>([]);
 
   const [newWord, setNewWord] = useState("");
   const [newDef, setNewDef] = useState("");
 
-  const [pronunciationNotes, setPronunciationNotes] = useState(
-    "Practice the difference between /v/ and /b/ phonemes (e.g. 'very' vs 'berry'). Remember to place primary stress on the second syllable of 'con-VER-sion'."
-  );
+  const [pronunciationNotes, setPronunciationNotes] = useState("");
 
-  const [grammarNotes, setGrammarNotes] = useState(
-    "Watch past simple vs present perfect: 'I have seen that movie yesterday' -> 'I saw that movie yesterday'."
-  );
+  const [grammarNotes, setGrammarNotes] = useState("");
 
-  const [homework, setHomework] = useState(
-    "Read the next Daily News article on remote work and prepare two questions about asynchronous communication for our next lesson."
-  );
+  const [homework, setHomework] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
   const addVocabWord = () => {
     if (!newWord.trim()) return;
     const item: VocabularyTagItem = {
       id: `v-${Date.now()}`,
       word: newWord.trim(),
-      definition: newDef.trim() || "Target vocabulary item practiced in class.",
+      definition: newDef.trim(),
     };
     setVocabList([...vocabList, item]);
     setNewWord("");
@@ -91,7 +74,7 @@ export function MemoComposer({
       pronunciation_notes: pronunciationNotes,
       grammar_notes: grammarNotes,
       homework,
-      next_steps: "Book follow-up session next week to practice STAR interview format.",
+      next_steps: "",
     };
 
     try {
@@ -100,7 +83,7 @@ export function MemoComposer({
       if (onSubmitted) onSubmitted();
     } catch (err) {
       console.error("Failed to submit memo:", err);
-      setError("Failed to submit memo. Please check network connection.");
+      setError(err);
     } finally {
       setSubmitting(false);
     }
@@ -149,11 +132,7 @@ export function MemoComposer({
         </p>
       </div>
 
-      {error && (
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-bold">
-          {error}
-        </div>
-      )}
+      <InlineError error={error} />
 
       {/* 1. Overall Feedback */}
       <div className="space-y-2">

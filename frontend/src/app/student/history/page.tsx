@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   History,
@@ -20,30 +20,21 @@ import { studentApi } from "@/lib/api";
 import { StudentLessonItem } from "@/types/student";
 import { LessonMemoModal } from "@/components/student/LessonMemoModal";
 import { ReviewRubricModal } from "@/components/student/ReviewRubricModal";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { useApiData } from "@/hooks/useApiData";
 
 export default function StudentHistoryPage() {
-  const [lessons, setLessons] = useState<StudentLessonItem[]>([]);
+  const { data, error, loading: isLoading, reload } = useApiData<StudentLessonItem[]>(
+    () => studentApi.getStudentLessons(),
+    []
+  );
+  const lessons = data ?? [];
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "interrupted">("all");
-  const [isLoading, setIsLoading] = useState(true);
 
   // Modals state
   const [activeMemoLesson, setActiveMemoLesson] = useState<StudentLessonItem | null>(null);
   const [activeReviewLesson, setActiveReviewLesson] = useState<StudentLessonItem | null>(null);
-
-  useEffect(() => {
-    async function loadHistory() {
-      try {
-        const data = await studentApi.getStudentLessons();
-        setLessons(data);
-      } catch (e) {
-        console.error("Failed to load student lesson history:", e);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadHistory();
-  }, []);
 
   const filteredLessons = lessons.filter((lesson) => {
     if (statusFilter === "completed" && lesson.status !== "completed") return false;
@@ -134,12 +125,20 @@ export default function StudentHistoryPage() {
 
       {/* Lesson List */}
       <div className="space-y-4">
-        {filteredLessons.length === 0 ? (
+        {error ? (
+          <ErrorState error={error} title="We could not load your lesson history" onRetry={reload} />
+        ) : isLoading ? (
+          <div className="bg-white rounded-3xl border border-cream-200 p-12 text-center text-xs text-ink-500">
+            Loading your lessons...
+          </div>
+        ) : filteredLessons.length === 0 ? (
           <div className="bg-white rounded-3xl border border-cream-200 p-12 text-center shadow-sm">
             <History className="w-12 h-12 text-ink-300 mx-auto mb-3" />
             <h3 className="text-base font-bold text-ink-900">No lessons found</h3>
             <p className="text-xs text-ink-500 max-w-sm mx-auto mt-1">
-              No completed or past lessons match your search criteria.
+              {lessons.length === 0
+                ? "You have no lessons yet. Once you book and take a lesson it will appear here."
+                : "No completed or past lessons match your search criteria."}
             </p>
           </div>
         ) : (
@@ -288,21 +287,9 @@ export default function StudentHistoryPage() {
           teacherName={activeReviewLesson.teacher.name}
           isOpen={!!activeReviewLesson}
           onClose={() => setActiveReviewLesson(null)}
-          onReviewSubmitted={(rating, tags) => {
-            setLessons((prev) =>
-              prev.map((l) =>
-                l.id === activeReviewLesson.id
-                  ? {
-                      ...l,
-                      review: {
-                        rating,
-                        tags,
-                        submitted_at: new Date().toISOString(),
-                      },
-                    }
-                  : l
-              )
-            );
+          onReviewSubmitted={() => {
+            // Re-fetch so the rating shown is what the server actually stored.
+            reload();
           }}
         />
       )}

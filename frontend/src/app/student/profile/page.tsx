@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { studentApi } from "@/lib/api";
 import { StudentProfileData } from "@/types/student";
+import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 
 const TIMEZONES = [
   { value: "Asia/Tokyo", label: "Asia/Tokyo (JST - UTC+9)" },
@@ -53,9 +54,14 @@ export default function StudentProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [saveError, setSaveError] = useState<unknown>(null);
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
     async function loadProfile() {
+      setIsLoading(true);
+      setLoadError(null);
       try {
         const data = await studentApi.getStudentProfile();
         setProfile(data);
@@ -69,27 +75,30 @@ export default function StudentProfilePage() {
         });
       } catch (err) {
         console.error("Failed to load profile:", err);
+        setProfile(null);
+        setLoadError(err);
       } finally {
         setIsLoading(false);
       }
     }
     loadProfile();
-  }, []);
+  }, [reloadTick]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     setSavedSuccess(false);
+    setSaveError(null);
 
     try {
       const res = await studentApi.updateStudentProfile(formData);
-      if (res.success) {
-        setProfile(res.profile);
-        setSavedSuccess(true);
-        setTimeout(() => setSavedSuccess(false), 3000);
-      }
+      if (!res?.success) throw new Error("The server did not confirm that your profile was saved.");
+      setProfile(res.profile);
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
     } catch (err) {
       console.error("Failed to save profile:", err);
+      setSaveError(err);
     } finally {
       setIsSaving(false);
     }
@@ -100,6 +109,18 @@ export default function StudentProfilePage() {
       <div className="max-w-2xl mx-auto py-20 text-center space-y-3">
         <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-xs text-ink-500">Loading student profile...</p>
+      </div>
+    );
+  }
+
+  if (loadError || !profile) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16">
+        <ErrorState
+          error={loadError ?? "We could not find your profile."}
+          title="We could not load your profile"
+          onRetry={() => setReloadTick((t) => t + 1)}
+        />
       </div>
     );
   }
@@ -132,6 +153,8 @@ export default function StudentProfilePage() {
           <span>Profile updated! Your scheduled lessons and memos will reflect your new preferences.</span>
         </div>
       )}
+
+      <InlineError error={saveError} />
 
       {/* Profile Form */}
       <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-cream-200 shadow-sm overflow-hidden">
@@ -243,7 +266,7 @@ export default function StudentProfilePage() {
         {/* Footer */}
         <div className="p-6 bg-cream-50 border-t border-cream-200 flex items-center justify-between">
           <span className="text-xs text-ink-500">
-            Account ID: <strong className="font-mono text-ink-700">{profile?.id || "stu-1"}</strong>
+            Account ID: <strong className="font-mono text-ink-700">{profile.id}</strong>
           </span>
 
           <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   Layers,
@@ -16,32 +16,27 @@ import {
 import { studentApi } from "@/lib/api";
 import { StudentFlashcard } from "@/types/student";
 import { FlashcardDeck } from "@/components/student/FlashcardDeck";
+import { ErrorState, InlineError } from "@/components/ui/ErrorState";
+import { useApiData } from "@/hooks/useApiData";
+import { errorMessage } from "@/lib/http";
 
 export default function StudentVocabularyPage() {
-  const [cards, setCards] = useState<StudentFlashcard[]>([]);
+  const { data, error, loading: isLoading, reload } = useApiData<StudentFlashcard[]>(
+    () => studentApi.getStudentFlashcards(),
+    []
+  );
+  const cards = data ?? [];
+  const [gradeError, setGradeError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"flashcards" | "wordbank">("flashcards");
 
-  useEffect(() => {
-    async function loadCards() {
-      try {
-        const data = await studentApi.getStudentFlashcards();
-        setCards(data);
-      } catch (err) {
-        console.error("Failed to load flashcards:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadCards();
-  }, []);
-
   const handleGradeCard = async (cardId: string, grade: "again" | "good" | "easy") => {
+    setGradeError(null);
     try {
       await studentApi.updateFlashcardMastery(cardId, grade);
     } catch (err) {
       console.error("Failed to update mastery:", err);
+      setGradeError(`Your last rating was not saved, so this card's schedule has not changed. ${errorMessage(err)}`);
     }
   };
 
@@ -101,12 +96,16 @@ export default function StudentVocabularyPage() {
                 : "text-ink-600 hover:text-ink-900"
             }`}
           >
-            Word Bank List ({cards.length})
+            Word Bank List{data ? ` (${cards.length})` : ""}
           </button>
         </div>
       </div>
 
-      {isLoading ? (
+      {gradeError && <InlineError error={gradeError} />}
+
+      {error ? (
+        <ErrorState error={error} title="We could not load your vocabulary deck" onRetry={reload} />
+      ) : isLoading ? (
         <div className="py-20 text-center space-y-3">
           <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-xs text-ink-500">Loading your vocabulary deck...</p>

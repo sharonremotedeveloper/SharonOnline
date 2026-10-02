@@ -17,19 +17,24 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { LiveSessionRadarItem } from "@/types/admin";
+import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 
 export default function AdminLiveSessionsPage() {
   const [sessions, setSessions] = useState<LiveSessionRadarItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
   const fetchSessions = async () => {
     try {
       const data = await api.getLiveSessions();
       setSessions(data);
       setLastRefreshed(new Date());
+      setError(null);
     } catch (e) {
+      // Keep the last good snapshot on screen, but make the failure visible (it is stale, not live).
       console.error("Failed to load live sessions:", e);
+      setError(e);
     } finally {
       setLoading(false);
     }
@@ -40,6 +45,30 @@ export default function AdminLiveSessionsPage() {
     const interval = setInterval(fetchSessions, 15000); // 15s polling for radar
     return () => clearInterval(interval);
   }, []);
+
+  if (loading) {
+    return (
+      <div className="py-20 text-center space-y-4">
+        <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm font-bold text-ink-muted">Loading live session radar...</p>
+      </div>
+    );
+  }
+
+  if (error && lastRefreshed === null) {
+    return (
+      <div className="py-20">
+        <ErrorState
+          error={error}
+          title="We could not load the live session radar"
+          onRetry={() => {
+            setLoading(true);
+            fetchSessions();
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
@@ -75,9 +104,19 @@ export default function AdminLiveSessionsPage() {
           className="px-4 py-2 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-2 transition-all self-start sm:self-auto"
         >
           <RefreshCw className="w-3.5 h-3.5 text-teal" />
-          <span>Updated {lastRefreshed.toLocaleTimeString()}</span>
+          <span>{lastRefreshed ? `Updated ${lastRefreshed.toLocaleTimeString()}` : "Refresh"}</span>
         </button>
       </div>
+
+      {error != null && (
+        <InlineError error={`Live updates failed, so the cards below may be out of date. ${typeof error === "object" && error && "message" in error ? String((error as Error).message) : ""}`} />
+      )}
+
+      {sessions.length === 0 && (
+        <div className="bg-white rounded-3xl p-10 border border-divider shadow-card text-center text-sm text-ink-muted">
+          No classes are live right now.
+        </div>
+      )}
 
       {/* Radar Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -118,10 +157,10 @@ export default function AdminLiveSessionsPage() {
                   />
                   <span>
                     {isWrapUp
-                      ? "Wrapping Up (22m/25m)"
+                      ? `Wrapping Up (${sess.elapsed_minutes}m/25m)`
                       : isStaging
                       ? "Staging Room"
-                      : "Active Class (12m/25m)"}
+                      : `Active Class (${sess.elapsed_minutes}m/25m)`}
                   </span>
                 </span>
               </div>

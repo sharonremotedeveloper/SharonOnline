@@ -1,40 +1,34 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { dashboardFor, SESSION_COOKIE, verifySession } from "@/lib/session";
 
-export function middleware(request: NextRequest) {
-  const token = request.cookies.get("sharon_access_token")?.value;
-  const role = request.cookies.get("sharon_user_role")?.value;
-  const { pathname } = request.nextUrl;
+/**
+ * Edge route guard for /student, /teacher and /admin (UI routing only - the Django API re-checks the role from the
+ * database on every request and is the real security boundary).
+ *
+ * The role comes from `sharon_session`, an HttpOnly cookie signed with SESSION_SECRET that we only mint after Django
+ * has authenticated the user. A user can no longer promote themselves by editing a cookie: a forged or tampered value
+ * fails verification. When the short-lived session is missing/expired we bounce through /api/session/renew, which
+ * silently re-authenticates from the refresh cookie or lands on /login.
+ */
+export async function middleware(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+  const claims = await verifySession(request.cookies.get(SESSION_COOKIE)?.value);
 
-  const isStudentRoute = pathname.startsWith("/student");
-  const isTeacherRoute = pathname.startsWith("/teacher");
-  const isAdminRoute = pathname.startsWith("/admin");
+  if (!claims) {
+    const renew = request.nextUrl.clone();
+    renew.pathname = "/api/session/renew";
+    renew.search = "";
+    renew.searchParams.set("next", pathname + search);
+    return NextResponse.redirect(renew);
+  }
 
-  if (isStudentRoute || isTeacherRoute || isAdminRoute) {
-    if (!token) {
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("next", pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-
-    // Role-Based Access Control checks
-    if (isStudentRoute && role !== "student") {
-      return NextResponse.redirect(
-        new URL(role === "teacher" ? "/teacher/dashboard" : "/admin/dashboard", request.url)
-      );
-    }
-
-    if (isTeacherRoute && role !== "teacher") {
-      return NextResponse.redirect(
-        new URL(role === "student" ? "/student/dashboard" : "/admin/dashboard", request.url)
-      );
-    }
-
-    if (isAdminRoute && role !== "admin") {
-      return NextResponse.redirect(
-        new URL(role === "student" ? "/student/dashboard" : "/teacher/dashboard", request.url)
-      );
-    }
+  const wanted = pathname.startsWith("/admin") ? "admin" : pathname.startsWith("/teacher") ? "teacher" : "student";
+  if (claims.role !== wanted) {
+    const home = request.nextUrl.clone();
+    home.pathname = dashboardFor(claims.role);
+    home.search = "";
+    return NextResponse.redirect(home);
   }
 
   return NextResponse.next();

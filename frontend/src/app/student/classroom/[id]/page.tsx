@@ -24,35 +24,59 @@ import { ZoomLauncherButton } from "@/components/classroom/ZoomLauncherButton";
 import { LessonCountDownClock } from "@/components/classroom/LessonCountDownClock";
 import { EskomReportButton } from "@/components/classroom/EskomReportButton";
 import { ClassroomSplitLayout } from "@/components/classroom/ClassroomSplitLayout";
+import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 
 export default function StudentClassroomPage() {
   const params = useParams();
-  const bookingId = (params?.id as string) || "BK-DEMO";
+  const bookingId = params?.id as string;
 
   const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [material, setMaterial] = useState<MaterialDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [materialError, setMaterialError] = useState<unknown>(null);
+  const [reloadTick, setReloadTick] = useState(0);
   const [hardwareModalOpen, setHardwareModalOpen] = useState(false);
   const [hardwareChecked, setHardwareChecked] = useState(false);
 
   useEffect(() => {
+    if (!bookingId) return;
+    let cancelled = false;
     async function loadClassroom() {
       setLoading(true);
+      setLoadError(null);
+      setMaterialError(null);
+      setMaterial(null);
       try {
         const b = await api.getBooking(bookingId);
+        if (cancelled) return;
         setBooking(b);
 
-        const slug = b.material_slug || "remote-work-trends";
-        const m = await api.getMaterialBySlug(slug);
-        setMaterial(m);
+        // Lesson material is optional; a failure here must not hide the classroom, but it is reported honestly.
+        if (b.material_slug) {
+          try {
+            const m = await api.getMaterialBySlug(b.material_slug);
+            if (!cancelled) setMaterial(m);
+          } catch (mErr) {
+            console.error("Failed to load lesson material:", mErr);
+            if (!cancelled) setMaterialError(mErr);
+          }
+        }
       } catch (err) {
         console.error("Failed to load classroom booking:", err);
+        if (!cancelled) {
+          setBooking(null);
+          setLoadError(err);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     loadClassroom();
-  }, [bookingId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [bookingId, reloadTick]);
 
   if (loading) {
     return (
@@ -65,12 +89,15 @@ export default function StudentClassroomPage() {
     );
   }
 
-  if (!booking) {
+  if (loadError || !booking) {
     return (
       <div className="min-h-screen bg-cream py-20">
         <div className="max-w-xl mx-auto px-4 text-center space-y-6">
-          <h2 className="text-2xl font-black text-ink font-serif">Classroom Session Not Found</h2>
-          <p className="text-xs text-ink-muted">The requested booking session ID does not exist or has expired.</p>
+          <ErrorState
+            error={loadError ?? "The requested booking session does not exist or has expired."}
+            title="We could not load this classroom"
+            onRetry={() => setReloadTick((t) => t + 1)}
+          />
           <Link
             href="/student/dashboard"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-teal text-white text-xs font-bold"
@@ -191,12 +218,19 @@ export default function StudentClassroomPage() {
                 </span>
               </div>
 
-              <ZoomLauncherButton
-                meetingId={booking.zoom_meeting_id || "987 654 3210"}
-                password={booking.zoom_password || "SHARON_ONLINE"}
-                joinUrl={booking.zoom_join_url || booking.zoom_url || "https://zoom.us/j/demo"}
-                disabled={!isConfirmed}
-              />
+              {booking.zoom_meeting_id && (booking.zoom_join_url || booking.zoom_url) ? (
+                <ZoomLauncherButton
+                  meetingId={booking.zoom_meeting_id}
+                  password={booking.zoom_password || ""}
+                  joinUrl={(booking.zoom_join_url || booking.zoom_url) as string}
+                  disabled={!isConfirmed}
+                />
+              ) : (
+                <div className="p-4 rounded-2xl bg-cream-surface border border-divider text-xs text-ink-muted">
+                  Your Zoom room details are not available yet. They appear here once the lesson is confirmed.
+                </div>
+              )}
+              {materialError ? <InlineError error={materialError} /> : null}
             </div>
 
             {/* Student Staging Checklist */}

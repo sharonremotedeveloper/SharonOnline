@@ -8,10 +8,10 @@ import {
   Lock,
   Check,
   ShieldCheck,
-  AlertCircle,
   HelpCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { InlineError } from "@/components/ui/ErrorState";
 import { TeacherPayoutBankAccount } from "@/types/teacher";
 
 const SA_BANKS = [
@@ -28,14 +28,14 @@ const SA_BANKS = [
 export default function TeacherPayoutSettingsPage() {
   const [bankName, setBankName] = useState(SA_BANKS[0].name);
   const [branchCode, setBranchCode] = useState(SA_BANKS[0].branchCode);
-  const [accountHolder, setAccountHolder] = useState("Sharon M.");
-  const [accountNumber, setAccountNumber] = useState("1234567890");
+  const [accountHolder, setAccountHolder] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
   const [accountType, setAccountType] = useState<"cheque" | "savings">("savings");
-  const [idNumber, setIdNumber] = useState("9204155092084");
+  const [idNumber, setIdNumber] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
   const handleBankChange = (selectedName: string) => {
     setBankName(selectedName);
@@ -76,7 +76,7 @@ export default function TeacherPayoutSettingsPage() {
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
       console.error("Failed to update payout settings:", err);
-      setError("Failed to save bank details. Please check network connection.");
+      setError(err);
     } finally {
       setSaving(false);
     }
@@ -128,17 +128,12 @@ export default function TeacherPayoutSettingsPage() {
 
         {/* Settings Form */}
         <form onSubmit={handleSave} className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">
-          {error && (
-            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-bold flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-amber-700" />
-              <span>{error}</span>
-            </div>
-          )}
+          <InlineError error={error} />
 
           {saved && (
             <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 font-bold flex items-center gap-2">
               <Check className="w-4 h-4 shrink-0 text-emerald-700" />
-              <span>Banking information updated successfully. Verified for direct EFT clearing.</span>
+              <span>Banking information saved.</span>
             </div>
           )}
 

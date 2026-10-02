@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Lock, Mail, ArrowRight, UserCheck, Shield, Sparkles } from "lucide-react";
+import { Lock, Mail, ArrowRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { UserRole } from "@/types/auth";
 
@@ -20,7 +20,8 @@ function LoginForm() {
   const [error, setError] = useState("");
 
   const handleLoginSuccess = (role: UserRole) => {
-    if (nextUrl) {
+    // Only follow same-site relative paths ("/x"); "//evil.com", "/\evil.com" and absolute URLs would be an open redirect.
+    if (nextUrl && /^\/(?![/\\])/.test(nextUrl)) {
       router.push(nextUrl);
       return;
     }
@@ -46,22 +47,6 @@ function LoginForm() {
       handleLoginSuccess(res.role);
     } else {
       setError(res.error || "Invalid username or password");
-    }
-  };
-
-  const handleDemoLogin = async (demoUsername: string) => {
-    setUsername(demoUsername);
-    setPassword("password123");
-    setSubmitting(true);
-    setError("");
-
-    const res = await login({ username: demoUsername, password: "password123" });
-    setSubmitting(false);
-
-    if (res.success) {
-      handleLoginSuccess(res.role);
-    } else {
-      setError(res.error || "Demo login failed");
     }
   };
 
@@ -133,45 +118,6 @@ function LoginForm() {
           </button>
         </div>
       </form>
-
-      {/* Demo Quick Logins for Dry-runs and Testing */}
-      <div className="pt-4 border-t border-divider space-y-3">
-        <div className="text-[11px] font-bold text-ink-muted uppercase tracking-wider text-center">
-          1-Click Demo Sandbox Profiles
-        </div>
-
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            onClick={() => handleDemoLogin("student_aiko")}
-            className="p-2 rounded-xl bg-cream-surface hover:bg-cream-deep border border-divider text-center transition-all"
-          >
-            <UserCheck className="w-4 h-4 text-teal mx-auto mb-1" />
-            <div className="text-[11px] font-bold text-ink">Student</div>
-            <div className="text-[9px] text-ink-muted">Aiko (Tokyo)</div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleDemoLogin("teacher_sharon")}
-            className="p-2 rounded-xl bg-cream-surface hover:bg-cream-deep border border-divider text-center transition-all"
-          >
-            <Sparkles className="w-4 h-4 text-gold mx-auto mb-1" />
-            <div className="text-[11px] font-bold text-ink">Tutor</div>
-            <div className="text-[9px] text-ink-muted">Sharon (SAST)</div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleDemoLogin("admin")}
-            className="p-2 rounded-xl bg-cream-surface hover:bg-cream-deep border border-divider text-center transition-all"
-          >
-            <Shield className="w-4 h-4 text-primary mx-auto mb-1" />
-            <div className="text-[11px] font-bold text-ink">Admin</div>
-            <div className="text-[9px] text-ink-muted">Operations</div>
-          </button>
-        </div>
-      </div>
 
       <div className="pt-2 text-center text-xs text-ink-muted">
         Don't have an account?{" "}

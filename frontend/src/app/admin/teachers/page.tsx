@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -14,31 +14,38 @@ import {
   Video,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { useApiData } from "@/hooks/useApiData";
 
 export default function AdminTeachersPage() {
-  const [tutors, setTutors] = useState<any[]>([]);
+  const { data, error, loading, reload } = useApiData(() => api.getTutors(), []);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadTutors() {
-      try {
-        const res = await api.getTutors();
-        setTutors(res.results || []);
-      } catch (e) {
-        console.error("Failed to load tutors:", e);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadTutors();
-  }, []);
-
+  // The API returns { results, count }; field names follow the backend list serializer (full_name, rating_avg, ...).
+  const tutors: any[] = data?.results ?? [];
+  const nameOf = (t: any): string => t.name ?? t.full_name ?? "";
+  const accentOf = (t: any): string => t.accent ?? "";
+  const q = search.toLowerCase();
   const filtered = tutors.filter(
-    (t) =>
-      t.name.toLowerCase().includes(search.toLowerCase()) ||
-      t.accent.toLowerCase().includes(search.toLowerCase())
+    (t) => nameOf(t).toLowerCase().includes(q) || accentOf(t).toLowerCase().includes(q)
   );
+
+  if (loading) {
+    return (
+      <div className="py-20 text-center space-y-4">
+        <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm font-bold text-ink-muted">Loading tutor roster...</p>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="py-20">
+        <ErrorState error={error ?? "No roster data returned."} title="We could not load the tutor roster" onRetry={reload} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
@@ -49,7 +56,7 @@ export default function AdminTeachersPage() {
             <span className="text-xs font-mono font-bold text-teal bg-teal/10 px-2 py-0.5 rounded-md">
               ACTIVE EDUCATORS
             </span>
-            <span className="text-xs font-bold text-ink-muted">{tutors.length} Verified Tutors</span>
+            <span className="text-xs font-bold text-ink-muted">{data.count ?? tutors.length} Tutors</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-ink font-serif">
             Tutor Roster &amp; Quality Telemetry
@@ -79,6 +86,11 @@ export default function AdminTeachersPage() {
 
       {/* Roster Table */}
       <div className="bg-white rounded-3xl border border-divider shadow-card overflow-hidden">
+        {filtered.length === 0 && (
+          <p className="p-8 text-center text-xs text-ink-muted">
+            {tutors.length === 0 ? "No tutors have been onboarded yet." : "No tutors match your filter."}
+          </p>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full min-w-[700px] border-collapse text-xs">
             <thead>
@@ -97,13 +109,13 @@ export default function AdminTeachersPage() {
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-3">
                       <img
-                        src={tutor.avatar}
-                        alt={tutor.name}
+                        src={tutor.avatar ?? tutor.avatar_url}
+                        alt={nameOf(tutor)}
                         className="w-10 h-10 rounded-2xl object-cover border border-divider"
                       />
                       <div>
-                        <span className="font-extrabold text-sm text-ink block">{tutor.name}</span>
-                        <span className="text-[11px] text-ink-muted">{tutor.bio?.slice(0, 45)}...</span>
+                        <span className="font-extrabold text-sm text-ink block">{nameOf(tutor)}</span>
+                        <span className="text-[11px] text-ink-muted">{(tutor.bio ?? tutor.headline ?? "")}</span>
                       </div>
                     </div>
                   </td>
@@ -113,19 +125,25 @@ export default function AdminTeachersPage() {
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-1 font-bold text-ink">
                       <Star className="w-3.5 h-3.5 text-accent fill-accent" />
-                      <span>{tutor.rating}</span>
-                      <span className="text-[10px] text-ink-muted">({tutor.review_count})</span>
+                      <span>{tutor.rating ?? tutor.rating_avg ?? "—"}</span>
+                      <span className="text-[10px] text-ink-muted">({tutor.review_count ?? tutor.rating_count ?? 0})</span>
                     </div>
                   </td>
 
                   <td className="py-4 px-4 font-extrabold text-teal font-serif text-sm">
-                    ${tutor.hourly_rate.toFixed(2)} USD
+                    ${Number(tutor.hourly_rate ?? tutor.price_per_25min_usd ?? 0).toFixed(2)} USD
                   </td>
 
                   <td className="py-4 px-4">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
-                      <ShieldCheck className="w-3 h-3 text-emerald-600" /> Active Verified
-                    </span>
+                    {tutor.is_verified === false ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200">
+                        Not Verified
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+                        <ShieldCheck className="w-3 h-3 text-emerald-600" /> Active Verified
+                      </span>
+                    )}
                   </td>
 
                   <td className="py-4 px-6 text-right">

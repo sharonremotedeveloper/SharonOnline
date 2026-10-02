@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { HelpCircle, Mail, Send, CheckCircle2, MessageSquare } from "lucide-react";
 import { submitInquiry } from "@/lib/api";
+import { InlineError } from "@/components/ui/ErrorState";
+import { ApiError } from "@/lib/http";
 
 export default function SupportPage() {
   const [formData, setFormData] = useState({
@@ -16,15 +18,29 @@ export default function SupportPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [responseMsg, setResponseMsg] = useState("");
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const res = await submitInquiry(formData);
-    setLoading(false);
-    if (res.success) {
-      setSubmitted(true);
-      setResponseMsg(res.message);
+    setSubmitError(null);
+    try {
+      const res = await submitInquiry(formData);
+      if (res.success) {
+        setSubmitted(true);
+        setResponseMsg(res.message);
+        setFormData({ name: "", email: "", subject: "", message: "", user_type: "student" });
+      } else {
+        setSubmitError(res.message || "We couldn't send your message.");
+      }
+    } catch (err) {
+      // Keep the typed text in the form so nothing is lost.
+      const detail = err instanceof ApiError && err.status !== 404 && err.status !== 0 ? ` (${err.message})` : "";
+      setSubmitError(
+        `We couldn't send your message right now${detail}. Your text is still in the form - please try again later or contact us directly by email.`
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -184,6 +200,8 @@ export default function SupportPage() {
                   className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-teal"
                 />
               </div>
+
+              <InlineError error={submitError} />
 
               <button
                 type="submit"

@@ -18,6 +18,8 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { ApiError } from "@/lib/http";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { MaterialDetail, VocabularyItem } from "@/types/material";
 import { CefrLevelBadge } from "@/components/materials/CefrLevelBadge";
 import { DiscussionSection } from "@/components/materials/DiscussionSection";
@@ -30,31 +32,46 @@ export default function MaterialReaderPage() {
 
   const [material, setMaterial] = useState<MaterialDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [reloadTick, setReloadTick] = useState(0);
   const [fontSize, setFontSize] = useState<"sm" | "base" | "lg">("base");
   const [copied, setCopied] = useState(false);
   const [savedVocabIds, setSavedVocabIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    let cancelled = false;
     async function loadData() {
       if (!slug) return;
       setLoading(true);
+      setLoadError(null);
       try {
         const item = await api.getMaterialBySlug(slug);
+        if (cancelled) return;
         setMaterial(item);
       } catch (err) {
-        console.error("Failed to load material:", err);
+        if (cancelled) return;
+        setMaterial(null);
+        // A 404 means the lesson doesn't exist (not-found state below); anything else is a load failure.
+        if (!(err instanceof ApiError && err.status === 404)) setLoadError(err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     loadData();
-  }, [slug]);
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, reloadTick]);
 
   const handleShare = () => {
     if (typeof window !== "undefined") {
-      navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      navigator.clipboard
+        .writeText(window.location.href)
+        .then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        })
+        .catch(() => setCopied(false));
     }
   };
 
@@ -89,6 +106,18 @@ export default function MaterialReaderPage() {
           <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm font-bold text-ink-muted">Loading interactive lesson...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-cream py-20 px-4">
+        <ErrorState
+          error={loadError}
+          title="We couldn't load this lesson"
+          onRetry={() => setReloadTick((t) => t + 1)}
+        />
       </div>
     );
   }

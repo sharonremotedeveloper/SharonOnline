@@ -7,7 +7,8 @@ interface PayPalButtonsWrapperProps {
   amountUsd: number;
   currency?: string;
   bookingReference: string;
-  onSuccess: (orderId: string) => void;
+  /** Asks the parent to confirm payment with the server. Must reject on failure. */
+  onSuccess: () => void | Promise<void>;
   disabled?: boolean;
 }
 
@@ -20,14 +21,16 @@ export function PayPalButtonsWrapper({
 }: PayPalButtonsWrapperProps) {
   const [processing, setProcessing] = useState(false);
 
-  const handleSimulatedPayPal = (e: React.FormEvent) => {
+  // NOTE: the live PayPal SDK is not integrated yet. No payment is taken here; this only asks the server to confirm,
+  // and the parent shows the server's real answer (it will fail until live payments exist).
+  const handlePayPal = async (e: React.FormEvent) => {
     e.preventDefault();
     setProcessing(true);
-
-    setTimeout(() => {
+    try {
+      await onSuccess();
+    } finally {
       setProcessing(false);
-      onSuccess(`PAYPAL_ORDER_${Date.now()}`);
-    }, 1200);
+    }
   };
 
   return (
@@ -59,14 +62,18 @@ export function PayPalButtonsWrapper({
         </div>
       </div>
 
-      <form onSubmit={handleSimulatedPayPal} className="space-y-3">
+      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900">
+        Online card and PayPal payments are not switched on yet. Trying to pay will ask the server to confirm and may be declined.
+      </div>
+
+      <form onSubmit={handlePayPal} className="space-y-3">
         <button
           type="submit"
           disabled={disabled || processing}
           className="w-full py-3.5 bg-accent hover:bg-gold-bright text-ink rounded-xl text-xs font-extrabold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {processing ? (
-            "Authorizing PayPal Order..."
+            "Confirming with server..."
           ) : (
             <>
               <Lock className="w-3.5 h-3.5" />

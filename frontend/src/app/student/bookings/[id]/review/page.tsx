@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { studentApi, submitLessonReview } from "@/lib/api";
 import { StudentLessonItem } from "@/types/student";
+import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 
 const RUBRIC_TAGS = [
   "Patience & Empathy",
@@ -43,21 +44,33 @@ export default function BookingReviewPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [submitError, setSubmitError] = useState<unknown>(null);
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
     async function loadLesson() {
+      setIsLoading(true);
+      setLoadError(null);
       try {
         const lessons = await studentApi.getStudentLessons();
-        const found = lessons.find((l) => l.id === bookingId) || lessons[0];
-        setLesson(found);
+        const found = lessons.find((l) => l.id === bookingId);
+        if (!found) {
+          setLesson(null);
+          setLoadError("We could not find this lesson in your history.");
+        } else {
+          setLesson(found);
+        }
       } catch (e) {
         console.error("Failed to load lesson for review:", e);
+        setLesson(null);
+        setLoadError(e);
       } finally {
         setIsLoading(false);
       }
     }
     loadLesson();
-  }, [bookingId]);
+  }, [bookingId, reloadTick]);
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
@@ -68,6 +81,7 @@ export default function BookingReviewPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       await submitLessonReview(bookingId, rating, selectedTags, privateNotes);
       setIsSubmitted(true);
@@ -76,6 +90,7 @@ export default function BookingReviewPage() {
       }, 2000);
     } catch (err) {
       console.error("Failed to submit review:", err);
+      setSubmitError(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -86,6 +101,23 @@ export default function BookingReviewPage() {
       <div className="max-w-2xl mx-auto py-20 text-center space-y-3">
         <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-xs text-ink-500">Loading lesson details...</p>
+      </div>
+    );
+  }
+
+  if (loadError || !lesson) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 space-y-4">
+        <ErrorState
+          error={loadError ?? "We could not find this lesson."}
+          title="We could not load this lesson"
+          onRetry={() => setReloadTick((t) => t + 1)}
+        />
+        <div className="text-center">
+          <Link href="/student/history" className="text-xs font-semibold text-teal-700 hover:underline">
+            Back to Lesson History
+          </Link>
+        </div>
       </div>
     );
   }
@@ -228,6 +260,8 @@ export default function BookingReviewPage() {
                 </span>
               </div>
             </div>
+
+            <InlineError error={submitError} />
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-3 pt-2">

@@ -11,11 +11,12 @@ import { Avatar } from "@/components/ui/Avatar";
 import { StarRating } from "@/components/ui/StarRating";
 import { TimezoneSelector } from "@/components/booking/TimezoneSelector";
 import { SlotGrid } from "@/components/booking/SlotGrid";
+import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 
 export default function StudentBookingPage() {
   const params = useParams();
   const router = useRouter();
-  const tutorId = (params?.tutorId as string) || "tut-1";
+  const tutorId = params?.tutorId as string;
 
   const [tutor, setTutor] = useState<PublicTutor | null>(null);
   const [timezone, setTimezone] = useState("Asia/Tokyo");
@@ -24,7 +25,9 @@ export default function StudentBookingPage() {
   const [selectedSlot, setSelectedSlot] = useState<BookingSlot | null>(null);
   const [loading, setLoading] = useState(true);
   const [reserving, setReserving] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<unknown>(null);
+  const [loadError, setLoadError] = useState<unknown>(null);
+  const [reloadTick, setReloadTick] = useState(0);
 
   // Detect student timezone
   useEffect(() => {
@@ -54,7 +57,9 @@ export default function StudentBookingPage() {
   // Load tutor details & slots
   useEffect(() => {
     async function loadData() {
+      if (!tutorId) return;
       setLoading(true);
+      setLoadError(null);
       try {
         const [tutorRes, slotsRes] = await Promise.all([
           api.getTutor(tutorId),
@@ -69,26 +74,31 @@ export default function StudentBookingPage() {
         }
       } catch (err) {
         console.error("Failed to load booking slots:", err);
+        setTutor(null);
+        setAllSlots([]);
+        setLoadError(err);
       } finally {
         setLoading(false);
       }
     }
 
     loadData();
-  }, [tutorId, timezone]);
+  }, [tutorId, timezone, reloadTick]);
 
   const activeDateSlots = allSlots.filter((s) => s.local_date === selectedDate);
 
   const handleSlotSelect = async (slot: BookingSlot) => {
     setSelectedSlot(slot);
     setReserving(true);
-    setError("");
+    setError(null);
 
     try {
       const res = await api.reserveSlot(tutorId, slot.start_time_utc);
       router.push(`/student/checkout/${res.booking_id}`);
-    } catch (err: any) {
-      setError(err.message || "Unable to hold slot. It may be currently reserved.");
+    } catch (err) {
+      console.error("Failed to reserve slot:", err);
+      setError(err);
+      setSelectedSlot(null);
       setReserving(false);
     }
   };
@@ -138,13 +148,15 @@ export default function StudentBookingPage() {
         </div>
       )}
 
-      {error && (
-        <div className="p-4 bg-primary/10 border border-primary/30 rounded-2xl text-xs text-primary font-medium">
-          {error}
-        </div>
-      )}
+      <InlineError error={error} />
 
-      {/* Booking Matrix Container */}
+      {loadError ? (
+        <ErrorState
+          error={loadError}
+          title="We couldn't load this tutor's availability"
+          onRetry={() => setReloadTick((t) => t + 1)}
+        />
+      ) : (
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">
         {/* Step Header & Timezone Selector */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-divider pb-6">
@@ -201,6 +213,7 @@ export default function StudentBookingPage() {
           />
         </div>
       </div>
+      )}
     </div>
   );
 }
