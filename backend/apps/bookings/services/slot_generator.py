@@ -1,13 +1,19 @@
 from datetime import datetime, date, time, timedelta
 import pytz
+from django.db.models import Q
 from django.utils import timezone
 from apps.teachers.models import TeacherProfile, TeacherAvailability
 from apps.bookings.models import Booking
+from apps.bookings.services.holds import live_hold_q
 from apps.bookings.services.lock_service import is_slot_locked
 
 LESSON_DURATION_MINUTES = 25
 BUFFER_MINUTES = 5
 SLOT_STEP_MINUTES = LESSON_DURATION_MINUTES + BUFFER_MINUTES  # 30-minute pacing
+
+# Only these two statuses leave the time free; every other outcome (paid, taught, no-show, disputed, interrupted...)
+# has consumed it. Unpaid PENDING_PAYMENT bookings count while their hold is live (services.holds.live_hold_q).
+FREE_STATUSES = (Booking.Status.PENDING_PAYMENT, Booking.Status.CANCELLED)
 
 def generate_teacher_slots(
     teacher: TeacherProfile,
@@ -45,17 +51,19 @@ def generate_teacher_slots(
     range_start_utc = datetime.combine(start_date, time.min).replace(tzinfo=pytz.UTC)
     range_end_utc = datetime.combine(end_date, time.max).replace(tzinfo=pytz.UTC)
 
-    # Fetch existing active bookings
-    existing_bookings = Booking.objects.filter(
-        teacher=teacher,
-        status__in=[Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS, Booking.Status.COMPLETED],
-        start_time_utc__gte=range_start_utc,
-        start_time_utc__lte=range_end_utc
-    ).values_list('start_time_utc', flat=True)
+    # Everything that occupies this tutor's time in the window, found by OVERLAP (not exact start), so an off-grid
+    # booking blocks every slot it touches. Live unpaid holds are 'reserved'; everything else is 'booked'.
+    occupying = Booking.objects.filter(
+        teacher=teacher, start_time_utc__lte=range_end_utc, end_time_utc__gte=range_start_utc,
+    ).filter(~Q(status__in=FREE_STATUSES) | live_hold_q(now_utc)).values_list('start_time_utc', 'end_time_utc', 'status')
+    booked_spans = [(s, e) for s, e, st in occupying if st != Booking.Status.PENDING_PAYMENT]
+    held_spans = [(s, e) for s, e, st in occupying if st == Booking.Status.PENDING_PAYMENT]
 
-    booked_timestamps = {b.isoformat() for b in existing_bookings}
+    def overlaps(spans, start, end):
+        return any(s < end and e > start for s, e in spans)
 
     generated_slots = []
+    seen_starts = set()
 
     for day_offset in range(days_ahead):
         current_date = start_date + timedelta(days=day_offset)
@@ -77,10 +85,11 @@ def generate_teacher_slots(
                 slot_end_utc = (cursor + timedelta(minutes=LESSON_DURATION_MINUTES)).astimezone(pytz.UTC)
 
                 # Skip past slots (must be at least 10 minutes in the future)
-                if slot_start_utc > now_utc + timedelta(minutes=10):
-                    iso_utc = slot_start_utc.isoformat()
-                    is_booked = iso_utc in booked_timestamps
-                    is_locked = is_slot_locked(str(teacher.id), iso_utc)
+                iso_utc = slot_start_utc.isoformat()
+                if slot_start_utc > now_utc + timedelta(minutes=10) and iso_utc not in seen_starts:
+                    seen_starts.add(iso_utc)  # overlapping availability rows must not list one slot twice
+                    is_booked = overlaps(booked_spans, slot_start_utc, slot_end_utc)
+                    is_locked = overlaps(held_spans, slot_start_utc, slot_end_utc) or is_slot_locked(str(teacher.id), iso_utc)
 
                     # Determine status
                     if is_booked:

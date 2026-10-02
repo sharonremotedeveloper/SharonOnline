@@ -1,4 +1,6 @@
 from rest_framework import generics, permissions, status
+from rest_framework.exceptions import ValidationError as DRFValidationError
+from apps.users.serializers import validate_iana_timezone
 from apps.common.schema import ReserveRequestSerializer, ReservationSerializer
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
@@ -27,6 +29,9 @@ from apps.payments.services.credits import grant_credit
 from apps.payments.services.settlement import successful_transaction
 from apps.materials.models import Material
 
+MAX_SLOT_DAYS = 14
+
+
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class TeacherSlotsView(APIView):
     """
@@ -35,19 +40,30 @@ class TeacherSlotsView(APIView):
     permission_classes = (permissions.AllowAny,)
 
     def get(self, request, teacher_id):
-        teacher = get_object_or_404(TeacherProfile, id=teacher_id, is_active=True)
-        days_ahead = int(request.query_params.get('days', 7))
+        # Same visibility rule as reserve: a tutor you cannot book has no public slots.
+        teacher = get_object_or_404(TeacherProfile, id=teacher_id, is_active=True, is_verified=True)
+
+        raw_days = request.query_params.get('days', '7')
+        if not (raw_days.isascii() and raw_days.isdigit() and int(raw_days) >= 1):
+            return Response({"days": "Must be a whole number of days, 1 to 14."}, status=status.HTTP_400_BAD_REQUEST)
+        days_ahead = min(int(raw_days), MAX_SLOT_DAYS)
+
         viewer_tz = request.query_params.get('tz', 'UTC')
+        try:
+            validate_iana_timezone(viewer_tz)
+        except DRFValidationError:
+            return Response({"tz": 'Enter a valid IANA timezone, e.g. "Asia/Tokyo".'}, status=status.HTTP_400_BAD_REQUEST)
 
         slots = generate_teacher_slots(
             teacher=teacher,
-            days_ahead=min(days_ahead, 14),
+            days_ahead=days_ahead,
             viewer_tz_name=viewer_tz
         )
         return Response({
             "teacher_id": str(teacher.id),
             "teacher_name": teacher.user.get_full_name() or teacher.user.username,
             "viewer_timezone": viewer_tz,
+            "days": days_ahead,
             "slot_count": len(slots),
             "slots": slots
         })

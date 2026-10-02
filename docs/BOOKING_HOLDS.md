@@ -23,7 +23,7 @@ Unchanged and now explicitly tested: a capture that lands after the purge **re-c
 
 ## Known limits / follow-ups
 
-* Slot *display* (`slot_generator`) still relies on the Redis lock for held slots; Task 9.3 makes it treat live DB holds as busy too (reserve already enforces it).
+* Slot *display* (`slot_generator`, Task 9.3) now reads the same rules: live DB holds show as `reserved` (Redis lock optional), every non-free booking status shows as `booked`, matching is by time overlap.
 * Frontend checkout timer is computed once from `lock_expires_at`; when Phase 10 wires `POST /payments/checkout/init/` it must reset the timer from the response's `hold_expires_at`, and show the 409 messages.
 * A gateway that leaves a payment pending for hours (e.g. e-check) outlives the 15-minute grace; those arrive through the late-payment path above.
 * PayFast `CANCELLED/FAILED` ITNs are acknowledged without marking the transaction `FAILED`; the hold simply lapses with the grace period (Task 10.x can tighten this).
