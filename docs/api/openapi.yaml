@@ -496,13 +496,51 @@ paths:
   /api/v1/bookings/:
     get:
       operationId: v1_bookings_list
+      summary: 'My lessons (students: lessons I booked; tutors: my roster)'
       parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+        description: Lessons starting on/after this UTC date (YYYY-MM-DD) or ISO date-time.
+      - in: query
+        name: ordering
+        schema:
+          type: string
+          enum:
+          - -start_time_utc
+          - start_time_utc
+        description: 'Default: soonest first for when=upcoming, newest first otherwise.'
       - name: page
         required: false
         in: query
         description: A page number within the paginated result set.
         schema:
           type: integer
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: 1-100 (default 20).
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: One or more booking statuses, comma-separated or repeated.
+      - in: query
+        name: to
+        schema:
+          type: string
+        description: Lessons starting on/before this UTC date (whole day) or ISO date-time.
+      - in: query
+        name: when
+        schema:
+          type: string
+          enum:
+          - past
+          - upcoming
+        description: upcoming = not yet ended, excluding cancelled and lapsed unpaid
+          holds; past = already ended.
       tags:
       - v1
       security:

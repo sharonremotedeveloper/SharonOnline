@@ -3,7 +3,7 @@ from rest_framework.exceptions import ValidationError as DRFValidationError
 from apps.users.serializers import validate_iana_timezone
 from apps.common.schema import ReserveRequestSerializer, ReservationSerializer, ReviewResultSerializer
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.throttling import ScopedRateThrottle
@@ -26,6 +26,7 @@ from .serializers import (
 from .services.slot_generator import generate_teacher_slots
 from .services.lock_service import acquire_slot_lock, release_slot_lock
 from .services.reservation import ReservationError, reservation_payload, reserve_slot
+from .services.listing import BookingListQuerySerializer, BookingPagination, filter_bookings, scoped_bookings
 from .services.reviews import ReviewError, submit_review
 from .services.state_machine import InvalidTransition, transition_booking
 from apps.users.permissions import IsStudent
@@ -97,6 +98,16 @@ class ReserveSlotView(APIView):
                         status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
 
+@extend_schema_view(get=extend_schema(
+    summary='My lessons (students: lessons I booked; tutors: my roster)',
+    parameters=[
+        OpenApiParameter('status', str, description='One or more booking statuses, comma-separated or repeated.'),
+        OpenApiParameter('when', str, enum=['upcoming', 'past'], description='upcoming = not yet ended, excluding cancelled and lapsed unpaid holds; past = already ended.'),
+        OpenApiParameter('from', str, description='Lessons starting on/after this UTC date (YYYY-MM-DD) or ISO date-time.'),
+        OpenApiParameter('to', str, description='Lessons starting on/before this UTC date (whole day) or ISO date-time.'),
+        OpenApiParameter('ordering', str, enum=['start_time_utc', '-start_time_utc'], description='Default: soonest first for when=upcoming, newest first otherwise.'),
+        OpenApiParameter('page_size', int, description='1-100 (default 20).'),
+    ]))
 class BookingListCreateView(generics.ListCreateAPIView):
     permission_classes = (permissions.IsAuthenticated,)
 
@@ -105,11 +116,15 @@ class BookingListCreateView(generics.ListCreateAPIView):
             return BookingCreateSerializer
         return BookingDetailSerializer
 
+    pagination_class = BookingPagination
+
     def get_queryset(self):
-        user = self.request.user
-        if user.role == 'teacher' and hasattr(user, 'teacher_profile'):
-            return Booking.objects.filter(teacher=user.teacher_profile).select_related('teacher__user', 'student', 'material')
-        return Booking.objects.filter(student=user).select_related('teacher__user', 'student', 'material')
+        qs = scoped_bookings(self.request.user)
+        if self.request.method != 'GET':
+            return qs
+        query = BookingListQuerySerializer(data=self.request.query_params)
+        query.is_valid(raise_exception=True)
+        return filter_bookings(qs, query.validated_data)[0]
 
     def create(self, request, *args, **kwargs):
         """Same validated, locked path as /reserve/ - there is no way to create a booking that skips the hold."""

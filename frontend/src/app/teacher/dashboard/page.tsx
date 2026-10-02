@@ -15,16 +15,21 @@ import {
   Award,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { request } from "@/lib/http";
+import { listBookings } from "@/lib/bookings";
 import { BookingDetail } from "@/types/booking";
 import { EskomStageBanner } from "@/components/teacher/EskomStageBanner";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
 
-async function loadTeacherBookings(): Promise<{ items: BookingDetail[]; truncated: boolean }> {
-  const res = await request<BookingDetail[] | { results: BookingDetail[]; next?: string | null }>("/bookings/");
-  if (Array.isArray(res)) return { items: res, truncated: false };
-  return { items: res.results ?? [], truncated: Boolean(res.next) };
+/** The server filters and counts, so nothing here depends on how many lessons the tutor has had. */
+async function loadTeacherBookings(): Promise<{ upcoming: BookingDetail[]; pendingMemos: BookingDetail[]; completedThisMonth: number }> {
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  const [upcoming, memos, completed] = await Promise.all([
+    listBookings({ when: "upcoming", status: ["confirmed", "in_progress"], pageSize: 50 }),
+    listBookings({ status: ["completed_pending_memo"], pageSize: 50 }),
+    listBookings({ status: ["completed", "completed_pending_memo"], from: monthStart, pageSize: 1 }),
+  ]);
+  return { upcoming: upcoming.items, pendingMemos: memos.items, completedThisMonth: completed.count };
 }
 
 export default function TeacherDashboardPage() {
@@ -35,30 +40,14 @@ export default function TeacherDashboardPage() {
   const eskomStatus = eskom.data;
   const wallet = walletQ.data;
 
-  const { upcomingLesson, pendingMemos, todayLessons, completedThisMonth } = useMemo(() => {
-    const items = bookingsQ.data?.items ?? [];
-    const now = Date.now();
-    const upcoming = items
-      .filter(
-        (b) => (b.status === "confirmed" || b.status === "in_progress") && new Date(b.end_time_utc).getTime() > now
-      )
-      .sort((x, y) => new Date(x.start_time_utc).getTime() - new Date(y.start_time_utc).getTime());
+  const upcoming = bookingsQ.data?.upcoming ?? [];
+  const pendingMemos = bookingsQ.data?.pendingMemos ?? [];
+  const completedThisMonth = bookingsQ.data?.completedThisMonth ?? 0;
+  const upcomingLesson = upcoming[0] ?? null;
+  const todayLessons = useMemo(() => {
     const todayStr = new Date().toDateString();
-    const monthNow = new Date();
-    return {
-      upcomingLesson: upcoming[0] ?? null,
-      pendingMemos: items.filter((b) => (b.status as string) === "completed_pending_memo"),
-      todayLessons: upcoming.filter((b) => new Date(b.start_time_utc).toDateString() === todayStr),
-      completedThisMonth: items.filter((b) => {
-        const d = new Date(b.start_time_utc);
-        return (
-          (b.status === "completed" || (b.status as string) === "completed_pending_memo") &&
-          d.getMonth() === monthNow.getMonth() &&
-          d.getFullYear() === monthNow.getFullYear()
-        );
-      }).length,
-    };
-  }, [bookingsQ.data]);
+    return upcoming.filter((b) => new Date(b.start_time_utc).toDateString() === todayStr);
+  }, [upcoming]);
 
   const pendingMemo = pendingMemos[0] ?? null;
   const fmtWhen = (b: BookingDetail) =>
@@ -224,11 +213,7 @@ export default function TeacherDashboardPage() {
               {bookingsQ.data ? `${completedThisMonth} ${completedThisMonth === 1 ? "Class" : "Classes"}` : "—"}
             </div>
             <p className="text-[11px] text-ink-muted">
-              {bookingsQ.error != null
-                ? "Couldn't load your lessons."
-                : bookingsQ.data?.truncated
-                ? "Counted from your most recent bookings only."
-                : "Based on your bookings."}
+              {bookingsQ.error != null ? "Couldn't load your lessons." : "Based on your bookings."}
             </p>
           </div>
 

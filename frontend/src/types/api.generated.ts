@@ -334,6 +334,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** My lessons (students: lessons I booked; tutors: my roster) */
         get: operations["v1_bookings_list"];
         put?: never;
         post: operations["v1_bookings_create"];
@@ -1804,8 +1805,20 @@ export interface operations {
     v1_bookings_list: {
         parameters: {
             query?: {
+                /** @description Lessons starting on/after this UTC date (YYYY-MM-DD) or ISO date-time. */
+                from?: string;
+                /** @description Default: soonest first for when=upcoming, newest first otherwise. */
+                ordering?: "-start_time_utc" | "start_time_utc";
                 /** @description A page number within the paginated result set. */
                 page?: number;
+                /** @description 1-100 (default 20). */
+                page_size?: number;
+                /** @description One or more booking statuses, comma-separated or repeated. */
+                status?: string;
+                /** @description Lessons starting on/before this UTC date (whole day) or ISO date-time. */
+                to?: string;
+                /** @description upcoming = not yet ended, excluding cancelled and lapsed unpaid holds; past = already ended. */
+                when?: "past" | "upcoming";
             };
             header?: never;
             path?: never;
