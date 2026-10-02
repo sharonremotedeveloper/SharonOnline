@@ -3,6 +3,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from rest_framework.response import Response
 from rest_framework import status
+from django.db import transaction
 from django.utils import timezone
 from django.db.models import Sum, Count, Q
 from datetime import timedelta
@@ -12,6 +13,7 @@ import uuid
 from apps.users.permissions import IsPlatformAdmin
 from apps.teachers.models import TeacherProfile
 from apps.bookings.models import Booking
+from apps.bookings.services.state_machine import InvalidTransition, transition_booking
 from apps.payments.models import PaymentTransaction, CreditBundle
 from apps.admin_api.models import DisputeCase, PayoutBatch
 from apps.users.models import User
@@ -161,6 +163,15 @@ class DisputesListView(APIView):
         return Response(serializer.data)
 
 
+def _grant_credit(student, pack_name: str) -> None:
+    """Add exactly one lesson credit (a brand-new bundle starts at 0, so the first grant yields 1, not 2)."""
+    bundle, _ = CreditBundle.objects.get_or_create(
+        user=student, defaults={'pack_name': pack_name, 'amount_paid': 0.0, 'total_credits': 0, 'remaining_credits': 0})
+    bundle.total_credits += 1
+    bundle.remaining_credits += 1
+    bundle.save(update_fields=['total_credits', 'remaining_credits'])
+
+
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class ResolveDisputeView(APIView):
     permission_classes = [IsPlatformAdmin]
@@ -171,55 +182,51 @@ class ResolveDisputeView(APIView):
         resolution = serializer.validated_data['resolution']
         admin_notes = serializer.validated_data.get('admin_notes', '')
 
-        try:
-            dispute = DisputeCase.objects.select_related('booking', 'student', 'teacher', 'teacher__user').get(pk=pk)
+        with transaction.atomic():
+            # Row-locked so two admins (or a double click) cannot both settle the same dispute.
+            dispute = (DisputeCase.objects.select_for_update(of=('self',))
+                       .select_related('booking', 'student', 'teacher', 'teacher__user').filter(pk=pk).first())
+            if dispute is None:
+                return Response({'error': 'Dispute case not found'}, status=status.HTTP_404_NOT_FOUND)
+            if dispute.status != DisputeCase.Status.OPEN:
+                return Response({'error': 'This dispute has already been resolved.'}, status=status.HTTP_409_CONFLICT)
+
+            booking = dispute.booking
+            if booking.status != Booking.Status.DISPUTED:
+                return Response({'error': f"Booking is '{booking.status}', not awaiting arbitration."},
+                                status=status.HTTP_409_CONFLICT)
+
+            target = (Booking.Status.CANCELLED if resolution == DisputeCase.Resolution.FULL_REFUND_STUDENT
+                      else Booking.Status.COMPLETED)
+            try:
+                transition_booking(booking, target, actor=request.user, reason=f'dispute resolved: {resolution}')
+            except InvalidTransition as exc:
+                return Response({'error': str(exc)}, status=status.HTTP_409_CONFLICT)
+
             dispute.status = DisputeCase.Status.RESOLVED
             dispute.resolution = resolution
             dispute.admin_notes = admin_notes
             dispute.resolved_at = timezone.now()
             dispute.save()
 
-            booking = dispute.booking
-
             # Financial settlement execution
             if resolution == DisputeCase.Resolution.FULL_REFUND_STUDENT:
-                booking.status = Booking.Status.CANCELLED
-                booking.save()
-                # Refund credit to student
-                bundle, _ = CreditBundle.objects.get_or_create(
-                    user=dispute.student,
-                    defaults={'pack_name': 'Refunded Dispute Credit', 'amount_paid': 0.0, 'total_credits': 1, 'remaining_credits': 1}
-                )
-                bundle.remaining_credits += 1
-                bundle.save()
-
-            elif resolution == DisputeCase.Resolution.RELEASE_TUTOR:
-                booking.status = Booking.Status.COMPLETED
-                booking.save()
+                _grant_credit(dispute.student, 'Refunded Dispute Credit')
 
             elif resolution == DisputeCase.Resolution.SPLIT_50_50:
                 # Platform absorbs cost: student receives 1 credit refund AND tutor receives cleared payout
-                booking.status = Booking.Status.COMPLETED
-                booking.save()
-                bundle, _ = CreditBundle.objects.get_or_create(
-                    user=dispute.student,
-                    defaults={'pack_name': 'Dispute Settlement Credit', 'amount_paid': 0.0, 'total_credits': 1, 'remaining_credits': 1}
-                )
-                bundle.remaining_credits += 1
-                bundle.save()
+                _grant_credit(dispute.student, 'Dispute Settlement Credit')
 
             # Record immutable GAAP/SARB double-entry ledger entries
             from apps.payments.services.ledger_service import record_dispute_settlement_entry
             record_dispute_settlement_entry(dispute_case=dispute, resolution=resolution)
 
-            return Response({
-                'success': True,
-                'dispute_id': str(dispute.id),
-                'resolution': resolution,
-                'message': f"Dispute resolved with action: {resolution}. Ledger updated atomically."
-            })
-        except DisputeCase.DoesNotExist:
-            return Response({'error': 'Dispute case not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({
+            'success': True,
+            'dispute_id': str(dispute.id),
+            'resolution': resolution,
+            'message': f"Dispute resolved with action: {resolution}. Ledger updated atomically."
+        })
 
 
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers

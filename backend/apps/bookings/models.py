@@ -107,3 +107,25 @@ class AttendanceAudit(models.Model):
 
     def __str__(self):
         return f"Attendance {self.participant_email} on {self.booking_id} ({self.total_minutes}m)"
+
+
+class BookingStatusChange(models.Model):
+    """
+    Append-only audit trail: one row per status change made through `services.state_machine.transition_booking`.
+    Never edited or deleted by application code (disputes and payouts rely on being able to replay what happened).
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='status_changes')
+    from_status = models.CharField(max_length=30)
+    to_status = models.CharField(max_length=30)
+    actor = models.CharField(max_length=80, help_text="'user:<username>' or a system source such as 'system:purge_expired'.")
+    actor_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    reason = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['created_at']
+        indexes = [models.Index(fields=['booking', 'created_at'])]
+
+    def __str__(self):
+        return f"{self.booking_id}: {self.from_status} -> {self.to_status} by {self.actor}"
