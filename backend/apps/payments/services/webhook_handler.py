@@ -1,6 +1,7 @@
 from django.db import transaction, IntegrityError
 from django.utils import timezone
-from apps.payments.models import PaymentTransaction, CreditBundle, GatewayAnomaly
+from apps.payments.services.credits import grant_credit
+from apps.payments.models import PaymentTransaction, GatewayAnomaly
 from apps.payments.services.ledger_service import (
     record_payment_capture_entry, record_def501_quarantine_entry, record_unallocated_payment_entry)
 from apps.bookings.models import Booking
@@ -127,13 +128,7 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
                                reason=f'DEF-501: {reason}')
 
             # Restitution: credit student 1 lesson credit so funds are not lost
-            bundle, _ = CreditBundle.objects.get_or_create(
-                user=booking.student,
-                defaults={'remaining_credits': 0, 'total_credits': 0, 'amount_paid': 0.0}
-            )
-            bundle.remaining_credits += 1
-            bundle.total_credits += 1
-            bundle.save(update_fields=['remaining_credits', 'total_credits'])
+            grant_credit(booking.student, credits=1, pack_name='DEF-501 restitution')
 
             # Open a DisputeCase for admin review in tribunal
             DisputeCase.objects.get_or_create(
@@ -181,13 +176,7 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
             transition_booking(booking, Booking.Status.DISPUTED, actor=f'system:{gateway}_webhook',
                                reason='DEF-501: IntegrityError race on confirmation')
 
-            bundle, _ = CreditBundle.objects.get_or_create(
-                user=booking.student,
-                defaults={'remaining_credits': 0, 'total_credits': 0, 'amount_paid': 0.0}
-            )
-            bundle.remaining_credits += 1
-            bundle.total_credits += 1
-            bundle.save(update_fields=['remaining_credits', 'total_credits'])
+            grant_credit(booking.student, credits=1, pack_name='DEF-501 race restitution')
 
             DisputeCase.objects.get_or_create(
                 booking=booking,

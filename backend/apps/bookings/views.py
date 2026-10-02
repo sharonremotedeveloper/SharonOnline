@@ -7,6 +7,8 @@ from rest_framework.views import APIView
 from rest_framework.throttling import ScopedRateThrottle
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from datetime import timedelta
+from django.conf import settings
 from django.utils import timezone
 from .models import Booking, LessonMemo
 from apps.teachers.models import TeacherProfile
@@ -21,6 +23,8 @@ from .services.slot_generator import generate_teacher_slots
 from .services.lock_service import acquire_slot_lock, release_slot_lock
 from .services.reservation import ReservationError, reservation_payload, reserve_slot
 from .services.state_machine import InvalidTransition, transition_booking
+from apps.payments.services.credits import grant_credit
+from apps.payments.services.settlement import successful_transaction
 from apps.materials.models import Material
 
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
@@ -241,34 +245,34 @@ class ReportOutageView(APIView):
         if not (is_student or is_teacher or request.user.is_staff):
             return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
 
-        reason = request.data.get("reason", "Eskom Load Shedding / Power Interruption")
+        raw_reason = request.data.get("reason") if hasattr(request.data, "get") else None
+        reason = (str(raw_reason).strip() if isinstance(raw_reason, str) else "")[:255] or "Eskom Load Shedding / Power Interruption"
+
         with transaction.atomic():
-            # Row lock + status guard make the refund idempotent: one outage report per live booking.
-            booking = Booking.objects.select_for_update().get(pk=booking.pk)
+            # Row lock + the state machine make this idempotent: one outage settlement per booking, ever.
+            booking = Booking.objects.select_for_update(of=('self',)).select_related('teacher__user', 'student').get(pk=booking.pk)
             if booking.status not in (Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS):
                 return Response({"error": f"Outage cannot be reported for a booking in status '{booking.status}'."},
                                 status=status.HTTP_409_CONFLICT)
-            transition_booking(booking, Booking.Status.INTERRUPTED_POWER, actor=request.user, reason=str(reason))
 
-            # Refund 1 credit to student
-            from apps.payments.models import CreditBundle
-            bundle = CreditBundle.objects.filter(user=booking.student).order_by('-created_at').first()
-            if bundle:
-                bundle.remaining_credits += 1
-                bundle.save()
-            else:
-                CreditBundle.objects.create(
-                    user=booking.student,
-                    pack_name="Eskom Outage Refund Credit",
-                    total_credits=1,
-                    remaining_credits=1,
-                    amount_paid=0.00,
-                    currency="USD"
-                )
+            # Only around the lesson itself - otherwise "outage" would be a free, instant refund for any future booking.
+            now = timezone.now()
+            opens = booking.start_time_utc - timedelta(seconds=settings.OUTAGE_REPORT_BEFORE_START_SECONDS)
+            closes = booking.end_time_utc + timedelta(seconds=settings.OUTAGE_REPORT_AFTER_END_SECONDS)
+            if not (opens <= now <= closes):
+                return Response({"error": "A power outage can only be reported from "
+                                          f"{settings.OUTAGE_REPORT_BEFORE_START_SECONDS // 60} minutes before the lesson until "
+                                          f"{settings.OUTAGE_REPORT_AFTER_END_SECONDS // 60} minutes after it ends."},
+                                status=status.HTTP_409_CONFLICT)
 
-            # Record double-entry ledger journal entry
-            from apps.payments.services.ledger_service import record_outage_refund_entry
-            record_outage_refund_entry(booking=booking, user=booking.student)
+            result = transition_booking(booking, Booking.Status.INTERRUPTED_POWER, actor=request.user, reason=reason)
+            if result.changed:
+                # The lesson did not run: return the student's money as a wallet credit and drain the booking's escrow
+                # in the ledger by exactly what was captured (the tutor is not paid for an interrupted lesson).
+                grant_credit(booking.student, credits=1, pack_name="Eskom Outage Refund Credit")
+                from apps.payments.services.ledger_service import record_outage_refund_entry
+                record_outage_refund_entry(booking=booking, user=booking.student,
+                                           payment_transaction=successful_transaction(booking))
 
         return Response({
             "status": "interrupted_power",

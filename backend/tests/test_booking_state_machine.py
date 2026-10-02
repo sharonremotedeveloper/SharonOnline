@@ -163,7 +163,7 @@ class TestMemo:
 @pytest.mark.django_db
 class TestOutage:
     def test_outage_is_audited_and_credits_once(self, teacher_user, student_user):
-        booking = make_booking(teacher_user, student_user, status=S.CONFIRMED)
+        booking = make_booking(teacher_user, student_user, status=S.CONFIRMED, offset_hours=0.1)  # starts in 6 min
         c = _client(student_user)
         assert c.post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 200
         assert c.post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 409

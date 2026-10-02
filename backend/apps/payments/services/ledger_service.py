@@ -330,14 +330,18 @@ def record_student_refund_entry(
 def record_dispute_settlement_entry(
     dispute_case,
     resolution: str,
-    fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR
+    fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR,
+    payment_transaction: Optional[PaymentTransaction] = None,
 ) -> List[LedgerEntry]:
     """
     Triggered when an admin resolves a dispute tribunal case.
     Handles FULL_REFUND_STUDENT, RELEASE_TUTOR, and platform-absorbed SPLIT_50_50.
     """
     booking = dispute_case.booking
-    amount_usd = Decimal(str(booking.teacher.price_per_25min_usd)).quantize(Decimal('0.01'))
+    # Settle exactly what was captured (amount AND currency) so this booking's escrow returns to zero; fall back to the
+    # tutor's list price only when there is no captured payment (e.g. credit-funded or legacy rows).
+    amount_usd = Decimal(str(payment_transaction.amount if payment_transaction else booking.teacher.price_per_25min_usd)).quantize(Decimal('0.01'))
+    currency = payment_transaction.currency if payment_transaction else 'USD'
 
     if resolution == 'full_refund_student':
         # Student refund to platform credit wallet
@@ -346,14 +350,14 @@ def record_dispute_settlement_entry(
                 'account': LedgerAccount.LIABILITY_STUDENT_ESCROW,
                 'entry_type': LedgerEntry.EntryType.DEBIT,
                 'amount': amount_usd,
-                'currency': 'USD',
+                'currency': currency,
                 'description': f"Escrow cancelled - refunded to student for dispute {dispute_case.id}"
             },
             {
                 'account': LedgerAccount.LIABILITY_STUDENT_WALLET,
                 'entry_type': LedgerEntry.EntryType.CREDIT,
                 'amount': amount_usd,
-                'currency': 'USD',
+                'currency': currency,
                 'description': f"Student credit wallet restitution for dispute {dispute_case.id}"
             }
         ]
@@ -365,21 +369,21 @@ def record_dispute_settlement_entry(
                 'account': LedgerAccount.LIABILITY_STUDENT_ESCROW,
                 'entry_type': LedgerEntry.EntryType.DEBIT,
                 'amount': amount_usd,
-                'currency': 'USD',
+                'currency': currency,
                 'description': f"Escrow released to tutor by arbitration for dispute {dispute_case.id}"
             },
             {
                 'account': LedgerAccount.LIABILITY_TUTOR_PAYABLE,
                 'entry_type': LedgerEntry.EntryType.CREDIT,
                 'amount': tutor_net,
-                'currency': 'USD',
+                'currency': currency,
                 'description': f"Tutor payable awarded by tribunal for dispute {dispute_case.id}"
             },
             {
                 'account': LedgerAccount.REVENUE_PLATFORM_COMMISSION,
                 'entry_type': LedgerEntry.EntryType.CREDIT,
                 'amount': platform_fee,
-                'currency': 'USD',
+                'currency': currency,
                 'description': f"Platform commission on arbitrated release for dispute {dispute_case.id}"
             }
         ]
@@ -394,21 +398,21 @@ def record_dispute_settlement_entry(
                 'account': LedgerAccount.LIABILITY_STUDENT_ESCROW,
                 'entry_type': LedgerEntry.EntryType.DEBIT,
                 'amount': amount_usd,
-                'currency': 'USD',
+                'currency': currency,
                 'description': f"Escrow cleared under 50/50 dispute split {dispute_case.id}"
             },
             {
                 'account': LedgerAccount.LIABILITY_TUTOR_PAYABLE,
                 'entry_type': LedgerEntry.EntryType.CREDIT,
                 'amount': tutor_net,
-                'currency': 'USD',
+                'currency': currency,
                 'description': f"Tutor share paid under 50/50 dispute split {dispute_case.id}"
             },
             {
                 'account': LedgerAccount.REVENUE_PLATFORM_COMMISSION,
                 'entry_type': LedgerEntry.EntryType.CREDIT,
                 'amount': platform_fee,
-                'currency': 'USD',
+                'currency': currency,
                 'description': f"Platform fee under 50/50 dispute split {dispute_case.id}"
             },
             # 2. Platform absorbs student restitution expense
@@ -416,14 +420,14 @@ def record_dispute_settlement_entry(
                 'account': LedgerAccount.EXPENSE_DISPUTE_SETTLEMENT,
                 'entry_type': LedgerEntry.EntryType.DEBIT,
                 'amount': amount_usd,
-                'currency': 'USD',
+                'currency': currency,
                 'description': f"Platform absorption expense for 50/50 dispute settlement {dispute_case.id}"
             },
             {
                 'account': LedgerAccount.LIABILITY_STUDENT_WALLET,
                 'entry_type': LedgerEntry.EntryType.CREDIT,
                 'amount': amount_usd,
-                'currency': 'USD',
+                'currency': currency,
                 'description': f"Restitution credit issued to student {dispute_case.student.username}"
             }
         ]
@@ -436,8 +440,9 @@ def record_dispute_settlement_entry(
         description=f"Dispute {dispute_case.id} resolved as {resolution}",
         booking=booking,
         dispute_case=dispute_case,
+        payment_transaction=payment_transaction,
         user=dispute_case.student,
-        currency='USD',
+        currency=currency,
         fx_rate_to_zar=fx_rate_to_zar
     )
 
@@ -446,29 +451,32 @@ def record_outage_refund_entry(
     booking,
     user=None,
     amount_usd: Optional[Decimal] = None,
-    fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR
+    fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR,
+    payment_transaction: Optional[PaymentTransaction] = None,
 ) -> List[LedgerEntry]:
     """
     Triggered upon load-shedding / Eskom power outage mid-lesson interruption.
     DR Liability: Student Escrow Deposits (Holding)
     CR Liability: Student Wallet Credits (Student Credit Wallet)
     """
-    amount = amount_usd or booking.teacher.price_per_25min_usd
+    # Refund exactly what was captured (amount AND currency) so the escrow liability for this booking returns to zero.
+    amount = amount_usd or (payment_transaction.amount if payment_transaction else booking.teacher.price_per_25min_usd)
     amount = Decimal(str(amount)).quantize(Decimal('0.01'))
+    currency = payment_transaction.currency if payment_transaction else 'USD'
 
     entries = [
         {
             'account': LedgerAccount.LIABILITY_STUDENT_ESCROW,
             'entry_type': LedgerEntry.EntryType.DEBIT,
             'amount': amount,
-            'currency': 'USD',
+            'currency': currency,
             'description': f"Escrow hold released due to Eskom load-shedding force majeure BK-{str(booking.id)[:6].upper()}"
         },
         {
             'account': LedgerAccount.LIABILITY_STUDENT_WALLET,
             'entry_type': LedgerEntry.EntryType.CREDIT,
             'amount': amount,
-            'currency': 'USD',
+            'currency': currency,
             'description': f"Student credit wallet refunded due to Eskom power outage"
         }
     ]
@@ -478,8 +486,9 @@ def record_outage_refund_entry(
         event_type=LedgerEntry.EventType.OUTAGE_REFUND,
         description=f"Eskom load-shedding force majeure refund for booking {booking.id}",
         booking=booking,
+        payment_transaction=payment_transaction,
         user=user or booking.student,
-        currency='USD',
+        currency=currency,
         fx_rate_to_zar=fx_rate_to_zar
     )
 

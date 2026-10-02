@@ -14,7 +14,9 @@ from apps.users.permissions import IsPlatformAdmin
 from apps.teachers.models import TeacherProfile
 from apps.bookings.models import Booking
 from apps.bookings.services.state_machine import InvalidTransition, transition_booking
-from apps.payments.models import PaymentTransaction, CreditBundle
+from apps.payments.models import PaymentTransaction
+from apps.payments.services.credits import grant_credit
+from apps.payments.services.settlement import successful_transaction
 from apps.admin_api.models import DisputeCase, PayoutBatch
 from apps.users.models import User
 from apps.admin_api.serializers import (
@@ -163,15 +165,6 @@ class DisputesListView(APIView):
         return Response(serializer.data)
 
 
-def _grant_credit(student, pack_name: str) -> None:
-    """Add exactly one lesson credit (a brand-new bundle starts at 0, so the first grant yields 1, not 2)."""
-    bundle, _ = CreditBundle.objects.get_or_create(
-        user=student, defaults={'pack_name': pack_name, 'amount_paid': 0.0, 'total_credits': 0, 'remaining_credits': 0})
-    bundle.total_credits += 1
-    bundle.remaining_credits += 1
-    bundle.save(update_fields=['total_credits', 'remaining_credits'])
-
-
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class ResolveDisputeView(APIView):
     permission_classes = [IsPlatformAdmin]
@@ -211,15 +204,25 @@ class ResolveDisputeView(APIView):
 
             # Financial settlement execution
             if resolution == DisputeCase.Resolution.FULL_REFUND_STUDENT:
-                _grant_credit(dispute.student, 'Refunded Dispute Credit')
+                grant_credit(dispute.student, pack_name='Refunded Dispute Credit')
 
             elif resolution == DisputeCase.Resolution.SPLIT_50_50:
                 # Platform absorbs cost: student receives 1 credit refund AND tutor receives cleared payout
-                _grant_credit(dispute.student, 'Dispute Settlement Credit')
+                grant_credit(dispute.student, pack_name='Dispute Settlement Credit')
 
             # Record immutable GAAP/SARB double-entry ledger entries
             from apps.payments.services.ledger_service import record_dispute_settlement_entry
-            record_dispute_settlement_entry(dispute_case=dispute, resolution=resolution)
+            record_dispute_settlement_entry(dispute_case=dispute, resolution=resolution,
+                                            payment_transaction=successful_transaction(booking))
+
+            if resolution != DisputeCase.Resolution.FULL_REFUND_STUDENT:
+                # The tutor was just paid by this decision: mark the escrow cleared so the 24h job can never pay again.
+                paid = successful_transaction(booking)
+                if paid:
+                    paid.escrow_cleared = True
+                    paid.save(update_fields=['escrow_cleared', 'updated_at'])
+                booking.escrow_cleared_at = timezone.now()
+                booking.save(update_fields=['escrow_cleared_at', 'updated_at'])
 
         return Response({
             'success': True,
@@ -247,6 +250,9 @@ class EscrowLedgerView(APIView):
                 Booking.Status.COMPLETED_PENDING_MEMO,
                 Booking.Status.COMPLETED_MEMO_FORFEITED,
                 Booking.Status.DISPUTED,
+                Booking.Status.STUDENT_NO_SHOW,
+                Booking.Status.TEACHER_NO_SHOW,
+                Booking.Status.INTERRUPTED_POWER,
             ]
         ).select_related('teacher', 'teacher__user', 'student')[:30]
 
@@ -268,11 +274,15 @@ class EscrowLedgerView(APIView):
                     LedgerEntry.EventType.REFUND_ISSUED,
                     LedgerEntry.EventType.OUTAGE_REFUND,
                 ]
-            ).exists()
+            ).exists() or (b.status == Booking.Status.CANCELLED and LedgerEntry.objects.filter(
+                booking=b, event_type=LedgerEntry.EventType.DISPUTE_RESOLVED).exists())
+            # An arbitration that paid the tutor (release / split) counts as cleared.
+            has_cleared_entry_by_dispute = (not has_refund_entry) and LedgerEntry.objects.filter(
+                booking=b, event_type=LedgerEntry.EventType.DISPUTE_RESOLVED).exists()
 
             if has_refund_entry:
                 escrow_status = 'refunded'
-            elif has_cleared_entry or b.escrow_cleared_at is not None:
+            elif has_cleared_entry or has_cleared_entry_by_dispute or b.escrow_cleared_at is not None:
                 escrow_status = 'cleared'
             elif is_holding:
                 escrow_status = 'holding'

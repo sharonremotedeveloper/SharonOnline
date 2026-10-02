@@ -9,7 +9,8 @@ from apps.bookings.models import Booking, AttendanceAudit, LessonMemo
 from apps.bookings.services.holds import live_hold_q
 from apps.bookings.services.lock_service import release_slot_lock
 from apps.bookings.services.state_machine import InvalidTransition, transition_booking
-from apps.payments.models import CreditBundle
+from apps.payments.services.credits import grant_credit
+from apps.payments.services.settlement import successful_transaction
 from apps.common.locks import distributed_task_lock
 
 logger = logging.getLogger(__name__)
@@ -166,19 +167,15 @@ def audit_attendance_and_noshows_task():
                 teacher.save(update_fields=['sla_strikes', 'is_active'])
 
                 # Instant student restitution: 100% refund + 1 bonus credit (2 total)
-                bundle, _ = CreditBundle.objects.get_or_create(
-                    user=booking.student,
-                    defaults={'remaining_credits': 0, 'total_credits': 0, 'amount_paid': 0.0}
-                )
-                bundle.remaining_credits += 2
-                bundle.total_credits += 2
-                bundle.save(update_fields=['remaining_credits', 'total_credits'])
+                grant_credit(booking.student, credits=2, pack_name='Teacher no-show restitution')
 
                 # Record double-entry ledger journal entries for no-show refund and platform compensation
                 from apps.payments.services.ledger_service import record_compensation_entry, record_student_refund_entry
+                paid = successful_transaction(booking)
                 record_student_refund_entry(
                     booking=booking,
-                    amount_usd=booking.teacher.price_per_25min_usd,
+                    payment_transaction=paid,
+                    amount_usd=None if paid else booking.teacher.price_per_25min_usd,
                     refund_method='wallet_credit',
                     reason="Teacher no-show full refund"
                 )
@@ -368,13 +365,7 @@ def enforce_memo_sla_task():
             teacher.save(update_fields=['sla_strikes', 'is_active'])
 
             # Compensate student with 1 free apology credit
-            bundle, _ = CreditBundle.objects.get_or_create(
-                user=booking.student,
-                defaults={'remaining_credits': 0, 'total_credits': 0, 'amount_paid': 0.0}
-            )
-            bundle.remaining_credits += 1
-            bundle.total_credits += 1
-            bundle.save(update_fields=['remaining_credits', 'total_credits'])
+            grant_credit(booking.student, credits=1, pack_name='Memo SLA apology credit')
 
             # Record platform-absorbed compensation entry
             from apps.payments.services.ledger_service import record_compensation_entry
