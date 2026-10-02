@@ -19,6 +19,8 @@ from rest_framework.views import APIView
 from django.utils import timezone
 
 from apps.bookings.models import Booking
+from apps.bookings.services.holds import SLOT_OWNING_STATUSES, hold_expires_at, hold_is_live, inflight_grace, max_hold
+from apps.bookings.services.lock_service import extend_slot_lock
 from .gateways import payfast, paypal
 from .models import CreditBundle, GatewayAnomaly, PaymentTransaction
 from .services.webhook_handler import process_payment_webhook, record_unallocated_payment
@@ -80,8 +82,17 @@ class CheckoutInitializeView(APIView):
                             status=status.HTTP_409_CONFLICT)
         if not (booking.teacher.is_active and booking.teacher.is_verified):
             return Response({"error": "This tutor is not currently bookable."}, status=status.HTTP_409_CONFLICT)
-        if booking.start_time_utc <= timezone.now():
+        now = timezone.now()
+        if booking.start_time_utc <= now:
             return Response({"error": "This lesson slot has already started."}, status=status.HTTP_409_CONFLICT)
+
+        # Never take money for a hold that has lapsed or a slot someone else already owns (Task 9.4).
+        if not hold_is_live(booking, now):
+            return Response({"error": "This reservation has expired. Please choose the time slot again."},
+                            status=status.HTTP_409_CONFLICT)
+        if Booking.objects.filter(teacher=booking.teacher, start_time_utc=booking.start_time_utc,
+                                  status__in=SLOT_OWNING_STATUSES).exclude(id=booking.id).exists():
+            return Response({"error": "This time slot has just been booked by someone else."}, status=status.HTTP_409_CONFLICT)
 
         amount_usd = Decimal(str(booking.teacher.price_per_25min_usd)).quantize(CENT, ROUND_HALF_UP)
         if amount_usd <= 0:
@@ -97,15 +108,26 @@ class CheckoutInitializeView(APIView):
         else:
             amount, currency = amount_usd, 'USD'
 
+        # Payment starts now: keep the slot locked for the in-flight grace period. If the Redis lock lapsed and someone
+        # else grabbed the slot, stop here rather than collect money we would have to refund.
+        grace = int(inflight_grace().total_seconds())
+        remaining_cap = int((booking.created_at + max_hold() - now).total_seconds())
+        if not extend_slot_lock(str(booking.teacher_id), booking.start_time_utc.isoformat(), str(booking.student_id),
+                                max(1, min(grace, remaining_cap))):
+            return Response({"error": "This time slot has just been taken. Please choose another."},
+                            status=status.HTTP_409_CONFLICT)
+
         PaymentTransaction.objects.create(
             booking=booking, gateway=gateway, gateway_reference=f"INIT-{reference}",
             merchant_reference=reference, amount=amount, currency=currency,
             status=PaymentTransaction.Status.INITIALIZED,
         )
 
+        hold_until = hold_expires_at(booking, now).isoformat()  # the UI timer follows this, not the original 10 minutes
         if gateway == 'payfast':
             return Response({
                 "gateway": "payfast",
+                "hold_expires_at": hold_until,
                 "transaction_reference": reference,
                 "amount": str(amount),
                 "currency": currency,
@@ -117,6 +139,7 @@ class CheckoutInitializeView(APIView):
             })
         return Response({
             "gateway": "paypal",
+            "hold_expires_at": hold_until,
             "transaction_reference": reference,
             "amount": str(amount),
             "currency": currency,

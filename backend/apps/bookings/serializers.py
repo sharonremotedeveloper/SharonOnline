@@ -9,7 +9,7 @@ from datetime import timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.conf import settings
-from .services.lock_service import LOCK_DURATION_SECONDS
+from .services.holds import hold_expires_at
 from django.utils.dateparse import parse_datetime
 
 class LessonMemoSerializer(serializers.ModelSerializer):
@@ -105,7 +105,7 @@ class BookingDetailSerializer(serializers.ModelSerializer):
     def get_lock_expires_at(self, obj) -> Optional[str]:
         if obj.status != Booking.Status.PENDING_PAYMENT:
             return None
-        return (obj.created_at + timedelta(seconds=LOCK_DURATION_SECONDS)).isoformat()
+        return hold_expires_at(obj).isoformat()
 
     def get_material_slug(self, obj) -> Optional[str]:
         return obj.material.slug if obj.material_id else None

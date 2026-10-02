@@ -41,3 +41,20 @@ def release_slot_lock(teacher_id: str, slot_timestamp_utc: str, student_id: str 
 def is_slot_locked(teacher_id: str, slot_timestamp_utc: str) -> bool:
     key = build_slot_lock_key(teacher_id, slot_timestamp_utc)
     return cache.get(key) is not None
+
+
+def extend_slot_lock(teacher_id: str, slot_timestamp_utc: str, student_id: str, seconds: int) -> bool:
+    """
+    Make sure `student_id` holds the slot lock for at least `seconds` more (used when a payment starts, Task 9.4).
+    - their own live lock is extended;
+    - a lock that lapsed and is still free is re-taken;
+    - a lock held by anyone else is never touched: returns False (the caller must not take that student's money).
+    """
+    key = build_slot_lock_key(teacher_id, slot_timestamp_utc)
+    holder = cache.get(key)
+    if holder is None:
+        return cache.add(key, str(student_id), timeout=seconds)
+    if str(holder) != str(student_id):
+        return False
+    cache.touch(key, seconds)
+    return True
