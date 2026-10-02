@@ -71,9 +71,21 @@ class BookingStudentSerializer(serializers.Serializer):
     first_name = serializers.CharField()
     timezone = serializers.CharField()
     country = serializers.CharField()
+    # Optional in the contract because tutors must not receive the student's e-mail.
+    email = serializers.EmailField(required=False)
+    target_level = serializers.SerializerMethodField()
+    learning_goals = serializers.SerializerMethodField()
 
     def get_full_name(self, obj) -> str:
         return obj.get_full_name() or obj.username
+
+    def get_target_level(self, obj) -> str:
+        profile = getattr(obj, 'student_profile', None)
+        return profile.target_level if profile else ''
+
+    def get_learning_goals(self, obj) -> str:
+        profile = getattr(obj, 'student_profile', None)
+        return profile.learning_goals if profile else ''
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -81,13 +93,17 @@ class BookingStudentSerializer(serializers.Serializer):
         viewer = getattr(request, 'user', None)
         if viewer is not None and viewer.is_authenticated and (viewer.id == instance.id or viewer.is_staff or getattr(viewer, 'role', '') == 'admin'):
             data['email'] = instance.email
+        else:
+            data.pop('email', None)
         return data
 
 
 class BookingDetailSerializer(serializers.ModelSerializer):
     teacher = TeacherListSerializer(read_only=True)
     student = BookingStudentSerializer(read_only=True)
-    memo = LessonMemoSerializer(read_only=True)
+    memo = LessonMemoSerializer(read_only=True, allow_null=True)
+    # Conditionally omitted outside staff responses, so it cannot be required in the public contract.
+    student_review = serializers.CharField(required=False)
     zoom_url = serializers.SerializerMethodField()
     zoom_join_url = serializers.SerializerMethodField()
     zoom_start_url = serializers.SerializerMethodField()

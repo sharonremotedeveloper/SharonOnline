@@ -1,3 +1,5 @@
+import type { components } from './api.generated';
+
 export type UserRole = 'student' | 'teacher' | 'admin';
 
 export interface User {
@@ -64,13 +66,7 @@ export interface TeacherSlotsResponse {
   slots: Slot[];
 }
 
-export type BookingStatus =
-  | 'pending_payment'
-  | 'confirmed'
-  | 'in_progress'
-  | 'completed'
-  | 'cancelled'
-  | 'disputed';
+export type BookingStatus = components['schemas']['StatusEnum'];
 
 export interface LessonMemo {
   id: string;

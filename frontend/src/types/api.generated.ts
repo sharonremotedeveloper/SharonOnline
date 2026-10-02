@@ -148,6 +148,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/inquiries/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Persist the request before queueing its notification, so provider failure cannot lose it. */
+        post: operations["v1_auth_inquiries_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/logout/": {
         parameters: {
             query?: never;
@@ -844,9 +861,8 @@ export interface components {
             readonly zoom_password: string;
             /** @description 1 to 5 star rating */
             readonly student_rating: number | null;
-            /** @description PRIVATE written review: staff only. Never shown to the tutor or other students. */
-            readonly student_review: string;
-            readonly memo: components["schemas"]["LessonMemo"];
+            student_review?: string;
+            readonly memo: components["schemas"]["LessonMemo"] | null;
             /** Format: date-time */
             readonly created_at: string;
         };
@@ -858,6 +874,10 @@ export interface components {
             first_name: string;
             timezone: string;
             country: string;
+            /** Format: email */
+            email?: string;
+            readonly target_level: string;
+            readonly learning_goals: string;
         };
         /**
          * @description * `daily_news` - Daily News & Discussion
@@ -1046,6 +1066,13 @@ export interface components {
             /** Format: email */
             email: string;
         };
+        PatchedStudentProfileRequest: {
+            full_name?: string;
+            country?: string;
+            timezone?: string;
+            target_level?: string;
+            learning_goals?: string;
+        };
         PatchedUserRequest: {
             /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
             username?: string;
@@ -1147,6 +1174,31 @@ export interface components {
          * @enum {string}
          */
         StatusEnum: "pending_payment" | "confirmed" | "in_progress" | "completed" | "cancelled" | "disputed" | "interrupted_power" | "student_no_show" | "teacher_no_show" | "completed_pending_memo" | "completed_memo_forfeited";
+        StudentProfile: {
+            /** Format: uuid */
+            readonly id: string;
+            full_name: string;
+            /** Format: email */
+            readonly email: string;
+            country: string;
+            timezone: string;
+            target_level: string;
+            learning_goals: string;
+        };
+        SupportInquiryAccepted: {
+            detail: string;
+            /** Format: uuid */
+            inquiry_id: string;
+        };
+        SupportInquiryRequest: {
+            name: string;
+            /** Format: email */
+            email: string;
+            /** @default other */
+            user_type: components["schemas"]["UserTypeEnum"];
+            subject: string;
+            message: string;
+        };
         /**
          * @description * `Patience & Empathy` - Patience & Empathy
          *     * `Clear Pronunciation` - Clear Pronunciation
@@ -1314,6 +1366,13 @@ export interface components {
          * @enum {string}
          */
         UserRoleEnum: "student" | "teacher" | "admin";
+        /**
+         * @description * `student` - Student
+         *     * `teacher` - Teacher
+         *     * `other` - Other
+         * @enum {string}
+         */
+        UserTypeEnum: "student" | "teacher" | "other";
         Wallet: {
             total_credits: number;
             ledger: components["schemas"]["CreditLedgerEntry"][];
@@ -1553,6 +1612,31 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    v1_auth_inquiries_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportInquiryRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SupportInquiryRequest"];
+                "multipart/form-data": components["schemas"]["SupportInquiryRequest"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportInquiryAccepted"];
                 };
             };
         };
@@ -2422,9 +2506,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["StudentProfile"];
                 };
             };
         };
@@ -2438,15 +2520,9 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-                "application/x-www-form-urlencoded": {
-                    [key: string]: unknown;
-                };
-                "multipart/form-data": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["PatchedStudentProfileRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedStudentProfileRequest"];
+                "multipart/form-data": components["schemas"]["PatchedStudentProfileRequest"];
             };
         };
         responses: {
@@ -2455,9 +2531,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["StudentProfile"];
                 };
             };
         };

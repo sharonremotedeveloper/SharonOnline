@@ -1,4 +1,5 @@
 import { API_BASE, MOCK, USE_MOCKS, liveRequest, request } from "./http";
+import type { components } from "@/types/api.generated";
 import { BookingDetail, BookingSlot, CreditLedgerEntry } from "@/types/booking";
 import { EskomStatus, PostLessonMemoInput, TeacherWalletData, TeacherPayoutBankAccount } from "@/types/teacher";
 import {
@@ -86,6 +87,20 @@ function normalizeTutor<T>(t: T): T {
     ...(raw.rating_count !== undefined && { rating_count: Number(raw.rating_count) || 0 }),
     ...(raw.price_per_25min_usd !== undefined && { price_per_25min_usd: Number(raw.price_per_25min_usd) || 0 }),
   } as T;
+}
+
+function normalizeBooking(raw: components["schemas"]["BookingDetail"]): BookingDetail {
+  const { rating_avg, price_per_25min_usd, ...teacher } = raw.teacher;
+  return {
+    ...raw,
+    teacher: {
+      ...teacher,
+      ...(rating_avg !== undefined && { rating_avg: Number(rating_avg) || 0 }),
+      ...(price_per_25min_usd !== undefined && {
+        price_per_25min_usd: Number(price_per_25min_usd) || 0,
+      }),
+    },
+  };
 }
 
 function normalizeTutorList(data: any) {
@@ -459,7 +474,7 @@ export const api = {
 
   async getBooking(bookingId: string): Promise<BookingDetail> {
     const live = await liveRequest(`${API_BASE}/bookings/${bookingId}/`, {});
-    if (live !== MOCK) return live;
+    if (live !== MOCK) return normalizeBooking(live as components["schemas"]["BookingDetail"]);
 
     // Fallback booking object for seamless testing
     const today = new Date();
@@ -468,17 +483,27 @@ export const api = {
       booking_reference: bookingId.startsWith("BK-") ? bookingId : `BK-${bookingId.slice(0, 6)}`,
       teacher: {
         id: "tut-1",
+        user_id: "usr-teacher-01",
         full_name: "Sharon M.",
         first_name: "Sharon",
+        last_name: "M.",
         avatar_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
-        accent: "South African (Neutral RP)",
+        intro_audio_url: "",
+        country: "ZA",
+        accent: "ZA",
         price_per_25min_usd: 8.0,
       },
       student: {
         id: "usr-student-01",
         full_name: "Aiko Tanaka",
+        first_name: "Aiko",
         email: "aiko@example.com",
+        country: "JP",
+        timezone: "Asia/Tokyo",
+        target_level: "",
+        learning_goals: "",
       },
+      material: null,
       start_time_utc: today.toISOString(),
       end_time_utc: new Date(today.getTime() + 25 * 60000).toISOString(),
       local_date: today.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }),
@@ -496,6 +521,8 @@ export const api = {
       zoom_start_url: "https://zoom.us/s/9876543210?zak=ESL_TEACHER_HOST_TOKEN",
       material_slug: "remote-work-trends",
       material_title: "Global Remote Work & Digital Nomads",
+      student_rating: null,
+      memo: null,
       created_at: new Date().toISOString(),
     };
   },

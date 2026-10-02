@@ -156,8 +156,8 @@ class BookingDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         user = self.request.user
         if user.role == 'teacher' and hasattr(user, 'teacher_profile'):
-            return Booking.objects.filter(teacher=user.teacher_profile)
-        return Booking.objects.filter(student=user)
+            return Booking.objects.select_related('student__student_profile', 'teacher__user', 'material').filter(teacher=user.teacher_profile)
+        return Booking.objects.select_related('student__student_profile', 'teacher__user', 'material').filter(student=user)
 
 
 @extend_schema(request=None, responses=OpenApiTypes.OBJECT)
