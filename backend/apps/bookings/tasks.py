@@ -14,6 +14,9 @@ from apps.payments.services.settlement import successful_transaction
 from apps.payments.services.funding import funding_for_settlement
 from apps.payments.models import CreditWalletEntry
 from apps.common.locks import distributed_task_lock
+from apps.integrations.services.attendance import (
+    STUDENT, TEACHER, credited_attendance_minutes, present_with_disconnect_grace,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -92,10 +95,7 @@ def audit_attendance_and_noshows_task():
 
     for booking in late_candidates:
         teacher_email = booking.teacher.user.email
-        has_joined = AttendanceAudit.objects.filter(
-            booking=booking,
-            participant_email=teacher_email
-        ).exists()
+        has_joined = present_with_disconnect_grace(booking, TEACHER, now)
 
         if not has_joined:
             booking.tutor_late_alert_sent = True
@@ -123,18 +123,8 @@ def audit_attendance_and_noshows_task():
             teacher_email = booking.teacher.user.email
             student_email = booking.student.email
 
-            teacher_attended = AttendanceAudit.objects.filter(
-                booking=booking,
-                participant_email=teacher_email
-            ).exists()
-
-            student_attended = AttendanceAudit.objects.filter(
-                booking=booking,
-                participant_email=student_email
-            ).exists()
-
-            if booking.status == Booking.Status.IN_PROGRESS and not teacher_attended:
-                continue    # inconsistent data (room open, no tutor record): the end-of-lesson check disputes it
+            teacher_attended = present_with_disconnect_grace(booking, TEACHER, now)
+            student_attended = present_with_disconnect_grace(booking, STUDENT, now)
 
             # Active Zoom Probe Guard (Pillar 1)
             # Before issuing no-show penalties, query live Zoom status
@@ -142,11 +132,14 @@ def audit_attendance_and_noshows_task():
                 try:
                     from apps.integrations.zoom import zoom_client
                     z_telemetry = zoom_client.get_meeting_status(booking.zoom_meeting_id)
-                    if z_telemetry.get('status') == 'started' or z_telemetry.get('participant_count', 0) > 0:
+                    if z_telemetry.get('status') == 'started':
                         AttendanceAudit.objects.get_or_create(
                             booking=booking,
-                            participant_email=teacher_email,
+                            zoom_session_id='active_zoom_probe',
                             defaults={
+                                "participant_email": teacher_email,
+                                "classification": AttendanceAudit.Classification.TEACHER,
+                                "identity": "active_zoom_probe",
                                 "join_time_utc": booking.start_time_utc,
                                 "raw_payload": {"source": "active_zoom_probe"}
                             }
@@ -229,11 +222,7 @@ def audit_attendance_and_noshows_task():
             if not booking or booking.status not in [Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS]:
                 continue
 
-            teacher_email = booking.teacher.user.email
-            teacher_minutes = AttendanceAudit.objects.filter(
-                booking=booking,
-                participant_email=teacher_email
-            ).aggregate(total=Sum('total_minutes'))['total'] or 0
+            teacher_minutes = credited_attendance_minutes(booking, TEACHER, through=booking.end_time_utc)
 
             if teacher_minutes >= 20:
                 transition_booking(booking, Booking.Status.COMPLETED_PENDING_MEMO,

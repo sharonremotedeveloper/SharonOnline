@@ -38,6 +38,7 @@ class ZoomWebhookReceiverView(APIView):
             return Response({"error": "Malformed JSON payload"}, status=status.HTTP_400_BAD_REQUEST)
 
         event = payload_data.get('event')
+        event_id = str(payload_data.get('event_id') or payload_data.get('id') or '')[:128]
 
         # 2. Zoom Endpoint URL Validation Handshake (Challenge-Response CRC)
         if event == 'endpoint.url_validation':
@@ -88,11 +89,11 @@ class ZoomWebhookReceiverView(APIView):
                 if not isinstance(participant, dict) or not participant:
                     return Response({"status": "skipped", "reason": "No participant"}, status=status.HTTP_200_OK)
                 handler = attendance.on_participant_joined if event == 'meeting.participant_joined' else attendance.on_participant_left
-                handler(booking, meeting_obj, participant, now)
+                handler(booking, meeting_obj, participant, now, event_id=event_id)
             elif event == 'meeting.started':
-                attendance.on_meeting_started(booking, meeting_obj, now)
+                attendance.on_meeting_started(booking, meeting_obj, now, event_id=event_id)
             elif event == 'meeting.ended':
-                attendance.on_meeting_ended(booking, meeting_obj, now)
+                attendance.on_meeting_ended(booking, meeting_obj, now, event_id=event_id)
 
         return Response({
             "status": "success",
