@@ -153,7 +153,8 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
             record_def501_quarantine_entry(payment_transaction=tx, booking=booking, user=booking.student)
 
             start_iso = booking.start_time_utc.isoformat()
-            release_slot_lock(str(booking.teacher_id), start_iso, str(booking.student_id))
+            release_slot_lock(str(booking.teacher_id), start_iso, str(booking.student_id),
+                              token=booking.slot_lock_token or None)
 
             return {
                 "status": "collision_quarantined",
@@ -202,7 +203,8 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
 
         # Release the temporary Redis lock now that it's permanently confirmed in PostgreSQL
         start_iso = booking.start_time_utc.isoformat()
-        release_slot_lock(str(booking.teacher_id), start_iso, str(booking.student_id))
+        release_slot_lock(str(booking.teacher_id), start_iso, str(booking.student_id),
+                          token=booking.slot_lock_token or None)
 
         # Trigger background fulfillment (Zoom, GCal, Resend) only AFTER the commit, so the worker can never
         # observe the booking still PENDING_PAYMENT, and a rolled-back payment never queues a task.

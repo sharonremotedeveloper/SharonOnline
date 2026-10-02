@@ -249,3 +249,20 @@ A four-way audit (backend, frontend, spec-vs-roadmap, infra) found that Phases 1
 | **Phase 14** | Compliance + legal (POPIA/GDPR) | `NOT STARTED` |
 | **Phase 15** | Missing screens, admin, SEO, test pyramid | `NOT STARTED` |
 | **Phase 16** | UAT + launch | `NOT STARTED` |
+
+---
+
+## 6. Technical-debt remediation batches (started 2026-10-02)
+
+| Batch | Scope | Status |
+| :--- | :--- | :--- |
+| **1** | Honest admin financial data, disabled payout mutation, ownership-safe booking and Celery locks | `CODE COMPLETE - backend 679/679, focused 74/74, frontend 88/88, Django/migration checks and production build passed; real Redis CI execution pending Batch 8 infrastructure` |
+| **2** | Funding provenance, credit catalog, wallet history, credit redemption, dual-target checkout | `NOT STARTED` |
+| **3** | FX, balanced journals, fees, reconciliation, DB immutability, durable fulfillment | `NOT STARTED` |
+| **4** | Zoom participant identity and attendance correctness | `NOT STARTED - reconcile Claude's parallel attendance work before implementation` |
+| **5** | Student profiles, support inquiries, generated API contracts, timezone/count corrections | `NOT STARTED` |
+| **6** | Tutor wallet and encrypted payout settings; payout execution remains disabled | `NOT STARTED` |
+| **7** | Provider-backed Eskom Power Guard | `NOT STARTED` |
+| **8** | CI and final stabilization | `NOT STARTED` |
+
+Batch 1 replaced every fabricated admin telemetry floor and payout preview row with database/ledger results. Empty state is now explicit, `POST /api/v1/admin/payouts/execute-batch/` is a non-mutating `503 payout_execution_disabled`, and the frontend action is visibly disabled. Reservation locks now persist unique ownership tokens and use atomic compare-and-delete/expire operations; periodic task locks also use unique ownership and cannot release a successor's lock.

@@ -47,7 +47,8 @@ def purge_expired_reservations_task():
 
             # Free Redis pessimistic slot lock
             start_iso = booking.start_time_utc.isoformat()
-            release_slot_lock(str(booking.teacher.id), start_iso, str(booking.student.id))
+            release_slot_lock(str(booking.teacher.id), start_iso, str(booking.student.id),
+                              token=booking.slot_lock_token or None)
 
             purged_count += 1
             logger.info(

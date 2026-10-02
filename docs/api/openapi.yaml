@@ -122,7 +122,7 @@ paths:
       security:
       - jwtAuth: []
       responses:
-        '200':
+        '503':
           content:
             application/json:
               schema:

@@ -128,16 +128,15 @@ def test_execute_payout_batch(admin_user, teacher_user):
     # 1. Fetch batch preview
     batch_res = client.get('/api/v1/admin/payouts/batch/')
     assert batch_res.status_code == 200
-    assert len(batch_res.json()) >= 1
+    assert batch_res.json() == []
 
     # 2. Execute batch
     exec_res = client.post('/api/v1/admin/payouts/execute-batch/')
-    assert exec_res.status_code == 200
+    assert exec_res.status_code == 503
     data = exec_res.json()
-    assert data['success'] is True
-    assert data['status'] == 'processed'
-    assert 'ACB-BATCH-' in data['batch_id']
-    assert PayoutBatch.objects.filter(batch_reference=data['batch_id']).exists()
+    assert data['success'] is False
+    assert data['code'] == 'payout_execution_disabled'
+    assert not PayoutBatch.objects.exists()
 
 
 @pytest.mark.django_db

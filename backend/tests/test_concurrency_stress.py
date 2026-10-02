@@ -21,7 +21,7 @@ def test_simultaneous_50_worker_lock_contention():
     concurrency_count = 50
 
     # Ensure clean slate
-    release_slot_lock(teacher_id, slot_utc)
+    cache.delete(build_slot_lock_key(teacher_id, slot_utc))
 
     # Generate 50 unique student IDs
     student_ids = [str(uuid.uuid4()) for _ in range(concurrency_count)]
@@ -43,7 +43,8 @@ def test_simultaneous_50_worker_lock_contention():
     assert is_slot_locked(teacher_id, slot_utc) is True
 
     # Cleanup
-    release_slot_lock(teacher_id, slot_utc)
+    winning_student = cache.get(build_slot_lock_key(teacher_id, slot_utc))
+    release_slot_lock(teacher_id, slot_utc, winning_student)
     assert is_slot_locked(teacher_id, slot_utc) is False
 
 
@@ -80,14 +81,14 @@ def test_multislot_concurrent_isolation():
 def test_unauthorized_lock_release_rejected():
     """
     Security check: A student who does not hold the slot lock CANNOT release it.
-    Only the legitimate holder or an unauthenticated system admin release can clear it.
+    Only the legitimate holder can clear it.
     """
     teacher_id = str(uuid.uuid4())
     slot_utc = "2026-10-20T14:00:00Z"
     legitimate_student = str(uuid.uuid4())
     imposter_student = str(uuid.uuid4())
 
-    release_slot_lock(teacher_id, slot_utc)
+    cache.delete(build_slot_lock_key(teacher_id, slot_utc))
 
     # 1. Legitimate student acquires lock
     assert acquire_slot_lock(teacher_id, slot_utc, legitimate_student) is True

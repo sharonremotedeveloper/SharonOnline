@@ -1,6 +1,8 @@
 import functools
 import logging
+import uuid
 from django.core.cache import cache
+from apps.common.cache_locks import compare_and_delete
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +20,8 @@ def distributed_task_lock(lock_key_pattern: str, timeout_seconds: int = 50, rele
     def decorator(task_func):
         @functools.wraps(task_func)
         def wrapper(*args, **kwargs):
-            lock_acquired = cache.add(lock_key_pattern, "LOCKED", timeout=timeout_seconds)
+            ownership_token = uuid.uuid4().hex
+            lock_acquired = cache.add(lock_key_pattern, ownership_token, timeout=timeout_seconds)
             if not lock_acquired:
                 logger.info(
                     f"Periodic task '{task_func.__name__}' skipped: lock '{lock_key_pattern}' "
@@ -30,7 +33,7 @@ def distributed_task_lock(lock_key_pattern: str, timeout_seconds: int = 50, rele
                 return task_func(*args, **kwargs)
             finally:
                 if release_on_success:
-                    cache.delete(lock_key_pattern)
+                    compare_and_delete(lock_key_pattern, ownership_token)
 
         return wrapper
     return decorator

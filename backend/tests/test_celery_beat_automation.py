@@ -21,6 +21,7 @@ from apps.payments.tasks import (
     reconcile_pending_transactions_task,
 )
 from apps.integrations.tasks import sync_eskom_stages_task
+from apps.common.locks import distributed_task_lock
 
 
 @pytest.mark.django_db
@@ -466,4 +467,18 @@ class TestCeleryBeatAutomation:
         assert res == {"status": "skipped", "reason": "lock_active"}
 
         # Cleanup lock
+        cache.delete(lock_key)
+
+    def test_distributed_task_lock_does_not_release_successor(self):
+        """An expired task must not delete a lock acquired by its successor."""
+        lock_key = 'lock:test:ownership-rollover'
+
+        @distributed_task_lock(lock_key, timeout_seconds=60)
+        def replace_own_lock():
+            cache.delete(lock_key)
+            cache.add(lock_key, 'successor-token', timeout=60)
+            return {'status': 'complete'}
+
+        assert replace_own_lock() == {'status': 'complete'}
+        assert cache.get(lock_key) == 'successor-token'
         cache.delete(lock_key)

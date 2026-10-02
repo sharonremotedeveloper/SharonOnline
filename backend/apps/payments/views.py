@@ -113,7 +113,7 @@ class CheckoutInitializeView(APIView):
         grace = int(inflight_grace().total_seconds())
         remaining_cap = int((booking.created_at + max_hold() - now).total_seconds())
         if not extend_slot_lock(str(booking.teacher_id), booking.start_time_utc.isoformat(), str(booking.student_id),
-                                max(1, min(grace, remaining_cap))):
+                                max(1, min(grace, remaining_cap)), token=booking.slot_lock_token or None):
             return Response({"error": "This time slot has just been taken. Please choose another."},
                             status=status.HTTP_409_CONFLICT)
 

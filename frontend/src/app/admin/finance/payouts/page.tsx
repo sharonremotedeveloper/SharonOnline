@@ -15,16 +15,12 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { PayoutBatchItem } from "@/types/admin";
-import { ErrorState, InlineError } from "@/components/ui/ErrorState";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 export default function AdminPayoutsPage() {
   const [batch, setBatch] = useState<PayoutBatchItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false);
-  const [executedNote, setExecutedNote] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
-  const [executeError, setExecuteError] = useState<unknown>(null);
-  const [confirming, setConfirming] = useState(false);
   const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
@@ -72,25 +68,6 @@ export default function AdminPayoutsPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  const handleExecuteBatch = async () => {
-    setProcessing(true);
-    setExecutedNote(null);
-    setExecuteError(null);
-    try {
-      const res = await api.executePayoutBatch();
-      setExecutedNote(
-        `Batch ${res.batch_id} executed successfully for R${res.total_payout_zar.toFixed(2)} across ${res.recipients_count} educators.`
-      );
-      setBatch((prev) => prev.map((b) => ({ ...b, status: "processed" })));
-      setConfirming(false);
-    } catch (e) {
-      console.error("Failed to execute batch:", e);
-      setExecuteError(e);
-    } finally {
-      setProcessing(false);
-    }
   };
 
   if (loading) {
@@ -148,50 +125,17 @@ export default function AdminPayoutsPage() {
             <span>Export Bank ACB CSV</span>
           </button>
 
-          {confirming ? (
-            <div className="flex flex-wrap items-center gap-2 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
-              <span className="text-xs font-bold text-rose-900">
-                Execute payout of R{totalPayoutZar.toFixed(2)} to {batch.length} educator{batch.length === 1 ? "" : "s"}? This moves money and cannot be undone.
-              </span>
-              <button
-                type="button"
-                disabled={processing}
-                onClick={handleExecuteBatch}
-                className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 disabled:opacity-50"
-              >
-                {processing ? "Executing..." : "Confirm & execute"}
-              </button>
-              <button
-                type="button"
-                disabled={processing}
-                onClick={() => setConfirming(false)}
-                className="px-3 py-1.5 rounded-lg bg-white border border-divider text-xs font-bold text-ink disabled:opacity-50"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              disabled={processing || batch.length === 0 || batch.every((b) => b.status === "processed")}
-              onClick={() => setConfirming(true)}
-              className="px-5 py-2.5 bg-teal hover:bg-teal-hover text-white text-xs font-black rounded-xl shadow-sm flex items-center gap-2 transition-all disabled:opacity-50"
-            >
-              <CreditCard className="w-4 h-4" />
-              <span>Execute Payout Batch</span>
-            </button>
-          )}
+          <button
+            type="button"
+            disabled
+            title="Requires an approved banking rail and maker-checker workflow"
+            className="px-5 py-2.5 bg-ink-muted text-white text-xs font-black rounded-xl shadow-sm flex items-center gap-2 opacity-60 cursor-not-allowed"
+          >
+            <CreditCard className="w-4 h-4" />
+            <span>Payout execution unavailable</span>
+          </button>
         </div>
       </div>
-
-      <InlineError error={executeError} />
-
-      {executedNote && (
-        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-950 flex items-center gap-2.5">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>{executedNote}</span>
-        </div>
-      )}
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
