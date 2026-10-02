@@ -15,8 +15,53 @@ from django.utils.dateparse import parse_datetime
 class LessonMemoSerializer(serializers.ModelSerializer):
     class Meta:
         model = LessonMemo
-        fields = ('id', 'booking', 'teacher', 'student', 'feedback_text', 'vocabulary_words', 'pronunciation_notes', 'homework', 'submitted_at')
+        fields = ('id', 'booking', 'teacher', 'student', 'feedback_text', 'vocabulary_words', 'pronunciation_notes',
+                  'grammar_notes', 'homework', 'submitted_at')
         read_only_fields = ('id', 'booking', 'teacher', 'student', 'submitted_at')
+
+MAX_NOTE_LENGTH = 5000
+MAX_VOCAB_WORDS = 30
+VOCAB_LIMITS = {'word': 128, 'definition': 1000, 'phonetic': 128, 'part_of_speech': 64}  # word/phonetic/pos mirror StudentFlashcard columns
+
+
+class LessonMemoInputSerializer(serializers.Serializer):
+    """
+    What a tutor may submit after a lesson. Unknown keys (e.g. the UI's `booking_id`, `next_steps`) are ignored.
+    (DRF's CharField already rejects NUL characters - PostgreSQL cannot store them; the vocabulary items are checked by hand.)
+    """
+    feedback_text = serializers.CharField(max_length=MAX_NOTE_LENGTH)
+    vocabulary_words = serializers.ListField(child=serializers.JSONField(), required=False, default=list, max_length=MAX_VOCAB_WORDS)
+    pronunciation_notes = serializers.CharField(max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True, default='')
+    grammar_notes = serializers.CharField(max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True, default='')
+    homework = serializers.CharField(max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True, default='')
+
+    def validate_vocabulary_words(self, items):
+        """Normalise to [{word, definition, phonetic, part_of_speech}], one entry per word (case-insensitive)."""
+        cleaned, seen = [], set()
+        for n, item in enumerate(items, start=1):
+            entry = {'word': item} if isinstance(item, str) else item
+            if not isinstance(entry, dict):
+                raise serializers.ValidationError(f'Item {n}: expected a word or an object with a "word".')
+            fields = {}
+            for key, limit in VOCAB_LIMITS.items():
+                value = entry.get(key, '')
+                value = '' if value is None else value
+                if not isinstance(value, str):
+                    raise serializers.ValidationError(f'Item {n}: "{key}" must be text.')
+                value = value.strip()
+                if len(value) > limit:
+                    raise serializers.ValidationError(f'Item {n}: "{key}" is longer than {limit} characters.')
+                if '\x00' in value:
+                    raise serializers.ValidationError(f'Item {n}: "{key}" contains a null character.')
+                fields[key] = value
+            if not fields['word']:
+                raise serializers.ValidationError(f'Item {n}: "word" is required.')
+            if fields['word'].casefold() in seen:
+                continue
+            seen.add(fields['word'].casefold())
+            cleaned.append(fields)
+        return cleaned
+
 
 class BookingStudentSerializer(serializers.Serializer):
     """Minimal student view embedded in a booking. Contact details are only for the student themselves/staff."""

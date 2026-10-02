@@ -141,7 +141,7 @@ class TestMemo:
     def url(self, booking):
         return f'/api/v1/bookings/{booking.id}/memo/'
 
-    @pytest.mark.parametrize('status', [S.PENDING_PAYMENT, S.CANCELLED, S.CONFIRMED, S.DISPUTED, S.INTERRUPTED_POWER,
+    @pytest.mark.parametrize('status', [S.PENDING_PAYMENT, S.CANCELLED, S.CONFIRMED, S.IN_PROGRESS, S.DISPUTED, S.INTERRUPTED_POWER,
                                         S.TEACHER_NO_SHOW, S.STUDENT_NO_SHOW])
     def test_memo_rejected_unless_the_lesson_actually_happened(self, teacher_user, student_user, status):
         booking = make_booking(teacher_user, student_user, status=status)
@@ -149,7 +149,7 @@ class TestMemo:
         assert res.status_code == 409
         assert LessonMemo.objects.count() == 0 and Booking.objects.get(pk=booking.pk).status == status
 
-    @pytest.mark.parametrize('status', [S.IN_PROGRESS, S.COMPLETED_PENDING_MEMO, S.COMPLETED_MEMO_FORFEITED, S.COMPLETED])
+    @pytest.mark.parametrize('status', [S.COMPLETED_PENDING_MEMO, S.COMPLETED_MEMO_FORFEITED, S.COMPLETED])
     def test_memo_completes_the_booking_and_is_audited(self, teacher_user, student_user, status):
         booking = make_booking(teacher_user, student_user, status=status, offset_hours=-3)
         res = _client(teacher_user.user).post(self.url(booking), {'feedback_text': 'good'}, format='json')

@@ -542,7 +542,9 @@ paths:
   /api/v1/bookings/{booking_id}/memo/:
     post:
       operationId: v1_bookings_memo_create
-      description: Allows a teacher to submit the post-lesson feedback memo.
+      description: |-
+        The lesson's own tutor submits (or later corrects) the post-lesson memo. Everything below succeeds or fails together:
+        the validated memo, the booking's move to COMPLETED, and the student's flashcards.
       parameters:
       - in: path
         name: booking_id
@@ -556,16 +558,14 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/LessonMemoInputRequest'
           application/x-www-form-urlencoded:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/LessonMemoInputRequest'
           multipart/form-data:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/LessonMemoInputRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
@@ -573,8 +573,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/LessonMemo'
           description: ''
   /api/v1/bookings/{booking_id}/report-outage/:
     post:
@@ -1494,6 +1493,10 @@ components:
             ''...''}]'
         pronunciation_notes:
           type: string
+        grammar_notes:
+          type: string
+          description: Grammar points to remember (shown to the student next to the
+            vocabulary)
         homework:
           type: string
         submitted_at:
@@ -1507,6 +1510,34 @@ components:
       - student
       - submitted_at
       - teacher
+    LessonMemoInputRequest:
+      type: object
+      description: |-
+        What a tutor may submit after a lesson. Unknown keys (e.g. the UI's `booking_id`, `next_steps`) are ignored.
+        (DRF's CharField already rejects NUL characters - PostgreSQL cannot store them; the vocabulary items are checked by hand.)
+      properties:
+        feedback_text:
+          type: string
+          minLength: 1
+          maxLength: 5000
+        vocabulary_words:
+          type: array
+          items: {}
+          maxItems: 30
+        pronunciation_notes:
+          type: string
+          default: ''
+          maxLength: 5000
+        grammar_notes:
+          type: string
+          default: ''
+          maxLength: 5000
+        homework:
+          type: string
+          default: ''
+          maxLength: 5000
+      required:
+      - feedback_text
     LogoutRequestRequest:
       type: object
       properties:

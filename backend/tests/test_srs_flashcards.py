@@ -82,7 +82,7 @@ def test_submit_memo_auto_populates_flashcards(teacher_user, student_user):
         student=student_user,
         start_time_utc=now,
         end_time_utc=now + timedelta(minutes=25),
-        status=Booking.Status.IN_PROGRESS
+        status=Booking.Status.COMPLETED_PENDING_MEMO  # memos are for lessons that have ended (Task 9.9)
     )
 
     client = APIClient()

@@ -82,7 +82,7 @@ class StudentLessonItemSerializer(serializers.ModelSerializer):
             'feedback_text': memo.feedback_text,
             'vocabulary_words': memo.vocabulary_words,
             'pronunciation_notes': memo.pronunciation_notes,
-            'grammar_notes': memo.homework or "Focus on natural conversational phrasing.",
+            'grammar_notes': memo.grammar_notes,
             'homework': memo.homework,
             'submitted_at': memo.submitted_at.isoformat()
         }

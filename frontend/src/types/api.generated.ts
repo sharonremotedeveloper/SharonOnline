@@ -352,7 +352,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Allows a teacher to submit the post-lesson feedback memo. */
+        /**
+         * @description The lesson's own tutor submits (or later corrects) the post-lesson memo. Everything below succeeds or fails together:
+         *     the validated memo, the booking's move to COMPLETED, and the student's flashcards.
+         */
         post: operations["v1_bookings_memo_create"];
         delete?: never;
         options?: never;
@@ -860,9 +863,22 @@ export interface components {
             /** @description List of words: [{'word': 'resilience', 'definition': '...'}] */
             vocabulary_words?: unknown;
             pronunciation_notes?: string;
+            /** @description Grammar points to remember (shown to the student next to the vocabulary) */
+            grammar_notes?: string;
             homework?: string;
             /** Format: date-time */
             readonly submitted_at: string;
+        };
+        /** @description What a tutor may submit after a lesson. Unknown keys (e.g. the UI's `booking_id`, `next_steps`) are ignored. */
+        LessonMemoInputRequest: {
+            feedback_text: string;
+            vocabulary_words?: unknown[];
+            /** @default  */
+            pronunciation_notes: string;
+            /** @default  */
+            grammar_notes: string;
+            /** @default  */
+            homework: string;
         };
         LogoutRequestRequest: {
             refresh: string;
@@ -1808,17 +1824,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-                "application/x-www-form-urlencoded": {
-                    [key: string]: unknown;
-                };
-                "multipart/form-data": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["LessonMemoInputRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["LessonMemoInputRequest"];
+                "multipart/form-data": components["schemas"]["LessonMemoInputRequest"];
             };
         };
         responses: {
@@ -1827,9 +1837,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["LessonMemo"];
                 };
             };
         };

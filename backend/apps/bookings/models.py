@@ -84,6 +84,7 @@ class LessonMemo(models.Model):
     feedback_text = models.TextField(help_text="Grammar corrections, speaking feedback, overall commentary")
     vocabulary_words = models.JSONField(default=list, help_text="List of words: [{'word': 'resilience', 'definition': '...'}]")
     pronunciation_notes = models.TextField(blank=True)
+    grammar_notes = models.TextField(blank=True, help_text="Grammar points to remember (shown to the student next to the vocabulary)")
     homework = models.TextField(blank=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
 

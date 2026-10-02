@@ -37,7 +37,6 @@ stateDiagram-v2
     in_progress --> disputed
     in_progress --> interrupted_power
     in_progress --> student_no_show: probe revived, student never joined
-    in_progress --> completed: memo submitted
     teacher_no_show --> disputed: late attendance telemetry
     student_no_show --> disputed: late attendance telemetry
     completed_pending_memo --> completed: memo / 24h escrow clearance
@@ -58,7 +57,7 @@ stateDiagram-v2
 | confirmed -> in_progress, no-show -> disputed | `integrations/views.py` Zoom webhook; `audit_attendance_and_noshows_task` (active probe) |
 | confirmed/in_progress -> no-show / completed_pending_memo / disputed | `audit_attendance_and_noshows_task` |
 | any live -> interrupted_power | `ReportOutageView` |
-| -> completed (memo) | `SubmitMemoView` (only for lessons that happened: in_progress, completed*, forfeited) |
+| -> completed (memo) | `SubmitMemoView` (only the lesson's tutor, only after the attendance job has settled the lesson: completed_pending_memo, completed, completed_memo_forfeited; validated input; flashcards in the same transaction) |
 | completed_pending_memo/completed -> forfeited | `enforce_memo_sla_task` (re-checks for a memo under the row lock) |
 | completed_pending_memo -> completed | `payments.tasks.release_cleared_escrow_task` |
 | disputed -> cancelled / completed | `ResolveDisputeView` (dispute must be OPEN *and* booking DISPUTED; both locked) |
