@@ -117,7 +117,7 @@ def test_dispute_resolution_50_50_split(admin_user, teacher_user, student_user):
     # Student has received 1 refunded credit
     bundle = CreditBundle.objects.filter(user=student_user).first()
     assert bundle is not None
-    assert bundle.remaining_credits >= 1
+    assert bundle.remaining_credits == 1  # exactly one credit, not two
 
 
 @pytest.mark.django_db

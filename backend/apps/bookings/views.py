@@ -20,6 +20,7 @@ from .serializers import (
 from .services.slot_generator import generate_teacher_slots
 from .services.lock_service import acquire_slot_lock, release_slot_lock
 from .services.reservation import ReservationError, reservation_payload, reserve_slot
+from .services.state_machine import InvalidTransition, transition_booking
 from apps.materials.models import Material
 
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
@@ -128,8 +129,9 @@ class SubmitMemoView(APIView):
         if booking.teacher.user != request.user and not request.user.is_staff:
             return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
 
+        # Only lessons that actually took place can carry a memo (a merely CONFIRMED lesson has not happened yet).
         memo_allowed = {
-            Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS, Booking.Status.COMPLETED,
+            Booking.Status.IN_PROGRESS, Booking.Status.COMPLETED,
             Booking.Status.COMPLETED_PENDING_MEMO, Booking.Status.COMPLETED_MEMO_FORFEITED,
         }
         if booking.status not in memo_allowed:
@@ -141,20 +143,22 @@ class SubmitMemoView(APIView):
         pronunciation_notes = request.data.get('pronunciation_notes', '')
         homework = request.data.get('homework', '')
 
-        memo, _ = LessonMemo.objects.update_or_create(
-            booking=booking,
-            defaults={
-                'teacher': booking.teacher,
-                'student': booking.student,
-                'feedback_text': feedback_text,
-                'vocabulary_words': vocabulary_words,
-                'pronunciation_notes': pronunciation_notes,
-                'homework': homework
-            }
-        )
-
-        booking.status = Booking.Status.COMPLETED
-        booking.save()
+        try:
+            with transaction.atomic():
+                transition_booking(booking, Booking.Status.COMPLETED, actor=request.user, reason='memo submitted')
+                memo, _ = LessonMemo.objects.update_or_create(
+                    booking=booking,
+                    defaults={
+                        'teacher': booking.teacher,
+                        'student': booking.student,
+                        'feedback_text': feedback_text,
+                        'vocabulary_words': vocabulary_words,
+                        'pronunciation_notes': pronunciation_notes,
+                        'homework': homework
+                    }
+                )
+        except InvalidTransition:
+            return Response({"error": "The booking's status changed; refresh and try again."}, status=status.HTTP_409_CONFLICT)
 
         # Automatically populate / update student's spaced repetition flashcard deck
         try:
@@ -244,8 +248,7 @@ class ReportOutageView(APIView):
             if booking.status not in (Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS):
                 return Response({"error": f"Outage cannot be reported for a booking in status '{booking.status}'."},
                                 status=status.HTTP_409_CONFLICT)
-            booking.status = Booking.Status.INTERRUPTED_POWER
-            booking.save()
+            transition_booking(booking, Booking.Status.INTERRUPTED_POWER, actor=request.user, reason=str(reason))
 
             # Refund 1 credit to student
             from apps.payments.models import CreditBundle

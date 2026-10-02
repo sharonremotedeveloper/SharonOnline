@@ -7,6 +7,7 @@ from django.db.models import Sum
 from celery import shared_task
 
 from apps.bookings.models import Booking, AttendanceAudit
+from apps.bookings.services.state_machine import transition_booking
 from apps.payments.models import PaymentTransaction
 from apps.admin_api.models import DisputeCase
 from apps.common.locks import distributed_task_lock
@@ -83,9 +84,10 @@ def release_cleared_escrow_task():
                 tx.save(update_fields=['escrow_cleared', 'updated_at'])
 
             booking.escrow_cleared_at = now
+            booking.save(update_fields=['escrow_cleared_at', 'updated_at'])
             if booking.status == Booking.Status.COMPLETED_PENDING_MEMO:
-                booking.status = Booking.Status.COMPLETED
-            booking.save(update_fields=['escrow_cleared_at', 'status', 'updated_at'])
+                transition_booking(booking, Booking.Status.COMPLETED, actor='system:escrow_release',
+                                   reason='24h escrow window cleared')
 
             # Record GAAP/SARB double-entry ledger clearance entries
             from apps.payments.services.ledger_service import record_escrow_clearance_entry

@@ -5,6 +5,7 @@ from apps.payments.services.ledger_service import (
     record_payment_capture_entry, record_def501_quarantine_entry, record_unallocated_payment_entry)
 from apps.bookings.models import Booking
 from apps.bookings.services.lock_service import release_slot_lock
+from apps.bookings.services.state_machine import transition_booking
 from apps.admin_api.models import DisputeCase
 import logging
 
@@ -122,8 +123,8 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
                 f"[DEF-501 CONCURRENCY GUARD] Booking {booking_id} conflict detected ({reason}). "
                 f"Quarantining to DISPUTED and auto-crediting student wallet."
             )
-            booking.status = Booking.Status.DISPUTED
-            booking.save(update_fields=['status', 'updated_at'])
+            transition_booking(booking, Booking.Status.DISPUTED, actor=f'system:{gateway}_webhook',
+                               reason=f'DEF-501: {reason}')
 
             # Restitution: credit student 1 lesson credit so funds are not lost
             bundle, _ = CreditBundle.objects.get_or_create(
@@ -169,16 +170,16 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
         # Slot is free and session is in future: attempt confirmation under savepoint
         try:
             with transaction.atomic():
-                booking.status = Booking.Status.CONFIRMED
-                booking.save()
+                transition_booking(booking, Booking.Status.CONFIRMED, actor=f'system:{gateway}_webhook',
+                                   reason=f'payment {transaction_id} verified')
         except IntegrityError:
             # Microsecond race condition fallback: another transaction committed between check and save
             logger.warning(
                 f"[DEF-501 RACE HAZARD] IntegrityError caught during booking {booking_id} confirmation. "
                 f"Falling back to quarantine."
             )
-            booking.status = Booking.Status.DISPUTED
-            booking.save(update_fields=['status', 'updated_at'])
+            transition_booking(booking, Booking.Status.DISPUTED, actor=f'system:{gateway}_webhook',
+                               reason='DEF-501: IntegrityError race on confirmation')
 
             bundle, _ = CreditBundle.objects.get_or_create(
                 user=booking.student,

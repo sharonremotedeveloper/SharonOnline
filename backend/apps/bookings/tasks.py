@@ -5,8 +5,9 @@ from django.db import transaction
 from django.db.models import Sum
 from celery import shared_task
 
-from apps.bookings.models import Booking, AttendanceAudit
+from apps.bookings.models import Booking, AttendanceAudit, LessonMemo
 from apps.bookings.services.lock_service import release_slot_lock
+from apps.bookings.services.state_machine import InvalidTransition, transition_booking
 from apps.payments.models import CreditBundle
 from apps.common.locks import distributed_task_lock
 
@@ -33,8 +34,13 @@ def purge_expired_reservations_task():
         )
 
         for booking in expired_bookings:
-            booking.status = Booking.Status.CANCELLED
-            booking.save(update_fields=['status', 'updated_at'])
+            try:
+                result = transition_booking(booking, Booking.Status.CANCELLED,
+                                            actor='system:purge_expired_reservations', reason='10-minute hold expired')
+            except InvalidTransition:
+                continue  # paid/changed since the candidate query: leave it alone
+            if not result.changed:
+                continue
 
             # Free Redis pessimistic slot lock
             start_iso = booking.start_time_utc.isoformat()
@@ -136,8 +142,8 @@ def audit_attendance_and_noshows_task():
                             }
                         )
                         teacher_attended = True
-                        booking.status = Booking.Status.IN_PROGRESS
-                        booking.save(update_fields=['status', 'updated_at'])
+                        transition_booking(booking, Booking.Status.IN_PROGRESS,
+                                           actor='system:zoom_probe', reason='active Zoom meeting detected before no-show verdict')
                         logger.warning(
                             f"[ACTIVE ZOOM PROBE GUARD] Active meeting detected for booking {booking.id}. "
                             f"Prevented false teacher no-show penalty."
@@ -147,8 +153,8 @@ def audit_attendance_and_noshows_task():
 
             # Scenario A: Teacher is Absent at T+10m
             if not teacher_attended:
-                booking.status = Booking.Status.TEACHER_NO_SHOW
-                booking.save(update_fields=['status', 'updated_at'])
+                transition_booking(booking, Booking.Status.TEACHER_NO_SHOW,
+                                   actor='system:attendance_audit', reason='teacher absent at T+10m')
 
                 # Record SLA strike against teacher
                 teacher = booking.teacher
@@ -189,8 +195,8 @@ def audit_attendance_and_noshows_task():
 
             # Scenario B: Student Absent at T+10m, but Teacher is Present
             elif not student_attended:
-                booking.status = Booking.Status.STUDENT_NO_SHOW
-                booking.save(update_fields=['status', 'updated_at'])
+                transition_booking(booking, Booking.Status.STUDENT_NO_SHOW,
+                                   actor='system:attendance_audit', reason='student absent at T+10m, teacher present')
                 results["student_no_shows"] += 1
                 logger.info(
                     f"[NO-SHOW] Student {booking.student.username} absent at T+10m on booking {booking.id}. "
@@ -216,16 +222,16 @@ def audit_attendance_and_noshows_task():
             ).aggregate(total=Sum('total_minutes'))['total'] or 0
 
             if teacher_minutes >= 20:
-                booking.status = Booking.Status.COMPLETED_PENDING_MEMO
-                booking.save(update_fields=['status', 'updated_at'])
+                transition_booking(booking, Booking.Status.COMPLETED_PENDING_MEMO,
+                                   actor='system:attendance_audit', reason=f'teacher attended {teacher_minutes}m')
                 results["completed_sessions"] += 1
                 logger.info(
                     f"Booking {booking.id} verified with {teacher_minutes}m attendance -> COMPLETED_PENDING_MEMO."
                 )
             else:
                 # Less than 20 minutes without prior excused power outage report
-                booking.status = Booking.Status.DISPUTED
-                booking.save(update_fields=['status', 'updated_at'])
+                transition_booking(booking, Booking.Status.DISPUTED,
+                                   actor='system:attendance_audit', reason=f'teacher attended only {teacher_minutes}m (<20m)')
                 logger.warning(
                     f"Booking {booking.id} held in DISPUTED: teacher only logged {teacher_minutes}m (required: 20m)."
                 )
@@ -340,8 +346,17 @@ def enforce_memo_sla_task():
 
     for booking in breached_24h:
         with transaction.atomic():
-            booking.status = Booking.Status.COMPLETED_MEMO_FORFEITED
-            booking.save(update_fields=['status', 'updated_at'])
+            # Re-check under the row lock: a memo (or an escrow-release status change) may have landed since the query.
+            fresh = Booking.objects.select_for_update().get(pk=booking.pk)
+            if LessonMemo.objects.filter(booking=fresh).exists():
+                continue
+            try:
+                result = transition_booking(booking, Booking.Status.COMPLETED_MEMO_FORFEITED,
+                                            actor='system:memo_sla', reason='memo not submitted within 24h')
+            except InvalidTransition:
+                continue
+            if not result.changed:
+                continue
 
             # Log strike on teacher
             teacher = booking.teacher

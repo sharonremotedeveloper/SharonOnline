@@ -13,6 +13,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.throttling import ScopedRateThrottle
 
 from apps.bookings.models import Booking, AttendanceAudit
+from apps.bookings.services.state_machine import InvalidTransition, transition_booking
 from apps.admin_api.models import DisputeCase
 from .zoom import zoom_client
 
@@ -145,8 +146,8 @@ class ZoomWebhookReceiverView(APIView):
 
                 # State Machine Progression & Late Webhook Concurrency Guard
                 if booking.status == Booking.Status.CONFIRMED:
-                    booking.status = Booking.Status.IN_PROGRESS
-                    booking.save(update_fields=['status', 'updated_at'])
+                    transition_booking(booking, Booking.Status.IN_PROGRESS, actor='system:zoom_webhook',
+                                       reason=f'{mapped_email} joined')
                     logger.info(f"[ZOOM WEBHOOK] Booking {booking.id} transitioned to IN_PROGRESS.")
 
                 elif booking.status in [Booking.Status.TEACHER_NO_SHOW, Booking.Status.STUDENT_NO_SHOW]:
@@ -155,8 +156,9 @@ class ZoomWebhookReceiverView(APIView):
                         f"[LATE WEBHOOK HAZARD] Booking {booking.id} is in {booking.status}, "
                         f"but received late participant_joined event for {mapped_email}! Quarantining to DISPUTED."
                     )
-                    booking.status = Booking.Status.DISPUTED
-                    booking.save(update_fields=['status', 'updated_at'])
+                    adjudicated = booking.status
+                    transition_booking(booking, Booking.Status.DISPUTED, actor='system:zoom_webhook',
+                                       reason=f'late join telemetry after {adjudicated} verdict')
 
                     # Auto-create audit DisputeCase in arbitration tribunal
                     DisputeCase.objects.get_or_create(
@@ -164,7 +166,7 @@ class ZoomWebhookReceiverView(APIView):
                         defaults={
                             "student": booking.student,
                             "teacher": booking.teacher,
-                            "student_statement": f"Automated Alert: Late Zoom attendance telemetry received after {booking.status} adjudication.",
+                            "student_statement": f"Automated Alert: Late Zoom attendance telemetry received after {adjudicated} adjudication.",
                             "teacher_statement": f"Telemetry proof: Participant {mapped_email} joined at {join_dt.isoformat()}.",
                             "status": DisputeCase.Status.OPEN,
                             "admin_notes": "Late webhook arrived post-adjudication. Quarantined for admin manual arbitration."
@@ -213,14 +215,15 @@ class ZoomWebhookReceiverView(APIView):
 
                 # Late Webhook Hazard guard on leave event as well
                 if booking.status in [Booking.Status.TEACHER_NO_SHOW, Booking.Status.STUDENT_NO_SHOW]:
-                    booking.status = Booking.Status.DISPUTED
-                    booking.save(update_fields=['status', 'updated_at'])
+                    adjudicated = booking.status
+                    transition_booking(booking, Booking.Status.DISPUTED, actor='system:zoom_webhook',
+                                       reason=f'late leave telemetry after {adjudicated} verdict')
                     DisputeCase.objects.get_or_create(
                         booking=booking,
                         defaults={
                             "student": booking.student,
                             "teacher": booking.teacher,
-                            "student_statement": f"Automated Alert: Late Zoom telemetry received after {booking.status} adjudication.",
+                            "student_statement": f"Automated Alert: Late Zoom telemetry received after {adjudicated} adjudication.",
                             "teacher_statement": f"Telemetry proof: Participant {mapped_email} logged {audit_record.total_minutes}m.",
                             "status": DisputeCase.Status.OPEN,
                             "admin_notes": "Late webhook arrived post-adjudication. Quarantined for admin manual arbitration."
