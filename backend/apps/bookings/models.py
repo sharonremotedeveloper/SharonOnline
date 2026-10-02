@@ -105,10 +105,19 @@ class AttendanceAudit(models.Model):
     leave_time_utc = models.DateTimeField(null=True, blank=True)
     total_minutes = models.PositiveIntegerField(default=0)
     raw_payload = models.JSONField(default=dict, blank=True)
+    # How the participant was identified (integrations/services/attendance.py): host, account_email, email,
+    # meeting_started, or unmatched. `participant_email` is an account e-mail ONLY for identified teacher/student rows;
+    # unmatched participants are kept (evidence) with an empty e-mail so nothing downstream can count them.
+    identity = models.CharField(max_length=24, blank=True)
+    zoom_session_id = models.CharField(max_length=96, blank=True)   # one Zoom join session; makes webhook retries idempotent
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-join_time_utc']
+        constraints = [
+            models.UniqueConstraint(fields=['booking', 'zoom_session_id'], condition=~models.Q(zoom_session_id=''),
+                                    name='uniq_attendance_session_per_booking'),
+        ]
 
     def __str__(self):
         return f"Attendance {self.participant_email} on {self.booking_id} ({self.total_minutes}m)"

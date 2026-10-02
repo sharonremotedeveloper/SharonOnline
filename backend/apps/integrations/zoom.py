@@ -5,6 +5,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+class ZoomError(Exception):
+    """Zoom refused or failed a request we made (the message carries Zoom's own explanation)."""
+
+
 class ZoomClient:
     def __init__(self):
         self.account_id = os.environ.get('ZOOM_ACCOUNT_ID')
@@ -69,6 +74,9 @@ class ZoomClient:
                 "start_url": res_data.get('start_url'),
                 "password": res_data.get('password', '')
             }
+        # Never fall through to None: the caller would die on a TypeError that hides Zoom's actual reason.
+        raise ZoomError(f"Zoom refused to create the meeting (HTTP {resp.status_code}): {resp.text[:300]}")
+
     def get_meeting_status(self, meeting_id: str) -> dict:
         token = self.get_access_token()
         if not token:
