@@ -9,6 +9,7 @@ from rest_framework.test import APIClient
 from apps.bookings.models import Booking
 from apps.payments.models import CreditBundle, LedgerAccount, LedgerEntry, PaymentTransaction, RefundRequest
 from apps.payments.services import refunds
+from apps.payments.services.refund_gateways import RefundResult
 from apps.payments.services.credits import (InsufficientCredits, available_credits, expire_credits, grant_credit,
                                             spend_credit)
 from apps.teachers.models import TeacherStrike
@@ -189,30 +190,45 @@ class TestRefundService:
         assert net(b, ACC.LIABILITY_STUDENT_ESCROW) == 0                          # escrow drained again
 
     def test_the_default_gateway_leaves_requests_pending_and_a_real_one_settles_them(self, teacher_user, student_user, settings):
+        settings.REFUND_FIRST_ATTEMPT_DELAY_MINUTES = 0
         b = captured(teacher_user, student_user, 600)
         r = refunds.request_refund(b, RefundRequest.Reason.STUDENT_CANCEL).refund
-        assert refunds.process_pending_refunds() == {'processed': 0, 'failed': 0, 'pending': 1}
+        manual = {'sent': 1, 'completed': 0, 'submitted': 0, 'rejected': 0, 'transient': 0, 'manual': 1, 'polled': 0, 'skipped_breaker': 0}
+        assert refunds.process_pending_refunds() == manual
+        r.refresh_from_db()
+        assert r.status == 'pending_gateway' and r.attempts == 0                 # a manual backend burns no attempt
         settings.REFUND_GATEWAY_BACKEND = 'test_refunds_credits_strikes.FakeGateway'
-        assert refunds.process_pending_refunds() == {'processed': 1, 'failed': 0, 'pending': 0}
+        RefundRequest.objects.filter(pk=r.pk).update(next_attempt_at=None)       # skip the 6 h wait of a manual row
+        assert refunds.process_pending_refunds() == {**manual, 'completed': 1, 'manual': 0}
         r.refresh_from_db()
         assert r.status == 'processed' and r.gateway_reference == f'FAKE-{r.pk}'
 
-    def test_a_gateway_error_is_recorded_not_swallowed(self, teacher_user, student_user, settings):
+    def test_a_gateway_error_is_retried_not_dead_ended_and_never_hidden(self, teacher_user, student_user, settings, caplog):
+        settings.REFUND_FIRST_ATTEMPT_DELAY_MINUTES = 0
         b = captured(teacher_user, student_user, 600)
         r = refunds.request_refund(b, RefundRequest.Reason.STUDENT_CANCEL).refund
         settings.REFUND_GATEWAY_BACKEND = 'test_refunds_credits_strikes.BrokenGateway'
-        assert refunds.process_pending_refunds()['failed'] == 1
+        out = refunds.process_pending_refunds()
+        assert out['transient'] == 1 and out['rejected'] == 0 and out['completed'] == 0
         r.refresh_from_db()
-        assert r.status == 'failed' and 'gateway is down' in r.failure_detail
+        assert r.status == 'pending_gateway' and r.attempts == 1 and r.next_attempt_at is not None   # waits for a retry, not failed
+        assert 'RuntimeError' in caplog.text                                       # the type is logged ...
+        assert 'gateway is down' not in caplog.text                                # ... never the provider's text
 
 
 class FakeGateway:
-    def refund(self, request):
-        return f'FAKE-{request.pk}'
+    def refund(self, order):
+        return RefundResult('completed', reference=f'FAKE-{order.refund_id}')
+
+    def lookup(self, order):
+        return RefundResult('completed', reference=order.provider_refund_id)
 
 
 class BrokenGateway:
-    def refund(self, request):
+    def refund(self, order):
+        raise RuntimeError('gateway is down')
+
+    def lookup(self, order):
         raise RuntimeError('gateway is down')
 
 
