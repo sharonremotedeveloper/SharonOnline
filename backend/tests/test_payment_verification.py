@@ -180,9 +180,9 @@ class TestPayFastITN:
         itn, _, _ = pf
         assert itn(merchant_id='99999999').status_code == 400
 
-    def test_unknown_reference_rejected(self, pf):
+    def test_unknown_reference_is_quarantined_and_acknowledged(self, pf):
         itn, _, _ = pf
-        assert itn(m_payment_id='TX-DOESNOTEXIST').status_code == 400
+        assert itn(m_payment_id='TX-DOESNOTEXIST').status_code == 200   # quarantined (anomaly), so PayFast stops retrying
 
     def test_missing_pf_payment_id_rejected(self, pf):
         itn, _, _ = pf
@@ -392,10 +392,10 @@ class TestPayPalWebhook:
         state['capture']['amount']['currency_code'] = 'JPY'
         assert hook().status_code == 400
 
-    def test_unknown_custom_id_rejected(self, pp):
+    def test_unknown_custom_id_is_quarantined_and_acknowledged(self, pp):
         hook, state, _ = pp
         state['capture']['custom_id'] = 'TX-NOPE'
-        assert hook().status_code == 400
+        assert hook().status_code == 200
 
     def test_incomplete_capture_rejected(self, pp):
         hook, state, _ = pp

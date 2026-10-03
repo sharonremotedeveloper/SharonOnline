@@ -26,6 +26,26 @@ Capture journals persist the FX rate and named source accepted with the payment.
 processing fee, the gateway asset is debited for the net receipt, account 5030 is debited for the fee, and escrow or wallet
 liability is credited for the gross capture. Every journal must balance independently in its transaction currency and ZAR.
 
+## Gateway events that touch money after capture (Task 10.4)
+
+Every row is signature-gated, re-reads PayPal (the webhook body is never trusted for amount or status) and is idempotent.
+Handlers live in `payments/services/paypal_events.py`; PayFast in `PayFastWebhookView`.
+
+| Gateway event | Matched by | Effect | Ledger |
+| :--- | :--- | :--- | :--- |
+| PayPal `PAYMENT.CAPTURE.COMPLETED` | capture `custom_id` / capture id | settle through `settle_completed_capture` | capture journal (escrow 2010) |
+| `PAYMENT.CAPTURE.DENIED` / `DECLINED` | same | INITIALIZED or PENDING_CAPTURE -> FAILED only when PayPal still reports DECLINED/DENIED/FAILED; a PENDING_CAPTURE tx also calls `grace.on_failed` exactly once; a settled tx is never touched | none |
+| `PAYMENT.CAPTURE.PENDING` | same | `record_pending_capture` (reason, payer); no booking change; never revives a FAILED/settled tx | none while the money is not guaranteed |
+| `PAYMENT.CAPTURE.REFUNDED`, a refund **we** requested | refund re-read -> capture -> pending `RefundRequest` of the same amount | `refunds.mark_processed` (once) | `2050 -> gateway cash`, tx `REFUNDED` |
+| `PAYMENT.CAPTURE.REFUNDED`, **dashboard** refund, full amount, booking escrow unsettled | none of ours | `GatewayAnomaly('external_refund')` + `request_refund(reason='external_refund')` + `mark_processed` | `2010 -> 2050`, then `2050 -> gateway cash` |
+| `PAYMENT.CAPTURE.REFUNDED`, partial / foreign-currency / credit-pack / already settled or already refunded | none of ours | `GatewayAnomaly('external_refund')` only, finance corrects it | **none posted automatically** |
+| `PAYMENT.CAPTURE.REVERSED`, `CUSTOMER.DISPUTE.CREATED` | capture, or dispute -> `disputed_transactions` -> capture | `GatewayAnomaly('chargeback_opened')` + open `DisputeCase` (an existing case gets a note); the 24 h release skips an open dispute | **none: a human decides** |
+| `CUSTOMER.DISPUTE.RESOLVED` | same | `GatewayAnomaly('chargeback_resolved')` with PayPal's outcome + note on the DisputeCase | **none: a human decides** |
+| any of the above for a payment we cannot match | - | `GatewayAnomaly('unknown_reference')`, HTTP 200 | none |
+| PayFast `payment_status=CANCELLED` / `FAILED` | `m_payment_id` | INITIALIZED -> FAILED after the server postback; settled tx untouched; a later `COMPLETE` for the same form still settles | none |
+| PayFast `PENDING` / unknown status | - | acknowledged; unknown statuses logged at WARNING | none |
+| Reconciliation (hourly) of an INITIALIZED PayPal order | `paypal.get_order` | captured -> settled once; pending capture -> PENDING_CAPTURE; declined / VOIDED / unpaid past the hold -> FAILED; PayPal unreachable -> left INITIALIZED + anomaly | as COMPLETED |
+
 ## Outage reports
 
 * Allowed from **60 min before** the lesson until **30 min after it ends** (`OUTAGE_REPORT_BEFORE_START_SECONDS`, `OUTAGE_REPORT_AFTER_END_SECONDS`). Outside the window: 409. Previously any future booking could be "interrupted" for an instant refund.
