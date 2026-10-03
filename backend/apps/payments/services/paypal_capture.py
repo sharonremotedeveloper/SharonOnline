@@ -94,7 +94,7 @@ def record_pending_capture(tx_pk, capture: dict, outcome, order: dict) -> Paymen
     payer = (order or {}).get('payer') or {}
     with transaction.atomic():
         tx = PaymentTransaction.objects.select_for_update().get(pk=tx_pk)
-        if tx.status in SETTLED_STATES:
+        if tx.status in SETTLED_STATES or tx.status in (PaymentTransaction.Status.FAILED, PaymentTransaction.Status.REFUNDED):
             return tx
         tx.status = PaymentTransaction.Status.PENDING_CAPTURE
         tx.pending_reason = (outcome.reason or '')[:64]

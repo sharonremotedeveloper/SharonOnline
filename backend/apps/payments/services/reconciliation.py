@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import timedelta
 
+from django.db import transaction as db_transaction
 from django.utils import timezone
 
 from apps.bookings.services.holds import hold_is_live
@@ -161,12 +162,21 @@ def reconcile_initialized_transaction(transaction: PaymentTransaction, *, lookup
     transaction.last_reconciled_at = timezone.now()
     update_fields = ['reconciliation_attempts', 'last_reconciled_at', 'updated_at']
     if result.state == 'failed':
-        transaction.status = PaymentTransaction.Status.FAILED
-        update_fields.append('status')
-        if transaction.credit_purchase_id:
-            transaction.credit_purchase.status = transaction.credit_purchase.Status.FAILED
-            transaction.credit_purchase.save(update_fields=['status', 'updated_at'])
-    transaction.save(update_fields=update_fields)
+        # The object was loaded earlier in a batch: re-read it under a lock and only fail a row that is STILL unpaid, so a
+        # capture/webhook that settled or parked it in between is never overwritten.
+        with db_transaction.atomic():
+            fresh = PaymentTransaction.objects.select_for_update().get(pk=transaction.pk)
+            if fresh.status == PaymentTransaction.Status.INITIALIZED:
+                transaction.status = PaymentTransaction.Status.FAILED
+                update_fields.append('status')
+                if transaction.credit_purchase_id:
+                    transaction.credit_purchase.status = transaction.credit_purchase.Status.FAILED
+                    transaction.credit_purchase.save(update_fields=['status', 'updated_at'])
+            else:
+                result = ReconciliationResult('pending', f'row is {fresh.status}; not failing it', result.payload, track=False)
+            transaction.save(update_fields=update_fields)
+    else:
+        transaction.save(update_fields=update_fields)
 
     if result.state in {'unresolved', 'pending'} and result.track:
         GatewayAnomaly.objects.get_or_create(

@@ -435,7 +435,7 @@ class PayPalCaptureView(APIView):
 
         # Replays never call PayPal again.
         if tx.status == PaymentTransaction.Status.SUCCESS:
-            return self._reply('confirmed', tx)
+            return self._settled_reply(tx)
         if tx.status == PaymentTransaction.Status.PENDING_CAPTURE:
             if self._is_grace_confirmed(tx):
                 return self._reply('pending_confirmed', tx, self.GRACE_MESSAGE)
@@ -450,7 +450,7 @@ class PayPalCaptureView(APIView):
                 return invalid
 
         try:
-            order = paypal.capture_order(order_id, request_id=f'capture-{tx.merchant_reference}')
+            order = paypal.capture_order(order_id, request_id=f'capture-{tx.merchant_reference}-{uuid.uuid4().hex[:12]}')
         except paypal.PayPalDeclined:
             return self._reply('declined', tx, 'PayPal declined this payment method. Please choose another.', retryable=True)
         except paypal.PayPalRejected as exc:
@@ -496,6 +496,22 @@ class PayPalCaptureView(APIView):
         except CaptureRejected:
             return self._reply('failed', tx, 'This capture was already used.', http=status.HTTP_409_CONFLICT)
         tx.refresh_from_db()
+        return self._settled_reply(tx)
+
+    def _settled_reply(self, tx):
+        """
+        Settling can end in 'confirmed' OR in a quarantine (DEF-501: the slot was taken, booking DISPUTED with a credit;
+        or surplus money held as UNALLOCATED). The student is only ever told 'confirmed' for a lesson they really have.
+        """
+        tx.refresh_from_db()
+        if tx.status == PaymentTransaction.Status.SUCCESS and tx.booking_id:
+            booking = Booking.objects.get(pk=tx.booking_id)
+            if booking.status == Booking.Status.DISPUTED:
+                return self._reply('failed', tx, 'Your payment was received, but this lesson time is no longer available. '
+                                                 'We have added 1 lesson credit to your account.')
+        elif tx.status != PaymentTransaction.Status.SUCCESS:
+            return self._reply('failed', tx, 'Your payment was received but could not be applied to this booking. '
+                                             'Our team will refund it and contact you by e-mail.')
         return self._reply('confirmed', tx)
 
     @staticmethod

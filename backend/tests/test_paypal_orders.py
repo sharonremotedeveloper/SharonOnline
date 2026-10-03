@@ -52,10 +52,11 @@ def order_json(ref, *, status='COMPLETED', value='9.00', currency='USD', reason=
 @pytest.fixture
 def pp(monkeypatch):
     """Fake PayPal capture API; state['order'] is what capture_order returns (or state['raise'] raises)."""
-    state = {'order': None, 'raise': None, 'calls': 0}
+    state = {'order': None, 'raise': None, 'calls': 0, 'request_ids': []}
 
     def fake_capture_order(order_id, *, request_id):
         state['calls'] += 1
+        state['request_ids'].append(request_id)
         if state['raise']:
             raise state['raise']
         return state['order']
@@ -304,3 +305,64 @@ def test_pack_capture_grants_the_credits(student_user, pp):
     assert res.status_code == 200 and res.json()['outcome'] == 'confirmed'
     assert res.json()['credit_purchase_id'] == data['target_id'] and res.json()['booking_id'] is None
     assert sum(b.remaining_credits for b in CreditBundle.objects.filter(user=student_user)) == 5
+
+
+# ---------- review fixes (adversarial review of the 10.2 merge) ----------
+
+def test_a_quarantined_payment_is_never_reported_as_confirmed(student_user, teacher_user, booking, pp):
+    """DEF-501: another student took the slot after checkout. The money is quarantined, not a booked lesson."""
+    from django.contrib.auth import get_user_model
+    data = initialised(student_user, booking)
+    other = get_user_model().objects.create_user(username='other', email='o@test.com', password='x', role='student')
+    Booking.objects.create(teacher=teacher_user, student=other, start_time_utc=booking.start_time_utc,
+                           end_time_utc=booking.end_time_utc, status=Booking.Status.CONFIRMED)
+    pp['order'] = order_json(data['transaction_reference'])
+    res = capture(student_user, data['order_id'])
+    booking.refresh_from_db()
+    assert booking.status == Booking.Status.DISPUTED
+    assert res.status_code == 200 and res.json()['outcome'] == 'failed'
+    assert 'credit' in res.json()['message'].lower() and res.json()['retryable'] is False
+
+
+def test_a_surplus_payment_is_never_reported_as_confirmed(student_user, booking, pp):
+    """A second order for the same booking, captured after the first one confirmed it, is surplus money."""
+    first = initialised(student_user, booking)
+    second = initialised(student_user, booking)
+    pp['order'] = order_json(first['transaction_reference'], capture_id='CAP-A')
+    assert capture(student_user, first['order_id']).json()['outcome'] == 'confirmed'
+    pp['order'] = order_json(second['transaction_reference'], capture_id='CAP-B')
+    res = capture(student_user, second['order_id'])
+    assert res.status_code in (200, 409) and res.json()['outcome'] == 'failed'
+    assert PaymentTransaction.objects.get(merchant_reference=second['transaction_reference']).status != 'success'
+
+
+def test_a_retry_after_a_declined_method_uses_a_fresh_paypal_request_id(student_user, booking, pp):
+    """PayPal replays the saved answer for a repeated PayPal-Request-Id, so a retry must not reuse the declined one."""
+    data = initialised(student_user, booking)
+    pp['raise'] = paypal.PayPalDeclined('declined', name='UNPROCESSABLE_ENTITY', issue='INSTRUMENT_DECLINED', status_code=422)
+    assert capture(student_user, data['order_id']).json()['outcome'] == 'declined'
+    pp['raise'] = None
+    pp['order'] = order_json(data['transaction_reference'])
+    assert capture(student_user, data['order_id']).json()['outcome'] == 'confirmed'
+    first, second = pp['request_ids']
+    assert first != second
+
+
+def test_reconcile_never_overwrites_a_row_that_moved_on_since_it_was_loaded(student_user, booking, pp):
+    from apps.payments.services.reconciliation import ReconciliationResult, reconcile_initialized_transaction
+    data = initialised(student_user, booking)
+    stale = PaymentTransaction.objects.get(merchant_reference=data['transaction_reference'])
+    PaymentTransaction.objects.filter(pk=stale.pk).update(status=PaymentTransaction.Status.PENDING_CAPTURE)
+    reconcile_initialized_transaction(stale, lookup=lambda t: ReconciliationResult('failed', 'PayPal says declined'))
+    assert PaymentTransaction.objects.get(pk=stale.pk).status == PaymentTransaction.Status.PENDING_CAPTURE
+
+
+def test_a_late_pending_report_cannot_revive_a_failed_transaction(student_user, booking, pp):
+    from apps.payments.services.paypal_capture import record_pending_capture
+    data = initialised(student_user, booking)
+    tx = PaymentTransaction.objects.get(merchant_reference=data['transaction_reference'])
+    PaymentTransaction.objects.filter(pk=tx.pk).update(status=PaymentTransaction.Status.FAILED)
+    capture_obj = {'id': 'CAP-LATE'}
+    outcome = paypal.classify_capture({'status': 'PENDING', 'status_details': {'reason': 'PENDING_REVIEW'}})
+    record_pending_capture(tx.pk, capture_obj, outcome, {})
+    assert PaymentTransaction.objects.get(pk=tx.pk).status == PaymentTransaction.Status.FAILED

@@ -69,3 +69,16 @@ Still needed from Anesu: confirm or change P-5, P-6 (threshold), P-7, P-8; PayPa
 * **DEF-501 guards** are shared (`webhook_handler.slot_unavailable_reason`, `finish_confirmed_booking`): a slot taken by someone else or a lesson already started means no grace (nothing is quarantined because no cash arrived); the normal path handles it when the money clears.
 * **Capture response:** new outcome `pending_confirmed` (with `booking_id`) beside `pending`; a replay of the capture request reports the same.
 * **Open for Anesu / frontend:** the admin finance ledger items gained `payment_pending` (additive); the UI should show "awaiting PayPal" for those rows. Booking blocks are cleared in Django admin (Users -> Booking block); there is no admin API for it yet.
+
+## 7. Independent review of the merged branch (2026-10-03) - what was fixed and what remains
+
+Fixed (tests + mutation checks): the capture endpoint reported `confirmed` when the payment was quarantined (DEF-501 or surplus); reconciliation could overwrite a row that had moved to PENDING_CAPTURE/SUCCESS since it was loaded (now locked, fails only an INITIALIZED row); the PayPal capture request id was fixed per transaction, so a retry after a declined instrument could replay PayPal's cached error (now unique per attempt, duplicates are covered by the ORDER_ALREADY_CAPTURED fallback); `PAYMENT.CAPTURE.REVERSED` on a pending capture now runs the failure runbook; a late PENDING report can no longer revive a FAILED transaction.
+
+Open follow-ups (none critical, no authorization hole or unverified-money path was found):
+1. `TRANSACTION_APPROVED_AWAITING_FUNDING` is classed merchant-side (so it bypasses the circuit breaker) but is a bank-funded payment that can still fail. Per-account/per-payer caps still apply. **Decision for Anesu:** keep as P-5 decided, or treat it as risk-based.
+2. A tutor-cancelled grace booking can grant a bonus credit before the payment clears (small amount).
+3. If PayPal reports COMPLETED after a lesson's payment was written off (platform already paid the tutor), the money is held as UNALLOCATED but no alert tells finance the platform paid and also holds the student's money.
+4. A provider fee larger than the amount raises inside settlement after PayPal captured; the endpoint returns 500 and reconcile keeps retrying (visible only in logs). Needs an anomaly + admin alert.
+5. `alert_merchant_side_pending` can fire after a webhook already settled the transaction (noise).
+6. Plan item "reuse a live INITIALIZED order / bound orders per booking" is not implemented: every init creates a new order (concurrent captures are safe: the second ends UNALLOCATED and is now reported as failed).
+7. Not verifiable without PayPal sandbox / real Postgres: idempotency replay behaviour, ORDER_ALREADY_CAPTURED fallback, payer and `status_details.reason` shapes, whether PENDING webhooks arrive before the capture response, advisory-lock and row-lock ordering under real concurrency, admin/dispute paths around absorbed or pending funding.

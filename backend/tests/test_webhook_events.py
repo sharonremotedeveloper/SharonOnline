@@ -350,6 +350,18 @@ class TestChargebacks:
         pending_booking.refresh_from_db()
         assert pending_booking.status == Booking.Status.CONFIRMED
 
+    def test_reversed_on_a_pending_capture_runs_the_failure_runbook(self, ev, pending_booking, monkeypatch):
+        from apps.payments.services import grace
+        hook, state, ref = ev
+        calls = []
+        monkeypatch.setattr(grace, 'on_failed', lambda tx: calls.append(tx.pk))
+        PaymentTransaction.objects.filter(merchant_reference=ref).update(
+            status=PaymentTransaction.Status.PENDING_CAPTURE, gateway_reference=CAP)
+        state['captures'][CAP]['status'] = 'REVERSED'
+        assert hook('PAYMENT.CAPTURE.REVERSED').status_code == 200
+        assert len(calls) == 1
+        assert GatewayAnomaly.objects.filter(reason='chargeback_opened').exists()
+
     def test_dispute_created_is_resolved_to_the_booking_through_the_disputed_capture(self, ev, pending_booking):
         hook, state, ref = ev
         settle(hook, ref)

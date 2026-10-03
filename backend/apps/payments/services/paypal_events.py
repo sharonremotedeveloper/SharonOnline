@@ -254,6 +254,9 @@ def on_capture_reversed(event: dict) -> str:
     flag_chargeback(tx, reference=capture_id, reason='chargeback_opened',
                     detail=f"capture reversed by PayPal (capture status {capture.get('status')}); a human decides on the money",
                     event=event)
+    if tx.status == PaymentTransaction.Status.PENDING_CAPTURE:
+        # The money PayPal had not yet guaranteed is now never coming: unwind the (grace) booking exactly like a denial.
+        grace.on_failed(tx)
     return 'flagged'
 
 
