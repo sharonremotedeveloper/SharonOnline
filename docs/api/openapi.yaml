@@ -1295,6 +1295,39 @@ paths:
               schema:
                 $ref: '#/components/schemas/PayoutAccountMasked'
           description: ''
+  /api/v1/payments/paypal/capture/:
+    post:
+      operationId: v1_payments_paypal_capture_create
+      description: |-
+        Capture an approved PayPal order. The browser only says "this order was approved"; the amount, currency and status
+        are read from PayPal's own response and verified against the transaction we created, then applied through the same
+        locked, idempotent path the webhook uses (PAYPAL_CAPTURE_CONFIRMS=False leaves confirmation to the webhook).
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/payments/wallet/tutor/:
     get:
       operationId: v1_payments_wallet_tutor_retrieve
@@ -2777,12 +2810,16 @@ components:
         * `dispute` - Dispute decided for the student
     RefundStatusEnum:
       enum:
+      - awaiting_clearance
+      - void
       - pending_gateway
       - processed
       - converted
       - failed
       type: string
       description: |-
+        * `awaiting_clearance` - Waiting for the payment to clear
+        * `void` - Not needed (the payment never cleared)
         * `pending_gateway` - Waiting for the gateway
         * `processed` - Paid to the original payment method
         * `converted` - Converted to wallet credit

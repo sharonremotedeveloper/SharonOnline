@@ -4,6 +4,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 import logging
 import uuid
+from urllib.parse import urlencode
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.conf import settings
@@ -22,12 +23,20 @@ from django.utils import timezone
 from apps.bookings.models import Booking
 from apps.users.permissions import IsTeacher
 from apps.bookings.services.holds import SLOT_OWNING_STATUSES, hold_expires_at, hold_is_live, inflight_grace, max_hold
+from apps.bookings.services.booking_block import booking_block_message
 from apps.bookings.services.lock_service import extend_slot_lock
 from .gateways import payfast, paypal
-from .models import FxRate, LessonPrice, CreditBundle, CreditPack, CreditPurchase, CreditWalletEntry, GatewayAnomaly, PaymentTransaction, TutorPayoutAccount
+from .services import grace
+from .models import BookingFunding, FxRate, LessonPrice, CreditBundle, CreditPack, CreditPurchase, CreditWalletEntry, GatewayAnomaly, PaymentTransaction, TutorPayoutAccount
 from .serializers import (
     PayoutAccountMaskedSerializer, PayoutAccountWriteSerializer, TutorWalletSerializer, masked_payout_account,
 )
+from .services.anomalies import record_anomaly
+from .services.paypal_capture import (
+    CaptureRejected, record_failed_capture, record_pending_capture, settle_completed_capture, verify_capture_amount,
+)
+from .services import paypal_events
+from .services.paypal_orders import create_checkout_order
 from .services.fx import FxRateStale, FxRateUnavailable, current_rate, fx_source_label
 from .services.pricing import CURRENCY_EXPONENT, PriceNotConfigured, lesson_price, quantize_money
 from .services.payout_crypto import PayoutDataError
@@ -43,15 +52,14 @@ CENT = Decimal('0.01')
 SETTLED_STATES = (PaymentTransaction.Status.SUCCESS, PaymentTransaction.Status.UNALLOCATED)
 
 
-def _anomaly(gateway, reference, reason, detail='', tx=None, payload=None):
-    """
-    Persist an authenticated-but-unappliable notification (money may have moved). Only call AFTER signature/IP checks
-    so unauthenticated callers cannot fill the table. De-duplicated so gateway retries don't multiply rows.
-    """
-    GatewayAnomaly.objects.get_or_create(
-        gateway=gateway, reference=str(reference or '')[:255], reason=reason, resolved=False,
-        defaults={'detail': detail, 'payload': payload or {}, 'payment_transaction': tx,
-                  'booking': tx.booking if tx is not None and tx.booking_id else None})
+def _with_ref(url: str, reference: str) -> str:
+    """Append the opaque TX- reference (never a token or internal id) to a buyer-redirect URL."""
+    if not url:
+        return ''
+    return f"{url}{'&' if '?' in url else '?'}{urlencode({'ref': reference})}"
+
+
+_anomaly = record_anomaly
 
 
 def _bind_gateway_reference(tx: PaymentTransaction, gateway_reference: str, raw_payload: dict):
@@ -145,11 +153,27 @@ class CheckoutInitializeView(APIView):
                 purchase.delete()
             return Response({"error": "PayFast is not configured."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
+        if gateway == 'paypal' and not (settings.PAYPAL_CLIENT_ID and settings.PAYPAL_CLIENT_SECRET):
+            if purchase:
+                purchase.delete()
+            return Response({"error": "PayPal is not configured."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
         tx = PaymentTransaction.objects.create(
             booking=booking, credit_purchase=purchase, gateway=gateway, gateway_reference=f"INIT-{reference}",
             merchant_reference=reference, amount=amount, currency=currency, **tx_fx,
             status=PaymentTransaction.Status.INITIALIZED,
         )
+        order_id = None
+        if gateway == 'paypal':
+            try:
+                order_id = create_checkout_order(tx, item_name)
+            except paypal.PayPalError as exc:
+                logger.error("PayPal order creation failed for %s: %s", reference, exc)
+                tx.delete()
+                if purchase:
+                    purchase.delete()
+                return Response({"error": "PayPal is temporarily unavailable. Please try again."},
+                                status=status.HTTP_502_BAD_GATEWAY)
         hold_until = hold_expires_at(booking).isoformat() if booking else None
         if gateway == 'payfast':
             return Response({
@@ -164,7 +188,9 @@ class CheckoutInitializeView(APIView):
                 "action_url": payfast.process_url(),
                 "fields": payfast.build_checkout_fields(
                     reference=reference, amount=amount, item_name=item_name,
-                    booking_id=target_id, notify_url=settings.PAYFAST_NOTIFY_URL),
+                    booking_id=target_id, notify_url=settings.PAYFAST_NOTIFY_URL,
+                    return_url=_with_ref(settings.PAYFAST_RETURN_URL, reference),
+                    cancel_url=_with_ref(settings.PAYFAST_CANCEL_URL, reference)),
             })
         return Response({
             "gateway": "paypal",
@@ -176,10 +202,14 @@ class CheckoutInitializeView(APIView):
             "currency": currency,
             "item_name": item_name,
             "custom_id": reference,  # PayPal echoes this back; webhooks match on it
+            "order_id": order_id,
         })
 
     @staticmethod
     def _validate_booking(booking):
+        blocked = booking_block_message(booking.student)
+        if blocked:
+            return Response({"error": blocked, "code": "booking_blocked"}, status=409)
         if booking.status != Booking.Status.PENDING_PAYMENT:
             return Response({"error": f"Booking is '{booking.status}' and cannot be paid for."}, status=409)
         if not (booking.teacher.is_active and booking.teacher.is_verified):
@@ -217,6 +247,24 @@ class PayFastWebhookView(APIView):
         logger.warning("PayFast ITN rejected: %s %s", reason, context)
         return Response({"error": "invalid_notification"}, status=status.HTTP_400_BAD_REQUEST)
 
+    def _fail_initialized(self, tx, pairs, data):
+        """CANCELLED / FAILED: the buyer did not pay. Only a still-INITIALIZED transaction may be failed, never a settled one."""
+        if tx.status != PaymentTransaction.Status.INITIALIZED:
+            return Response("OK", status=status.HTTP_200_OK)
+        if not payfast.server_confirms(pairs):               # network call, outside any row lock
+            return self._reject("server postback not VALID", m_payment_id=tx.merchant_reference)
+        with transaction.atomic():
+            tx = PaymentTransaction.objects.select_for_update().get(pk=tx.pk)
+            if tx.status == PaymentTransaction.Status.INITIALIZED:
+                tx.status = PaymentTransaction.Status.FAILED
+                tx.raw_webhook_payload = data
+                tx.save(update_fields=['status', 'raw_webhook_payload', 'updated_at'])
+                if tx.credit_purchase_id:
+                    CreditPurchase.objects.filter(pk=tx.credit_purchase_id, status=CreditPurchase.Status.INITIALIZED).update(
+                        status=CreditPurchase.Status.FAILED)
+        logger.info("PayFast ITN %s status=%s: transaction marked failed", tx.merchant_reference, data.get('payment_status'))
+        return Response("OK", status=status.HTTP_200_OK)
+
     def post(self, request):
         pairs = payfast.parse_itn_body(request._request.body)
         data = dict(pairs)
@@ -233,13 +281,20 @@ class PayFastWebhookView(APIView):
         pf_payment_id = data.get('pf_payment_id')
         if not reference or not pf_payment_id:
             return self._reject("missing m_payment_id/pf_payment_id")
+        if len(reference) > 255 or len(pf_payment_id) > 255:
+            return self._reject("oversized m_payment_id/pf_payment_id")
+        payment_status = data.get('payment_status')
 
         # Phase 1 - read-only checks, no row lock held.
         tx = (PaymentTransaction.objects.select_related('booking', 'credit_purchase__pack')
               .filter(merchant_reference=reference, gateway=PaymentTransaction.Gateway.PAYFAST).first())
         if tx is None:
-            _anomaly('payfast', reference, 'unknown_reference', f"pf_payment_id={pf_payment_id}", payload=data)
-            return self._reject("unknown m_payment_id", m_payment_id=reference)
+            # Authenticated (signature + IP + merchant) but ours to nobody: quarantine for a human and acknowledge, so
+            # PayFast stops retrying a notification we can never apply.
+            if payment_status == 'COMPLETE':
+                _anomaly('payfast', reference, 'unknown_reference', f"pf_payment_id={pf_payment_id}", payload=data)
+            logger.error("PayFast ITN %s (%s) matches no transaction: quarantined", reference, payment_status)
+            return Response("OK", status=status.HTTP_200_OK)
         try:
             gross = Decimal(data.get('amount_gross', ''))
         except Exception:
@@ -249,8 +304,13 @@ class PayFastWebhookView(APIView):
                      f"expected {tx.amount} {tx.currency}, gateway says {gross}", tx=tx, payload=data)
             return self._reject("amount mismatch", expected=str(tx.amount), got=str(gross))
 
-        if data.get('payment_status') != 'COMPLETE':
-            logger.info("PayFast ITN %s status=%s acknowledged without action", reference, data.get('payment_status'))
+        if payment_status in ('CANCELLED', 'FAILED'):
+            return self._fail_initialized(tx, pairs, data)
+        if payment_status != 'COMPLETE':
+            known = payment_status == 'PENDING'
+            (logger.info if known else logger.warning)(
+                "PayFast ITN %s status=%s acknowledged without action%s", reference, payment_status,
+                '' if known else ' (UNKNOWN status)')
             return Response("OK", status=status.HTTP_200_OK)
 
         if tx.status in SETTLED_STATES and tx.gateway_reference == pf_payment_id:
@@ -320,69 +380,147 @@ class PayPalWebhookView(APIView):
             logger.error("%s", exc)
             return Response({"error": "verification_unavailable"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-        if event.get('event_type') != 'PAYMENT.CAPTURE.COMPLETED':
+        handler = paypal_events.HANDLERS.get(event.get('event_type'))
+        if handler is None:
             return Response({"status": "ignored"}, status=status.HTTP_200_OK)
-
-        capture_id = (event.get('resource') or {}).get('id')
-        if not capture_id or not isinstance(capture_id, str):
-            return self._reject("missing capture id")
-
         try:
-            capture = paypal.get_capture(capture_id)
+            result = handler(event)
+        except CaptureRejected as exc:
+            return self._reject(exc.reason.replace('_', ' '), **exc.context)
         except paypal.PayPalError as exc:
             logger.error("%s", exc)
             return Response({"error": "lookup_unavailable"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response({"status": result if result in ('ignored', 'quarantined') else 'received'}, status=status.HTTP_200_OK)
 
-        reference = capture.get('custom_id')
-        amount_info = capture.get('amount') or {}
 
-        tx = (PaymentTransaction.objects.select_related('booking', 'credit_purchase__pack')
-              .filter(merchant_reference=reference, gateway=PaymentTransaction.Gateway.PAYPAL).first()
-              if reference else None)
-        if tx is None:
-            _anomaly('paypal', capture_id, 'unknown_reference', f"custom_id={reference}", payload=event)
-            return self._reject("unknown custom_id", custom_id=reference)
-        if capture.get('status') != 'COMPLETED':
-            return self._reject("capture not COMPLETED", status=capture.get('status'))
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
+class PayPalCaptureView(APIView):
+    """
+    Capture an approved PayPal order. The browser only says "this order was approved"; the amount, currency and status
+    are read from PayPal's own response and verified against the transaction we created, then applied through the same
+    locked, idempotent path the webhook uses (PAYPAL_CAPTURE_CONFIRMS=False leaves confirmation to the webhook).
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'checkout'
+    GRACE_MESSAGE = ('PayPal is still verifying this payment. Your lesson is booked. '
+                     'If the payment cannot be completed we will contact you.')
+
+    @staticmethod
+    def _is_grace_confirmed(tx):
+        return bool(tx.booking_id) and BookingFunding.objects.filter(
+            payment_transaction=tx, source_type=BookingFunding.SourceType.GATEWAY_PENDING,
+            booking__status=Booking.Status.CONFIRMED).exists()
+
+    @staticmethod
+    def _reply(outcome, tx, message='', retryable=False, http=status.HTTP_200_OK):
+        return Response({
+            'outcome': outcome,
+            'booking_id': str(tx.booking_id) if tx.booking_id else None,
+            'credit_purchase_id': str(tx.credit_purchase_id) if tx.credit_purchase_id else None,
+            'message': message, 'retryable': retryable,
+        }, status=http)
+
+    def post(self, request):
+        order_id = request.data.get('order_id') if isinstance(request.data, dict) else None
+        if not order_id or not isinstance(order_id, str):
+            return Response({"error": "order_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        tx = (PaymentTransaction.objects.select_related('booking', 'credit_purchase')
+              .filter(gateway=PaymentTransaction.Gateway.PAYPAL, gateway_order_id=order_id).first())
+        owner_id = None
+        if tx is not None:
+            owner_id = tx.booking.student_id if tx.booking_id else tx.credit_purchase.user_id
+        if tx is None or owner_id != request.user.id:
+            return Response({"error": "Unknown order."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Replays never call PayPal again.
+        if tx.status == PaymentTransaction.Status.SUCCESS:
+            return self._settled_reply(tx)
+        if tx.status == PaymentTransaction.Status.PENDING_CAPTURE:
+            if self._is_grace_confirmed(tx):
+                return self._reply('pending_confirmed', tx, self.GRACE_MESSAGE)
+            return self._reply('pending', tx, 'PayPal is still verifying this payment.')
+        if tx.status in (PaymentTransaction.Status.FAILED, PaymentTransaction.Status.REFUNDED,
+                         PaymentTransaction.Status.UNALLOCATED):
+            return self._reply('failed', tx, 'This payment cannot be completed.', http=status.HTTP_200_OK)
+
+        if tx.booking_id:
+            invalid = self._validate_still_payable(tx.booking)
+            if invalid:
+                return invalid
+
         try:
-            paid = Decimal(str(amount_info.get('value', '')))
-        except Exception:
-            return self._reject("unparseable amount")
-        if amount_info.get('currency_code') != tx.currency or quantize_money(paid, tx.currency) != quantize_money(tx.amount, tx.currency):
-            _anomaly('paypal', capture_id, 'amount_mismatch',
-                     f"expected {tx.amount} {tx.currency}, PayPal says {paid} {amount_info.get('currency_code')}",
-                     tx=tx, payload=event)
-            return self._reject("amount/currency mismatch", expected=f"{tx.amount} {tx.currency}",
-                                got=f"{paid} {amount_info.get('currency_code')}")
+            order = paypal.capture_order(order_id, request_id=f'capture-{tx.merchant_reference}-{uuid.uuid4().hex[:12]}')
+        except paypal.PayPalDeclined:
+            return self._reply('declined', tx, 'PayPal declined this payment method. Please choose another.', retryable=True)
+        except paypal.PayPalRejected as exc:
+            logger.warning("PayPal refused capture of %s: %s %s", order_id, exc.name, exc.issue)
+            return self._reply('failed', tx, 'PayPal could not capture this order.', http=status.HTTP_409_CONFLICT)
+        except paypal.PayPalError as exc:
+            logger.error("PayPal capture unavailable for %s: %s", order_id, exc)
+            return self._reply('pending', tx, 'PayPal is not responding. Please try again in a moment.', retryable=True,
+                               http=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-        with transaction.atomic():
-            tx = PaymentTransaction.objects.select_for_update().select_related('booking').get(pk=tx.pk)
-            if tx.status in SETTLED_STATES:
-                if tx.gateway_reference == capture_id:
-                    return Response({"status": "received"}, status=status.HTTP_200_OK)  # duplicate delivery
-                if tx.credit_purchase_id:
-                    _anomaly('paypal', capture_id, 'duplicate_credit_purchase_capture',
-                             f'purchase {tx.credit_purchase_id} already settled by {tx.gateway_reference}', tx=tx, payload=event)
-                    return Response({"status": "received"}, status=status.HTTP_200_OK)
-                # A DIFFERENT capture against an already-settled order reference: hold for refund, never drop silently.
-                record_unallocated_payment(
-                    booking=tx.booking, gateway=PaymentTransaction.Gateway.PAYPAL, transaction_id=capture_id,
-                    amount=tx.amount, currency=tx.currency, raw_payload=event, reason='duplicate_payment',
-                    detail=f"custom_id {reference} already settled by {tx.gateway_reference}")
-                return Response({"status": "received"}, status=status.HTTP_200_OK)
-            if not _bind_gateway_reference(tx, capture_id, event):
-                _anomaly('paypal', capture_id, 'gateway_reference_reused', f"custom_id={reference}", tx=tx, payload=event)
-                return self._reject("gateway reference already used", capture_id=capture_id)
+        capture = paypal.extract_capture(order)
+        if capture is None:
+            logger.error("PayPal capture response for %s had no capture object", order_id)
+            return self._reply('pending', tx, 'PayPal returned an unexpected response.', retryable=True,
+                               http=status.HTTP_502_BAD_GATEWAY)
+        if capture.get('custom_id') != tx.merchant_reference:
+            _anomaly('paypal', capture.get('id'), 'capture_reference_mismatch',
+                     f"order {order_id}: custom_id {capture.get('custom_id')} != {tx.merchant_reference}",
+                     tx=tx, payload=order)
+            return self._reply('failed', tx, 'This capture does not belong to this checkout.', http=status.HTTP_409_CONFLICT)
 
-            process_payment_webhook(
-                booking_id=str(tx.booking_id) if tx.booking_id else None,
-                credit_purchase_id=str(tx.credit_purchase_id) if tx.credit_purchase_id else None,
-                gateway=PaymentTransaction.Gateway.PAYPAL,
-                transaction_id=capture_id, amount=tx.amount, currency=tx.currency,
-                status=PaymentTransaction.Status.SUCCESS, raw_payload=event,
-                provider_fee_amount=((capture.get('seller_receivable_breakdown') or {}).get('paypal_fee') or {}).get('value'),
-                provider_fee_currency=((capture.get('seller_receivable_breakdown') or {}).get('paypal_fee') or {}).get('currency_code', ''))
-        return Response({"status": "received"}, status=status.HTTP_200_OK)
+        outcome = paypal.classify_capture(capture)
+        if outcome.state in ('declined', 'failed'):
+            record_failed_capture(tx.pk)
+            return self._reply('failed', tx, 'PayPal could not complete this payment.')
+        try:
+            verify_capture_amount(tx, capture, payload=order)
+        except CaptureRejected:
+            return self._reply('failed', tx, 'The captured amount did not match this checkout.',
+                               http=status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+        if outcome.state == 'pending':
+            record_pending_capture(tx.pk, capture, outcome, order)
+            tx.refresh_from_db()
+            # Grace booking (plan P-1): confirm the lesson now if policy allows; the money is awaited, nothing is posted yet.
+            if grace.handle_pending_capture(tx, outcome).allowed:
+                return self._reply('pending_confirmed', tx, self.GRACE_MESSAGE)
+            return self._reply('pending', tx, 'PayPal is still verifying this payment.')
+        if not settings.PAYPAL_CAPTURE_CONFIRMS:
+            return self._reply('pending', tx, 'Payment received; confirming shortly.')
+        try:
+            settle_completed_capture(tx.pk, capture, payload=order)
+        except CaptureRejected:
+            return self._reply('failed', tx, 'This capture was already used.', http=status.HTTP_409_CONFLICT)
+        tx.refresh_from_db()
+        return self._settled_reply(tx)
+
+    def _settled_reply(self, tx):
+        """
+        Settling can end in 'confirmed' OR in a quarantine (DEF-501: the slot was taken, booking DISPUTED with a credit;
+        or surplus money held as UNALLOCATED). The student is only ever told 'confirmed' for a lesson they really have.
+        """
+        tx.refresh_from_db()
+        if tx.status == PaymentTransaction.Status.SUCCESS and tx.booking_id:
+            booking = Booking.objects.get(pk=tx.booking_id)
+            if booking.status == Booking.Status.DISPUTED:
+                return self._reply('failed', tx, 'Your payment was received, but this lesson time is no longer available. '
+                                                 'We have added 1 lesson credit to your account.')
+        elif tx.status != PaymentTransaction.Status.SUCCESS:
+            return self._reply('failed', tx, 'Your payment was received but could not be applied to this booking. '
+                                             'Our team will refund it and contact you by e-mail.')
+        return self._reply('confirmed', tx)
+
+    @staticmethod
+    def _validate_still_payable(booking):
+        booking.refresh_from_db()
+        if booking.status != Booking.Status.PENDING_PAYMENT or not hold_is_live(booking, timezone.now()):
+            return Response({"error": "This booking can no longer be paid for. Please book a new time.",
+                             "outcome": "failed", "retryable": False}, status=status.HTTP_409_CONFLICT)
+        return None
 
 
 @extend_schema(responses=WalletSerializer)

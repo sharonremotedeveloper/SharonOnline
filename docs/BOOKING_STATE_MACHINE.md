@@ -36,6 +36,7 @@ stateDiagram-v2
     confirmed --> cancelled_by_teacher: tutor cancels (refunded)
     confirmed --> completed_pending_memo: ended, teacher >= 20 min
     confirmed --> disputed: ended, teacher < 20 min
+    confirmed --> cancelled: grace booking whose PENDING payment failed before the lesson (10.2e)
     in_progress --> completed_pending_memo
     in_progress --> disputed
     in_progress --> interrupted_power
@@ -63,6 +64,8 @@ stateDiagram-v2
 | confirmed -> in_progress, no-show -> disputed | `integrations/views.py` Zoom webhook; `audit_attendance_and_noshows_task` (active probe) |
 | confirmed/in_progress -> no-show / completed_pending_memo / disputed | `audit_attendance_and_noshows_task` |
 | confirmed -> interrupted_power | `ReportOutageView` (the lesson's tutor or staff only) |
+| pending_payment -> confirmed (reason `grace_pending_capture`) | `payments/services/grace.py::confirm_grace_booking`, a PayPal capture still PENDING that passed the grace policy (money not yet received; funding `gateway_pending`) |
+| confirmed -> cancelled (reason `grace_payment_failed`) | `payments/services/grace.py::on_failed`, only when the pending payment fails BEFORE the lesson start |
 | confirmed -> cancelled_by_student / student_late_cancelled / cancelled_by_teacher; pending_payment -> cancelled | `CancelBookingView` -> `services/cancellation.py` (see `CANCELLATION_AND_REFUNDS.md`) |
 | -> completed (memo) | `SubmitMemoView` (only the lesson's tutor, only after the attendance job has settled the lesson: completed_pending_memo, completed, completed_memo_forfeited; validated input; flashcards in the same transaction) |
 | completed_pending_memo/completed -> forfeited | `enforce_memo_sla_task` (re-checks for a memo under the row lock) |

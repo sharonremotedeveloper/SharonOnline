@@ -112,12 +112,24 @@ def server_confirms(pairs) -> bool:
     return resp.status_code == 200 and resp.text.strip() == 'VALID'
 
 
-def build_checkout_fields(*, reference: str, amount, item_name: str, booking_id: str, notify_url: str) -> dict:
-    """Signed fields the browser posts to PayFast's process URL."""
+def build_checkout_fields(*, reference: str, amount, item_name: str, booking_id: str, notify_url: str,
+                          return_url: str = '', cancel_url: str = '', name_first: str = '', name_last: str = '',
+                          email_address: str = '') -> dict:
+    """Signed fields the browser posts to PayFast's process URL.
+
+    PayFast signs fields in the order its docs list them (not alphabetical): merchant_id, merchant_key, return_url,
+    cancel_url, notify_url, [notify_method], name_first, name_last, email_address, m_payment_id, amount, item_name,
+    custom_str1. Do not reorder.
+    """
     fields = [
         ('merchant_id', settings.PAYFAST_MERCHANT_ID),
         ('merchant_key', settings.PAYFAST_MERCHANT_KEY),
+        ('return_url', return_url),
+        ('cancel_url', cancel_url),
         ('notify_url', notify_url),
+        ('name_first', name_first),
+        ('name_last', name_last),
+        ('email_address', email_address),
         ('m_payment_id', reference),
         ('amount', f"{amount:.2f}"),
         ('item_name', item_name),

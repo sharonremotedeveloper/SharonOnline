@@ -311,6 +311,8 @@ def record_escrow_clearance_entry(
         funding = funding_for_settlement(booking, context='record_escrow_clearance_entry')
     if funding is None:
         raise ValueError(f'Booking {booking.id} has no funding provenance; escrow clearance stopped.')
+    from apps.payments.services.funding import require_cleared
+    require_cleared(funding, context='escrow clearance')       # a pending/failed grace payment has no escrow to release
     gross_amount = Decimal(str(funding.captured_amount)).quantize(Decimal('0.01'))
     
     tutor_net = (gross_amount * Decimal('0.80')).quantize(Decimal('0.01'))
@@ -355,6 +357,43 @@ def record_escrow_clearance_entry(
         currency=currency,
         fx_rate_to_zar=fx_rate_to_zar,
         fx_source=fx_source,
+    )
+
+
+def record_absorbed_tutor_payment_entry(
+    booking,
+    funding,
+    *,
+    event_type: str = LedgerEntry.EventType.PAYMENT_FAILURE_ABSORBED,
+    dispute_case=None,
+) -> List[LedgerEntry]:
+    """
+    The student's pending payment FAILED after the lesson was delivered; the platform still pays the tutor (plan P-3).
+    No cash ever reached escrow, so escrow is not touched: the tutor's 80 % is a platform expense.
+    DR Expense: Platform-Absorbed Payment Failure (5040)  80 %
+    CR Liability: Tutor Payables (2020)                    80 %
+    There is no platform commission (nothing was collected) and nothing is booked for the student. The funding snapshot
+    supplies the amount, currency and the FX rate stamped at checkout.
+    """
+    if funding.source_type != funding.SourceType.PLATFORM_ABSORBED:
+        raise ValueError(f"Booking {booking.id} funding is '{funding.source_type}', not a platform-absorbed payment failure.")
+    gross_amount = Decimal(str(funding.captured_amount)).quantize(Decimal('0.01'))
+    tutor_net = (gross_amount * Decimal('0.80')).quantize(Decimal('0.01'))
+    ref = f"BK-{str(booking.id)[:6].upper()}"
+    entries = [
+        {'account': LedgerAccount.EXPENSE_ABSORBED_PAYMENT_FAILURE, 'entry_type': LedgerEntry.EntryType.DEBIT,
+         'amount': tutor_net, 'currency': funding.currency,
+         'description': f"Platform pays the tutor for {ref}: the student's payment failed after the lesson"},
+        {'account': LedgerAccount.LIABILITY_TUTOR_PAYABLE, 'entry_type': LedgerEntry.EntryType.CREDIT,
+         'amount': tutor_net, 'currency': funding.currency,
+         'description': f"Tutor 80% payable to {booking.teacher.user.username} (funded by the platform) for {ref}"},
+    ]
+    return record_journal_entries(
+        entries=entries, event_type=event_type,
+        description=f"Tutor paid by the platform after a failed pending payment, booking {booking.id}",
+        booking=booking, payment_transaction=funding.payment_transaction, dispute_case=dispute_case,
+        user=booking.teacher.user, currency=funding.currency,
+        fx_rate_to_zar=funding.fx_rate_to_zar, fx_source=funding.fx_source,
     )
 
 
@@ -415,6 +454,8 @@ def record_dispute_settlement_entry(
     funding = funding_for_settlement(booking, context='record_dispute_settlement_entry')
     if funding is None:
         raise ValueError(f'Booking {booking.id} has no funding provenance; dispute settlement stopped.')
+    from apps.payments.services.funding import require_cleared
+    require_cleared(funding, context='dispute settlement')
     amount_usd = Decimal(str(funding.captured_amount)).quantize(Decimal('0.01'))
     currency = funding.currency
     fx_rate_to_zar = funding.fx_rate_to_zar
@@ -769,12 +810,15 @@ def get_ledger_telemetry() -> Dict[str, Any]:
     dispute_expense_zar = _net_balance(LedgerAccount.EXPENSE_DISPUTE_SETTLEMENT)
     compensation_expense_zar = _net_balance(LedgerAccount.EXPENSE_STUDENT_COMPENSATION)
     gateway_fees_expense_zar = _net_balance(LedgerAccount.EXPENSE_GATEWAY_FEES)
-    total_expenses_zar = dispute_expense_zar + compensation_expense_zar + gateway_fees_expense_zar
+    absorbed_failure_expense_zar = _net_balance(LedgerAccount.EXPENSE_ABSORBED_PAYMENT_FAILURE)
+    total_expenses_zar = (dispute_expense_zar + compensation_expense_zar + gateway_fees_expense_zar
+                          + absorbed_failure_expense_zar)
     total_expenses_usd = sum(
         _net_currency(account, 'USD') for account in (
             LedgerAccount.EXPENSE_DISPUTE_SETTLEMENT,
             LedgerAccount.EXPENSE_STUDENT_COMPENSATION,
             LedgerAccount.EXPENSE_GATEWAY_FEES,
+            LedgerAccount.EXPENSE_ABSORBED_PAYMENT_FAILURE,
         )
     )
 

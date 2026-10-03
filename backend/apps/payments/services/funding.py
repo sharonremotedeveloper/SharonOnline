@@ -25,8 +25,23 @@ def gateway_fx_snapshot(currency: str) -> tuple[Decimal, str]:
     raise MissingBookingFunding(f'No approved ZAR valuation source is configured for {currency}.')
 
 
-def ensure_gateway_funding(payment_transaction: PaymentTransaction, booking) -> BookingFunding:
-    """Persist the immutable amount/currency/FX used for a paid lesson."""
+class PaymentNotCleared(RuntimeError):
+    """The booking's money has not (or never will) reach escrow, so escrow-based settlement must not run (grace bookings)."""
+
+
+# Funding provenances whose money is NOT in escrow: a pending PayPal capture, or a failed one the platform is covering.
+UNCLEARED_SOURCES = (BookingFunding.SourceType.GATEWAY_PENDING, BookingFunding.SourceType.PLATFORM_ABSORBED)
+
+
+def require_cleared(funding: BookingFunding, *, context: str) -> None:
+    """Escrow-debiting settlements (24h release, arbitration release) call this first. Never post against uncleared money."""
+    if funding.source_type in UNCLEARED_SOURCES:
+        raise PaymentNotCleared(f"{context}: booking {funding.booking_id} funding is '{funding.source_type}', not cleared escrow.")
+
+
+def ensure_gateway_funding(payment_transaction: PaymentTransaction, booking,
+                           source_type: str = BookingFunding.SourceType.GATEWAY) -> BookingFunding:
+    """Persist the immutable amount/currency/FX used for a paid lesson (GATEWAY_PENDING for a grace booking)."""
     fx_rate = payment_transaction.fx_rate_to_zar
     fx_source = payment_transaction.fx_source
     if fx_rate is None or not fx_source:
@@ -37,7 +52,7 @@ def ensure_gateway_funding(payment_transaction: PaymentTransaction, booking) -> 
     funding, _ = BookingFunding.objects.get_or_create(
         booking=booking,
         defaults={
-            'source_type': BookingFunding.SourceType.GATEWAY,
+            'source_type': source_type,
             'captured_amount': payment_transaction.amount,
             'currency': payment_transaction.currency.upper(),
             'fx_rate_to_zar': fx_rate,

@@ -296,9 +296,20 @@ PAYFAST_SANDBOX = _env_bool('PAYFAST_SANDBOX', True)
 PAYFAST_SKIP_IP_CHECK = _env_bool('PAYFAST_SKIP_IP_CHECK', False)
 PAYFAST_TRUSTED_PROXY_COUNT = int(os.environ.get('PAYFAST_TRUSTED_PROXY_COUNT', '0'))
 PAYFAST_NOTIFY_URL = os.environ.get('PAYFAST_NOTIFY_URL', '')
+# Where PayFast sends the buyer after paying / cancelling (Task 10.2 H). The opaque TX- reference is appended as ?ref=.
+PAYFAST_RETURN_URL = os.environ.get('PAYFAST_RETURN_URL') or f'{FRONTEND_BASE_URL}/student/checkout/return'
+PAYFAST_CANCEL_URL = os.environ.get('PAYFAST_CANCEL_URL') or f'{FRONTEND_BASE_URL}/student/checkout/cancel'
 # Extra source-IP ranges allowed for ITNs (comma-separated CIDRs). Copy PayFast's currently published ranges here;
 # DNS resolution of PayFast's hosts is used in addition.
 PAYFAST_EXTRA_ALLOWED_CIDRS = [c.strip() for c in os.environ.get('PAYFAST_EXTRA_ALLOWED_CIDRS', '').split(',') if c.strip()]
+# Task 10.2 pending-payment grace. Circuit breaker: at most this many risk-based (buyer-side: PENDING_REVIEW,
+# TRANSACTION_APPROVED_AWAITING_FUNDING) grace bookings open at once.
+GRACE_MAX_OPEN = int(os.environ.get('GRACE_MAX_OPEN', '5'))
+# Overall ceiling across ALL open grace bookings, merchant-side ones included (they are exempt from the breaker, so
+# without this a mis-set PayPal account could let unlimited distinct students take unpaid lessons). PROVISIONAL default.
+GRACE_MAX_OPEN_TOTAL = int(os.environ.get('GRACE_MAX_OPEN_TOTAL', '15'))
+# True: the capture endpoint confirms the booking through the verified path; False: only the webhook does.
+PAYPAL_CAPTURE_CONFIRMS = _env_bool('PAYPAL_CAPTURE_CONFIRMS', True)
 # EUR/JPY lesson checkout is blocked when the newest admin-entered FX rate is older than this (Task 10.1d).
 FX_RATE_MAX_AGE_HOURS = int(os.environ.get('FX_RATE_MAX_AGE_HOURS', '24'))
 # D-1: retail lesson prices are platform-set per currency in payments.LessonPrice (Task 10.1); no FX setting here.
@@ -307,3 +318,5 @@ PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', '')
 PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', '')
 PAYPAL_MODE = os.environ.get('PAYPAL_MODE', 'sandbox')
 PAYPAL_WEBHOOK_ID = os.environ.get('PAYPAL_WEBHOOK_ID', '')
+# Task 10.2 (P-9): ask PayPal to refuse eCheck-style funding. Off until the sandbox shows eCheck pendings.
+PAYPAL_REQUIRE_IMMEDIATE_PAYMENT = os.environ.get('PAYPAL_REQUIRE_IMMEDIATE_PAYMENT', 'False').strip().lower() in ('1', 'true', 'yes')

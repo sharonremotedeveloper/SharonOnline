@@ -77,3 +77,22 @@ def admin_user(db):
         country="ZA",
         timezone="Africa/Johannesburg"
     )
+
+
+
+@pytest.fixture(autouse=True)
+def fake_paypal_orders(monkeypatch, settings):
+    """No test talks to PayPal: checkout order creation is stubbed (tests of the real client mock `requests`)."""
+    settings.PAYPAL_CLIENT_ID = settings.PAYPAL_CLIENT_ID or 'test-client-id'
+    settings.PAYPAL_CLIENT_SECRET = settings.PAYPAL_CLIENT_SECRET or 'test-client-secret'
+    calls = []
+
+    def fake_create(tx, description):
+        calls.append({'reference': tx.merchant_reference, 'amount': tx.amount, 'currency': tx.currency,
+                      'description': description})
+        tx.gateway_order_id = f'ORDER-{tx.merchant_reference}'
+        tx.save(update_fields=['gateway_order_id', 'updated_at'])
+        return tx.gateway_order_id
+
+    monkeypatch.setattr('apps.payments.views.create_checkout_order', fake_create, raising=False)
+    return calls

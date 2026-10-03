@@ -19,6 +19,9 @@ import { formatPackPerLesson, formatPackPrice, type CreditPackPrice } from "@/li
 import { CurrencySwitcher } from "@/components/public/CurrencySwitcher";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
+import { PayPalButtonsWrapper } from "@/components/booking/PayPalButtonsWrapper";
+import type { OutcomeView } from "@/lib/paypalOutcome";
+import { rememberPendingPayFast } from "@/lib/pendingPayment";
 
 // Generated from the backend OpenAPI schema (`npm run gen:api`), so a contract change breaks the build instead of the page.
 type WalletResponse = components["schemas"]["Wallet"];
@@ -36,6 +39,8 @@ export default function StudentWalletPage() {
   const [buyingPack, setBuyingPack] = useState<number | null>(null);
   const [purchaseNotice, setPurchaseNotice] = useState<string>("");
   const [pendingPurchaseId, setPendingPurchaseId] = useState<string | null>(null);
+  // The pack whose PayPal buttons are currently shown (PayPal creates the order when the student clicks the button).
+  const [paypalPack, setPaypalPack] = useState<CreditPack | null>(null);
 
   useEffect(() => {
     setCurrency(detectDefaultCurrency());
@@ -63,35 +68,56 @@ export default function StudentWalletPage() {
     return () => window.clearInterval(timer);
   }, [pendingPurchaseId, reload]);
 
+  // ZAR packs go through PayFast (signed redirect); every other currency is paid with the PayPal buttons.
   const startPackPurchase = async (pack: CreditPack) => {
-    setBuyingPack(pack.id);
     setPurchaseNotice("");
+    if (currency !== "ZAR") {
+      setPaypalPack(pack);
+      return;
+    }
+    setPaypalPack(null);
+    setBuyingPack(pack.id);
     try {
-      const gateway = currency === "ZAR" ? "payfast" : "paypal";
-      const checkout = await api.initializeCheckout({ credit_pack_id: pack.id, gateway, currency });
-      setPendingPurchaseId(checkout.target_id);
-      if (gateway === "payfast" && checkout?.action_url && checkout?.fields) {
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = checkout.action_url;
-        for (const [name, value] of Object.entries(checkout.fields)) {
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = name;
-          input.value = String(value);
-          form.appendChild(input);
-        }
-        document.body.appendChild(form);
-        form.submit();
-        return;
+      const checkout = await api.initializeCheckout({ credit_pack_id: pack.id, gateway: "payfast", currency });
+      if (!checkout?.action_url || !checkout?.fields) {
+        throw new Error("The server did not return a PayFast redirect.");
       }
-      setPurchaseNotice(
-        `Purchase ${checkout.target_id} is awaiting a verified ${gateway} capture. Credits appear only after the webhook confirms it.`
-      );
+      rememberPendingPayFast({ kind: "credit_purchase", id: String(checkout.target_id) });
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = checkout.action_url;
+      for (const [name, value] of Object.entries(checkout.fields)) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = String(value);
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+      form.submit();
     } catch (err) {
       setPurchaseNotice(`Could not start pack checkout: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
       setBuyingPack(null);
+    }
+  };
+
+  // The server decided the outcome; the wallet only reflects it. Packs are credited only after a server-verified capture.
+  const handlePayPalPackOutcome = (view: OutcomeView) => {
+    const action = view.nextAction;
+    if (action.type === "pack_credited") {
+      setPaypalPack(null);
+      setPurchaseNotice("Your payment was confirmed and the credits are now in your wallet.");
+      reload();
+    } else if (action.type === "poll") {
+      setPaypalPack(null);
+      setPendingPurchaseId(action.id);
+      setPurchaseNotice(view.message);
+    } else if (action.type === "check_then_retry") {
+      setPurchaseNotice(`${view.message} Your wallet will update if the payment went through.`);
+      reload();
+    } else if (view.kind === "error" || view.kind === "unavailable_slot") {
+      setPurchaseNotice(view.message);
     }
   };
 
@@ -160,6 +186,25 @@ export default function StudentWalletPage() {
           </p>
           {purchaseNotice && <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 inline-block">{purchaseNotice}</p>}
         </div>
+
+        {paypalPack && currency !== "ZAR" && (
+          <div className="max-w-md space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-ink">Paying for: {paypalPack.name}</span>
+              <button type="button" onClick={() => setPaypalPack(null)} className="text-ink-muted hover:text-ink font-bold">
+                Cancel
+              </button>
+            </div>
+            <PayPalButtonsWrapper
+              key={paypalPack.id}
+              target={{ kind: "credit_pack", packId: paypalPack.id }}
+              currency={currency}
+              amountLabel={formatPackPrice(paypalPack, currency)}
+              reference={paypalPack.name}
+              onOutcome={handlePayPalPackOutcome}
+            />
+          </div>
+        )}
 
         {packsError ? (
           <ErrorState error={packsError} title="We could not load the lesson packs" onRetry={reloadPacks} />

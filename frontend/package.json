@@ -12,6 +12,7 @@
     "check:api-types": "node scripts/check-generated-api.mjs"
   },
   "dependencies": {
+    "@paypal/react-paypal-js": "^10.5.2",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "date-fns-tz": "^3.1.3",

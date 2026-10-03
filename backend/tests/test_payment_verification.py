@@ -180,9 +180,9 @@ class TestPayFastITN:
         itn, _, _ = pf
         assert itn(merchant_id='99999999').status_code == 400
 
-    def test_unknown_reference_rejected(self, pf):
+    def test_unknown_reference_is_quarantined_and_acknowledged(self, pf):
         itn, _, _ = pf
-        assert itn(m_payment_id='TX-DOESNOTEXIST').status_code == 400
+        assert itn(m_payment_id='TX-DOESNOTEXIST').status_code == 200   # quarantined (anomaly), so PayFast stops retrying
 
     def test_missing_pf_payment_id_rejected(self, pf):
         itn, _, _ = pf
@@ -221,6 +221,70 @@ def test_signature_matches_independent_md5():
     sig_pairs = pairs + [('signature', expected)]
     assert payfast.verify_signature(sig_pairs, 'abc')
     assert not payfast.verify_signature(sig_pairs, 'abd')
+
+
+# ---------- PayFast checkout URLs + documented signature order (Task 10.2 slice H) ----------
+
+# PayFast signs the checkout form in the documented field order (NOT alphabetical).
+PF_DOC_ORDER = ['merchant_id', 'merchant_key', 'return_url', 'cancel_url', 'notify_url', 'name_first', 'name_last',
+                'email_address', 'm_payment_id', 'amount', 'item_name', 'custom_str1']
+
+
+def _signed_pairs(fields):
+    """Recompute the signature independently, walking the fields in PayFast's documented order."""
+    ordered = sorted(((k, v) for k, v in fields.items() if k != 'signature'), key=lambda kv: PF_DOC_ORDER.index(kv[0]))
+    qs = '&'.join(f"{k}={quote_plus(v.strip())}" for k, v in ordered) + f"&passphrase={quote_plus(PASSPHRASE)}"
+    return hashlib.md5(qs.encode()).hexdigest()
+
+
+@pytest.mark.django_db
+class TestPayFastCheckoutUrls:
+    def test_defaults_derive_from_frontend_base_url(self):
+        from django.conf import settings
+        assert settings.PAYFAST_RETURN_URL.endswith('/student/checkout/return')
+        assert settings.PAYFAST_CANCEL_URL.endswith('/student/checkout/cancel')
+        assert settings.PAYFAST_RETURN_URL.startswith(settings.FRONTEND_BASE_URL)
+
+    def test_checkout_form_has_return_and_cancel_urls_with_opaque_reference(self, student_user, pending_booking, settings):
+        settings.PAYFAST_RETURN_URL = 'https://sharonesl.com/student/checkout/return'
+        settings.PAYFAST_CANCEL_URL = 'https://sharonesl.com/student/checkout/cancel'
+        settings.PAYFAST_NOTIFY_URL = 'https://api.sharonesl.com/api/v1/payments/webhooks/payfast/'
+        data = _checkout(student_user, pending_booking, 'payfast')
+        f = data['fields']
+        ref = data['transaction_reference']
+        assert ref.startswith('TX-')
+        assert f['return_url'] == f"https://sharonesl.com/student/checkout/return?ref={ref}"
+        assert f['cancel_url'] == f"https://sharonesl.com/student/checkout/cancel?ref={ref}"
+        assert str(pending_booking.id) not in f['return_url'] + f['cancel_url']
+        assert f['signature'] == _signed_pairs(f)
+
+    def test_field_order_is_payfast_documented_order(self):
+        fields = payfast.build_checkout_fields(
+            reference='TX-1', amount=Decimal('10.00'), item_name='Lesson', booking_id='b1',
+            notify_url='https://x/n', return_url='https://x/r', cancel_url='https://x/c')
+        keys = [k for k in fields if k != 'signature']
+        assert keys == ['merchant_id', 'merchant_key', 'return_url', 'cancel_url', 'notify_url',
+                        'm_payment_id', 'amount', 'item_name', 'custom_str1']
+        assert fields['signature'] == _signed_pairs(fields)
+        assert payfast.verify_signature(list(fields.items()), PASSPHRASE)
+
+    def test_buyer_fields_sit_between_notify_url_and_m_payment_id(self):
+        fields = payfast.build_checkout_fields(
+            reference='TX-1', amount=Decimal('10.00'), item_name='Lesson', booking_id='b1',
+            notify_url='https://x/n', return_url='https://x/r', cancel_url='https://x/c',
+            name_first='Ann', email_address='a@b.co')
+        keys = list(fields)
+        assert keys.index('notify_url') < keys.index('name_first') < keys.index('email_address') < keys.index('m_payment_id')
+        assert fields['signature'] == _signed_pairs(fields)
+
+    def test_tampering_with_return_url_invalidates_signature(self):
+        fields = payfast.build_checkout_fields(
+            reference='TX-1', amount=Decimal('10.00'), item_name='Lesson', booking_id='b1',
+            notify_url='https://x/n', return_url='https://x/r', cancel_url='https://x/c')
+        assert payfast.verify_signature(list(fields.items()), PASSPHRASE)
+        for field in ('return_url', 'cancel_url'):
+            bad = dict(fields, **{field: 'https://evil.example/steal'})
+            assert not payfast.verify_signature(list(bad.items()), PASSPHRASE)
 
 
 # ---------- PayPal ----------
@@ -328,10 +392,10 @@ class TestPayPalWebhook:
         state['capture']['amount']['currency_code'] = 'JPY'
         assert hook().status_code == 400
 
-    def test_unknown_custom_id_rejected(self, pp):
+    def test_unknown_custom_id_is_quarantined_and_acknowledged(self, pp):
         hook, state, _ = pp
         state['capture']['custom_id'] = 'TX-NOPE'
-        assert hook().status_code == 400
+        assert hook().status_code == 200
 
     def test_incomplete_capture_rejected(self, pp):
         hook, state, _ = pp

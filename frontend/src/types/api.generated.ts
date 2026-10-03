@@ -762,6 +762,27 @@ export interface paths {
         patch: operations["v1_payments_payout_settings_partial_update"];
         trace?: never;
     };
+    "/api/v1/payments/paypal/capture/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description Capture an approved PayPal order. The browser only says "this order was approved"; the amount, currency and status
+         *     are read from PayPal's own response and verified against the transaction we created, then applied through the same
+         *     locked, idempotent path the webhook uses (PAYPAL_CAPTURE_CONFIRMS=False leaves confirmation to the webhook).
+         */
+        post: operations["v1_payments_paypal_capture_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payments/wallet/tutor/": {
         parameters: {
             query?: never;
@@ -1458,13 +1479,15 @@ export interface components {
          */
         RefundReasonEnum: "student_cancel" | "teacher_cancel" | "teacher_no_show" | "outage" | "dispute";
         /**
-         * @description * `pending_gateway` - Waiting for the gateway
+         * @description * `awaiting_clearance` - Waiting for the payment to clear
+         *     * `void` - Not needed (the payment never cleared)
+         *     * `pending_gateway` - Waiting for the gateway
          *     * `processed` - Paid to the original payment method
          *     * `converted` - Converted to wallet credit
          *     * `failed` - Gateway refused (needs a human)
          * @enum {string}
          */
-        RefundStatusEnum: "pending_gateway" | "processed" | "converted" | "failed";
+        RefundStatusEnum: "awaiting_clearance" | "void" | "pending_gateway" | "processed" | "converted" | "failed";
         Register: {
             /** Format: uuid */
             readonly id: string;
@@ -3080,6 +3103,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PayoutAccountMasked"];
+                };
+            };
+        };
+    };
+    v1_payments_paypal_capture_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+                "application/x-www-form-urlencoded": {
+                    [key: string]: unknown;
+                };
+                "multipart/form-data": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

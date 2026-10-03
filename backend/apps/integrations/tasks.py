@@ -282,7 +282,11 @@ def send_cancellation_emails(self, booking_id: str, cancelled_by: str):
     if booking is None:
         return False
     when = booking.start_time_utc.strftime('%A %d %B %Y, %H:%M UTC')
-    if cancelled_by == 'student':
+    if cancelled_by == 'payment_failed':
+        # The student's pending PayPal payment failed before the lesson (the student is told by the payment-failure e-mail).
+        to, subject, line = booking.teacher.user.email, 'A lesson was cancelled', (
+            f"The lesson on {when} was cancelled because the student's payment did not go through.")
+    elif cancelled_by == 'student':
         to, subject, line = booking.teacher.user.email, 'A lesson was cancelled', f"{booking.student.first_name or booking.student.username} cancelled the lesson on {when}."
     else:
         to, subject, line = booking.student.email, 'Your lesson was cancelled by your tutor', (

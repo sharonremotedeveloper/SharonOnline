@@ -3,7 +3,7 @@ from django.utils import timezone
 from decimal import Decimal
 from datetime import timedelta
 from apps.payments.services.credits import capture_credit_purchase, grant_credit
-from apps.payments.models import CreditPurchase, PaymentTransaction, GatewayAnomaly, FulfillmentDispatch
+from apps.payments.models import BookingFunding, CreditPurchase, PaymentTransaction, GatewayAnomaly, FulfillmentDispatch
 from apps.payments.services.funding import ensure_gateway_funding, gateway_fx_snapshot, persist_capture_snapshot
 from apps.payments.services.ledger_service import (
     record_payment_capture_entry, record_def501_quarantine_entry, record_unallocated_payment_entry)
@@ -76,6 +76,42 @@ def dispatch_fulfillment(booking_id: str) -> None:
         return
 
 
+_SLOT_OWNING_STATUSES = (
+    Booking.Status.CONFIRMED,
+    Booking.Status.IN_PROGRESS,
+    Booking.Status.COMPLETED,
+    Booking.Status.COMPLETED_PENDING_MEMO,
+    Booking.Status.COMPLETED_MEMO_FORFEITED,
+)
+
+
+def slot_unavailable_reason(booking, now=None) -> str:
+    """
+    DEF-501 guard shared by the normal payment confirmation and the grace confirmation: '' when the booking may still be
+    confirmed, else why not ('slot_rebooked_by_another_student' / 'lesson_window_elapsed').
+    """
+    slot_conflict = Booking.objects.filter(
+        teacher=booking.teacher, start_time_utc=booking.start_time_utc, status__in=_SLOT_OWNING_STATUSES,
+    ).exclude(id=booking.id).exists()
+    if slot_conflict:
+        return "slot_rebooked_by_another_student"
+    if booking.start_time_utc <= (now or timezone.now()):
+        return "lesson_window_elapsed"
+    return ''
+
+
+def finish_confirmed_booking(booking) -> None:
+    """After a booking was confirmed: free the temporary Redis hold and queue Zoom / GCal / e-mail on commit."""
+    # Release the temporary Redis lock now that it's permanently confirmed in PostgreSQL
+    release_slot_lock(str(booking.teacher_id), booking.start_time_utc.isoformat(), str(booking.student_id),
+                      token=booking.slot_lock_token or None)
+
+    # Trigger background fulfillment (Zoom, GCal, Resend) only AFTER the commit, so the worker can never
+    # observe the booking still PENDING_PAYMENT, and a rolled-back payment never queues a task.
+    booking_id_str = str(booking.id)
+    transaction.on_commit(lambda: dispatch_fulfillment(booking_id_str))
+
+
 @transaction.atomic
 def process_payment_webhook(*, booking_id=None, credit_purchase_id=None, gateway: str, transaction_id: str,
                             amount: float, currency: str, status: str, raw_payload: dict,
@@ -131,6 +167,21 @@ def process_payment_webhook(*, booking_id=None, credit_purchase_id=None, gateway
             logger.error(f"Booking {booking_id} referenced in transaction {transaction_id} does not exist")
             return {"error": "booking_not_found"}
 
+        # A grace booking (confirmed while this very capture was PENDING) whose payment has now cleared is NOT a surplus
+        # payment: the booking already exists and is already confirmed, so do not touch it, just settle the money.
+        funding = BookingFunding.objects.select_for_update().filter(booking=booking).first()
+        if (funding is not None and funding.source_type == BookingFunding.SourceType.GATEWAY_PENDING
+                and funding.payment_transaction_id == tx.id):
+            from apps.payments.services import grace
+            grace.on_completed(tx)
+            return {"status": "success", "transaction_id": transaction_id, "grace_cleared": True}
+
+        # A booking that already has funding (a credit, or another payment, incl. a failed grace payment) is not paid for
+        # again by a different transaction: that money is surplus.
+        if funding is not None and funding.payment_transaction_id != tx.id:
+            _hold_unallocated(tx, booking, 'booking_not_payable', 'booking already has funding from another source')
+            return {"status": "unallocated", "reason": "booking_not_payable", "transaction_id": transaction_id}
+
         # Surplus payment (booking already confirmed/in progress/completed/disputed...): hold it, never touch the booking.
         if booking.status not in PAYABLE_BOOKING_STATES:
             _hold_unallocated(tx, booking, 'booking_not_payable', f"booking status is '{booking.status}'")
@@ -140,26 +191,9 @@ def process_payment_webhook(*, booking_id=None, credit_purchase_id=None, gateway
         tx.save()
 
         # Concurrency Guard (DEF-501): Check if slot expired or was re-booked by another student
-        active_statuses = [
-            Booking.Status.CONFIRMED,
-            Booking.Status.IN_PROGRESS,
-            Booking.Status.COMPLETED,
-            Booking.Status.COMPLETED_PENDING_MEMO,
-            Booking.Status.COMPLETED_MEMO_FORFEITED,
-        ]
-
-        slot_conflict = Booking.objects.filter(
-            teacher=booking.teacher,
-            start_time_utc=booking.start_time_utc,
-            status__in=active_statuses
-        ).exclude(id=booking.id).exists()
-
-        now = timezone.now()
-        is_past_lesson = booking.start_time_utc <= now
-
-        if slot_conflict or is_past_lesson:
+        reason = slot_unavailable_reason(booking)
+        if reason:
             # Slot was re-booked by another student or lesson has already elapsed!
-            reason = "slot_rebooked_by_another_student" if slot_conflict else "lesson_window_elapsed"
             logger.warning(
                 f"[DEF-501 CONCURRENCY GUARD] Booking {booking_id} conflict detected ({reason}). "
                 f"Quarantining to DISPUTED and auto-crediting student wallet."
@@ -257,15 +291,7 @@ def process_payment_webhook(*, booking_id=None, credit_purchase_id=None, gateway
             fx_rate_to_zar=funding.fx_rate_to_zar, fx_source=funding.fx_source,
         )
 
-        # Release the temporary Redis lock now that it's permanently confirmed in PostgreSQL
-        start_iso = booking.start_time_utc.isoformat()
-        release_slot_lock(str(booking.teacher_id), start_iso, str(booking.student_id),
-                          token=booking.slot_lock_token or None)
-
-        # Trigger background fulfillment (Zoom, GCal, Resend) only AFTER the commit, so the worker can never
-        # observe the booking still PENDING_PAYMENT, and a rolled-back payment never queues a task.
-        booking_id_str = str(booking.id)
-        transaction.on_commit(lambda: dispatch_fulfillment(booking_id_str))
+        finish_confirmed_booking(booking)
 
     return {"status": "success", "transaction_id": transaction_id}
 
