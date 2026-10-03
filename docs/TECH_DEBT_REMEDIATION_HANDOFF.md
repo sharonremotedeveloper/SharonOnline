@@ -5,7 +5,7 @@ This is the cross-agent handoff for the eight approved Sharon Online remediation
 ## Current state
 
 - Integration branch: `remediation/tech-debt`
-- Active branch: `feature/batch-8-quality-stabilization`
+- Active branch: `remediation/tech-debt` (all eight local batch branches merged)
 - Isolated worktree: `C:\Dev\Active Projects\Notion\sharon-remediation`
 - Shared checkout was deliberately left unchanged. Claude's Zoom attendance work was imported from commit `2181dbd` and augmented on this isolated branch.
 
