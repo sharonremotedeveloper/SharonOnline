@@ -169,6 +169,42 @@ class LessonPrice(models.Model):
         return f'{self.currency} {self.amount}'
 
 
+class FxRate(models.Model):
+    """
+    ZAR value of one unit of EUR or JPY, entered by an admin (Task 10.1d, option C). Append-only: a new rate is a
+    new row, so the rate in force on any past day stays provable. USD is derived from the lesson price catalog and
+    ZAR is 1, so only EUR and JPY live here.
+    """
+    SUPPORTED = ('EUR', 'JPY')
+
+    id = models.BigAutoField(primary_key=True)
+    currency = models.CharField(max_length=3, db_index=True)
+    rate_to_zar = models.DecimalField(max_digits=12, decimal_places=6)
+    source = models.CharField(max_length=32, default='manual')   # 'manual' now; a provider feed writes its own name
+    valid_from = models.DateTimeField(db_index=True)
+    set_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                               related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    objects = ImmutableFinancialQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['-valid_from', '-id']
+        constraints = [models.CheckConstraint(condition=models.Q(rate_to_zar__gt=0), name='fxrate_rate_positive')]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise LedgerImmutabilityError('FX rates are immutable; add a new rate instead.')
+        if self.currency not in self.SUPPORTED:
+            raise ValueError(f'FX table rates exist for {self.SUPPORTED} only, not {self.currency!r}.')
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise LedgerImmutabilityError('FX rates are immutable.')
+
+    def __str__(self):
+        return f'{self.currency} {self.rate_to_zar} ({self.source}, {self.valid_from:%Y-%m-%d %H:%M})'
+
+
 class CreditPurchase(models.Model):
     class Status(models.TextChoices):
         INITIALIZED = 'initialized', 'Initialized'

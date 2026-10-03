@@ -1,4 +1,5 @@
 from django.urls import path
+from apps.admin_api.fx_views import FxRateView
 from apps.admin_api.views import (
     AdminTelemetryView,
     PendingTeachersListView,
@@ -19,6 +20,7 @@ urlpatterns = [
     path('disputes/', DisputesListView.as_view(), name='admin-disputes-list'),
     path('disputes/<uuid:pk>/resolve/', ResolveDisputeView.as_view(), name='admin-resolve-dispute'),
     path('finance/ledger/', EscrowLedgerView.as_view(), name='admin-escrow-ledger'),
+    path('fx-rates/', FxRateView.as_view(), name='admin-fx-rates'),
     path('payouts/batch/', PayoutBatchView.as_view(), name='admin-payouts-batch'),
     path('payouts/execute-batch/', ExecutePayoutBatchView.as_view(), name='admin-execute-payout'),
 ]

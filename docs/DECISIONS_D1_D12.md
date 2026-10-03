@@ -6,6 +6,7 @@
 
 | Ref | Decision | Consequence |
 | :--- | :--- | :--- |
+| FX ✅ (2026-10-03) | EUR/JPY to ZAR valuation: admin-maintained rate table first (option C), provider feed later; block EUR/JPY checkout on a missing or >24 h old rate; capture uses the rate stamped at checkout and never fails on staleness; platform carries FX risk between payment and payout | `payments.FxRate`, `payments/services/fx.py`, `/admin/fx-rates/`. Tax treatment (capture-day vs average rate) is for the accountant (D-12). |
 | D-1 ✅ | Platform-set flat retail price per currency | Implemented in Task 10.1: `payments.LessonPrice` (one row per currency, edit in admin). **Provisional launch prices: USD 9.00, EUR 8.50, ZAR 162.00, JPY 1350 - Anesu to confirm.** Trial lesson: **still open**. |
 | D-2 ✅ | 80/20 split; platform bears gateway fees | Matches the ledger. PROJECT_CONTEXT's fixed R75 is superseded. Gateway fees post to 5030 out of the 20%. |
 | D-5 ✅ | Tutor and student no-show at T+10; 5 min disconnect grace | Matches the current T+10 probe. Add the 5 min grace in Phase 9. |

@@ -1,6 +1,7 @@
 from decimal import Decimal
 
-from apps.payments.models import BookingFunding, PaymentTransaction, SettlementAnomaly
+from apps.payments.models import BookingFunding, FxRate, PaymentTransaction, SettlementAnomaly
+from apps.payments.services.fx import FxRateUnavailable, fx_source_label, latest_row
 from apps.payments.services.pricing import usd_to_zar_rate
 
 
@@ -14,6 +15,13 @@ def gateway_fx_snapshot(currency: str) -> tuple[Decimal, str]:
         return Decimal('1.000000'), 'transaction_currency'
     if currency == 'USD':
         return usd_to_zar_rate(), 'price_catalog'
+    if currency in FxRate.SUPPORTED:
+        # Capture normally reuses the rate stamped at checkout; this is the fallback and must not fail a payment that
+        # is already taken, so it uses the newest rate regardless of age (staleness gates checkout instead).
+        row = latest_row(currency)
+        if row is None:
+            raise FxRateUnavailable(f'No FX rate has been entered for {currency}.')
+        return row.rate_to_zar, fx_source_label(row)
     raise MissingBookingFunding(f'No approved ZAR valuation source is configured for {currency}.')
 
 

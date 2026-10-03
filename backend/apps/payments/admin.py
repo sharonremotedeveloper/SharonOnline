@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import (
-    BookingFunding, CreditBundle, CreditPack, CreditPurchase, CreditWalletEntry,
+    BookingFunding, CreditBundle, FxRate, CreditPack, CreditPurchase, CreditWalletEntry,
     LedgerEntry, PaymentTransaction, RefundRequest, SettlementAnomaly,
 )
 from .services import refunds
@@ -80,3 +80,20 @@ class ImmutableFinanceAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
+
+
+@admin.register(FxRate)
+class FxRateAdmin(admin.ModelAdmin):
+    """Append-only: add a new rate, never edit or delete history. Prefer the Next.js admin screen (sanity-checked)."""
+    list_display = ('currency', 'rate_to_zar', 'source', 'valid_from', 'set_by')
+    readonly_fields = ('set_by', 'created_at')
+
+    def has_change_permission(self, request, obj=None):
+        return obj is None   # list view only; existing rows are read-only
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def save_model(self, request, obj, form, change):
+        obj.set_by = request.user
+        super().save_model(request, obj, form, change)
