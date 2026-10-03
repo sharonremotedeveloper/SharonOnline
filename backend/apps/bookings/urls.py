@@ -6,7 +6,10 @@ from .views import (
     BookingDetailView,
     SubmitMemoView,
     LegacySubmitReviewView,
-    ReportOutageView
+    ReportOutageView,
+    CancelBookingView,
+    CancelPreviewView,
+    RescheduleBookingView,
 )
 
 urlpatterns = [
@@ -17,4 +20,7 @@ urlpatterns = [
     path('<uuid:booking_id>/memo/', SubmitMemoView.as_view(), name='booking-submit-memo'),
     path('<uuid:booking_id>/review/', LegacySubmitReviewView.as_view(), name='booking-submit-review'),
     path('<uuid:booking_id>/report-outage/', ReportOutageView.as_view(), name='booking-report-outage'),
+    path('<uuid:booking_id>/cancel/', CancelBookingView.as_view(), name='booking-cancel'),
+    path('<uuid:booking_id>/cancel-preview/', CancelPreviewView.as_view(), name='booking-cancel-preview'),
+    path('<uuid:booking_id>/reschedule/', RescheduleBookingView.as_view(), name='booking-reschedule'),
 ]

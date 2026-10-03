@@ -63,7 +63,24 @@ class GatewayAnomaly(models.Model):
         return f"{self.gateway} {self.reason} {self.reference} ({'resolved' if self.resolved else 'OPEN'})"
 
 
+class CreditBundleQuerySet(models.QuerySet):
+    def active(self, now=None):
+        """Lots whose credits can still be spent. A lot with no expiry date (legacy rows) never expires."""
+        from django.utils import timezone
+        return self.filter(models.Q(expires_at__isnull=True) | models.Q(expires_at__gt=now or timezone.now()))
+
+
 class CreditBundle(models.Model):
+    """
+    A *lot* of lesson credits: every grant (purchase, refund conversion, bonus, restitution) is its own row with its own
+    expiry (CREDIT_EXPIRY_DAYS_*), so credits can be spent oldest-expiry-first and expired exactly (Task 9.6).
+    """
+    class Source(models.TextChoices):
+        PURCHASE = 'purchase', 'Purchased pack'
+        REFUND = 'refund', 'Refund converted to credit'
+        BONUS = 'bonus', 'Goodwill / compensation bonus'
+        RESTITUTION = 'restitution', 'Restitution (failed booking)'
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='credit_bundles')
     pack_name = models.CharField(max_length=64, default="5-Lesson Pack")
@@ -71,10 +88,60 @@ class CreditBundle(models.Model):
     remaining_credits = models.PositiveIntegerField(default=5)
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=3, default='USD')
+    source = models.CharField(max_length=16, choices=Source.choices, default=Source.PURCHASE)   # rows that predate lots were all purchases
+    expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    # Money value of ONE credit in `currency`, i.e. what the 2040 wallet liability was credited per lesson. Used to post the
+    # breakage entry when the lot expires.
+    unit_value = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    expired_credits = models.PositiveIntegerField(default=0)
+    expired_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = CreditBundleQuerySet.as_manager()
 
     def __str__(self):
         return f"{self.user.username} - {self.remaining_credits}/{self.total_credits} credits"
+
+
+class RefundRequest(models.Model):
+    """
+    Money owed back to a student for one booking. The ledger moves it from escrow to 2050 (refunds payable) when the
+    decision is made; a RefundGateway then returns it to the original payment method (2050 -> gateway cash), or the student
+    converts it to wallet credit while it is still pending. One request per (booking, reason): the idempotency guard.
+    """
+    class Reason(models.TextChoices):
+        STUDENT_CANCEL = 'student_cancel', 'Student cancelled in time'
+        TEACHER_CANCEL = 'teacher_cancel', 'Tutor cancelled'
+        TEACHER_NO_SHOW = 'teacher_no_show', 'Tutor did not attend'
+        OUTAGE = 'outage', 'Power outage interrupted the lesson'
+        DISPUTE = 'dispute', 'Dispute decided for the student'
+
+    class Status(models.TextChoices):
+        PENDING_GATEWAY = 'pending_gateway', 'Waiting for the gateway'
+        PROCESSED = 'processed', 'Paid to the original payment method'
+        CONVERTED = 'converted', 'Converted to wallet credit'
+        FAILED = 'failed', 'Gateway refused (needs a human)'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    booking = models.ForeignKey('bookings.Booking', on_delete=models.PROTECT, related_name='refund_requests')
+    payment_transaction = models.ForeignKey(PaymentTransaction, on_delete=models.PROTECT, related_name='refund_requests')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='refund_requests')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=3)
+    reason = models.CharField(max_length=20, choices=Reason.choices)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING_GATEWAY, db_index=True)
+    gateway_reference = models.CharField(max_length=255, blank=True)
+    failure_detail = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [models.UniqueConstraint(fields=['booking', 'reason'], name='uniq_refund_per_booking_reason')]
+
+    def __str__(self):
+        return f"Refund {self.amount} {self.currency} ({self.reason}, {self.status})"
 
 
 class LedgerAccount(models.TextChoices):
@@ -88,9 +155,11 @@ class LedgerAccount(models.TextChoices):
     LIABILITY_TUTOR_PAYABLE = '2020_liability_tutor_payable', '2020 - Liability: Tutor Payables'
     LIABILITY_QUARANTINE_DEPOSIT = '2030_liability_quarantine_deposit', '2030 - Liability: Quarantined Late Deposits'
     LIABILITY_STUDENT_WALLET = '2040_liability_student_wallet', '2040 - Liability: Student Wallet Credits'
+    LIABILITY_REFUNDS_PAYABLE = '2050_liability_refunds_payable', '2050 - Liability: Gateway Refunds Payable'
 
     # Revenue (4000s)
     REVENUE_PLATFORM_COMMISSION = '4010_revenue_platform_commission', '4010 - Revenue: Platform Take Rate (20%)'
+    REVENUE_CREDIT_BREAKAGE = '4020_revenue_credit_breakage', '4020 - Revenue: Expired Credit Breakage'
 
     # Expenses (5000s)
     EXPENSE_DISPUTE_SETTLEMENT = '5010_expense_dispute_settlement', '5010 - Expense: Platform Dispute Settlements'
@@ -127,6 +196,8 @@ class LedgerEntry(models.Model):
         OUTAGE_REFUND = 'outage_refund', 'Eskom Outage Force Majeure Refund'
         LATE_PAYMENT_QUARANTINE = 'late_payment_quarantine', 'DEF-501 Late Payment Quarantine'
         UNALLOCATED_PAYMENT = 'unallocated_payment', 'Unallocated / Duplicate Payment Held for Refund'
+        GATEWAY_REFUND_PAID = 'gateway_refund_paid', 'Gateway Refund Paid to Original Payment Method'
+        CREDIT_EXPIRED = 'credit_expired', 'Wallet Credit Expired (breakage)'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     journal_batch_id = models.UUIDField(db_index=True, help_text="Groups balancing debits and credits of a single transaction")

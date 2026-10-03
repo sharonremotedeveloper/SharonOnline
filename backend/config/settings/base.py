@@ -136,6 +136,7 @@ REST_FRAMEWORK = {
         'upload': '30/hour',
         'checkout': '20/hour',
         'reserve': '30/min',
+        'cancel': '30/hour',
         'review': '30/hour',
         'password_reset': '5/hour',          # per IP; plus 3/hour per target address (PasswordResetEmailThrottle)
         'password_reset_email': '3/hour',
@@ -165,6 +166,25 @@ PAYMENT_HOLD_MAX_SECONDS = int(os.environ.get('PAYMENT_HOLD_MAX_SECONDS', '1800'
 OUTAGE_REPORT_BEFORE_START_SECONDS = int(os.environ.get('OUTAGE_REPORT_BEFORE_START_SECONDS', '3600'))
 OUTAGE_REPORT_AFTER_END_SECONDS = int(os.environ.get('OUTAGE_REPORT_AFTER_END_SECONDS', '1800'))
 
+# Cancellation, rescheduling, strikes and credit expiry (Task 9.6, decision D-6; see docs/CANCELLATION_AND_REFUNDS.md).
+# Every number of the policy lives here so it can change without touching code.
+STUDENT_FREE_CANCEL_HOURS = int(os.environ.get('STUDENT_FREE_CANCEL_HOURS', '2'))        # student cancels MORE than this before start: full refund
+RESCHEDULE_MIN_NOTICE_HOURS = int(os.environ.get('RESCHEDULE_MIN_NOTICE_HOURS', '2'))    # old slot must start MORE than this away
+RESCHEDULE_MAX_PER_BOOKING = int(os.environ.get('RESCHEDULE_MAX_PER_BOOKING', '1'))
+RESCHEDULE_MAX_DAYS_AHEAD = int(os.environ.get('RESCHEDULE_MAX_DAYS_AHEAD', '14'))
+TUTOR_CANCEL_NO_PENALTY_HOURS = int(os.environ.get('TUTOR_CANCEL_NO_PENALTY_HOURS', '24'))   # tutor cancels at least this early: no bonus, no strike
+TUTOR_EARLY_CANCELS_PER_30D = int(os.environ.get('TUTOR_EARLY_CANCELS_PER_30D', '3'))    # free early cancels per 30 days; the next one is a strike
+TUTOR_CANCEL_BONUS_CREDITS = int(os.environ.get('TUTOR_CANCEL_BONUS_CREDITS', '1'))
+STRIKE_LIMIT = int(os.environ.get('STRIKE_LIMIT', '3'))                                  # strikes inside the window that deactivate a tutor
+STRIKE_WINDOW_DAYS = int(os.environ.get('STRIKE_WINDOW_DAYS', '90'))
+CREDIT_EXPIRY_DAYS_REFUND = int(os.environ.get('CREDIT_EXPIRY_DAYS_REFUND', '30'))
+CREDIT_EXPIRY_DAYS_BONUS = int(os.environ.get('CREDIT_EXPIRY_DAYS_BONUS', '30'))
+CREDIT_EXPIRY_DAYS_BUNDLE = int(os.environ.get('CREDIT_EXPIRY_DAYS_BUNDLE', '30'))       # purchased packs (Task 10.6); legal review D-12 may extend this
+LESSON_DELIVERED_MIN_TEACHER_MINUTES = int(os.environ.get('LESSON_DELIVERED_MIN_TEACHER_MINUTES', '20'))
+# Dotted path of the object that talks to PayPal / PayFast to return money. Until Task 10.7 the default leaves requests
+# pending for a human to process (sandbox only).
+REFUND_GATEWAY_BACKEND = os.environ.get('REFUND_GATEWAY_BACKEND', 'apps.payments.services.refunds.ManualSandboxRefundGateway')
+
 # OpenAPI schema (Task 8.8). The served schema is admin-only; the committed copy + generated TS types come from
 # `manage.py spectacular` / `npm run gen:api`.
 SPECTACULAR_SETTINGS = {
@@ -174,6 +194,12 @@ SPECTACULAR_SETTINGS = {
     'SERVE_INCLUDE_SCHEMA': False,
     'SERVE_PERMISSIONS': ['rest_framework.permissions.IsAdminUser'],
     'COMPONENT_SPLIT_REQUEST': True,
+    # Several models have a `status` field; name each choice set explicitly so the generated TS types are stable.
+    'ENUM_NAME_OVERRIDES': {
+        'BookingStatusEnum': 'apps.bookings.models.Booking.Status',
+        'RefundStatusEnum': 'apps.payments.models.RefundRequest.Status',
+        'RefundReasonEnum': 'apps.payments.models.RefundRequest.Reason',
+    },
 }
 
 # SimpleJWT Authentication

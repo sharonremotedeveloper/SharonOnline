@@ -44,8 +44,16 @@ class TestTransitionMap:
                     frontier.append(nxt)
         assert seen == set(ALL)
 
-    def test_only_a_power_outage_is_terminal(self):
-        assert TERMINAL_STATUSES == {S.INTERRUPTED_POWER}
+    def test_only_an_outage_and_the_three_cancellations_are_terminal(self):
+        assert TERMINAL_STATUSES == {S.INTERRUPTED_POWER, S.CANCELLED_BY_STUDENT, S.STUDENT_LATE_CANCELLED, S.CANCELLED_BY_TEACHER}
+
+    def test_a_late_payment_can_never_resurrect_a_cancelled_paid_lesson(self):
+        # CANCELLED may be re-confirmed by a late payment; the paid-and-refunded outcomes must not be
+        for dead in (S.CANCELLED_BY_STUDENT, S.STUDENT_LATE_CANCELLED, S.CANCELLED_BY_TEACHER):
+            assert not can_transition(dead, S.CONFIRMED) and not can_transition(dead, S.DISPUTED)
+        for source in (S.PENDING_PAYMENT, S.IN_PROGRESS, S.COMPLETED):
+            assert not can_transition(source, S.CANCELLED_BY_STUDENT)
+        assert all(can_transition(S.CONFIRMED, t) for t in (S.CANCELLED_BY_STUDENT, S.STUDENT_LATE_CANCELLED, S.CANCELLED_BY_TEACHER))
 
     def test_cannot_pay_for_a_lesson_twice_or_resurrect_a_finished_one(self):
         assert not can_transition(S.CONFIRMED, S.PENDING_PAYMENT)
@@ -164,12 +172,12 @@ class TestMemo:
 class TestOutage:
     def test_outage_is_audited_and_credits_once(self, teacher_user, student_user):
         booking = make_booking(teacher_user, student_user, status=S.CONFIRMED, offset_hours=0.1)  # starts in 6 min
-        c = _client(student_user)
+        c = _client(teacher_user.user)
         assert c.post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 200
         assert c.post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 409
-        assert CreditBundle.objects.get(user=student_user).remaining_credits == 1
+        assert CreditBundle.objects.get(user=student_user).remaining_credits == 1       # nothing was captured: a wallet lot
         change = BookingStatusChange.objects.get(booking=booking)
-        assert (change.from_status, change.to_status, change.actor) == (S.CONFIRMED, S.INTERRUPTED_POWER, 'user:test_student')
+        assert (change.from_status, change.to_status, change.actor) == (S.CONFIRMED, S.INTERRUPTED_POWER, f'user:{teacher_user.user.username}')
 
 
 @pytest.mark.django_db

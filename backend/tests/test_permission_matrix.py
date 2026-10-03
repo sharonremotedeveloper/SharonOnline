@@ -51,7 +51,8 @@ class TestBookingIDOR:
         booking.start_time_utc = timezone.now() + timedelta(minutes=5)  # inside the reporting window
         booking.end_time_utc = booking.start_time_utc + timedelta(minutes=25)
         booking.save()
-        c = _client(student_user)
+        c = _client(booking.teacher.user)
+        assert _client(student_user).post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 403   # D-6: tutor only
         assert c.post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 200
         assert c.post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 409
         assert sum(b.remaining_credits for b in CreditBundle.objects.filter(user=student_user)) == 1
@@ -59,7 +60,7 @@ class TestBookingIDOR:
     def test_outage_rejected_on_completed_booking(self, booking, student_user):
         booking.status = Booking.Status.COMPLETED
         booking.save()
-        assert _client(student_user).post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 409
+        assert _client(booking.teacher.user).post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 409
 
     def test_other_teacher_cannot_submit_memo(self, booking, other_teacher):
         res = _client(other_teacher.user).post(f'/api/v1/bookings/{booking.id}/memo/', {'feedback_text': 'x'}, format='json')

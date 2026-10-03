@@ -323,8 +323,9 @@ class TestCeleryBeatAutomation:
         assert booking.status == Booking.Status.TEACHER_NO_SHOW
         assert teacher_user.sla_strikes == 1
 
-        bundle = CreditBundle.objects.get(user=student_user)
-        assert bundle.remaining_credits >= 2
+        # D-6: nothing was captured here, so the refund is a wallet lot (1 credit) and the apology is a 2nd, bonus lot
+        lots = CreditBundle.objects.filter(user=student_user)
+        assert sum(l.remaining_credits for l in lots) == 2 and {l.source for l in lots} == {'refund', 'bonus'}
 
     def test_audit_attendance_t10_student_no_show(self, teacher_user, student_user):
         """

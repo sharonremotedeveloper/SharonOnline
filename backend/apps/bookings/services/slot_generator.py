@@ -13,7 +13,9 @@ SLOT_STEP_MINUTES = LESSON_DURATION_MINUTES + BUFFER_MINUTES  # 30-minute pacing
 
 # Only these two statuses leave the time free; every other outcome (paid, taught, no-show, disputed, interrupted...)
 # has consumed it. Unpaid PENDING_PAYMENT bookings count while their hold is live (services.holds.live_hold_q).
-FREE_STATUSES = (Booking.Status.PENDING_PAYMENT, Booking.Status.CANCELLED)
+# A refunded student cancellation frees the slot. A late student cancel and a tutor cancel keep it blocked: the late fee is
+# earned by the tutor for that slot, and a tutor who cancels is not available then.
+FREE_STATUSES = (Booking.Status.PENDING_PAYMENT, Booking.Status.CANCELLED, Booking.Status.CANCELLED_BY_STUDENT)
 
 def generate_teacher_slots(
     teacher: TeacherProfile,

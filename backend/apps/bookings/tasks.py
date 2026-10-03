@@ -1,5 +1,6 @@
 import logging
 from datetime import timedelta
+from django.conf import settings
 from django.utils import timezone
 from django.db import transaction
 from django.db.models import Sum
@@ -10,6 +11,8 @@ from apps.bookings.services.holds import live_hold_q
 from apps.bookings.services.lock_service import release_slot_lock
 from apps.bookings.services.state_machine import InvalidTransition, transition_booking
 from apps.payments.services.credits import grant_credit
+from apps.teachers.models import TeacherStrike
+from apps.teachers.strikes import add_strike
 from apps.payments.services.settlement import successful_transaction
 from apps.common.locks import distributed_task_lock
 
@@ -163,37 +166,33 @@ def audit_attendance_and_noshows_task():
                 transition_booking(booking, Booking.Status.TEACHER_NO_SHOW,
                                    actor='system:attendance_audit', reason='teacher absent at T+10m')
 
-                # Record SLA strike against teacher
+                # Strike against the tutor (counted for 90 days; 3 inside the window deactivate them)
                 teacher = booking.teacher
-                teacher.sla_strikes += 1
-                if teacher.sla_strikes >= 3:
-                    teacher.is_active = False
-                teacher.save(update_fields=['sla_strikes', 'is_active'])
+                add_strike(teacher, TeacherStrike.Kind.NO_SHOW, booking=booking)
 
-                # Instant student restitution: 100% refund + 1 bonus credit (2 total)
-                grant_credit(booking.student, credits=2, pack_name='Teacher no-show restitution')
-
-                # Record double-entry ledger journal entries for no-show refund and platform compensation
-                from apps.payments.services.ledger_service import record_compensation_entry, record_student_refund_entry
+                # Student restitution (D-6): the full captured amount goes back through the gateway (the student may turn it
+                # into wallet credit), plus 1 bonus credit as an apology, booked as a platform expense.
+                from apps.payments.models import CreditBundle, RefundRequest
+                from apps.payments.services.ledger_service import record_compensation_entry
+                from apps.payments.services.refunds import request_refund
+                request_refund(booking, RefundRequest.Reason.TEACHER_NO_SHOW)
                 paid = successful_transaction(booking)
-                record_student_refund_entry(
-                    booking=booking,
-                    payment_transaction=paid,
-                    amount_usd=None if paid else booking.teacher.price_per_25min_usd,
-                    refund_method='wallet_credit',
-                    reason="Teacher no-show full refund"
-                )
+                bonus_value = paid.amount if paid else booking.teacher.price_per_25min_usd
+                bonus_currency = paid.currency if paid else 'USD'
+                grant_credit(booking.student, source=CreditBundle.Source.BONUS, pack_name='Teacher no-show apology',
+                             unit_value=bonus_value, currency=bonus_currency)
                 record_compensation_entry(
                     user=booking.student,
                     booking=booking,
-                    amount_usd=booking.teacher.price_per_25min_usd,
+                    amount_usd=bonus_value,
+                    currency=bonus_currency,
                     reason="Teacher no-show bonus compensation"
                 )
 
                 results["teacher_no_shows"] += 1
                 logger.error(
                     f"[NO-SHOW] Teacher {teacher.user.username} absent at T+10m on booking {booking.id}. "
-                    f"Student {booking.student.username} awarded 2 restitution credits."
+                    f"Student {booking.student.username} refunded and given 1 bonus credit."
                 )
 
             # Scenario B: Student Absent at T+10m, but Teacher is Present
@@ -224,7 +223,7 @@ def audit_attendance_and_noshows_task():
                 participant_email=teacher_email
             ).aggregate(total=Sum('total_minutes'))['total'] or 0
 
-            if teacher_minutes >= 20:
+            if teacher_minutes >= settings.LESSON_DELIVERED_MIN_TEACHER_MINUTES:
                 transition_booking(booking, Booking.Status.COMPLETED_PENDING_MEMO,
                                    actor='system:attendance_audit', reason=f'teacher attended {teacher_minutes}m')
                 results["completed_sessions"] += 1
@@ -361,15 +360,14 @@ def enforce_memo_sla_task():
             if not result.changed:
                 continue
 
-            # Log strike on teacher
+            # Log strike on teacher (windowed, see apps/teachers/strikes.py)
             teacher = booking.teacher
-            teacher.sla_strikes += 1
-            if teacher.sla_strikes >= 3:
-                teacher.is_active = False
-            teacher.save(update_fields=['sla_strikes', 'is_active'])
+            add_strike(teacher, TeacherStrike.Kind.MEMO_SLA, booking=booking)
 
-            # Compensate student with 1 free apology credit
-            grant_credit(booking.student, credits=1, pack_name='Memo SLA apology credit')
+            # Compensate student with 1 free apology credit (worth one lesson at the tutor's list price)
+            from apps.payments.models import CreditBundle
+            grant_credit(booking.student, source=CreditBundle.Source.BONUS, pack_name='Memo SLA apology credit',
+                         unit_value=booking.teacher.price_per_25min_usd, currency='USD')
 
             # Record platform-absorbed compensation entry
             from apps.payments.services.ledger_service import record_compensation_entry

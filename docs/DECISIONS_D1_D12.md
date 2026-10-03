@@ -9,9 +9,9 @@
 | D-1 ✅ | Platform-set flat retail price per currency | Phase 10 adds a price table; the ZAR rate is currently `ZAR_PER_USD` config (default 18.0). Trial lesson: **still open**. |
 | D-2 ✅ | 80/20 split; platform bears gateway fees | Matches the ledger. PROJECT_CONTEXT's fixed R75 is superseded. Gateway fees post to 5030 out of the 20%. |
 | D-5 ✅ | Tutor and student no-show at T+10; 5 min disconnect grace | Matches the current T+10 probe. Add the 5 min grace in Phase 9. |
-| D-6 ◐ | **Gateway refund only** | Cancel window (>2h vs >24h) and tutor-cancel compensation still open. See conflict below. |
+| D-6 ✔ | **Gateway refund only; student cancel >2h free, <=2h forfeits; credits expire in 30 days; the rest as recommended in `CANCELLATION_AND_REFUNDS.md`** | Decided 2026-10-03 (Anesu: the 2 h window, 30-day expiry and "best recommendation" for reschedule / tutor cancel / late-cancel pay / outage). Implemented in Task 9.6. Open for confirmation: 30-day expiry on purchased packs, zero outage pay, breakage accounting. |
 
-> **D-6 conflict to resolve.** "Gateway refund only" contradicts what the code does today: the Eskom outage and DEF-501 paths refund a *credit*, and D-7 (credit bundles) implies a wallet. Either (a) bundles are bought but only *unused* credits are refundable to the card, and operational failures (outage, DEF-501, tutor cancel) are refunded to the card too, or (b) wallet credit is allowed for operational failures. **Recommendation: (b)**, because partial card refunds are costly and slow, but it needs your call. Phase 10 task 10.7 depends on this.
+> **D-6 conflict (resolved: gateway refund everywhere; the student may convert a pending refund to wallet credit).** "Gateway refund only" contradicts what the code does today: the Eskom outage and DEF-501 paths refund a *credit*, and D-7 (credit bundles) implies a wallet. Either (a) bundles are bought but only *unused* credits are refundable to the card, and operational failures (outage, DEF-501, tutor cancel) are refunded to the card too, or (b) wallet credit is allowed for operational failures. **Recommendation: (b)**, because partial card refunds are costly and slow, but it needs your call. Phase 10 task 10.7 depends on this.
 
 ## Open (recommendation first)
 

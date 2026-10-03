@@ -29,6 +29,9 @@ ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
         S.IN_PROGRESS,              # someone joined (Zoom webhook / active probe)
         S.TEACHER_NO_SHOW, S.STUDENT_NO_SHOW,   # T+10m adjudication
         S.INTERRUPTED_POWER,        # outage reported
+        S.CANCELLED_BY_STUDENT,     # student cancelled more than STUDENT_FREE_CANCEL_HOURS out: refunded
+        S.STUDENT_LATE_CANCELLED,   # student cancelled inside that window: fee kept, tutor paid at +24h
+        S.CANCELLED_BY_TEACHER,     # tutor cancelled: refunded (+ bonus credit and a strike when late)
         S.COMPLETED_PENDING_MEMO,   # lesson ended with >=20 teacher minutes
         S.DISPUTED,                 # lesson ended with <20 teacher minutes
     }),
@@ -48,6 +51,11 @@ ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
     # A payment arriving after the hold was purged may re-confirm the slot if it is still free, or be quarantined.
     S.CANCELLED: frozenset({S.CONFIRMED, S.DISPUTED}),
     S.INTERRUPTED_POWER: frozenset(),  # terminal
+    # Cancellations are terminal, and deliberately NOT S.CANCELLED: that status may be re-confirmed by a late payment
+    # (cancelled -> confirmed), which must never resurrect a booking whose money has already been refunded or settled.
+    S.CANCELLED_BY_STUDENT: frozenset(),
+    S.STUDENT_LATE_CANCELLED: frozenset(),
+    S.CANCELLED_BY_TEACHER: frozenset(),
 }
 
 TERMINAL_STATUSES = frozenset(s for s, targets in ALLOWED_TRANSITIONS.items() if not targets)

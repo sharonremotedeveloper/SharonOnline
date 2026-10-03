@@ -145,3 +145,49 @@ def reconcile_teacher_gcal_task():
         return {"reconciled_tutors": reconciled}
 
     return _execute()
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=120, name='apps.integrations.tasks.cleanup_zoom_meeting')
+def cleanup_zoom_meeting(self, meeting_id: str):
+    """Free a Zoom room whose lesson was cancelled or moved. Retried; a persistent failure is logged for a human."""
+    try:
+        return zoom_client.delete_meeting(meeting_id)
+    except Exception as exc:
+        logger.error(f"Could not delete Zoom meeting {meeting_id}: {exc}")
+        raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=120, name='apps.integrations.tasks.send_cancellation_emails')
+def send_cancellation_emails(self, booking_id: str, cancelled_by: str):
+    """Tell the other person a lesson was cancelled (the canceller sees the result on screen)."""
+    from .email import send_email, EmailDeliveryError
+    booking = Booking.objects.select_related('teacher__user', 'student').filter(id=booking_id).first()
+    if booking is None:
+        return False
+    when = booking.start_time_utc.strftime('%A %d %B %Y, %H:%M UTC')
+    if cancelled_by == 'student':
+        to, subject, line = booking.teacher.user.email, 'A lesson was cancelled', f"{booking.student.first_name or booking.student.username} cancelled the lesson on {when}."
+    else:
+        to, subject, line = booking.student.email, 'Your lesson was cancelled by your tutor', (
+            f"Your tutor had to cancel the lesson on {when}. You will be refunded to your original payment method, "
+            f"or you can turn the refund into lesson credit in your wallet.")
+    try:
+        send_email(to, subject, f"<p>{line}</p>", line)
+    except EmailDeliveryError as exc:
+        raise self.retry(exc=exc)
+    return True
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=300, name='apps.integrations.tasks.cleanup_gcal_event')
+def cleanup_gcal_event(self, teacher_user_id: str, event_id: str):
+    """Take a cancelled / moved lesson off the tutor's Google Calendar."""
+    from django.contrib.auth import get_user_model
+    from .google_calendar import delete_teacher_gcal_event
+    user = get_user_model().objects.filter(pk=teacher_user_id).first()
+    if user is None:
+        return False
+    try:
+        return delete_teacher_gcal_event(user, event_id)
+    except Exception as exc:
+        logger.error(f"Could not delete Google Calendar event {event_id}: {exc}")
+        raise self.retry(exc=exc)

@@ -10,7 +10,7 @@ from rest_framework.test import APIClient
 
 from apps.admin_api.models import DisputeCase
 from apps.bookings.models import AttendanceAudit, Booking
-from apps.payments.models import CreditBundle, LedgerAccount, LedgerEntry, PaymentTransaction
+from apps.payments.models import CreditBundle, LedgerAccount, LedgerEntry, PaymentTransaction, RefundRequest
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.webhook_handler import process_payment_webhook
 from apps.payments.tasks import release_cleared_escrow_task
@@ -73,9 +73,9 @@ class TestGrantCredit:
     def test_students_with_several_bundles_do_not_crash_and_stay_consistent(self, student_user):
         for _ in range(2):
             CreditBundle.objects.create(user=student_user, total_credits=5, remaining_credits=2, amount_paid=40)
-        b = grant_credit(student_user, credits=2)
-        assert CreditBundle.objects.filter(user=student_user).count() == 2
-        assert (b.total_credits, b.remaining_credits) == (7, 4) and b.remaining_credits <= b.total_credits
+        b = grant_credit(student_user, credits=2)                      # a grant is its own lot now: older lots are untouched
+        assert CreditBundle.objects.filter(user=student_user).count() == 3
+        assert (b.total_credits, b.remaining_credits) == (2, 2)
         assert sum(x.remaining_credits for x in CreditBundle.objects.filter(user=student_user)) == 6
 
     def test_rejects_nonsense(self, student_user):
@@ -99,7 +99,7 @@ class TestOutageReport:
     ])
     def test_reporting_window(self, teacher_user, student_user, start_in_min, expected):
         booking = lesson(teacher_user, student_user, start_in_min, status=S.CONFIRMED)
-        res = self.report(student_user, booking)
+        res = self.report(teacher_user.user, booking)
         assert res.status_code == expected, res.json()
         booking.refresh_from_db()
         if expected == 409:
@@ -110,8 +110,12 @@ class TestOutageReport:
 
     def test_who_may_report(self, teacher_user, student_user, admin_user):
         stranger = User.objects.create_user(username='nosy', email='n@x.com', password='x-pass-12345', role='student')
+        other_tutor = User.objects.create_user(username='t2', email='t2@x.com', password='x-pass-12345', role='teacher')
         b1 = lesson(teacher_user, student_user, 10, status=S.CONFIRMED)
-        assert self.report(stranger, b1).status_code == 403
+        for denied in (stranger, student_user, other_tutor):              # D-6: a student cannot file an outage (it refunds them, unpays the tutor)
+            res = self.report(denied, b1)
+            assert res.status_code == 403 and res.json()['code'] == 'outage_report_tutor_only'
+        assert Booking.objects.get(pk=b1.pk).status == S.CONFIRMED
         assert self.report(teacher_user.user, b1).status_code == 200      # the tutor of the booking
         b2 = lesson(teacher_user, student_user, 40, status=S.CONFIRMED)
         assert self.report(admin_user, b2).status_code == 200             # staff
@@ -120,17 +124,37 @@ class TestOutageReport:
         weird = [None, ['a', 'b'], {'reason': {'x': 1}}, {'reason': 'y' * 1000}]
         for n, body in enumerate(weird):
             booking = lesson(teacher_user, student_user, 10 + n, status=S.CONFIRMED)
-            res = self.report(student_user, booking, body)
+            res = self.report(teacher_user.user, booking, body)
             assert res.status_code == 200, body
         from apps.bookings.models import BookingStatusChange
         assert max(len(r) for r in BookingStatusChange.objects.values_list('reason', flat=True)) <= 255
 
     def test_second_report_is_refused_and_settles_nothing_twice(self, teacher_user, student_user):
         booking = captured(teacher_user, student_user, 10)
-        assert self.report(student_user, booking).status_code == 200
-        assert self.report(student_user, booking).status_code == 409
-        assert sum(b.remaining_credits for b in CreditBundle.objects.filter(user=student_user)) == 1
+        assert self.report(teacher_user.user, booking).status_code == 200
+        assert self.report(teacher_user.user, booking).status_code == 409
+        assert RefundRequest.objects.filter(booking=booking).count() == 1 and not CreditBundle.objects.exists()
         assert LedgerEntry.objects.filter(booking=booking, event_type=LedgerEntry.EventType.OUTAGE_REFUND).count() == 2
+
+    def test_the_student_is_refunded_through_the_gateway_and_the_tutor_is_not_struck(self, teacher_user, student_user):
+        booking = captured(teacher_user, student_user, 10)
+        res = self.report(teacher_user.user, booking)
+        assert res.status_code == 200
+        refund = RefundRequest.objects.get(booking=booking)
+        assert (refund.reason, refund.status, refund.amount, refund.currency) == ('outage', 'pending_gateway', Decimal('168.75'), 'ZAR')
+        teacher_user.refresh_from_db()
+        assert teacher_user.sla_strikes == 0
+        assert net(booking, LedgerAccount.LIABILITY_REFUNDS_PAYABLE) == Decimal('168.75')
+
+    def test_a_lesson_the_tutor_taught_is_delivered_not_an_outage(self, teacher_user, student_user):
+        booking = force(captured(teacher_user, student_user, 10), S.CONFIRMED, start_in_min=-10)       # under way
+        AttendanceAudit.objects.create(booking=booking, participant_email=teacher_user.user.email, total_minutes=20)
+        res = self.report(teacher_user.user, booking)
+        assert res.status_code == 409 and res.json()['code'] == 'lesson_delivered'
+        booking.refresh_from_db()
+        assert booking.status == S.CONFIRMED and not RefundRequest.objects.exists()
+        AttendanceAudit.objects.filter(booking=booking).update(total_minutes=19)       # just under the line: an outage after all
+        assert self.report(teacher_user.user, booking).status_code == 200
 
     def test_refund_drains_the_escrow_by_exactly_what_was_captured_in_its_currency(self, teacher_user, student_user):
         booking = captured(teacher_user, student_user, 10, amount='168.75', currency='ZAR')
@@ -143,7 +167,7 @@ class TestOutageReport:
 
     def test_the_release_job_never_pays_for_an_interrupted_lesson(self, teacher_user, student_user):
         booking = captured(teacher_user, student_user, 10)
-        assert self.report(student_user, booking).status_code == 200
+        assert self.report(teacher_user.user, booking).status_code == 200
         Booking.objects.filter(pk=booking.pk).update(end_time_utc=timezone.now() - timedelta(hours=30))
         AttendanceAudit.objects.create(booking=booking, participant_email=teacher_user.user.email, total_minutes=25)
         assert release_cleared_escrow_task()['cleared_count'] == 0
@@ -203,7 +227,12 @@ def test_teacher_no_show_refund_drains_the_escrow_in_the_captured_currency(teach
     assert booking.status == S.TEACHER_NO_SHOW
     assert net(booking, LedgerAccount.LIABILITY_STUDENT_ESCROW) == 0
     assert net(booking, LedgerAccount.LIABILITY_TUTOR_PAYABLE) == 0
-    assert sum(b.remaining_credits for b in CreditBundle.objects.filter(user=student_user)) == 2   # refund + 1 bonus
+    # D-6: the refund goes back through the gateway; the apology is 1 bonus credit (not a second refund)
+    assert RefundRequest.objects.get(booking=booking).status == 'pending_gateway'
+    bonus = CreditBundle.objects.get(user=student_user)
+    assert (bonus.source, bonus.remaining_credits, bonus.currency, bonus.unit_value) == ('bonus', 1, 'ZAR', Decimal('168.75'))
+    teacher_user.refresh_from_db()
+    assert teacher_user.sla_strikes == 1
 
 
 # ------------------------------------------------------------------ arbitration + release job must not both pay
@@ -265,7 +294,7 @@ class TestNoDoubleSettlement:
 @pytest.mark.django_db
 def test_admin_escrow_view_shows_every_outcome_that_moves_money(admin_user, teacher_user, student_user):
     interrupted = captured(teacher_user, student_user, 10, ref='A')
-    _client(student_user).post(f'/api/v1/bookings/{interrupted.id}/report-outage/')
+    _client(teacher_user.user).post(f'/api/v1/bookings/{interrupted.id}/report-outage/')
     ns = captured(teacher_user, student_user, 600, ref='B')
     force(ns, S.STUDENT_NO_SHOW, start_in_min=-(30 * 60))
     AttendanceAudit.objects.create(booking=ns, participant_email=teacher_user.user.email, total_minutes=11)

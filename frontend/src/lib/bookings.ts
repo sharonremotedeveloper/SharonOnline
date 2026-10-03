@@ -42,3 +42,48 @@ export async function listBookings(p: BookingListParams = {}): Promise<BookingPa
   const items = res.results ?? [];
   return { items, count: res.count ?? items.length, hasMore: Boolean(res.next) };
 }
+
+// ---------------------------------------------------------------- cancel + reschedule (Task 9.6)
+
+export type CancelOutcome =
+  | "released"
+  | "full_refund"
+  | "fee_forfeited"
+  | "tutor_refund"
+  | "tutor_refund_with_penalty"
+  | "not_cancellable";
+
+export interface CancelPreview {
+  can_cancel: boolean;
+  outcome: CancelOutcome;
+  message: string;
+  seconds_until_start: number;
+  refund_amount: string | null;
+  refund_currency: string | null;
+  bonus_credits: number;
+  strike: boolean;
+  /** Students only: the last moment a cancellation is still free. */
+  free_cancel_until?: string;
+}
+
+/** Machine-readable reason from a failed cancel / reschedule call (e.g. "acknowledgement_required", "reschedule_limit_reached"). */
+export function errorCode(err: unknown): string | null {
+  const body = (err as { body?: unknown } | null)?.body;
+  const code = body && typeof body === "object" ? (body as { code?: unknown }).code : null;
+  return typeof code === "string" ? code : null;
+}
+
+export const getCancelPreview = (bookingId: string) => request<CancelPreview>(`/bookings/${bookingId}/cancel-preview/`);
+
+/** A student cancelling inside the free window must pass `acknowledgeForfeit: true` (show the preview first). */
+export const cancelBooking = (bookingId: string, opts: { reason?: string; acknowledgeForfeit?: boolean } = {}) =>
+  request<{ outcome: CancelOutcome; status: string; message: string }>(`/bookings/${bookingId}/cancel/`, {
+    method: "POST",
+    body: JSON.stringify({ reason: opts.reason ?? "", acknowledge_forfeit: Boolean(opts.acknowledgeForfeit) }),
+  });
+
+export const rescheduleBooking = (bookingId: string, startTimeUtc: string) =>
+  request<BookingDetail>(`/bookings/${bookingId}/reschedule/`, {
+    method: "POST",
+    body: JSON.stringify({ start_time_utc: startTimeUtc }),
+  });

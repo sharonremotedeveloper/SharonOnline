@@ -5,9 +5,16 @@ export type BookingStatus =
   | "confirmed"
   | "in_progress"
   | "completed"
+  | "completed_pending_memo"
+  | "completed_memo_forfeited"
   | "cancelled"
+  | "cancelled_by_student"
+  | "student_late_cancelled"
+  | "cancelled_by_teacher"
   | "disputed"
-  | "interrupted_power";
+  | "interrupted_power"
+  | "student_no_show"
+  | "teacher_no_show";
 
 export interface BookingSlot {
   id: string;
@@ -73,6 +80,9 @@ export interface BookingDetail {
   material_slug?: string;
   material_title?: string;
   created_at: string;
+  cancelled_at?: string | null;
+  reschedule_count?: number;
+  original_start_time_utc?: string | null;
 }
 
 export type PaymentGatewayType = "credit" | "payfast" | "paypal";

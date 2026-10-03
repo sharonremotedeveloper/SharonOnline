@@ -9,9 +9,12 @@ ledger, not from a flag that could be forgotten).
 | :--- | :--- | :--- | :--- | :--- |
 | `completed`, `completed_pending_memo`, `completed_memo_forfeited` | release job, 24 h after lesson end, needs >= 20 tutor minutes | pays | **80 %** (platform 20 %) | `escrow_cleared` |
 | `student_no_show` | adjudicated at T+10m (tutor present); release job 24 h after end, needs a tutor attendance record (not the 20-minute rule) | pays, no credit back | **80 %** (platform 20 %) | `escrow_cleared` |
-| `teacher_no_show` | adjudicated at T+10m | full refund as wallet credit **+ 1 bonus credit** | nothing, 1 SLA strike (3 = deactivated) | `refund_issued` + `compensation_awarded` |
-| `interrupted_power` | `POST /bookings/<id>/report-outage/` (student, that booking's tutor, or staff) | 1 wallet credit | nothing | `outage_refund` |
-| `disputed` -> `cancelled` | admin: *full refund* | 1 wallet credit | nothing | `dispute_resolved` |
+| `teacher_no_show` | adjudicated at T+10m | full **gateway refund** (convertible to wallet credit) **+ 1 bonus credit** | nothing, 1 strike (3 in 90 days = deactivated) | `refund_issued` + `compensation_awarded` |
+| `interrupted_power` | `POST /bookings/<id>/report-outage/` (**that booking's tutor or staff only**; not if the tutor taught >= 20 min) | full gateway refund | nothing, no strike | `outage_refund` |
+| `cancelled_by_student` | student cancels > 2 h before start | full gateway refund | nothing | `refund_issued` |
+| `student_late_cancelled` | student cancels <= 2 h before start (acknowledged) | pays, no credit back | **80 %** at +24 h (no attendance needed) | `escrow_cleared` |
+| `cancelled_by_teacher` | tutor cancels | full gateway refund (+ 1 bonus credit and a strike when < 24 h) | nothing | `refund_issued` (+ `compensation_awarded`) |
+| `disputed` -> `cancelled` | admin: *full refund* | full gateway refund (convertible); nothing more if already refunded | nothing | `dispute_resolved` |
 | `disputed` -> `completed` | admin: *release tutor* | pays | 80 % | `dispute_resolved` (+ booking/tx marked cleared) |
 | `disputed` -> `completed` | admin: *50/50 split* | 1 courtesy credit (platform expense) | 80 % | `dispute_resolved` (+ marked cleared) |
 
@@ -33,7 +36,11 @@ payment exists.
 4. Arbitration and the teacher no-show refund booked the **USD list price** instead of the captured amount/currency (escrow never reconciled for ZAR payments); fixed as above.
 5. The admin escrow view omitted interrupted/no-show lessons and showed arbitrated payouts as "holding".
 
-## Open questions for Anesu (D-6, not decided in code)
+> **Update (Task 9.6, D-6 decided):** refunds now go back through the payment gateway (see `CANCELLATION_AND_REFUNDS.md`); only the
+> lesson's tutor (or staff) can report an outage, and the tutor is not paid for one. The questions below are kept as the history of
+> that decision.
+
+## Open questions for Anesu (D-6, now decided - see the update above)
 
 * Should the tutor receive anything when an outage interrupts a lesson part-way (e.g. pro-rata, or full fee if the outage hit the *student*)? Today: nothing, student refunded.
 * Should a **student**-reported outage be accepted at all? The platform is built around the tutor's (South African) Eskom schedule; a student claiming "my power went out" refunds them while the tutor goes unpaid. Today any of student/tutor/staff may report. Options: tutor/staff only; or student reports need the tutor's confirmation or an active Eskom stage for the *tutor's* area (data exists from the Eskom sync).

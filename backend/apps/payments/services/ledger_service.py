@@ -498,7 +498,8 @@ def record_compensation_entry(
     booking=None,
     amount_usd: Decimal = Decimal('9.00'),
     reason: str = "Tutor no-show apology credit",
-    fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR
+    fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR,
+    currency: str = 'USD',
 ) -> List[LedgerEntry]:
     """
     Triggered when the platform awards a courtesy/bonus credit (e.g. tutor no-show or memo SLA breach).
@@ -512,14 +513,14 @@ def record_compensation_entry(
             'account': LedgerAccount.EXPENSE_STUDENT_COMPENSATION,
             'entry_type': LedgerEntry.EntryType.DEBIT,
             'amount': amount,
-            'currency': 'USD',
+            'currency': currency,
             'description': f"Platform compensation expense: {reason}"
         },
         {
             'account': LedgerAccount.LIABILITY_STUDENT_WALLET,
             'entry_type': LedgerEntry.EntryType.CREDIT,
             'amount': amount,
-            'currency': 'USD',
+            'currency': currency,
             'description': f"Bonus credit granted to {user.username} for {reason}"
         }
     ]
@@ -530,7 +531,7 @@ def record_compensation_entry(
         description=f"Platform goodwill compensation: {reason}",
         booking=booking,
         user=user,
-        currency='USD',
+        currency=currency,
         fx_rate_to_zar=fx_rate_to_zar
     )
 
