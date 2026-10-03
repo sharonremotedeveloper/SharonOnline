@@ -24,12 +24,10 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
           <div className="text-2xl sm:text-3xl font-black text-emerald-800 font-serif">
             R{wallet.cleared_balance_zar.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
           </div>
-          <p className="text-[11px] text-ink-muted">
-            Equivalent to ${wallet.cleared_balance_usd.toFixed(2)} USD
-          </p>
+          <p className="text-[11px] text-ink-muted">Derived from ledger account 2020.</p>
         </div>
 
-        {/* Card 2: Pending Escrow USD */}
+        {/* Card 2: Pending Escrow */}
         <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
             <span>In 24h Escrow</span>
@@ -38,27 +36,27 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
             </span>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-ink font-serif">
-            ${wallet.pending_escrow_usd.toFixed(2)}{" "}
-            <span className="text-xs font-normal text-ink-muted">USD</span>
+            R{wallet.pending_escrow_zar.toFixed(2)}{" "}
+            <span className="text-xs font-normal text-ink-muted">ZAR value</span>
           </div>
           <p className="text-[11px] text-ink-muted">
-            ≈ R{(wallet.pending_escrow_usd * wallet.fx_rate_usd_to_zar).toFixed(2)} ZAR (Clears in 24h)
+            Captured funding valued at each lesson&apos;s stored FX snapshot.
           </p>
         </div>
 
         {/* Card 3: Payout FX Rate */}
         <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
-            <span>Market FX Rate</span>
+            <span>Capture FX Context</span>
             <span className="text-teal bg-teal/10 px-2 py-0.5 rounded-full text-[10px] font-bold">
-              USD &rarr; ZAR
+              Immutable snapshots
             </span>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-teal font-serif">
-            R{wallet.fx_rate_usd_to_zar.toFixed(2)}
+            {wallet.fx_context.length}
           </div>
           <p className="text-[11px] text-ink-muted">
-            Guaranteed minimum FX on bi-weekly batch settlement
+            {wallet.fx_context.length ? wallet.fx_context.map((fx) => `${fx.currency} @ ${fx.fx_rate_to_zar}`).join(" · ") : "No funded lessons yet"}
           </p>
         </div>
       </div>
@@ -70,10 +68,9 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
           <span>Fair Payout Structure &amp; Escrow Guarantee</span>
         </div>
         <p className="text-[11px] text-ink-muted">
-          Students pay $8.00 per 25-minute lesson. Tutors receive an <strong>80% net share ($6.40 USD)</strong>.
-          At the current guaranteed conversion rate of 18.75 FX, you earn exactly{" "}
-          <strong className="text-ink">R120.00 ZAR per 25-minute completed session</strong>.
-          Escrow releases automatically 24 hours post-lesson once student confirmation is verified.
+          Tutors receive an <strong>80% share of the amount actually captured</strong>, including the discount when a
+          student used a lesson pack. Every row retains its transaction currency and capture-time ZAR valuation;
+          escrow releases only after the verified settlement workflow completes.
         </p>
       </div>
     </div>

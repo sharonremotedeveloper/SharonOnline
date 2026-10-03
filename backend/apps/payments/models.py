@@ -274,6 +274,22 @@ class FulfillmentDispatch(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
+class TutorPayoutAccount(models.Model):
+    """Encrypted tutor banking payload. Only the account-number last four is plaintext metadata."""
+
+    tutor = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='payout_account', primary_key=True,
+    )
+    encrypted_payload = models.TextField()
+    key_version = models.CharField(max_length=32)
+    account_last_four = models.CharField(max_length=4)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Payout account for {self.tutor.username} ending {self.account_last_four}"
+
+
 class LedgerAccount(models.TextChoices):
     # Assets (1000s)
     ASSET_GATEWAY_PAYFAST = '1010_asset_gateway_payfast', '1010 - Asset: Gateway Cash (PayFast ZAR)'

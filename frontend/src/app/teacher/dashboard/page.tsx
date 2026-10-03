@@ -243,7 +243,7 @@ export default function TeacherDashboardPage() {
                 <div className="text-2xl font-black text-emerald-800 font-serif">
                   R{wallet.cleared_balance_zar.toFixed(2)} ZAR
                 </div>
-                <p className="text-[11px] text-ink-muted">Paid out in the next batch EFT.</p>
+                <p className="text-[11px] text-ink-muted">Ledger-cleared and awaiting an approved payout workflow.</p>
               </>
             ) : (
               <>

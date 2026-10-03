@@ -17,6 +17,7 @@ celery>=5.4.0
 # Security & Utilities
 gunicorn>=22.0.0
 python-dotenv>=1.0.1
+cryptography>=43.0.0
 requests>=2.32.3
 icalendar>=5.0.13
 pytz>=2024.1

@@ -7,6 +7,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.db.models import Sum, Count, Q
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from datetime import timedelta
 from decimal import Decimal
 
@@ -330,15 +331,19 @@ class EscrowLedgerView(APIView):
         })
 
 
-@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
+@extend_schema(responses=PayoutBatchItemSerializer(many=True))
 class PayoutBatchView(APIView):
     permission_classes = [IsPlatformAdmin]
 
     def get(self, request):
         from apps.payments.models import LedgerAccount, LedgerEntry
+        from apps.payments.serializers import masked_payout_account
+        from apps.payments.services.payout_crypto import PayoutDataError
 
         items = []
-        teachers = TeacherProfile.objects.filter(is_verified=True).select_related('user')
+        teachers = TeacherProfile.objects.filter(
+            is_verified=True, user__payout_account__isnull=False,
+        ).select_related('user', 'user__payout_account')
         for t in teachers:
             totals = LedgerEntry.objects.filter(
                 user=t.user, account=LedgerAccount.LIABILITY_TUTOR_PAYABLE
@@ -350,13 +355,17 @@ class PayoutBatchView(APIView):
             payable = (totals['credits'] or Decimal('0.00')) - (totals['debits'] or Decimal('0.00'))
             if payable <= 0:
                 continue
+            try:
+                payout = masked_payout_account(t.user.payout_account)
+            except (PayoutDataError, ImproperlyConfigured):
+                continue
             items.append({
                 'id': f"pay-{t.id}",
                 'teacher_id': str(t.id),
                 'teacher_name': t.user.get_full_name() or t.user.username,
-                'bank_name': 'Not configured',
-                'account_number_masked': '',
-                'branch_code': '',
+                'bank_name': payout['bank_name'],
+                'account_number_masked': payout['account_number_masked'],
+                'branch_code': payout['branch_code'],
                 'cleared_lessons_count': totals['lessons'] or 0,
                 'payout_amount_zar': float(payable),
                 'status': 'pending'

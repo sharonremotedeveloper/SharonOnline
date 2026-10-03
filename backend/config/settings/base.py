@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import timedelta
+import json
 import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -157,6 +158,14 @@ FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'http://localhost:3000')
 PASSWORD_RESET_TIMEOUT = 60 * 60  # seconds; reset links are single-use AND short-lived
 EMAIL_VERIFY_MAX_AGE = 3 * 24 * 60 * 60
 SUPPORT_TO_EMAIL = os.environ.get('SUPPORT_TO_EMAIL', 'support@sharonesl.com')
+
+# Versioned Fernet keyring for encrypted tutor payout details. Example:
+# PAYOUT_DATA_KEYS='{"v1":"<fernet-key>","v2":"<fernet-key>"}' and PAYOUT_DATA_ACTIVE_KEY='v2'.
+try:
+    PAYOUT_DATA_KEYS = json.loads(os.environ.get('PAYOUT_DATA_KEYS', '{}'))
+except json.JSONDecodeError:
+    PAYOUT_DATA_KEYS = {}
+PAYOUT_DATA_ACTIVE_KEY = os.environ.get('PAYOUT_DATA_ACTIVE_KEY', '')
 
 # Slot holds (Task 9.4): a started-but-unfinished payment keeps its hold this long past the 10-minute base window,
 # and no hold (however many payment attempts) outlives the hard cap.
