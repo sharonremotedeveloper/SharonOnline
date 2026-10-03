@@ -19,6 +19,7 @@ import { api } from "@/lib/api";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
 
+import { groupMoney } from "@/lib/moneyString";
 export default function AdminDashboardPage() {
   const { data: telemetry, error, loading, reload } = useApiData(() => api.getAdminTelemetry(), []);
 
@@ -71,10 +72,10 @@ export default function AdminDashboardPage() {
             <span>Gross Volume Today</span>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-ink font-serif">
-            ${telemetry.gmv_today_usd.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+            ${groupMoney(telemetry.gmv_today_usd)}
           </div>
           <p className="text-[11px] text-ink-muted">
-            MTD: ${telemetry.gmv_month_usd.toLocaleString("en-US", { minimumFractionDigits: 2 })} USD
+            MTD: ${groupMoney(telemetry.gmv_month_usd)} USD
           </p>
         </div>
 
@@ -87,10 +88,10 @@ export default function AdminDashboardPage() {
             </span>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-teal font-serif">
-            R{telemetry.escrow_liability_zar.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+            R{groupMoney(telemetry.escrow_liability_zar)}
           </div>
           <p className="text-[11px] text-ink-muted">
-            Equivalent to ${telemetry.escrow_liability_usd.toFixed(2)} USD in escrow
+            Equivalent to ${telemetry.escrow_liability_usd} USD in escrow
           </p>
         </div>
 

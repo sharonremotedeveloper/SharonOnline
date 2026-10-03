@@ -25,7 +25,7 @@
 | Refunds: request -> ledger 2050 -> gateway; credit-funded lessons restore the credit; student can convert to wallet credit | Done (9.6). **The real PayPal / PayFast refund backends are not built** (default backend leaves requests pending). |
 | `POST /payments/checkout/init/` | Booking or credit-pack target, server-side amount, hold guards. **PayFast signed form: done. PayPal: returns a reference but does not create a PayPal Order yet.** |
 | Frontend checkout | Polls server state, never confirms client-side. PayFast form posts for real. **The PayPal button is a placeholder** (no `@paypal/react-paypal-js`). |
-| Lesson price | Still the tutor's USD price x `ZAR_PER_USD` config; no platform price table (D-1) |
+| Lesson price | **Done (10.1):** `LessonPrice` catalog, `GET /payments/lesson-prices/`; checkout, booking payloads and admin read it. Provisional prices await confirmation |
 | Receipts / invoices | None |
 | CI | `quality-gates.yml` + `api-contract.yml` exist; never run on GitHub |
 

@@ -19,6 +19,8 @@ from apps.payments.models import CreditBundle, CreditWalletEntry, LedgerEntry, P
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.settlement import is_settled, successful_transaction
 from apps.payments.services.funding import funding_for_settlement
+from apps.payments.services.pricing import usd_to_zar_rate
+from apps.common.money import money_str
 from apps.admin_api.models import DisputeCase
 from apps.users.models import User
 from apps.admin_api.serializers import (
@@ -45,16 +47,16 @@ class AdminTelemetryView(APIView):
             status=PaymentTransaction.Status.SUCCESS,
             currency='USD',
             created_at__gte=today_start
-        ).aggregate(total=Sum('amount'))['total'] or 0.0
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
         gmv_month = PaymentTransaction.objects.filter(
             status=PaymentTransaction.Status.SUCCESS,
             currency='USD',
             created_at__gte=month_start
-        ).aggregate(total=Sum('amount'))['total'] or 0.0
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
-        gmv_today = float(gmv_today)
-        gmv_month = float(gmv_month)
+        gmv_today = money_str(gmv_today, 'USD')
+        gmv_month = money_str(gmv_month, 'USD')
 
         # Active Zoom sessions (within +/- 30 minutes of now)
         active_zoom = Booking.objects.filter(
@@ -76,13 +78,13 @@ class AdminTelemetryView(APIView):
         )
         cr_zar = ledger_escrow['cr'] or Decimal('0.00')
         dr_zar = ledger_escrow['dr'] or Decimal('0.00')
-        actual_escrow_zar = float(max(cr_zar - dr_zar, Decimal('0.00')))
+        actual_escrow_zar = max(cr_zar - dr_zar, Decimal('0.00'))
         if actual_escrow_zar > 0:
-            escrow_zar = round(actual_escrow_zar, 2)
-            escrow_usd = round(actual_escrow_zar / Decimal(str(settings.ZAR_PER_USD)), 2)
+            escrow_zar = money_str(actual_escrow_zar, 'ZAR')
+            escrow_usd = money_str(actual_escrow_zar / usd_to_zar_rate(), 'USD')
         else:
-            escrow_usd = 0.0
-            escrow_zar = 0.0
+            escrow_usd = money_str(0, 'USD')
+            escrow_zar = money_str(0, 'ZAR')
 
         total_students = User.objects.filter(role=User.Role.STUDENT).count()
         total_teachers = TeacherProfile.objects.count()
@@ -285,9 +287,9 @@ class EscrowLedgerView(APIView):
                 funding_for_settlement(b, context='admin_escrow_view')
                 continue
             gross_zar = Decimal(funding.captured_amount) * Decimal(funding.fx_rate_to_zar)
-            gross_usd = float(gross_zar / Decimal(str(settings.ZAR_PER_USD)))
-            platform_fee = round(gross_usd * 0.20, 2)
-            net_tutor_zar = round(float(gross_zar * Decimal('0.80')), 2)
+            gross_usd = gross_zar / usd_to_zar_rate()
+            platform_fee = gross_usd * Decimal('0.20')
+            net_tutor_zar = gross_zar * Decimal('0.80')
 
             has_cleared_entry = LedgerEntry.objects.filter(
                 booking=b,
@@ -320,10 +322,10 @@ class EscrowLedgerView(APIView):
                 'student_name': b.student.get_full_name() or b.student.username,
                 'teacher_name': b.teacher.user.get_full_name() or b.teacher.user.username,
                 'lesson_date': b.start_time_utc.strftime('%Y-%m-%d %H:%M'),
-                'amount_usd': gross_usd,
-                'amount_zar': round(gross_usd * 18.75, 2),
-                'platform_fee_usd': platform_fee,
-                'teacher_net_zar': net_tutor_zar,
+                'amount_usd': money_str(gross_usd, 'USD'),
+                'amount_zar': money_str(gross_zar, 'ZAR'),
+                'platform_fee_usd': money_str(platform_fee, 'USD'),
+                'teacher_net_zar': money_str(net_tutor_zar, 'ZAR'),
                 'escrow_status': escrow_status,
                 'release_date': release_time.strftime('%Y-%m-%d %H:%M')
             })
@@ -375,7 +377,7 @@ class PayoutBatchView(APIView):
                 'account_number_masked': payout['account_number_masked'],
                 'branch_code': payout['branch_code'],
                 'cleared_lessons_count': totals['lessons'] or 0,
-                'payout_amount_zar': float(payable),
+                'payout_amount_zar': money_str(payable, 'ZAR'),
                 'status': 'pending'
             })
 

@@ -19,6 +19,7 @@ import { PublicTutor } from "@/types/tutor";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { StarRating } from "@/components/ui/StarRating";
+import { LessonPriceLabel } from "@/components/ui/LessonPriceLabel";
 import { VideoReelPlayer } from "@/components/tutors/VideoReelPlayer";
 import { AudioSnippetButton } from "@/components/tutors/AudioSnippetButton";
 import { TutorReviewList } from "@/components/tutors/TutorReviewList";
@@ -45,7 +46,6 @@ const SAMPLE_TUTORS: Record<string, PublicTutor> = {
     rating_avg: 4.98,
     rating_count: 142,
     lessons_completed: 1840,
-    price_per_25min_usd: 8.0,
     specialties: ["Business English", "Interview Prep", "FreeTalk", "Pronunciation & Accent"],
     learning_goals: ["business", "interview", "conversation"],
     learner_levels: "A2 to C2 All Levels",
@@ -70,7 +70,6 @@ const SAMPLE_TUTORS: Record<string, PublicTutor> = {
     rating_avg: 4.95,
     rating_count: 98,
     lessons_completed: 1120,
-    price_per_25min_usd: 8.0,
     specialties: ["IELTS Prep", "Grammar Mastery", "Daily News", "Interview Prep"],
     learning_goals: ["interview", "presentation"],
     learner_levels: "B1 to C2 Intermediate to Advanced",
@@ -95,7 +94,6 @@ const SAMPLE_TUTORS: Record<string, PublicTutor> = {
     rating_avg: 4.92,
     rating_count: 86,
     lessons_completed: 780,
-    price_per_25min_usd: 8.0,
     specialties: ["FreeTalk", "Daily News", "Grammar Mastery"],
     learning_goals: ["conversation", "travel"],
     learner_levels: "A1 to B2 Beginner to Intermediate",
@@ -217,9 +215,7 @@ export default function TutorProfilePage() {
               Private 1-on-1 Lesson Rate
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-extrabold font-serif text-white">
-                ${tutor.price_per_25min_usd.toFixed(2)}
-              </span>
+              <LessonPriceLabel className="text-4xl font-extrabold font-serif text-white" />
               <span className="text-xs text-white/70">USD / 25-minute class</span>
             </div>
 
@@ -247,7 +243,6 @@ export default function TutorProfilePage() {
           <InlineSlotMatrix
             tutorId={tutor.id}
             tutorName={tutor.full_name}
-            pricePerLesson={tutor.price_per_25min_usd}
           />
         </div>
       </div>

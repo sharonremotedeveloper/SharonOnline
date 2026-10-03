@@ -3,6 +3,8 @@ from apps.teachers.models import TeacherProfile
 from apps.bookings.models import Booking, AttendanceAudit
 from apps.admin_api.models import DisputeCase, PayoutBatch
 from apps.users.models import User
+from apps.payments.services.pricing import lesson_price
+from apps.common.money import money_str
 
 class AdminTelemetrySerializer(serializers.Serializer):
     gmv_today_usd = serializers.FloatField()
@@ -138,10 +140,10 @@ class DisputeCaseSerializer(serializers.ModelSerializer):
         return obj.booking.start_time_utc.strftime('%Y-%m-%d %H:%M UTC')
 
     def get_amount_usd(self, obj):
-        return float(obj.teacher.price_per_25min_usd)
+        return money_str(lesson_price('USD'), 'USD')
 
     def get_amount_zar(self, obj):
-        return round(float(obj.teacher.price_per_25min_usd) * 18.75, 2)
+        return money_str(lesson_price('ZAR'), 'ZAR')
 
     def get_zoom_telemetry(self, obj):
         student_audit = obj.booking.attendance_audits.filter(participant_email=obj.student.email).first()

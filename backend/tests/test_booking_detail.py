@@ -35,7 +35,7 @@ class TestBookingDetailContract:
                     'material_slug', 'material_title'):
             assert key in d, key
         assert d['booking_reference'].startswith('BK-')
-        assert d['price_usd'] == 9.0 and d['price_zar'] == 162.0
+        assert d['price_usd'] == '9.00' and d['price_zar'] == '162.00'
         assert d['student']['full_name'] and d['teacher']['full_name']
         assert d['zoom_join_url'] == 'https://zoom.example/j/123'
 

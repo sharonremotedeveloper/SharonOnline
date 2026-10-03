@@ -6,6 +6,7 @@ import { PublicTutor } from "@/types/tutor";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { StarRating } from "@/components/ui/StarRating";
+import { LessonPriceLabel } from "@/components/ui/LessonPriceLabel";
 import { AudioSnippetButton } from "./AudioSnippetButton";
 
 interface TutorCardProps {
@@ -95,10 +96,7 @@ export function TutorCard({ tutor }: TutorCardProps) {
       {/* Footer CTA & Pricing */}
       <div className="p-4 bg-cream-surface/60 border-t border-divider flex items-center justify-between">
         <div>
-          <span className="text-xs text-ink-muted">From </span>
-          <span className="text-base font-extrabold text-ink font-serif">
-            ${Number(tutor.price_per_25min_usd).toFixed(2)}
-          </span>
+          <LessonPriceLabel className="text-base font-extrabold text-ink font-serif" />
           <span className="text-[11px] text-ink-muted"> / 25 min</span>
         </div>
 

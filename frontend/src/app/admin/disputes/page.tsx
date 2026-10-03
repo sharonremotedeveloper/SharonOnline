@@ -171,7 +171,7 @@ export default function AdminDisputesPage() {
                   <div className="text-right">
                     <span className="text-[10px] uppercase font-bold text-ink-muted block">Frozen Amount</span>
                     <span className="text-base font-black text-ink">
-                      ${c.amount_usd.toFixed(2)} USD (R{c.amount_zar.toFixed(2)})
+                      ${c.amount_usd} USD (R{c.amount_zar})
                     </span>
                   </div>
 

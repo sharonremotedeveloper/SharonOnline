@@ -19,6 +19,8 @@
     "src/lib/http.ts",
     "src/lib/session.ts",
     "src/lib/account.ts",
+    "src/lib/moneyString.ts",
+    "src/lib/prices.ts",
     "src/lib/server/upstream.ts",
     "src/lib/server/handlers.ts",
     "src/lib/server/config.ts",

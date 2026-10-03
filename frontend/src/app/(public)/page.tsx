@@ -9,6 +9,7 @@ import { fetchFeaturedTutors } from "@/lib/api";
 import { Avatar } from "@/components/ui/Avatar";
 import { StarRating } from "@/components/ui/StarRating";
 import { Badge } from "@/components/ui/Badge";
+import { LessonPriceLabel } from "@/components/ui/LessonPriceLabel";
 
 export default async function HomePage() {
   const featuredTutors = await fetchFeaturedTutors();
@@ -34,8 +35,8 @@ export default async function HomePage() {
             <div className="text-xs text-ink-muted font-medium mt-1">Vetted South African Tutors</div>
           </div>
           <div>
-            <div className="text-3xl font-extrabold text-teal font-serif">$8.00</div>
-            <div className="text-xs text-ink-muted font-medium mt-1">Starting Price / 25-Min Lesson</div>
+            <LessonPriceLabel className="block text-3xl font-extrabold text-teal font-serif" />
+            <div className="text-xs text-ink-muted font-medium mt-1">Price / 25-Min Lesson</div>
           </div>
         </div>
       </section>
@@ -108,17 +109,11 @@ export default async function HomePage() {
                 </div>
 
                 <div className="pt-4 border-t border-divider flex items-center justify-between">
-                  {Number(tutor.hourly_rate) > 0 ? (
-                    <div>
-                      <span className="text-xs text-ink-muted">Rate: </span>
-                      <span className="text-base font-extrabold text-ink font-serif">
-                        ${Number(tutor.hourly_rate).toFixed(2)}
-                      </span>
-                      <span className="text-[10px] text-ink-muted"> / 25m</span>
-                    </div>
-                  ) : (
-                    <div />
-                  )}
+                  <div>
+                    <span className="text-xs text-ink-muted">Rate: </span>
+                    <LessonPriceLabel className="text-base font-extrabold text-ink font-serif" />
+                    <span className="text-[10px] text-ink-muted"> / 25m</span>
+                  </div>
 
                   <Link
                     href={`/tutors/${tutor.slug || tutor.id}`}

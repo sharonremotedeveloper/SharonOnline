@@ -1153,6 +1153,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/Wallet'
           description: ''
+  /api/v1/payments/lesson-prices/:
+    get:
+      operationId: v1_payments_lesson_prices_retrieve
+      description: 'Public: the platform''s flat price for one 25-minute lesson per
+        currency (D-1), amounts as exact strings.'
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/payments/payout-settings/:
     get:
       operationId: v1_payments_payout_settings_retrieve
@@ -1733,12 +1751,10 @@ components:
           type: string
           readOnly: true
         price_usd:
-          type: number
-          format: double
+          type: string
           readOnly: true
         price_zar:
-          type: number
-          format: double
+          type: string
           readOnly: true
         lock_expires_at:
           type: string

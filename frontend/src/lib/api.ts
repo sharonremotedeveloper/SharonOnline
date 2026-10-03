@@ -33,7 +33,6 @@ export interface FeaturedTeacher {
   accent: string;
   rating: number;
   review_count: number;
-  hourly_rate: number;
   bio: string;
   specialties: string[];
 }
@@ -61,7 +60,6 @@ export async function fetchFeaturedTutors(): Promise<FeaturedTeacher[]> {
       accent: t.accent || "",
       rating: Number(t.rating_avg ?? 0),
       review_count: Number(t.rating_count ?? 0),
-      hourly_rate: Number(t.price_per_25min_usd ?? 0),
       bio: t.headline || t.bio || "",
       specialties: Array.isArray(t.specialties) ? t.specialties : [],
     }));
@@ -82,7 +80,7 @@ export async function submitInquiry(payload: InquiryPayload): Promise<{ success:
 }
 
 /**
- * Django serialises DecimalFields (rating_avg, price_per_25min_usd) as STRINGS ("4.50"). Coerce them once here so no
+ * Django serialises DecimalFields (rating_avg) as STRINGS ("4.50"). Coerce them once here so no
  * page has to remember to call Number() before .toFixed().
  */
 function normalizeTutor<T>(t: T): T {
@@ -92,20 +90,22 @@ function normalizeTutor<T>(t: T): T {
     ...raw,
     ...(raw.rating_avg !== undefined && { rating_avg: Number(raw.rating_avg) || 0 }),
     ...(raw.rating_count !== undefined && { rating_count: Number(raw.rating_count) || 0 }),
-    ...(raw.price_per_25min_usd !== undefined && { price_per_25min_usd: Number(raw.price_per_25min_usd) || 0 }),
   } as T;
 }
 
 function normalizeBooking(raw: components["schemas"]["BookingDetail"]): BookingDetail {
-  const { rating_avg, price_per_25min_usd, ...teacher } = raw.teacher;
+  // Prices are deliberately dropped here: the amount to pay is the server's checkout/init response, and lesson
+  // prices come from /payments/lesson-prices/. No page can read a price off a booking or a tutor.
+  const { rating_avg, price_per_25min_usd: _tutorPrice, ...teacher } = raw.teacher;
+  const { price_usd: _usd, price_zar: _zar, ...booking } = raw;
+  void _tutorPrice;
+  void _usd;
+  void _zar;
   return {
-    ...raw,
+    ...booking,
     teacher: {
       ...teacher,
       ...(rating_avg !== undefined && { rating_avg: Number(rating_avg) || 0 }),
-      ...(price_per_25min_usd !== undefined && {
-        price_per_25min_usd: Number(price_per_25min_usd) || 0,
-      }),
     },
   };
 }
@@ -126,7 +126,6 @@ const FALLBACK_TUTORS: FeaturedTeacher[] = [
     accent: "South African (Neutral)",
     rating: 4.98,
     review_count: 142,
-    hourly_rate: 8.0,
     bio: "10+ years teaching business English to Japanese & Korean executives. Friendly, patient, focused on natural pronunciation.",
     specialties: ["Business English", "Interview Prep", "FreeTalk"],
   },
@@ -139,7 +138,6 @@ const FALLBACK_TUTORS: FeaturedTeacher[] = [
     accent: "South African (RP Accent)",
     rating: 4.95,
     review_count: 98,
-    hourly_rate: 8.0,
     bio: "TEFL certified tutor specializing in IELTS speaking exam preparation and advanced vocabulary acquisition.",
     specialties: ["IELTS Prep", "Grammar Mastery", "Daily News"],
   },
@@ -152,13 +150,13 @@ const FALLBACK_TUTORS: FeaturedTeacher[] = [
     accent: "British / SA Neutral",
     rating: 4.92,
     review_count: 86,
-    hourly_rate: 8.0,
     bio: "Passionate about building speaking confidence for beginners and intermediate English learners.",
     specialties: ["Beginner A1-B1", "Conversation", "Travel English"],
   },
 ];
 
 import { MaterialDetail } from "@/types/material";
+import type { CreditPackPrice, LessonPrice } from "@/lib/prices";
 
 export const FALLBACK_MATERIALS: MaterialDetail[] = [
   {
@@ -498,7 +496,6 @@ export const api = {
         intro_audio_url: "",
         country: "ZA",
         accent: "ZA",
-        price_per_25min_usd: 8.0,
       },
       student: {
         id: "usr-student-01",
@@ -518,8 +515,6 @@ export const api = {
       local_end_time: "17:55",
       viewer_timezone: "Asia/Tokyo (JST)",
       status: "confirmed",
-      price_usd: 8.0,
-      price_zar: 150.0,
       lock_expires_at: new Date(Date.now() + 540000).toISOString(),
       zoom_url: "https://zoom.us/j/9876543210?pwd=ESL_CLASS_ROOM",
       zoom_password: "SHARON_ONLINE",
@@ -581,9 +576,16 @@ export const api = {
     throw new Error("Checkout initialization is unavailable in mock mode.");
   },
 
-  async getCreditPacks() {
+  /** Platform lesson price per currency. Amounts are decimal strings; never fabricated client-side. */
+  async getLessonPrices(): Promise<LessonPrice[]> {
+    const live = await liveRequest(`${API_BASE}/payments/lesson-prices/`, { skipAuth: true });
+    if (live !== MOCK) return live as LessonPrice[];
+    return [];
+  },
+
+  async getCreditPacks(): Promise<CreditPackPrice[]> {
     const live = await liveRequest(`${API_BASE}/payments/credit-packs/`, { skipAuth: true });
-    if (live !== MOCK) return live;
+    if (live !== MOCK) return live as CreditPackPrice[];
     return [];
   },
 
@@ -750,13 +752,13 @@ export const api = {
     if (live !== MOCK) return live;
 
     return {
-      gmv_today_usd: 1240.0,
-      gmv_month_usd: 34850.0,
+      gmv_today_usd: "1240.00",
+      gmv_month_usd: "34850.00",
       active_zoom_sessions_count: 6,
       open_disputes_count: 2,
       pending_vetting_count: 3,
-      escrow_liability_usd: 4890.0,
-      escrow_liability_zar: 91687.5,
+      escrow_liability_usd: "4890.00",
+      escrow_liability_zar: "91687.50",
       total_students_count: 1420,
       total_teachers_count: 48,
     };
@@ -887,8 +889,8 @@ export const api = {
         student_name: "Hiroshi Takahashi",
         teacher_name: "Elena V.",
         lesson_date: "2026-09-29 14:00 SAST",
-        amount_usd: 8.0,
-        amount_zar: 150.0,
+        amount_usd: "8.00",
+        amount_zar: "150.00",
         student_statement: "Tutor did not join the Zoom call for the first 15 minutes. When she joined, audio was stuttering heavily.",
         teacher_statement: "I was present in the meeting at 14:00. The student had incorrect meeting password cached in their browser. I stayed online until 14:25.",
         zoom_telemetry: {
@@ -905,8 +907,8 @@ export const api = {
         student_name: "Yuki Murata",
         teacher_name: "Liam O.",
         lesson_date: "2026-09-29 18:00 SAST",
-        amount_usd: 8.0,
-        amount_zar: 150.0,
+        amount_usd: "8.00",
+        amount_zar: "150.00",
         student_statement: "Session disconnected abruptly at minute 8 due to tutor load shedding.",
         teacher_statement: "Our substation tripped under Stage 4 load shedding. Battery inverter kicked in after 4 minutes, but fiber node remained dead.",
         zoom_telemetry: {

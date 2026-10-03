@@ -10,7 +10,7 @@ from rest_framework.test import APIClient
 from apps.admin_api.models import DisputeCase
 from apps.bookings.models import Booking
 from apps.payments.gateways import payfast, paypal
-from apps.payments.models import CreditBundle, GatewayAnomaly, LedgerEntry, PaymentTransaction
+from apps.payments.models import CreditBundle, LessonPrice, GatewayAnomaly, LedgerEntry, PaymentTransaction
 
 # Reuse the fixtures/helpers from the baseline verification suite (fixtures are registered by name).
 from tests.test_payment_verification import (  # noqa: F401
@@ -147,9 +147,8 @@ class TestCheckoutValidation:
         Booking.objects.filter(pk=pending_booking.pk).update(start_time_utc=timezone.now() - timedelta(minutes=1))
         assert self._post(student_user, {'booking_id': str(pending_booking.id)}).status_code == 409
 
-    def test_zero_price_not_payable(self, student_user, pending_booking):
-        pending_booking.teacher.price_per_25min_usd = Decimal('0.00')
-        pending_booking.teacher.save()
+    def test_missing_catalog_price_not_payable(self, student_user, pending_booking):
+        LessonPrice.objects.filter(currency__in=['USD', 'ZAR']).update(is_active=False)
         assert self._post(student_user, {'booking_id': str(pending_booking.id)}).status_code == 409
 
 

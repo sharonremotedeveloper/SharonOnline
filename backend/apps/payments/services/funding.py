@@ -1,8 +1,7 @@
 from decimal import Decimal
 
-from django.conf import settings
-
 from apps.payments.models import BookingFunding, PaymentTransaction, SettlementAnomaly
+from apps.payments.services.pricing import usd_to_zar_rate
 
 
 class MissingBookingFunding(RuntimeError):
@@ -14,7 +13,7 @@ def gateway_fx_snapshot(currency: str) -> tuple[Decimal, str]:
     if currency == 'ZAR':
         return Decimal('1.000000'), 'transaction_currency'
     if currency == 'USD':
-        return Decimal(str(settings.ZAR_PER_USD)), 'configured_checkout_rate'
+        return usd_to_zar_rate(), 'price_catalog'
     raise MissingBookingFunding(f'No approved ZAR valuation source is configured for {currency}.')
 
 

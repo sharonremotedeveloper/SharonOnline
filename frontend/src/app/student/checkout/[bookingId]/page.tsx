@@ -21,6 +21,8 @@ import { useAuth } from "@/context/AuthContext";
 import { Avatar } from "@/components/ui/Avatar";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 import { errorMessage } from "@/lib/http";
+import { currencyDecimals, formatLessonPrice, formatMoney, lessonPriceFor } from "@/lib/prices";
+import { useLessonPrices } from "@/hooks/useLessonPrices";
 import { ReservationTimer } from "@/components/booking/ReservationTimer";
 import { PayFastForm } from "@/components/booking/PayFastForm";
 import { PayPalButtonsWrapper } from "@/components/booking/PayPalButtonsWrapper";
@@ -41,6 +43,10 @@ export default function StudentCheckoutPage() {
   // Seconds left on the server-side slot hold, computed once when the booking loads (source of truth: lock_expires_at).
   const [holdSeconds, setHoldSeconds] = useState<number | null>(null);
   const [paymentPending, setPaymentPending] = useState(false);
+  // Server truth: the amount and currency checkout/init returned for this booking (null until the student starts paying).
+  const [quote, setQuote] = useState<{ gateway: string; amount: string; currency: string } | null>(null);
+  // Before checkout/init there is no quote yet, so show the platform lesson price for the chosen gateway's currency.
+  const { data: lessonPrices } = useLessonPrices();
 
   // Real credit balance only; never assume a default. `/auth/me/` may not provide it yet.
   const userCredits = user?.credits ?? 0;
@@ -122,6 +128,7 @@ export default function StudentCheckoutPage() {
     setError(null);
     try {
       const checkout = await api.initializeCheckout({ booking_id: bookingId, gateway: gatewayType });
+      setQuote({ gateway: gatewayType, amount: String(checkout.amount), currency: String(checkout.currency) });
       setPaymentPending(true);
       if (gatewayType === "payfast" && checkout?.action_url && checkout?.fields) {
         const form = document.createElement("form");
@@ -147,6 +154,16 @@ export default function StudentCheckoutPage() {
       setSubmitting(false);
     }
   };
+
+  const gatewayCurrency = activeGateway === "payfast" ? "ZAR" : "USD";
+  const listPrice = lessonPriceFor(lessonPrices, gatewayCurrency);
+  const activeQuote = quote && quote.gateway === activeGateway ? quote : null;
+  const amountLabel = activeQuote
+    ? formatMoney(activeQuote.amount, activeQuote.currency, currencyDecimals(activeQuote.currency))
+    : listPrice
+      ? formatLessonPrice(listPrice)
+      : null;
+  const amountCurrency = activeQuote ? activeQuote.currency : listPrice ? listPrice.currency : null;
 
   if (loading) {
     return (
@@ -252,7 +269,7 @@ export default function StudentCheckoutPage() {
                 }`}
               >
                 <CreditCard className="w-3.5 h-3.5" />
-                <span>PayPal / Cards ($)</span>
+                <span>PayPal / Cards</span>
               </button>
 
               <button
@@ -322,7 +339,7 @@ export default function StudentCheckoutPage() {
             {/* Path B1: PayPal International */}
             {activeGateway === "paypal" && (
               <PayPalButtonsWrapper
-                amountUsd={booking.price_usd}
+                amountLabel={activeGateway === "paypal" ? amountLabel : null}
                 bookingReference={booking.booking_reference}
                 onSuccess={() => handleGatewayStart("paypal")}
                 disabled={submitting}
@@ -332,7 +349,7 @@ export default function StudentCheckoutPage() {
             {/* Path B2: PayFast ZAR */}
             {activeGateway === "payfast" && (
               <PayFastForm
-                amountZar={booking.price_zar}
+                amountLabel={activeGateway === "payfast" ? amountLabel : null}
                 bookingReference={booking.booking_reference}
                 itemDescription={`25-min lesson with ${booking.teacher.full_name}`}
                 onSuccess={() => handleGatewayStart("payfast")}
@@ -388,20 +405,16 @@ export default function StudentCheckoutPage() {
 
           {/* Price Breakdown */}
           <div className="pt-4 border-t border-divider space-y-2 text-xs">
-            <div className="flex justify-between text-ink-muted">
-              <span>Standard Lesson Fee:</span>
-              <span>${booking.price_usd.toFixed(2)} USD</span>
-            </div>
-            <div className="flex justify-between text-ink-muted">
-              <span>Platform Service Fee:</span>
-              <span className="text-success font-semibold">$0.00 (Included)</span>
-            </div>
-            <div className="flex justify-between text-base font-extrabold text-ink font-serif pt-2 border-t border-divider">
+            <div className="flex justify-between text-base font-extrabold text-ink font-serif">
               <span>Total Due:</span>
-              <span className="text-teal">${booking.price_usd.toFixed(2)} USD</span>
+              <span className="text-teal">
+                {amountLabel ? `${amountLabel} ${amountCurrency}` : "Shown at payment"}
+              </span>
             </div>
             <div className="text-[10px] text-right text-ink-muted">
-              (~R{Math.round(booking.price_zar)} ZAR)
+              {activeQuote
+                ? "Amount confirmed by our payment server."
+                : "Lesson price for the selected payment method. The final amount is confirmed when you start payment."}
             </div>
           </div>
 

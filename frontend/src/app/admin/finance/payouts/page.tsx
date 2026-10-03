@@ -17,6 +17,7 @@ import { api } from "@/lib/api";
 import { PayoutBatchItem } from "@/types/admin";
 import { ErrorState } from "@/components/ui/ErrorState";
 
+import { groupMoney, sumMoney } from "@/lib/moneyString";
 export default function AdminPayoutsPage() {
   const [batch, setBatch] = useState<PayoutBatchItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +48,7 @@ export default function AdminPayoutsPage() {
     };
   }, [reloadTick]);
 
-  const totalPayoutZar = batch.reduce((acc, curr) => acc + curr.payout_amount_zar, 0);
+  const totalPayoutZar = sumMoney(batch.map((b) => b.payout_amount_zar));
 
   // Generate and download verified South African ACB CSV
   const handleExportCsv = () => {
@@ -56,7 +57,7 @@ export default function AdminPayoutsPage() {
     const rows = batch
       .map(
         (b) =>
-          `"${b.teacher_name}","${b.bank_name}","${b.branch_code}","${b.account_number_masked}",${b.cleared_lessons_count},${b.payout_amount_zar.toFixed(2)},"${new Date().toISOString().split("T")[0]}"`
+          `"${b.teacher_name}","${b.bank_name}","${b.branch_code}","${b.account_number_masked}",${b.cleared_lessons_count},${b.payout_amount_zar},"${new Date().toISOString().split("T")[0]}"`
       )
       .join("\n");
 
@@ -142,7 +143,7 @@ export default function AdminPayoutsPage() {
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
           <span className="text-xs font-bold text-ink-muted">Total Batch Settlement</span>
           <div className="text-2xl sm:text-3xl font-black text-emerald-800 font-serif">
-            R{totalPayoutZar.toLocaleString("en-ZA", { minimumFractionDigits: 2 })} ZAR
+            R{groupMoney(totalPayoutZar)} ZAR
           </div>
           <p className="text-[11px] text-ink-muted">Across {batch.length} tutor{batch.length === 1 ? "" : "s"}</p>
         </div>
@@ -198,7 +199,7 @@ export default function AdminPayoutsPage() {
                   <td className="py-4 px-4 font-mono text-ink-muted">{b.account_number_masked}</td>
                   <td className="py-4 px-4 font-bold text-ink">{b.cleared_lessons_count} Lessons</td>
                   <td className="py-4 px-4 font-black text-emerald-800 font-serif text-sm">
-                    R{b.payout_amount_zar.toFixed(2)}
+                    R{b.payout_amount_zar}
                   </td>
                   <td className="py-4 px-6">
                     {b.status === "processed" ? (
