@@ -241,11 +241,11 @@ A four-way audit (backend, frontend, spec-vs-roadmap, infra) found that Phases 1
 | :--- | :--- | :--- |
 | **Phase 7** | Security emergency + spec freeze (decisions D-1..D-12) | `7A + 7B DONE (7.1-7.9, adversarial-review fixes; 220 tests); 7.10 + D-3,4,7-12 awaiting Anesu` |
 | **Phase 8** | Honest frontend + real auth | `IN PROGRESS - 8.1-8.8 + 9.2 done (honest client, HttpOnly cookie sessions via Next BFF proxy, signed-session middleware, real reserve->booking_id, password reset/change, e-mail verification, login by e-mail); 8.9 Next.js major upgrade open` |
-| **Phase 9** | Booking core (`transition_booking()`, reserve → book) | `IN PROGRESS - 9.1 (state machine + audit trail), 9.2, 9.4 (in-flight payments keep their hold) and 9.3 (slot grid shows every taken slot), 9.7 (settlement paths, no double payout), 9.9 (validated, atomic lesson memo) and 9.10 (one private, once-only review endpoint) 9.5 (filtered, scoped booking list), 9.8 (verified Zoom attendance mapping) and 9.6 (cancel / reschedule engine, gateway refunds, 30-day credit lots, windowed strikes) done - Phase 9 complete` |
-| **Phase 10** | Real payments (PayPal/PayFast sandbox, credits, refunds, multi-currency ledger) | `NOT STARTED` |
+| **Phase 9** | Booking core (`transition_booking()`, reserve → book) | `DONE (2026-10-03) - 9.1-9.10: state machine + audit trail, holds, slot grid, booking list, cancel / reschedule engine (D-6), settlement paths, verified Zoom attendance, memo, reviews; 876 backend + 93 frontend tests` |
+| **Phase 10** | Real payments (PayPal/PayFast sandbox, credits, refunds, multi-currency ledger) | `NEXT - sprint plan in PHASE_10_EXECUTION_PLAN.md; needs Anesu: PayPal sandbox credentials, D-7 bundles, D-1 trial, pack expiry, currencies, FX source` |
 | **Phase 11** | Tutor lifecycle + real payouts | `NOT STARTED` |
 | **Phase 12** | Integrations + notifications (Zoom, Resend, GCal, Eskom) | `NOT STARTED` |
-| **Phase 13** | Platform ops (prod images, CI, Sentry, hosted staging) | `NOT STARTED` |
+| **Phase 13** | Platform ops (prod images, CI, Sentry, hosted staging) | `NOT STARTED - 13.3 (CI) is recommended to start alongside Phase 10` |
 | **Phase 14** | Compliance + legal (POPIA/GDPR) | `NOT STARTED` |
 | **Phase 15** | Missing screens, admin, SEO, test pyramid | `NOT STARTED` |
 | **Phase 16** | UAT + launch | `NOT STARTED` |

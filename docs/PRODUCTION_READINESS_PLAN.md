@@ -37,6 +37,18 @@ Phases 1-6 in `PROGRESS_AND_ROADMAP.md` delivered a UI-complete, test-green **sk
 
 Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done.
 
+### Status and what is next (updated 2026-10-03)
+
+| Phase | Status |
+| :--- | :--- |
+| 7 | Code done; **open for Anesu:** 7.10 secrets check, D-3, D-4, D-7..D-12 |
+| 8 | Done except **8.9** (Next.js major upgrade, before first hosted staging) |
+| 9 | **Done** (9.1-9.10) |
+| **10** | **Next.** Detailed sprint plan, blockers and exit gate: [`PHASE_10_EXECUTION_PLAN.md`](PHASE_10_EXECUTION_PLAN.md). About a third of the groundwork exists (verified webhooks, PayFast signed form, refund requests, credit lots). |
+| 13 | **Start 13.3 (CI) alongside Phase 10**: nothing runs automatically yet and the full suite takes 15-50 min locally |
+| 11, 12 | After 10; can run as two parallel streams |
+| 14, 15, 16 | As before; D-12 / live-gateway approval / counsel have the longest human lead times, start them now |
+
 ---
 
 ## Phase 7 - Security emergency + spec freeze
@@ -106,13 +118,13 @@ Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done.
 
 **Goal:** sandbox money flows end to end, correctly. Depends on 7.2, 7.3, 9.1, 9.2; needs D-1, D-6, D-7. *Sandbox only; read `TOOL_ACCESS_AND_ACCOUNTS.md` first.*
 
-- [ ] **Task 10.1 (M, ARCH)** Price catalog: `Price`/`CreditBundleProduct` models per currency (USD/EUR/JPY/ZAR) as the single source of truth; `GET /payments/credits/bundles/`; remove hardcoded 18.0/18.75 FX and `float()` money (use `Decimal`). Frontend `lib/currency.ts` reads from the API.
-- [ ] **Task 10.2 (L, ARCH)** `CheckoutInitializeView`: validate gateway, booking state/hold/ownership; create `PaymentTransaction(INITIALIZED)`; PayPal: create Order via Orders v2; PayFast: build signed form (merchant id/key from env, `notify/return/cancel` URLs). Env settings for all gateway keys; no sandbox constants in code.
+- [ ] **Task 10.1 (M, ARCH)** *(sprint 10-A; D-1 flat price, D-7 bundles; JPY has no decimals)* Price catalog: `Price`/`CreditBundleProduct` models per currency (USD/EUR/JPY/ZAR) as the single source of truth; `GET /payments/credits/bundles/`; remove hardcoded 18.0/18.75 FX and `float()` money (use `Decimal`). Frontend `lib/currency.ts` reads from the API.
+- [ ] **Task 10.2 (L, ARCH)** *(sprint 10-B; PayFast signed form and the 9.4 hold guards already exist - add the PayPal Order create/capture)* `CheckoutInitializeView`: validate gateway, booking state/hold/ownership; create `PaymentTransaction(INITIALIZED)`; PayPal: create Order via Orders v2; PayFast: build signed form (merchant id/key from env, `notify/return/cancel` URLs). Env settings for all gateway keys; no sandbox constants in code.
 - [ ] **Task 10.3 (L, CODEX)** Frontend checkout: real `@paypal/react-paypal-js` buttons (create/capture via backend), PayFast signed form redirect, return/cancel pages, processing screen that polls booking status until the webhook confirms. Delete `confirmPayment`/`redeemCredit` fakes.
 - [ ] **Task 10.4 (M, ARCH)** Webhook handler: store/transition by gateway reference, record gateway fees (acct 5030), handle `FAILED`, `DENIED`, `REFUNDED`, chargeback/dispute events, unknown `booking_id` → quarantine (not 500); real `reconcile_pending_transactions_task` that queries gateway status.
 - [ ] **Task 10.5 (M, ARCH)** Multi-currency ledger correctness: `PaymentTransaction.currency/amount` flow into `ledger_service` with an explicit FX snapshot (rate + source) on every entry; fix escrow release treating non-USD as USD (`payments/tasks.py:77`); test EUR/JPY/ZAR round-trips balance to zero.
-- [ ] **Task 10.6 (M, ARCH)** Credit purchase + redemption: buy a bundle via checkout; `POST /bookings/<id>/redeem-credit/` decrements a wallet balance atomically; credit-funded bookings get correct escrow/commission accounting (per D-1/D-2). Wallet ledger endpoint (`{total_credits, ledger[]}`), `/student/wallet` top-up flow.
-- [ ] **Task 10.7 (M, ARCH)** Refund service: gateway refund (PayPal/PayFast) vs wallet credit per D-6; sets `PaymentTransaction.REFUNDED`; used by cancellation, no-show, outage, dispute paths; balanced ledger entries.
+- [ ] **Task 10.6 (M, ARCH)** *(sprint 10-C; `grant_credit` / `spend_credit` lots exist from 9.6; a refund of a credit-funded booking must restore the lot)* Credit purchase + redemption: buy a bundle via checkout; `POST /bookings/<id>/redeem-credit/` decrements a wallet balance atomically; credit-funded bookings get correct escrow/commission accounting (per D-1/D-2). Wallet ledger endpoint (`{total_credits, ledger[]}`), `/student/wallet` top-up flow.
+- [ ] **Task 10.7 (M, ARCH)** *(sprint 10-C; `RefundRequest` + 2050 ledger + `RefundGateway` plug-in exist from 9.6 - this task is the real PayPal / PayFast backends replacing `ManualSandboxRefundGateway`)* Refund service: gateway refund (PayPal/PayFast) vs wallet credit per D-6; sets `PaymentTransaction.REFUNDED`; used by cancellation, no-show, outage, dispute paths; balanced ledger entries.
 - [ ] **Task 10.8 (S, ARCH)** Invoices/receipts: `Receipt` model + PDF, shown in student wallet; VAT fields stubbed per D-12.
 - [ ] **Task 10.9 (S, ARCH)** DB-level ledger immutability backstop (Postgres trigger rejecting UPDATE/DELETE on `LedgerEntry`) in addition to the Python guards.
 - [ ] **Task 10.10 (M, ARCH)** Payment test suite: signature failure paths, replay, amount mismatch, late payment, multi-currency, refund, concurrency on Postgres (not SQLite).
