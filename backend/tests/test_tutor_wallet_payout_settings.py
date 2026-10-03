@@ -126,21 +126,32 @@ class TestPayoutSettings:
 @pytest.mark.django_db
 class TestTutorWallet:
     def test_wallet_uses_funding_for_pending_and_ledger_2020_for_cleared(self, teacher_user, student_user):
-        pending = booking(teacher_user, student_user)
-        funding_for(pending, 'pending-ref')
-        cleared = booking(
-            teacher_user, student_user, status=Booking.Status.COMPLETED, start_offset_minutes=30,
-        )
-        funding_for(cleared, 'cleared-ref')
-        cleared.escrow_cleared_at = timezone.now()
-        cleared.save(update_fields=['escrow_cleared_at', 'updated_at'])
-        LedgerEntry.objects.create(
-            journal_batch_id='11111111-1111-1111-1111-111111111111',
-            account=LedgerAccount.LIABILITY_TUTOR_PAYABLE, entry_type=LedgerEntry.EntryType.CREDIT,
-            amount=Decimal('6.40'), currency='USD', fx_rate_to_zar=Decimal('18.000000'),
-            fx_source='capture_test', amount_zar=Decimal('115.20'), event_type=LedgerEntry.EventType.ESCROW_CLEARED,
-            description='Tutor payable', booking=cleared, user=teacher_user.user,
-        )
+        # The wallet lists newest first, so the three records need genuinely different creation times. Created back to back they
+        # can share a clock tick (Windows timer granularity) and the order becomes undefined: pin each one explicitly.
+        from unittest import mock
+        base = timezone.now()
+
+        def at(seconds):
+            return mock.patch('django.utils.timezone.now', return_value=base + timedelta(seconds=seconds))
+
+        with at(0):
+            pending = booking(teacher_user, student_user)
+            funding_for(pending, 'pending-ref')
+        with at(10):
+            cleared = booking(
+                teacher_user, student_user, status=Booking.Status.COMPLETED, start_offset_minutes=30,
+            )
+            funding_for(cleared, 'cleared-ref')
+            cleared.escrow_cleared_at = timezone.now()
+            cleared.save(update_fields=['escrow_cleared_at', 'updated_at'])
+        with at(20):
+            LedgerEntry.objects.create(
+                journal_batch_id='11111111-1111-1111-1111-111111111111',
+                account=LedgerAccount.LIABILITY_TUTOR_PAYABLE, entry_type=LedgerEntry.EntryType.CREDIT,
+                amount=Decimal('6.40'), currency='USD', fx_rate_to_zar=Decimal('18.000000'),
+                fx_source='capture_test', amount_zar=Decimal('115.20'), event_type=LedgerEntry.EventType.ESCROW_CLEARED,
+                description='Tutor payable', booking=cleared, user=teacher_user.user,
+            )
 
         body = client(teacher_user.user).get(WALLET).json()
         assert Decimal(str(body['pending_escrow_zar'])) == Decimal('115.20')
