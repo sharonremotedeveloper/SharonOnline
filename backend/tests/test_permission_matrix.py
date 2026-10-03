@@ -61,7 +61,7 @@ class TestBookingIDOR:
             status=PaymentTransaction.Status.SUCCESS,
         )
         ensure_gateway_funding(tx, booking)
-        c = _client(student_user)
+        c = _client(booking.teacher.user)
         assert c.post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 200
         assert c.post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 409
         assert sum(b.remaining_credits for b in CreditBundle.objects.filter(user=student_user)) == 1

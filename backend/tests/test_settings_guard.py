@@ -11,6 +11,7 @@ GOOD = {
     'CORS_ALLOWED_ORIGINS': 'https://sharonesl.com',
     'CSRF_TRUSTED_ORIGINS': 'https://sharonesl.com,https://api.sharonesl.com',
     'ZOOM_WEBHOOK_SECRET_TOKEN': 'zoom-secret',
+    'ESKOMSEPUSH_API_KEY': 'eskom-provider-key',
     'THROTTLE_NUM_PROXIES': '1',
     'FRONTEND_BASE_URL': 'https://sharonesl.com',
     'RESEND_API_KEY': 're_live_abcdefghijklmnop',
@@ -41,6 +42,7 @@ def test_valid_env_passes():
     ('CSRF_TRUSTED_ORIGINS', ''),
     ('CSRF_TRUSTED_ORIGINS', 'https://127.0.0.1:3000'),
     ('ZOOM_WEBHOOK_SECRET_TOKEN', ''),
+    ('ESKOMSEPUSH_API_KEY', ''),
     ('PAYOUT_DATA_KEYS', '{}'),
     ('PAYOUT_DATA_ACTIVE_KEY', ''),
 ])

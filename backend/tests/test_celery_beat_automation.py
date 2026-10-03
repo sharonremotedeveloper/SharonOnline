@@ -418,7 +418,7 @@ class TestCeleryBeatAutomation:
         assert b_1h.reminder_1h_sent is True
         assert b_10m.reminder_10m_sent is True
 
-    def test_sync_eskom_stages_and_proactive_shield(self, teacher_user, student_user):
+    def test_sync_eskom_stages_and_proactive_shield(self, teacher_user, student_user, monkeypatch):
         """
         Verifies Eskom stage caching in Redis and scanning of vulnerable confirmed lessons.
         """
@@ -436,6 +436,22 @@ class TestCeleryBeatAutomation:
             status=Booking.Status.CONFIRMED,
         )
 
+        class Provider:
+            def fetch_area_status(self, area_id):
+                return {
+                    'area_id': area_id,
+                    'area_name': 'Provider test area',
+                    'stage': 2,
+                    'outages': [{
+                        'start': (vulnerable_booking.start_time_utc - timedelta(minutes=5)).isoformat(),
+                        'end': (vulnerable_booking.end_time_utc + timedelta(minutes=5)).isoformat(),
+                        'note': 'provider fixture',
+                    }],
+                    'retrieved_at': now,
+                }
+
+        monkeypatch.setattr('apps.integrations.tasks.eskom_client', Provider())
+
         res = sync_eskom_stages_task()
         assert res["synced_areas"] >= 1
         assert res["vulnerable_bookings_flagged"] >= 1
@@ -443,7 +459,7 @@ class TestCeleryBeatAutomation:
         # Verify Redis cache contains stage info
         cached_stage = cache.get("eskom:stage:jhb-block-3")
         assert cached_stage is not None
-        assert cached_stage["stage"] >= 2
+        assert cached_stage["stage"] == 2
 
     def test_reconcile_pending_transactions(self, teacher_user, student_user):
         """

@@ -12,6 +12,7 @@ from django.db import transaction
 from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from .models import Booking, LessonMemo
 from apps.srs.models import StudentFlashcard
 from apps.teachers.models import TeacherProfile
@@ -311,6 +312,26 @@ class ReportOutageView(APIView):
                                           f"{settings.OUTAGE_REPORT_BEFORE_START_SECONDS // 60} minutes before the lesson until "
                                           f"{settings.OUTAGE_REPORT_AFTER_END_SECONDS // 60} minutes after it ends."},
                                 status=status.HTTP_409_CONFLICT)
+
+            if is_student and not request.user.is_staff:
+                from apps.integrations.models import EskomAreaStatus
+                area = EskomAreaStatus.objects.filter(
+                    area_id=booking.teacher.eskom_area_id,
+                    provider_status=EskomAreaStatus.ProviderStatus.OK,
+                    fresh_until__gte=now,
+                ).first()
+                corroborated = False
+                for outage in (area.outages if area and isinstance(area.outages, list) else []):
+                    start = parse_datetime(str(outage.get('start') or '')) if isinstance(outage, dict) else None
+                    end = parse_datetime(str(outage.get('end') or '')) if isinstance(outage, dict) else None
+                    if start and end and start <= now <= end:
+                        corroborated = True
+                        break
+                if not corroborated:
+                    return Response({
+                        'code': 'outage_unconfirmed',
+                        'error': 'A student outage report requires an active provider outage or tutor/staff confirmation.',
+                    }, status=status.HTTP_409_CONFLICT)
 
             funding = funding_for_settlement(booking, context='power_outage_refund')
             if funding is None:

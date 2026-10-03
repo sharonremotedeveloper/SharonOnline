@@ -138,7 +138,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
               <Zap className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" />
-              <span>Eskom Grid Stage 2 (Protected)</span>
+              <span>Power Guard monitoring enabled</span>
             </div>
           </div>
         </header>

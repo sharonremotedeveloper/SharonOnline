@@ -42,6 +42,8 @@ def validate_production_settings(env=os.environ):
 
     if not env.get('ZOOM_WEBHOOK_SECRET_TOKEN'):
         errors.append('ZOOM_WEBHOOK_SECRET_TOKEN must be set')
+    if not env.get('ESKOMSEPUSH_API_KEY'):
+        errors.append('ESKOMSEPUSH_API_KEY must be set so Power Guard never fabricates provider status')
 
     try:
         payout_keys = json.loads(env.get('PAYOUT_DATA_KEYS', '{}'))

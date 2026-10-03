@@ -3,6 +3,7 @@ import type { components } from "@/types/api.generated";
 import { BookingDetail, BookingSlot, CreditLedgerEntry } from "@/types/booking";
 import {
   EskomStatus,
+  PowerBackupInput,
   PostLessonMemoInput,
   TeacherPayoutBankAccount,
   TeacherWalletData,
@@ -667,18 +668,10 @@ export const api = {
     const live = await liveRequest(`${API_BASE}/integrations/eskom/status/`, {});
     if (live !== MOCK) return live;
 
-    return {
-      stage: 2,
-      area_name: "City of Johannesburg Block 3 - Rosebank/Sandton",
-      next_outage_start: "18:00",
-      next_outage_end: "20:30",
-      has_inverter_backup: true,
-      has_lte_failover: true,
-      last_updated: new Date().toISOString(),
-    };
+    throw new Error("Power Guard provider data is unavailable in mock mode.");
   },
 
-  async updatePowerBackup(data: Partial<EskomStatus>) {
+  async updatePowerBackup(data: PowerBackupInput) {
     const live = await liveRequest(`${API_BASE}/teachers/profile/power-backup/`, {
         method: "PATCH",
         body: JSON.stringify(data),

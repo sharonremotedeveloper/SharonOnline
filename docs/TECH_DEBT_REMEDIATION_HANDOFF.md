@@ -5,7 +5,7 @@ This is the cross-agent handoff for the eight approved Sharon Online remediation
 ## Current state
 
 - Integration branch: `remediation/tech-debt`
-- Active branch: `feature/batch-6-tutor-wallet-payout-settings`
+- Active branch: `feature/batch-7-eskom-power-guard`
 - Isolated worktree: `C:\Dev\Active Projects\Notion\sharon-remediation`
 - Shared checkout was deliberately left unchanged. Claude's Zoom attendance work was imported from commit `2181dbd` and augmented on this isolated branch.
 
@@ -158,3 +158,27 @@ Verification:
 External-action boundary:
 
 - Encryption, password reauthentication, masking, rotation, and wallet behavior were verified locally only. No banking rail, provider, remote Git, cloud database, or other external service was accessed. Payout execution remains disabled.
+
+## Batch 7 - Eskom Power Guard
+
+Implemented:
+
+- Added an injectable EskomSePush client with bounded timeouts, structured provider/quota errors, configurable base URL, and strict response normalization.
+- Replaced hardcoded Stage 2 behavior with durable per-area provider status, outage windows, retrieval timestamps, fresh/stale state, and an explicit unavailable response when no evidence exists. Real stage zero is preserved.
+- Added `has_lte_failover` and an authenticated tutor-only power-backup PATCH endpoint; the UI can only update the current tutor's two backup flags.
+- Added cached-status GET with generated frontend contracts. Stale/quota/error data is visibly labelled with the original retrieval time.
+- Added outage-window overlap detection for lessons in the next four hours, combined inverter/LTE exemption, durable idempotent notification attempts, and retryable delivery through the existing email infrastructure.
+- Student outage reports now require a fresh active provider outage for the tutor area. Tutor/staff confirmation remains accepted only inside the existing booking-time window.
+- Removed fabricated stage fallback and corrected frontend claims that implied unimplemented slot blocking, bonus credits, or live request-path provider calls.
+
+Verification:
+
+- Focused Eskom/outage/task/settings suite: 220 passed.
+- Complete backend regression: 774 passed, 3 infrastructure-specific tests skipped.
+- Frontend tests: 90 passed; generated-contract check and Next.js production build passed.
+- `manage.py check`: no issues.
+- `manage.py makemigrations --check --dry-run`: no changes.
+
+External-action boundary:
+
+- Provider behavior was tested only with injected local clients and responses. No EskomSePush account, API, Resend provider, remote Git, cloud database, or other external service was accessed.

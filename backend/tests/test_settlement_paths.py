@@ -106,7 +106,7 @@ class TestOutageReport:
     ])
     def test_reporting_window(self, teacher_user, student_user, start_in_min, expected):
         booking = lesson(teacher_user, student_user, start_in_min, status=S.CONFIRMED)
-        res = self.report(student_user, booking)
+        res = self.report(teacher_user.user, booking)
         assert res.status_code == expected, res.json()
         booking.refresh_from_db()
         if expected == 409:
@@ -127,15 +127,15 @@ class TestOutageReport:
         weird = [None, ['a', 'b'], {'reason': {'x': 1}}, {'reason': 'y' * 1000}]
         for n, body in enumerate(weird):
             booking = lesson(teacher_user, student_user, 10 + n, status=S.CONFIRMED)
-            res = self.report(student_user, booking, body)
+            res = self.report(teacher_user.user, booking, body)
             assert res.status_code == 200, body
         from apps.bookings.models import BookingStatusChange
         assert max(len(r) for r in BookingStatusChange.objects.values_list('reason', flat=True)) <= 255
 
     def test_second_report_is_refused_and_settles_nothing_twice(self, teacher_user, student_user):
         booking = captured(teacher_user, student_user, 10)
-        assert self.report(student_user, booking).status_code == 200
-        assert self.report(student_user, booking).status_code == 409
+        assert self.report(teacher_user.user, booking).status_code == 200
+        assert self.report(teacher_user.user, booking).status_code == 409
         assert sum(b.remaining_credits for b in CreditBundle.objects.filter(user=student_user)) == 1
         assert LedgerEntry.objects.filter(booking=booking, event_type=LedgerEntry.EventType.OUTAGE_REFUND).count() == 2
 
@@ -150,7 +150,7 @@ class TestOutageReport:
 
     def test_the_release_job_never_pays_for_an_interrupted_lesson(self, teacher_user, student_user):
         booking = captured(teacher_user, student_user, 10)
-        assert self.report(student_user, booking).status_code == 200
+        assert self.report(teacher_user.user, booking).status_code == 200
         Booking.objects.filter(pk=booking.pk).update(end_time_utc=timezone.now() - timedelta(hours=30))
         AttendanceAudit.objects.create(booking=booking, participant_email=teacher_user.user.email, total_minutes=25)
         assert release_cleared_escrow_task()['cleared_count'] == 0
@@ -272,7 +272,7 @@ class TestNoDoubleSettlement:
 @pytest.mark.django_db
 def test_admin_escrow_view_shows_every_outcome_that_moves_money(admin_user, teacher_user, student_user):
     interrupted = captured(teacher_user, student_user, 10, ref='A')
-    _client(student_user).post(f'/api/v1/bookings/{interrupted.id}/report-outage/')
+    _client(teacher_user.user).post(f'/api/v1/bookings/{interrupted.id}/report-outage/')
     ns = captured(teacher_user, student_user, 600, ref='B')
     force(ns, S.STUDENT_NO_SHOW, start_in_min=-(30 * 60))
     AttendanceAudit.objects.create(booking=ns, participant_email=teacher_user.user.email, total_minutes=11)
