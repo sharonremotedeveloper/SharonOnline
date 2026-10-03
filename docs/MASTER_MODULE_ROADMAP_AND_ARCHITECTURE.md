@@ -13,7 +13,7 @@
 Sharon's ESL Marketplace connects qualified South African and international English tutors with students in East Asia (Japan, South Korea) and Continental Europe. The platform delivers synchronous 25-minute 1-on-1 lessons, multi-currency payments (PayFast ZAR + PayPal USD/EUR/JPY), automated Zoom meeting provisioning via Server-to-Server OAuth, two-way Google Calendar integration, Eskom load-shedding grid resilience, and a 24-hour financial escrow clearing ledger.
 
 ### Current Architectural Audit & Health Assessment
-* **Backend:** Django 5.1.15 + Django REST Framework on Python 3.12. Core apps exist (`users`, `teachers`, `bookings`, `payments`, `materials`, `integrations`). Initial database migrations exist. Health check (`/api/health/`) and 3 core unit tests pass (`test_locks.py`, `test_slots.py`, `test_webhooks.py`).
+* **Backend:** Django 5.2 LTS (>=5.2.17) + Django REST Framework on Python 3.12. Core apps exist (`users`, `teachers`, `bookings`, `payments`, `materials`, `integrations`). Initial database migrations exist. Health check (`/api/health/`) and 3 core unit tests pass (`test_locks.py`, `test_slots.py`, `test_webhooks.py`).
 * **Frontend:** Next.js 14 App Router (TypeScript, Tailwind CSS). Core pages scaffolded in static form across Public, Student, and Teacher sections.
 * **Database & Concurrency:** PostgreSQL 16 schema designed with strict `TIMESTAMPTZ` UTC storage. Redis distributed locking (`Redlock` 10-min reservation TTL) prototyped in `apps.bookings.services.lock_service`.
 * **Asynchronous Queue:** Celery 5.4 + Redis configured with task stubs for Zoom S2S OAuth room creation, Google Calendar sync, and Resend transactional `.ics` emails.

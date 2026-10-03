@@ -55,3 +55,16 @@ Verified clean: no conflict markers or unmerged index entries; migrations apply 
 ## First real CI run (2026-10-03)
 
 `backend`, `frontend` and `postgres-ledger` (the append-only ledger trigger on real PostgreSQL 16) **passed** on their first run. `redis-races` **failed**, and it found a genuine production bug rather than a test problem (ERR-030): the lock scripts compared the plain token against Django's pickled value, so on a real Redis the rightful owner could never extend or release a lock. That would have blocked checkout for every payment. Fixed in `common/cache_locks.py`, with a byte-exact Redis stand-in test that reproduces it and real-Redis positive controls; the next CI run is the final proof.
+
+## CI completion (2026-10-03)
+
+| Gate | What it enforces |
+| :--- | :--- |
+| `backend` | `check`, migration drift, **`check --deploy` against the production settings** (`scripts/check_deploy.py`: throwaway valid values, proven to fail on unsafe settings), full test suite |
+| `frontend` | tests, zero-warning ESLint, generated API-type drift, `next build` |
+| `dependency-audit` | `pip-audit --strict` (**blocking**); `npm audit` for production deps (informational until the Next.js upgrade, Task 8.9, because the open advisories are in Next 14 itself) |
+| `postgres-ledger` | **migrates a fresh PostgreSQL database from zero**, then the Postgres-only tests (append-only ledger trigger) |
+| `redis-races` | real Redis 7 lock races and owner checks |
+| `api-contract` | schema + TS types cannot drift |
+
+Dependabot (weekly, grouped) covers pip, npm and GitHub Actions; Next.js / React majors are excluded because they are one deliberate upgrade. **Left for Anesu:** turn these jobs into *required* checks (Settings -> Branches -> branch protection for `develop` and `main`).
