@@ -518,8 +518,8 @@ export const api = {
       local_end_time: "17:55",
       viewer_timezone: "Asia/Tokyo (JST)",
       status: "confirmed",
-      price_usd: 8.0,
-      price_zar: 150.0,
+      price_usd: "8.00",
+      price_zar: "150.00",
       lock_expires_at: new Date(Date.now() + 540000).toISOString(),
       zoom_url: "https://zoom.us/j/9876543210?pwd=ESL_CLASS_ROOM",
       zoom_password: "SHARON_ONLINE",
@@ -757,13 +757,13 @@ export const api = {
     if (live !== MOCK) return live;
 
     return {
-      gmv_today_usd: 1240.0,
-      gmv_month_usd: 34850.0,
+      gmv_today_usd: "1240.00",
+      gmv_month_usd: "34850.00",
       active_zoom_sessions_count: 6,
       open_disputes_count: 2,
       pending_vetting_count: 3,
-      escrow_liability_usd: 4890.0,
-      escrow_liability_zar: 91687.5,
+      escrow_liability_usd: "4890.00",
+      escrow_liability_zar: "91687.50",
       total_students_count: 1420,
       total_teachers_count: 48,
     };
@@ -894,8 +894,8 @@ export const api = {
         student_name: "Hiroshi Takahashi",
         teacher_name: "Elena V.",
         lesson_date: "2026-09-29 14:00 SAST",
-        amount_usd: 8.0,
-        amount_zar: 150.0,
+        amount_usd: "8.00",
+        amount_zar: "150.00",
         student_statement: "Tutor did not join the Zoom call for the first 15 minutes. When she joined, audio was stuttering heavily.",
         teacher_statement: "I was present in the meeting at 14:00. The student had incorrect meeting password cached in their browser. I stayed online until 14:25.",
         zoom_telemetry: {
@@ -912,8 +912,8 @@ export const api = {
         student_name: "Yuki Murata",
         teacher_name: "Liam O.",
         lesson_date: "2026-09-29 18:00 SAST",
-        amount_usd: 8.0,
-        amount_zar: 150.0,
+        amount_usd: "8.00",
+        amount_zar: "150.00",
         student_statement: "Session disconnected abruptly at minute 8 due to tutor load shedding.",
         teacher_statement: "Our substation tripped under Stage 4 load shedding. Battery inverter kicked in after 4 minutes, but fiber node remained dead.",
         zoom_telemetry: {

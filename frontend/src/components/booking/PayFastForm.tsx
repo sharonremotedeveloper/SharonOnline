@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ShieldCheck, CreditCard, Lock, ArrowRight, ExternalLink } from "lucide-react";
 
 interface PayFastFormProps {
-  amountZar: number;
+  amountZar: string;
   bookingReference: string;
   itemDescription: string;
   /** Initializes the signed PayFast redirect. Booking success still comes only from the ITN webhook. */
@@ -46,7 +46,7 @@ export function PayFastForm({
         </div>
 
         <span className="text-sm font-extrabold text-teal font-serif">
-          R{Math.round(amountZar)} ZAR
+          R{amountZar} ZAR
         </span>
       </div>
 
@@ -76,7 +76,7 @@ export function PayFastForm({
           ) : (
             <>
               <Lock className="w-3.5 h-3.5" />
-              <span>Pay R{Math.round(amountZar)} ZAR via PayFast</span>
+              <span>Pay R{amountZar} ZAR via PayFast</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </>
           )}

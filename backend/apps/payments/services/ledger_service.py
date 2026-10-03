@@ -6,6 +6,7 @@ from django.db import transaction
 from django.db.models import Sum, Q
 from django.utils import timezone
 
+from apps.common.money import money_str
 from apps.payments.models import LedgerEntry, LedgerAccount, PaymentTransaction
 
 logger = logging.getLogger(__name__)
@@ -691,18 +692,18 @@ def get_general_ledger_trial_balance() -> Dict[str, Any]:
         trial_rows.append({
             'account_code': code,
             'account_name': name,
-            'debit_zar': float(dr_sum),
-            'credit_zar': float(cr_sum),
-            'net_zar': float(net_balance)
+            'debit_zar': money_str(dr_sum),
+            'credit_zar': money_str(cr_sum),
+            'net_zar': money_str(net_balance)
         })
 
     is_balanced = (grand_debit_zar == grand_credit_zar)
 
     return {
         'trial_rows': trial_rows,
-        'grand_debit_zar': float(grand_debit_zar),
-        'grand_credit_zar': float(grand_credit_zar),
-        'variance_zar': float(grand_debit_zar - grand_credit_zar),
+        'grand_debit_zar': money_str(grand_debit_zar),
+        'grand_credit_zar': money_str(grand_credit_zar),
+        'variance_zar': money_str(grand_debit_zar - grand_credit_zar),
         'is_balanced': is_balanced
     }
 
@@ -769,28 +770,28 @@ def get_ledger_telemetry() -> Dict[str, Any]:
     net_revenue_usd = gross_commission_usd - total_expenses_usd
 
     live_balances = {
-        'gateway_cash_payfast_zar': float(max(payfast_cash_zar, Decimal('0.00'))),
-        'gateway_cash_paypal_usd': float(max(paypal_cash_usd, Decimal('0.00'))),
-        'gateway_cash_paypal_zar': float(max(paypal_cash_zar, Decimal('0.00'))),
-        'operating_bank_zar': float(max(operating_bank_zar, Decimal('0.00'))),
-        'escrow_liability_usd': float(max(escrow_liability_usd, Decimal('0.00'))),
-        'escrow_liability_zar': float(max(escrow_liability_zar, Decimal('0.00'))),
-        'tutor_payable_usd': float(max(tutor_payable_usd, Decimal('0.00'))),
-        'tutor_payable_zar': float(max(tutor_payable_zar, Decimal('0.00'))),
-        'student_wallet_usd': float(max(student_wallet_usd, Decimal('0.00'))),
-        'student_wallet_zar': float(max(student_wallet_zar, Decimal('0.00'))),
-        'gross_commission_usd': float(max(gross_commission_usd, Decimal('0.00'))),
-        'gross_commission_zar': float(max(gross_commission_zar, Decimal('0.00'))),
-        'total_expenses_usd': float(max(total_expenses_usd, Decimal('0.00'))),
-        'total_expenses_zar': float(max(total_expenses_zar, Decimal('0.00'))),
-        'net_revenue_usd': float(net_revenue_usd),
-        'net_revenue_zar': float(net_revenue_zar),
+        'gateway_cash_payfast_zar': money_str(max(payfast_cash_zar, Decimal('0.00'))),
+        'gateway_cash_paypal_usd': money_str(max(paypal_cash_usd, Decimal('0.00'))),
+        'gateway_cash_paypal_zar': money_str(max(paypal_cash_zar, Decimal('0.00'))),
+        'operating_bank_zar': money_str(max(operating_bank_zar, Decimal('0.00'))),
+        'escrow_liability_usd': money_str(max(escrow_liability_usd, Decimal('0.00'))),
+        'escrow_liability_zar': money_str(max(escrow_liability_zar, Decimal('0.00'))),
+        'tutor_payable_usd': money_str(max(tutor_payable_usd, Decimal('0.00'))),
+        'tutor_payable_zar': money_str(max(tutor_payable_zar, Decimal('0.00'))),
+        'student_wallet_usd': money_str(max(student_wallet_usd, Decimal('0.00'))),
+        'student_wallet_zar': money_str(max(student_wallet_zar, Decimal('0.00'))),
+        'gross_commission_usd': money_str(max(gross_commission_usd, Decimal('0.00'))),
+        'gross_commission_zar': money_str(max(gross_commission_zar, Decimal('0.00'))),
+        'total_expenses_usd': money_str(max(total_expenses_usd, Decimal('0.00'))),
+        'total_expenses_zar': money_str(max(total_expenses_zar, Decimal('0.00'))),
+        'net_revenue_usd': money_str(net_revenue_usd),
+        'net_revenue_zar': money_str(net_revenue_zar),
     }
 
     summary = {
-        'total_assets_zar': float(max(payfast_cash_zar + paypal_cash_zar + operating_bank_zar, Decimal('0.00'))),
-        'total_liabilities_zar': float(max(escrow_liability_zar + tutor_payable_zar + student_wallet_zar, Decimal('0.00'))),
-        'net_revenue_zar': float(net_revenue_zar),
+        'total_assets_zar': money_str(max(payfast_cash_zar + paypal_cash_zar + operating_bank_zar, Decimal('0.00'))),
+        'total_liabilities_zar': money_str(max(escrow_liability_zar + tutor_payable_zar + student_wallet_zar, Decimal('0.00'))),
+        'net_revenue_zar': money_str(net_revenue_zar),
         'is_balanced': trial_data['is_balanced'],
         'variance_zar': trial_data['variance_zar']
     }

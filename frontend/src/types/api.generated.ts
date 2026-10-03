@@ -1040,10 +1040,8 @@ export interface components {
             readonly local_start_time: string;
             readonly local_end_time: string;
             readonly viewer_timezone: string;
-            /** Format: double */
-            readonly price_usd: number;
-            /** Format: double */
-            readonly price_zar: number;
+            readonly price_usd: string;
+            readonly price_zar: string;
             readonly lock_expires_at: string | null;
             readonly zoom_url: string;
             readonly zoom_join_url: string;

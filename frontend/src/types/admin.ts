@@ -1,11 +1,11 @@
 export interface AdminTelemetry {
-  gmv_today_usd: number;
-  gmv_month_usd: number;
+  gmv_today_usd: string;
+  gmv_month_usd: string;
   active_zoom_sessions_count: number;
   open_disputes_count: number;
   pending_vetting_count: number;
-  escrow_liability_usd: number;
-  escrow_liability_zar: number;
+  escrow_liability_usd: string;
+  escrow_liability_zar: string;
   total_students_count: number;
   total_teachers_count: number;
 }
@@ -46,8 +46,8 @@ export interface DisputeCase {
   student_name: string;
   teacher_name: string;
   lesson_date: string;
-  amount_usd: number;
-  amount_zar: number;
+  amount_usd: string;
+  amount_zar: string;
   student_statement: string;
   teacher_statement: string;
   zoom_telemetry: {
@@ -67,10 +67,10 @@ export interface FinanceEscrowItem {
   student_name: string;
   teacher_name: string;
   lesson_date: string;
-  amount_usd: number;
-  amount_zar: number;
-  platform_fee_usd: number;
-  teacher_net_zar: number;
+  amount_usd: string;
+  amount_zar: string;
+  platform_fee_usd: string;
+  teacher_net_zar: string;
   escrow_status: "holding" | "cleared" | "refunded";
   release_date: string;
 }
@@ -83,6 +83,6 @@ export interface PayoutBatchItem {
   account_number_masked: string;
   branch_code: string;
   cleared_lessons_count: number;
-  payout_amount_zar: number;
+  payout_amount_zar: string;
   status: "pending" | "exported" | "processed";
 }

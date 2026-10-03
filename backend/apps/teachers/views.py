@@ -1,3 +1,4 @@
+from decimal import Decimal, InvalidOperation
 from rest_framework import generics, permissions, filters, status
 from rest_framework.response import Response
 from django.db.models import Q
@@ -37,8 +38,8 @@ class TeacherListView(generics.ListAPIView):
         max_price = self.request.query_params.get('max_price')
         if max_price:
             try:
-                queryset = queryset.filter(price_per_25min_usd__lte=float(max_price))
-            except ValueError:
+                queryset = queryset.filter(price_per_25min_usd__lte=Decimal(max_price))
+            except InvalidOperation:
                 pass
 
         # Search query

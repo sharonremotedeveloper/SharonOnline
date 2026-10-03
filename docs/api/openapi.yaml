@@ -1751,12 +1751,10 @@ components:
           type: string
           readOnly: true
         price_usd:
-          type: number
-          format: double
+          type: string
           readOnly: true
         price_zar:
-          type: number
-          format: double
+          type: string
           readOnly: true
         lock_expires_at:
           type: string

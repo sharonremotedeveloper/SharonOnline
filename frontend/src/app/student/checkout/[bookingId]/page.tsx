@@ -390,7 +390,7 @@ export default function StudentCheckoutPage() {
           <div className="pt-4 border-t border-divider space-y-2 text-xs">
             <div className="flex justify-between text-ink-muted">
               <span>Standard Lesson Fee:</span>
-              <span>${booking.price_usd.toFixed(2)} USD</span>
+              <span>${booking.price_usd} USD</span>
             </div>
             <div className="flex justify-between text-ink-muted">
               <span>Platform Service Fee:</span>
@@ -398,10 +398,10 @@ export default function StudentCheckoutPage() {
             </div>
             <div className="flex justify-between text-base font-extrabold text-ink font-serif pt-2 border-t border-divider">
               <span>Total Due:</span>
-              <span className="text-teal">${booking.price_usd.toFixed(2)} USD</span>
+              <span className="text-teal">${booking.price_usd} USD</span>
             </div>
             <div className="text-[10px] text-right text-ink-muted">
-              (~R{Math.round(booking.price_zar)} ZAR)
+              (~R{booking.price_zar} ZAR)
             </div>
           </div>
 

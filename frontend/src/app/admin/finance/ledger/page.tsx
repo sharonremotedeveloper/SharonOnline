@@ -15,17 +15,18 @@ import { api } from "@/lib/api";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
 
+import { groupMoney, sumMoney } from "@/lib/moneyString";
 export default function AdminLedgerPage() {
   const { data, error, loading, reload } = useApiData(() => api.getEscrowLedger(), []);
   const items = data ?? [];
 
-  const totalHoldingUsd = items
+  const totalHoldingUsd = sumMoney(items
     .filter((i) => i.escrow_status === "holding")
-    .reduce((acc, curr) => acc + curr.amount_usd, 0);
+    .map((i) => i.amount_usd));
 
-  const totalHoldingZar = items
+  const totalHoldingZar = sumMoney(items
     .filter((i) => i.escrow_status === "holding")
-    .reduce((acc, curr) => acc + curr.amount_zar, 0);
+    .map((i) => i.amount_zar));
 
   const clearedCount = items.filter((i) => i.escrow_status !== "holding").length;
   const holdingCount = items.length - clearedCount;
@@ -84,9 +85,9 @@ export default function AdminLedgerPage() {
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-2">
           <span className="text-xs font-bold text-ink-muted">Total Escrow Liabilities</span>
           <div className="text-2xl sm:text-3xl font-black text-ink font-serif">
-            ${totalHoldingUsd.toFixed(2)} USD
+            ${groupMoney(totalHoldingUsd)} USD
           </div>
-          <p className="text-[11px] text-ink-muted">R{totalHoldingZar.toFixed(2)} ZAR in active holding buffer</p>
+          <p className="text-[11px] text-ink-muted">R{groupMoney(totalHoldingZar)} ZAR in active holding buffer</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-2">
@@ -137,9 +138,9 @@ export default function AdminLedgerPage() {
                   <td className="py-4 px-6 font-mono font-bold text-teal">{entry.booking_ref}</td>
                   <td className="py-4 px-4 font-bold text-ink">{entry.student_name}</td>
                   <td className="py-4 px-4 text-ink-muted">{entry.teacher_name}</td>
-                  <td className="py-4 px-4 font-bold text-ink">${entry.amount_usd.toFixed(2)}</td>
+                  <td className="py-4 px-4 font-bold text-ink">${entry.amount_usd}</td>
                   <td className="py-4 px-4 font-extrabold text-ink font-serif">
-                    R{entry.teacher_net_zar.toFixed(2)}
+                    R{entry.teacher_net_zar}
                   </td>
                   <td className="py-4 px-4 text-ink-muted font-mono">{entry.release_date}</td>
                   <td className="py-4 px-6">

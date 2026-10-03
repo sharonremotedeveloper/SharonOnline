@@ -107,4 +107,4 @@ def test_booking_payload_prices_come_from_catalog(student_user, teacher_user, pe
     c = APIClient()
     c.force_authenticate(student_user)
     body = c.get(f'/api/v1/bookings/{pending.id}/').json()
-    assert body['price_usd'] == 9.0 and body['price_zar'] == 171.0
+    assert body['price_usd'] == '9.00' and body['price_zar'] == '171.00'

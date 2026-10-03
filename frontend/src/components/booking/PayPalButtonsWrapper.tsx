@@ -4,7 +4,7 @@ import { useState } from "react";
 import { CreditCard, Lock, ShieldCheck, ArrowRight } from "lucide-react";
 
 interface PayPalButtonsWrapperProps {
-  amountUsd: number;
+  amountUsd: string;
   currency?: string;
   bookingReference: string;
   /** Initializes a server-authoritative checkout. Booking success still comes only from the webhook. */
@@ -46,7 +46,7 @@ export function PayPalButtonsWrapper({
         </div>
 
         <span className="text-sm font-extrabold text-ink font-serif">
-          ${amountUsd.toFixed(2)} {currency}
+          ${amountUsd} {currency}
         </span>
       </div>
 
@@ -76,7 +76,7 @@ export function PayPalButtonsWrapper({
           ) : (
             <>
               <Lock className="w-3.5 h-3.5" />
-              <span>Checkout with PayPal (${amountUsd.toFixed(2)})</span>
+              <span>Checkout with PayPal (${amountUsd})</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </>
           )}

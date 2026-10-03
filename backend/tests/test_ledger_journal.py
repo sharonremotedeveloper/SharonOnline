@@ -371,8 +371,8 @@ def test_trial_balance_zero_sum_audit(student_user, teacher_user, admin_user):
     # Run Trial Balance Audit
     trial_balance = get_general_ledger_trial_balance()
     assert trial_balance['is_balanced'] is True
-    assert trial_balance['variance_zar'] == 0.0
-    assert trial_balance['grand_debit_zar'] > 0
+    assert trial_balance['variance_zar'] == '0.00'
+    assert Decimal(trial_balance['grand_debit_zar']) > 0
     assert trial_balance['grand_debit_zar'] == trial_balance['grand_credit_zar']
 
 
@@ -439,7 +439,7 @@ def test_end_to_end_webhook_to_escrow_task_journal_flow(student_user, teacher_us
     # Total batch integrity
     trial = get_general_ledger_trial_balance()
     assert trial['is_balanced'] is True
-    assert trial['variance_zar'] == 0.0
+    assert trial['variance_zar'] == '0.00'
 
 
 @pytest.mark.django_db
@@ -759,11 +759,11 @@ def test_ledger_telemetry_live_balance_calculation(student_user, teacher_user):
     assert telemetry['summary']['is_balanced'] is True
 
     balances = telemetry['live_balances']
-    assert balances['gateway_cash_paypal_usd'] == 9.0
-    assert balances['tutor_payable_usd'] == 7.2
-    assert balances['gross_commission_usd'] == 1.8
-    assert balances['net_revenue_usd'] == 1.8
-    assert balances['escrow_liability_usd'] == 0.0
+    assert balances['gateway_cash_paypal_usd'] == '9.00'
+    assert balances['tutor_payable_usd'] == '7.20'
+    assert balances['gross_commission_usd'] == '1.80'
+    assert balances['net_revenue_usd'] == '1.80'
+    assert balances['escrow_liability_usd'] == '0.00'
 
 
 @pytest.mark.django_db
@@ -807,7 +807,7 @@ def test_admin_finance_ledger_api_endpoint(admin_user, student_user, teacher_use
     assert 'escrow_liability_usd' in balances
     assert 'tutor_payable_usd' in balances
     assert 'net_revenue_usd' in balances
-    assert balances['escrow_liability_usd'] == 9.0
+    assert balances['escrow_liability_usd'] == '9.00'
 
     # Test view=items returns flat array
     res_items = client.get('/api/v1/admin/finance/ledger/?view=items')

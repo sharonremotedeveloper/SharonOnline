@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.conf import settings
 from .services.holds import hold_expires_at
 from apps.payments.services.pricing import lesson_price
+from apps.common.money import money_str
 from django.utils.dateparse import parse_datetime
 
 class LessonMemoSerializer(serializers.ModelSerializer):
@@ -166,11 +167,11 @@ class BookingDetailSerializer(serializers.ModelSerializer):
         return f"BK-{str(obj.id).split('-')[0].upper()}"
 
     # D-1: the platform's flat catalog price, not the tutor's. Exact Decimals; floats only at the JSON boundary.
-    def get_price_usd(self, obj) -> float:
-        return float(lesson_price('USD'))
+    def get_price_usd(self, obj) -> str:
+        return money_str(lesson_price('USD'), 'USD')
 
-    def get_price_zar(self, obj) -> float:
-        return float(lesson_price('ZAR'))
+    def get_price_zar(self, obj) -> str:
+        return money_str(lesson_price('ZAR'), 'ZAR')
 
     def get_lock_expires_at(self, obj) -> Optional[str]:
         if obj.status != Booking.Status.PENDING_PAYMENT:
