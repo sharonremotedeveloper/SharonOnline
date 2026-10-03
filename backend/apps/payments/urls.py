@@ -4,6 +4,7 @@ from .views import (
     PayFastWebhookView,
     PayPalWebhookView,
     CreditBalanceView,
+    PayPalCaptureView,
     CreditPackListView,
     LessonPriceListView,
     CreditPurchaseStatusView,
@@ -14,6 +15,7 @@ from .views import (
 urlpatterns = [
     path('checkout/init/', CheckoutInitializeView.as_view(), name='payment-checkout-init'),
     path('webhooks/payfast/', PayFastWebhookView.as_view(), name='payment-webhook-payfast'),
+    path('paypal/capture/', PayPalCaptureView.as_view(), name='payment-paypal-capture'),
     path('webhooks/paypal/', PayPalWebhookView.as_view(), name='payment-webhook-paypal'),
     path('credits/', CreditBalanceView.as_view(), name='payment-credits-balance'),
     path('credit-packs/', CreditPackListView.as_view(), name='payment-credit-packs'),
