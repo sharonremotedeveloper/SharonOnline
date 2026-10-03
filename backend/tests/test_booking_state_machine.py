@@ -173,12 +173,12 @@ class TestMemo:
 class TestOutage:
     def test_outage_is_audited_and_credits_once(self, teacher_user, student_user):
         booking = make_booking(teacher_user, student_user, status=S.CONFIRMED, offset_hours=0.1, funded=True)  # starts in 6 min
-        c = _client(student_user)
+        c = _client(teacher_user.user)
         assert c.post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 200
         assert c.post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 409
         assert CreditBundle.objects.get(user=student_user).remaining_credits == 1
         change = BookingStatusChange.objects.get(booking=booking)
-        assert (change.from_status, change.to_status, change.actor) == (S.CONFIRMED, S.INTERRUPTED_POWER, 'user:test_student')
+        assert (change.from_status, change.to_status, change.actor) == (S.CONFIRMED, S.INTERRUPTED_POWER, 'user:test_tutor')
 
 
 @pytest.mark.django_db

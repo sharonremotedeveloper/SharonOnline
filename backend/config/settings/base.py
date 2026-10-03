@@ -176,6 +176,13 @@ PAYMENT_HOLD_MAX_SECONDS = int(os.environ.get('PAYMENT_HOLD_MAX_SECONDS', '1800'
 OUTAGE_REPORT_BEFORE_START_SECONDS = int(os.environ.get('OUTAGE_REPORT_BEFORE_START_SECONDS', '3600'))
 OUTAGE_REPORT_AFTER_END_SECONDS = int(os.environ.get('OUTAGE_REPORT_AFTER_END_SECONDS', '1800'))
 
+# EskomSePush provider. The periodic task is the only provider caller; request paths read durable cached status.
+ESKOMSEPUSH_API_KEY = os.environ.get('ESKOMSEPUSH_API_KEY', '')
+ESKOMSEPUSH_BASE_URL = os.environ.get('ESKOMSEPUSH_BASE_URL', 'https://developer.sepush.co.za/business/2.0')
+ESKOMSEPUSH_TIMEOUT_SECONDS = int(os.environ.get('ESKOMSEPUSH_TIMEOUT_SECONDS', '10'))
+ESKOMSEPUSH_FRESH_SECONDS = int(os.environ.get('ESKOMSEPUSH_FRESH_SECONDS', '1800'))
+ESKOMSEPUSH_STALE_SECONDS = int(os.environ.get('ESKOMSEPUSH_STALE_SECONDS', '86400'))
+
 # OpenAPI schema (Task 8.8). The served schema is admin-only; the committed copy + generated TS types come from
 # `manage.py spectacular` / `npm run gen:api`.
 SPECTACULAR_SETTINGS = {

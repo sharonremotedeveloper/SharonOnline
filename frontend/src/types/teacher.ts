@@ -1,14 +1,7 @@
 import type { components } from "./api.generated";
 
-export interface EskomStatus {
-  stage: number; // 0 to 6
-  area_name: string; // e.g. "City of Johannesburg Block 3 - Rosebank/Sandton"
-  next_outage_start?: string;
-  next_outage_end?: string;
-  has_inverter_backup: boolean;
-  has_lte_failover: boolean;
-  last_updated?: string;
-}
+export type EskomStatus = components["schemas"]["EskomStatus"];
+export type PowerBackupInput = components["schemas"]["PatchedPowerBackupRequest"];
 
 export interface VocabularyTagItem {
   id: string;

@@ -6,6 +6,7 @@ from apps.payments.models import FulfillmentDispatch
 from .zoom import zoom_client
 from .google_calendar import sync_booking_to_teacher_gcal
 from .email import send_booking_confirmation_email
+from .services.eskom import EskomProviderError, EskomQuotaError, eskom_client
 import logging
 
 logger = logging.getLogger(__name__)
@@ -115,54 +116,119 @@ def sync_eskom_stages_task():
     confirmed lessons within the next 4 hours for tutors lacking battery backup,
     dispatching proactive advance reschedule warnings.
     """
-    from datetime import timedelta
-    from django.utils import timezone
-    from django.core.cache import cache
-    from apps.teachers.models import TeacherProfile
     from apps.common.locks import distributed_task_lock
 
     @distributed_task_lock('lock:beat:sync_eskom_stages', timeout_seconds=800)
     def _execute():
-        now = timezone.now()
-        za_teachers = TeacherProfile.objects.filter(
-            accent=TeacherProfile.Accent.SOUTH_AFRICAN,
-            is_active=True
-        )
-
-        areas = set(za_teachers.values_list('eskom_area_id', flat=True))
-        areas = {a for a in areas if a} or {'jhb-block-3'}
-
-        synced_areas = 0
-        vulnerable_count = 0
-
-        for area in areas:
-            # Stage detection with fallback
-            current_stage = 2  # Stage 2 active baseline
-            cache.set(f"eskom:stage:{area}", {"stage": current_stage, "updated_at": now.isoformat()}, timeout=1800)
-            synced_areas += 1
-
-            # Proactive Outage Shield: Inspect confirmed lessons in the next 4 hours
-            if current_stage >= 2:
-                upcoming_window = now + timedelta(hours=4)
-                vulnerable_bookings = Booking.objects.filter(
-                    teacher__eskom_area_id=area,
-                    teacher__has_inverter_backup=False,
-                    status=Booking.Status.CONFIRMED,
-                    start_time_utc__gte=now,
-                    start_time_utc__lte=upcoming_window
-                ).select_related('teacher__user', 'student')
-
-                for booking in vulnerable_bookings:
-                    vulnerable_count += 1
-                    logger.warning(
-                        f"[ESKOM OUTAGE SHIELD] Booking {booking.id} threatened by Stage {current_stage} load shedding. "
-                        f"Tutor {booking.teacher.user.username} lacks certified battery backup. "
-                        f"Proactive alert dispatched to student {booking.student.email}."
-                    )
-
-        return {"synced_areas": synced_areas, "vulnerable_bookings_flagged": vulnerable_count}
+        return sync_eskom_statuses(eskom_client)
 
     return _execute()
+
+
+def sync_eskom_statuses(provider, now=None):
+    """Provider-injected implementation used by the beat task and deterministic tests."""
+    from django.conf import settings
+    from django.core.cache import cache
+    from django.db import transaction
+    from django.utils.dateparse import parse_datetime
+    from apps.integrations.models import EskomAreaStatus, EskomNotificationAttempt
+    from apps.teachers.models import TeacherProfile
+
+    now = now or timezone.now()
+    areas = set(TeacherProfile.objects.filter(
+        accent=TeacherProfile.Accent.SOUTH_AFRICAN, is_active=True,
+    ).exclude(eskom_area_id='').values_list('eskom_area_id', flat=True))
+    result = {'synced_areas': 0, 'failed_areas': 0, 'vulnerable_bookings_flagged': 0,
+              'notifications_created': 0}
+
+    for area_id in areas:
+        try:
+            payload = provider.fetch_area_status(area_id)
+            retrieved_at = payload.get('retrieved_at') or now
+            status_row, _ = EskomAreaStatus.objects.update_or_create(
+                area_id=area_id,
+                defaults={
+                    'area_name': payload['area_name'], 'stage': payload['stage'],
+                    'outages': payload.get('outages') or [],
+                    'provider_status': EskomAreaStatus.ProviderStatus.OK,
+                    'provider_retrieved_at': retrieved_at,
+                    'fresh_until': retrieved_at + timedelta(seconds=settings.ESKOMSEPUSH_FRESH_SECONDS),
+                    'last_error_code': '',
+                },
+            )
+            cache.set(f'eskom:stage:{area_id}', {
+                'stage': status_row.stage, 'area_name': status_row.area_name,
+                'outages': status_row.outages, 'retrieved_at': status_row.provider_retrieved_at.isoformat(),
+                'provider_status': status_row.provider_status,
+            }, timeout=settings.ESKOMSEPUSH_STALE_SECONDS)
+            result['synced_areas'] += 1
+        except (EskomQuotaError, EskomProviderError) as exc:
+            state = EskomAreaStatus.ProviderStatus.QUOTA if isinstance(exc, EskomQuotaError) else EskomAreaStatus.ProviderStatus.ERROR
+            EskomAreaStatus.objects.filter(area_id=area_id).update(provider_status=state, last_error_code=exc.code)
+            result['failed_areas'] += 1
+            continue
+
+        upcoming = Booking.objects.filter(
+            teacher__eskom_area_id=area_id,
+            status=Booking.Status.CONFIRMED,
+            start_time_utc__gte=now,
+            start_time_utc__lte=now + timedelta(hours=4),
+        ).select_related('teacher__user', 'student')
+        for booking in upcoming:
+            if booking.teacher.has_inverter_backup and booking.teacher.has_lte_failover:
+                continue
+            matching_window = None
+            for outage in status_row.outages:
+                start = parse_datetime(str(outage.get('start') or ''))
+                end = parse_datetime(str(outage.get('end') or ''))
+                if start and end and start < booking.end_time_utc and end > booking.start_time_utc:
+                    matching_window = (start, end)
+                    break
+            if matching_window is None:
+                continue
+            result['vulnerable_bookings_flagged'] += 1
+            window_key = matching_window[0].isoformat()
+            for recipient in (booking.teacher.user, booking.student):
+                attempt, created = EskomNotificationAttempt.objects.get_or_create(
+                    idempotency_key=f'eskom-shield:{booking.id}:{recipient.id}:{window_key}',
+                    defaults={'booking': booking, 'recipient': recipient, 'area_status': status_row},
+                )
+                if created:
+                    result['notifications_created'] += 1
+                    transaction.on_commit(lambda attempt_id=str(attempt.id): send_eskom_notification_task.delay(attempt_id))
+    return result
+
+
+@shared_task(bind=True, max_retries=8)
+def send_eskom_notification_task(self, attempt_id):
+    from django.db.models import F
+    from django.utils.html import escape
+    from apps.integrations.email import EmailDeliveryError, send_email
+    from apps.integrations.models import EskomNotificationAttempt
+
+    attempt = EskomNotificationAttempt.objects.select_related(
+        'recipient', 'booking__teacher__user', 'area_status',
+    ).filter(pk=attempt_id).first()
+    if attempt is None or attempt.state == EskomNotificationAttempt.State.SENT:
+        return
+    EskomNotificationAttempt.objects.filter(pk=attempt.pk).update(attempts=F('attempts') + 1)
+    booking = attempt.booking
+    subject = 'Power Guard warning for your upcoming lesson'
+    time_text = booking.start_time_utc.strftime('%Y-%m-%d %H:%M UTC')
+    area = escape(attempt.area_status.area_name)
+    html = (f'<h2>Power Guard warning</h2><p>An outage window reported for {area} overlaps your '
+            f'lesson at {escape(time_text)}.</p><p>Please prepare backup connectivity or contact support.</p>')
+    text = f'An outage window reported for {attempt.area_status.area_name} overlaps your lesson at {time_text}.'
+    try:
+        send_email(attempt.recipient.email, subject, html, text)
+    except EmailDeliveryError as exc:
+        EskomNotificationAttempt.objects.filter(pk=attempt.pk).update(
+            state=EskomNotificationAttempt.State.RETRYABLE, last_error=str(exc)[:500],
+        )
+        raise self.retry(exc=exc, countdown=min(30 * (2 ** self.request.retries), 1800))
+    EskomNotificationAttempt.objects.filter(pk=attempt.pk).update(
+        state=EskomNotificationAttempt.State.SENT, last_error='', sent_at=timezone.now(),
+    )
 
 
 @shared_task(name='apps.integrations.tasks.reconcile_teacher_gcal_task')

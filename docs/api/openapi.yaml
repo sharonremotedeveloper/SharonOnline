@@ -822,6 +822,20 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/integrations/eskom/status/:
+    get:
+      operationId: v1_integrations_eskom_status_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EskomStatus'
+          description: ''
   /api/v1/integrations/r2/presigned-url/:
     post:
       operationId: v1_integrations_r2_presigned_url_create
@@ -1395,6 +1409,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/TeacherAvailability'
           description: ''
+  /api/v1/teachers/profile/power-backup/:
+    patch:
+      operationId: v1_teachers_profile_power_backup_partial_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPowerBackupRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPowerBackupRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPowerBackupRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PowerBackup'
+          description: ''
 components:
   schemas:
     AccentEnum:
@@ -1727,6 +1766,67 @@ components:
           maxLength: 512
       required:
       - token
+    EskomOutage:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        note:
+          type: string
+      required:
+      - end
+      - note
+      - start
+    EskomStatus:
+      type: object
+      properties:
+        area_id:
+          type: string
+        area_name:
+          type: string
+        stage:
+          type: integer
+          maximum: 8
+          minimum: 0
+        outages:
+          type: array
+          items:
+            $ref: '#/components/schemas/EskomOutage'
+        next_outage_start:
+          type: string
+          format: date-time
+          nullable: true
+        next_outage_end:
+          type: string
+          format: date-time
+          nullable: true
+        has_inverter_backup:
+          type: boolean
+        has_lte_failover:
+          type: boolean
+        stale:
+          type: boolean
+        provider_status:
+          type: string
+        retrieved_at:
+          type: string
+          format: date-time
+      required:
+      - area_id
+      - area_name
+      - has_inverter_backup
+      - has_lte_failover
+      - next_outage_end
+      - next_outage_start
+      - outages
+      - provider_status
+      - retrieved_at
+      - stage
+      - stale
     LessonMemo:
       type: object
       properties:
@@ -2087,6 +2187,13 @@ components:
             pattern: ^[A-Za-z0-9 -]{6,30}$
           - type: string
             maxLength: 0
+    PatchedPowerBackupRequest:
+      type: object
+      properties:
+        has_inverter_backup:
+          type: boolean
+        has_lte_failover:
+          type: boolean
     PatchedStudentProfileRequest:
       type: object
       properties:
@@ -2236,6 +2343,13 @@ components:
       - status
       - teacher_id
       - teacher_name
+    PowerBackup:
+      type: object
+      properties:
+        has_inverter_backup:
+          type: boolean
+        has_lte_failover:
+          type: boolean
     Register:
       type: object
       properties:

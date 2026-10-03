@@ -247,7 +247,7 @@ def test_eskom_power_outage_interruption_and_refund(teacher_user, student_user):
         {"reason": "Stage 4 Eskom Outage in Johannesburg Sandton Block 3"},
         format='json'
     )
-    force_authenticate(request, user=student_user)
+    force_authenticate(request, user=teacher_user.user)
 
     view = ReportOutageView.as_view()
     response = view(request, booking_id=str(booking.id))

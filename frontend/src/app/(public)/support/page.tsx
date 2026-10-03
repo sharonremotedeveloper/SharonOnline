@@ -51,7 +51,7 @@ export default function SupportPage() {
     },
     {
       q: "What happens if my tutor misses a class or loses power?",
-      a: "Our EskomSePush telemetry auto-detects outages. If a class is interrupted or tutor is absent, 100% of your credit is instantly refunded plus a bonus credit.",
+      a: "Power Guard uses fresh provider evidence for student-reported tutor-area outages. Confirmed operational failures return one lesson credit to the wallet; tutor or staff reports remain subject to the lesson-time window.",
     },
     {
       q: "Which payment methods are accepted?",

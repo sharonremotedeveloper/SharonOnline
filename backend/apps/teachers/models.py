@@ -29,8 +29,9 @@ class TeacherProfile(models.Model):
     is_verified = models.BooleanField(default=False, db_index=True)
     is_active = models.BooleanField(default=True, db_index=True)
     sla_strikes = models.PositiveSmallIntegerField(default=0)
-    eskom_area_id = models.CharField(max_length=64, blank=True, default="jhb-block-3")
+    eskom_area_id = models.CharField(max_length=128, blank=True, default='')
     has_inverter_backup = models.BooleanField(default=False)
+    has_lte_failover = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

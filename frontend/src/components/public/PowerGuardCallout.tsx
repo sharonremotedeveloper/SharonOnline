@@ -9,7 +9,7 @@ export function PowerGuardCallout() {
       <div className="max-w-4xl space-y-6 relative z-10">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-accent-surface">
           <Zap className="w-3.5 h-3.5 text-accent animate-pulse" />
-          <span>EskomSePush API Power Resilience Infrastructure</span>
+          <span>EskomSePush-backed Power Resilience</span>
         </div>
 
         <h3 className="text-2xl sm:text-3xl font-extrabold font-serif leading-snug">
@@ -18,7 +18,7 @@ export function PowerGuardCallout() {
 
         <p className="text-sm sm:text-base text-white/85 leading-relaxed">
           South African tutors are mandatory-verified for solar, inverter, or UPS battery backups. 
-          Our proprietary EskomSePush API system monitors municipal load shedding stages, automatically blacking out at-risk slots before students can book them.
+          Power Guard caches municipal outage windows, identifies vulnerable upcoming lessons, and sends proactive warnings without inventing a grid stage when the provider is unavailable.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
