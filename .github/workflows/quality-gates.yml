@@ -1,9 +1,13 @@
 name: Quality gates
 
+# Every job here is a required check for merging into develop / main (branch protection is configured in GitHub, not in this file).
 on:
   pull_request:
   push:
     branches: [main, develop, remediation/tech-debt]
+
+permissions:
+  contents: read
 
 concurrency:
   group: quality-${{ github.ref }}
@@ -13,8 +17,8 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: pip
@@ -25,14 +29,18 @@ jobs:
         working-directory: backend
       - run: python manage.py makemigrations --check --dry-run
         working-directory: backend
+      # Django's production security checks against the real production settings module (throwaway values; see the script).
+      - name: Deploy checks (production settings)
+        run: python scripts/check_deploy.py
+        working-directory: backend
       - run: python -m pytest -q -m "not redis and not postgres"
         working-directory: backend
 
   frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -50,6 +58,27 @@ jobs:
         env:
           INTERNAL_API_URL: http://127.0.0.1:8000/api/v1
           NEXT_PUBLIC_APP_URL: http://localhost:3000
+
+  # Known-vulnerable dependencies. Python is blocking. The frontend report is informational until Task 8.9 (Next.js 14 -> 15/16):
+  # the open advisories are in Next itself and are only fixed by that major upgrade. Remove `continue-on-error` when 8.9 lands.
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: pip-audit (blocking)
+        run: |
+          pip install pip-audit
+          pip-audit -r backend/requirements.txt --strict
+      - name: npm audit (production dependencies, informational until Task 8.9)
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: frontend
 
   postgres-ledger:
     runs-on: ubuntu-latest
@@ -70,13 +99,17 @@ jobs:
     env:
       DATABASE_URL: postgresql://sharon_test:sharon_test@127.0.0.1:5432/sharon_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r requirements.txt
+        working-directory: backend
+      # Every migration (including the data migrations) must apply from zero on the real database engine.
+      - name: Migrate a fresh PostgreSQL database
+        run: python manage.py migrate --noinput
         working-directory: backend
       - run: python -m pytest -q -m postgres
         working-directory: backend
@@ -96,8 +129,8 @@ jobs:
     env:
       REDIS_TEST_URL: redis://127.0.0.1:6379/15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: pip
