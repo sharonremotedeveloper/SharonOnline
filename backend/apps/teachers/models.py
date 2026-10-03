@@ -28,6 +28,8 @@ class TeacherProfile(models.Model):
     specialties = models.JSONField(default=list, help_text="List of tags: ['FreeTalk', 'Business English', 'Daily News', 'TOEIC']")
     is_verified = models.BooleanField(default=False, db_index=True)
     is_active = models.BooleanField(default=True, db_index=True)
+    # Strikes counted inside the rolling STRIKE_WINDOW_DAYS window; kept in step by services/strikes.py (never edit by hand)
+    # Strikes inside the rolling STRIKE_WINDOW_DAYS window, kept in step by services/strikes.py (do not edit by hand)
     sla_strikes = models.PositiveSmallIntegerField(default=0)
     eskom_area_id = models.CharField(max_length=64, blank=True, default="jhb-block-3")
     has_inverter_backup = models.BooleanField(default=False)
@@ -67,6 +69,32 @@ class TeacherProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.get_full_name() or self.user.username} ({self.get_accent_display()})"
+
+class TeacherStrike(models.Model):
+    """
+    One row per strike. Only strikes inside STRIKE_WINDOW_DAYS count, so a tutor who had a bad month is not penalised
+    for life; `TeacherProfile.sla_strikes` mirrors that windowed count (services/strikes.py::add_strike).
+    """
+    class Kind(models.TextChoices):
+        NO_SHOW = 'no_show', 'Missed a lesson'
+        LATE_CANCEL = 'late_cancel', 'Cancelled less than 24h before the lesson'
+        SERIAL_CANCEL = 'serial_cancel', 'Repeated early cancellations'
+        MEMO_SLA = 'memo_sla', 'Memo not submitted within 24h'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    teacher = models.ForeignKey('TeacherProfile', on_delete=models.CASCADE, related_name='strikes')
+    booking = models.ForeignKey('bookings.Booking', on_delete=models.SET_NULL, null=True, blank=True, related_name='teacher_strikes')
+    kind = models.CharField(max_length=20, choices=Kind.choices)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            # A booking can earn a tutor at most one strike of each kind, so retries cannot double-penalise.
+            models.UniqueConstraint(fields=['booking', 'kind'], condition=models.Q(booking__isnull=False),
+                                    name='uniq_strike_kind_per_booking'),
+        ]
+
 
 class TeacherAvailability(models.Model):
     """

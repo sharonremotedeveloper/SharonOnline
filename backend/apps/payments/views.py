@@ -320,17 +320,17 @@ class CreditBalanceView(APIView):
 
     def get(self, request):
         bundles = CreditBundle.objects.filter(user=request.user)
-        total_available = sum(b.remaining_credits for b in bundles)
+        total_available = sum(b.remaining_credits for b in bundles.active())
         return Response({
             "total_credits": total_available,
             # Purchase history, newest first. Redemptions/refunds are added when credit spending exists (Task 10.6).
             "ledger": [
                 {
                     "id": str(b.id),
-                    "description": f"{b.pack_name} purchase",
+                    "description": b.pack_name if b.source != CreditBundle.Source.PURCHASE else f"{b.pack_name} purchase",
                     "credits_delta": b.total_credits,
                     "date": b.created_at.date().isoformat(),
-                    "type": "purchase",
+                    "type": {"purchase": "purchase", "bonus": "bonus"}.get(b.source, "refund"),
                 }
                 for b in bundles.order_by('-created_at')
             ],
@@ -339,8 +339,9 @@ class CreditBalanceView(APIView):
                     "pack_name": b.pack_name,
                     "remaining": b.remaining_credits,
                     "total": b.total_credits,
-                    "purchased_at": b.created_at.isoformat()
+                    "purchased_at": b.created_at.isoformat(),
+                    "expires_at": b.expires_at.isoformat() if b.expires_at else None,
                 }
-                for b in bundles
+                for b in bundles.active().filter(remaining_credits__gt=0)
             ]
         })

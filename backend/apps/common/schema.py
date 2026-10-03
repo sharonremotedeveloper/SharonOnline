@@ -11,6 +11,7 @@ class CreditBundleRowSerializer(serializers.Serializer):
     remaining = serializers.IntegerField()
     total = serializers.IntegerField()
     purchased_at = serializers.DateTimeField()
+    expires_at = serializers.DateTimeField(allow_null=True)
 
 
 class CreditLedgerEntrySerializer(serializers.Serializer):
@@ -25,6 +26,38 @@ class WalletSerializer(serializers.Serializer):
     total_credits = serializers.IntegerField()
     ledger = CreditLedgerEntrySerializer(many=True)
     bundles = CreditBundleRowSerializer(many=True)
+
+
+class CancelRequestSerializer(serializers.Serializer):
+    reason = serializers.CharField(required=False, allow_blank=True, max_length=2000, default='')
+    acknowledge_forfeit = serializers.BooleanField(required=False, default=False)
+
+
+class CancelResultSerializer(serializers.Serializer):
+    outcome = serializers.CharField()
+    status = serializers.CharField()
+    message = serializers.CharField()
+
+
+class CancelPreviewSerializer(serializers.Serializer):
+    can_cancel = serializers.BooleanField()
+    outcome = serializers.CharField()
+    message = serializers.CharField()
+    seconds_until_start = serializers.IntegerField()
+    refund_amount = serializers.CharField(allow_null=True)
+    refund_currency = serializers.CharField(allow_null=True)
+    bonus_credits = serializers.IntegerField()
+    strike = serializers.BooleanField()
+    free_cancel_until = serializers.DateTimeField(required=False)
+
+
+class RescheduleRequestSerializer(serializers.Serializer):
+    start_time_utc = serializers.DateTimeField()
+
+
+class ErrorCodeSerializer(serializers.Serializer):
+    error = serializers.CharField()
+    code = serializers.CharField()
 
 
 class ReviewResultSerializer(serializers.Serializer):

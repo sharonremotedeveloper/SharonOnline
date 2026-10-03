@@ -15,8 +15,9 @@ from apps.teachers.models import TeacherProfile
 from apps.bookings.models import Booking
 from apps.bookings.services.state_machine import InvalidTransition, transition_booking
 from apps.payments.models import PaymentTransaction
+from apps.payments.models import LedgerEntry
 from apps.payments.services.credits import grant_credit
-from apps.payments.services.settlement import successful_transaction
+from apps.payments.services.settlement import is_settled, successful_transaction
 from apps.admin_api.models import DisputeCase, PayoutBatch
 from apps.users.models import User
 from apps.admin_api.serializers import (
@@ -189,6 +190,13 @@ class ResolveDisputeView(APIView):
                 return Response({'error': f"Booking is '{booking.status}', not awaiting arbitration."},
                                 status=status.HTTP_409_CONFLICT)
 
+            # A lesson whose money already left escrow (e.g. a tutor no-show that was refunded, then disputed when the tutor's
+            # late Zoom event arrived) cannot also be paid out to the tutor: the student is already whole.
+            if resolution != DisputeCase.Resolution.FULL_REFUND_STUDENT and is_settled(booking):
+                return Response({'error': 'The money for this lesson was already refunded or settled, so it cannot be released to the tutor '
+                                          'from here. Resolve it as a full refund (no further money moves) or take it to finance.',
+                                 'code': 'already_settled'}, status=status.HTTP_409_CONFLICT)
+
             target = (Booking.Status.CANCELLED if resolution == DisputeCase.Resolution.FULL_REFUND_STUDENT
                       else Booking.Status.COMPLETED)
             try:
@@ -202,18 +210,25 @@ class ResolveDisputeView(APIView):
             dispute.resolved_at = timezone.now()
             dispute.save()
 
-            # Financial settlement execution
-            if resolution == DisputeCase.Resolution.FULL_REFUND_STUDENT:
-                grant_credit(dispute.student, pack_name='Refunded Dispute Credit')
-
-            elif resolution == DisputeCase.Resolution.SPLIT_50_50:
-                # Platform absorbs cost: student receives 1 credit refund AND tutor receives cleared payout
-                grant_credit(dispute.student, pack_name='Dispute Settlement Credit')
-
-            # Record immutable GAAP/SARB double-entry ledger entries
+            # Financial settlement execution + immutable GAAP/SARB double-entry ledger entries
+            from apps.payments.models import CreditBundle, RefundRequest
             from apps.payments.services.ledger_service import record_dispute_settlement_entry
-            record_dispute_settlement_entry(dispute_case=dispute, resolution=resolution,
-                                            payment_transaction=successful_transaction(booking))
+            from apps.payments.services.refunds import AlreadySettled, request_refund
+            paid_tx = successful_transaction(booking)
+            if resolution == DisputeCase.Resolution.FULL_REFUND_STUDENT:
+                # D-6: the student's money goes back through the gateway (they may convert it to wallet credit).
+                try:
+                    request_refund(booking, RefundRequest.Reason.DISPUTE, event_type=LedgerEntry.EventType.DISPUTE_RESOLVED,
+                                   dispute_case=dispute, description=f"Dispute {dispute.id} decided for the student")
+                except AlreadySettled:
+                    pass        # the student was already refunded by the earlier outcome; nothing more to pay
+            else:
+                if resolution == DisputeCase.Resolution.SPLIT_50_50:
+                    # Platform absorbs cost: student receives 1 courtesy credit AND tutor receives the cleared payout
+                    grant_credit(dispute.student, source=CreditBundle.Source.BONUS, pack_name='Dispute Settlement Credit',
+                                 unit_value=paid_tx.amount if paid_tx else booking.teacher.price_per_25min_usd,
+                                 currency=paid_tx.currency if paid_tx else 'USD')
+                record_dispute_settlement_entry(dispute_case=dispute, resolution=resolution, payment_transaction=paid_tx)
 
             if resolution != DisputeCase.Resolution.FULL_REFUND_STUDENT:
                 # The tutor was just paid by this decision: mark the escrow cleared so the 24h job can never pay again.

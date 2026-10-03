@@ -1,7 +1,8 @@
 from rest_framework import generics, permissions, status
-from rest_framework.exceptions import ValidationError as DRFValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError as DRFValidationError
 from apps.users.serializers import validate_iana_timezone
-from apps.common.schema import ReserveRequestSerializer, ReservationSerializer, ReviewResultSerializer
+from apps.common.schema import (CancelPreviewSerializer, CancelRequestSerializer, CancelResultSerializer, ErrorCodeSerializer,
+                                RescheduleRequestSerializer, ReserveRequestSerializer, ReservationSerializer, ReviewResultSerializer)
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework.response import Response
@@ -12,7 +13,7 @@ from django.db import transaction
 from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
-from .models import Booking, LessonMemo
+from .models import AttendanceAudit, Booking, LessonMemo
 from apps.srs.models import StudentFlashcard
 from apps.teachers.models import TeacherProfile
 from .serializers import (
@@ -26,6 +27,7 @@ from .serializers import (
 from .services.slot_generator import generate_teacher_slots
 from .services.lock_service import acquire_slot_lock, release_slot_lock
 from .services.reservation import ReservationError, reservation_payload, reserve_slot
+from .services import cancellation, rescheduling
 from .services.listing import BookingListQuerySerializer, BookingPagination, filter_bookings, scoped_bookings
 from .services.reviews import ReviewError, submit_review
 from .services.state_machine import InvalidTransition, transition_booking
@@ -254,19 +256,20 @@ class LegacySubmitReviewView(SubmitReviewView):
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class ReportOutageView(APIView):
     """
-    Handles Eskom load shedding / grid power interruption during or before a lesson:
-    1. Marks booking as INTERRUPTED_POWER.
-    2. Refunds 1 lesson credit to student's wallet (or increments active CreditBundle).
-    3. Waives any cancellation penalty for the teacher.
+    The lesson's tutor (or staff) reports an Eskom load-shedding / grid outage around the lesson (D-6):
+    1. Marks the booking INTERRUPTED_POWER.
+    2. Queues a full gateway refund for the student (they may convert it to wallet credit). The tutor is not paid and gets no strike.
+    A student cannot file this report (it would refund them while the tutor goes unpaid): a student problem goes through a dispute.
+    A lesson the tutor taught for the minimum lesson time is a delivered lesson, not an outage.
     """
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, booking_id):
         booking = get_object_or_404(Booking, id=booking_id)
-        is_student = (booking.student == request.user)
         is_teacher = (booking.teacher.user == request.user)
-        if not (is_student or is_teacher or request.user.is_staff):
-            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+        if not (is_teacher or request.user.is_staff):
+            return Response({"error": "Only the lesson's tutor can report a power outage. If you had a problem with this lesson, open a dispute.",
+                             "code": "outage_report_tutor_only"}, status=status.HTTP_403_FORBIDDEN)
 
         raw_reason = request.data.get("reason") if hasattr(request.data, "get") else None
         reason = (str(raw_reason).strip() if isinstance(raw_reason, str) else "")[:255] or "Eskom Load Shedding / Power Interruption"
@@ -288,18 +291,90 @@ class ReportOutageView(APIView):
                                           f"{settings.OUTAGE_REPORT_AFTER_END_SECONDS // 60} minutes after it ends."},
                                 status=status.HTTP_409_CONFLICT)
 
+            from django.db.models import Sum
+            taught = AttendanceAudit.objects.filter(booking=booking, participant_email=booking.teacher.user.email) \
+                .aggregate(t=Sum('total_minutes'))['t'] or 0
+            if taught >= settings.LESSON_DELIVERED_MIN_TEACHER_MINUTES:
+                return Response({"error": f"The tutor already taught {taught} minutes, so this lesson counts as delivered.",
+                                 "code": "lesson_delivered"}, status=status.HTTP_409_CONFLICT)
+
             result = transition_booking(booking, Booking.Status.INTERRUPTED_POWER, actor=request.user, reason=reason)
             if result.changed:
-                # The lesson did not run: return the student's money as a wallet credit and drain the booking's escrow
-                # in the ledger by exactly what was captured (the tutor is not paid for an interrupted lesson).
-                grant_credit(booking.student, credits=1, pack_name="Eskom Outage Refund Credit")
-                from apps.payments.services.ledger_service import record_outage_refund_entry
-                record_outage_refund_entry(booking=booking, user=booking.student,
-                                           payment_transaction=successful_transaction(booking))
+                # The lesson did not run: the whole capture goes back to the student through the gateway and the booking's
+                # escrow drains by exactly what was captured (the tutor is not paid for an interrupted lesson).
+                from apps.payments.models import LedgerEntry, RefundRequest
+                from apps.payments.services.refunds import request_refund
+                request_refund(booking, RefundRequest.Reason.OUTAGE, event_type=LedgerEntry.EventType.OUTAGE_REFUND,
+                               description='Power outage interrupted the lesson')
 
         return Response({
             "status": "interrupted_power",
-            "message": "Eskom power interruption recorded. 1 lesson credit has been automatically refunded to the student's wallet.",
+            "message": "Power interruption recorded. The student will be refunded to their original payment method.",
             "reason": reason,
             "refunded": True
         }, status=status.HTTP_200_OK)
+
+
+def _booking_of_party(request, booking_id):
+    """The booking, if the caller is its student or tutor. Strangers get a 404 (it does not exist for them); staff a 403."""
+    booking = get_object_or_404(Booking.objects.select_related('teacher__user', 'student'), id=booking_id)
+    if cancellation.party_of(booking, request.user) is None:
+        if request.user.is_staff or getattr(request.user, 'role', '') == 'admin':
+            raise PermissionDenied('Staff resolve lessons through disputes, not by cancelling them.')
+        raise NotFound()
+    return booking
+
+
+@extend_schema(responses=CancelPreviewSerializer)
+class CancelPreviewView(APIView):
+    """What would happen if I cancelled now? Read-only: shown before the student/tutor confirms."""
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, booking_id):
+        booking = _booking_of_party(request, booking_id)
+        return Response(cancellation.preview(booking, request.user))
+
+
+@extend_schema(request=CancelRequestSerializer, responses={200: CancelResultSerializer, 400: ErrorCodeSerializer, 409: ErrorCodeSerializer})
+class CancelBookingView(APIView):
+    """
+    The student or the tutor cancels a lesson. Refunds, bonus credit and strikes follow the D-6 policy (see
+    docs/CANCELLATION_AND_REFUNDS.md). A student cancelling inside the free window must send acknowledge_forfeit=true.
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'cancel'
+
+    def post(self, request, booking_id):
+        booking = _booking_of_party(request, booking_id)
+        body = CancelRequestSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        try:
+            result = cancellation.cancel_booking(booking.id, request.user, reason=body.validated_data['reason'],
+                                                 acknowledge_forfeit=body.validated_data['acknowledge_forfeit'])
+        except cancellation.CancelError as exc:
+            return Response({"error": exc.message, "code": exc.code}, status=exc.status_code)
+        return Response(result)
+
+
+@extend_schema(request=RescheduleRequestSerializer, responses={200: BookingDetailSerializer, 400: ErrorCodeSerializer, 409: ErrorCodeSerializer})
+class RescheduleBookingView(APIView):
+    """
+    The student moves a paid, still-future lesson to another open slot of the same tutor (once, more than 2 hours before it
+    starts). The booking keeps its id, payment and escrow. Tutors who cannot teach a lesson cancel it instead.
+    """
+    permission_classes = (permissions.IsAuthenticated,)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'cancel'
+
+    def post(self, request, booking_id):
+        booking = _booking_of_party(request, booking_id)
+        if booking.student_id != request.user.id:
+            raise PermissionDenied('Only the student can reschedule a lesson. Tutors cancel instead.')
+        body = RescheduleRequestSerializer(data=request.data)
+        body.is_valid(raise_exception=True)
+        try:
+            moved = rescheduling.reschedule_booking(booking.id, request.user, body.validated_data['start_time_utc'])
+        except rescheduling.RescheduleError as exc:
+            return Response({"error": exc.message, "code": exc.code}, status=exc.status_code)
+        return Response(BookingDetailSerializer(moved, context={'request': request}).data)

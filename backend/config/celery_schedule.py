@@ -52,6 +52,20 @@ CELERY_BEAT_SCHEDULE = {
         'options': {'queue': 'scheduler_beat', 'expires': 1600},
     },
 
+    # 9. Write off wallet credits past their 30-day expiry (Daily, 02:10 UTC)
+    'expire-wallet-credits-daily': {
+        'task': 'apps.payments.tasks.expire_credits_task',
+        'schedule': crontab(hour=2, minute=10),
+        'options': {'queue': 'financial_escrow', 'expires': 3600},
+    },
+
+    # 10. Hand pending refunds to the payment gateway (Every 15 minutes)
+    'process-pending-refunds-15min': {
+        'task': 'apps.payments.tasks.process_pending_refunds_task',
+        'schedule': crontab(minute='*/15'),
+        'options': {'queue': 'financial_escrow', 'expires': 800},
+    },
+
     # 8. Reconcile stuck or unacknowledged webhook transactions (Hourly)
     'reconcile-unhandled-webhooks-hourly': {
         'task': 'apps.payments.tasks.reconcile_pending_transactions_task',

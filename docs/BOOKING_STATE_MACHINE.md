@@ -31,6 +31,9 @@ stateDiagram-v2
     confirmed --> teacher_no_show: T+10m teacher absent
     confirmed --> student_no_show: T+10m student absent
     confirmed --> interrupted_power: outage reported
+    confirmed --> cancelled_by_student: student cancels > 2h out (refunded)
+    confirmed --> student_late_cancelled: student cancels <= 2h out (fee kept)
+    confirmed --> cancelled_by_teacher: tutor cancels (refunded)
     confirmed --> completed_pending_memo: ended, teacher >= 20 min
     confirmed --> disputed: ended, teacher < 20 min
     in_progress --> completed_pending_memo
@@ -46,6 +49,9 @@ stateDiagram-v2
     disputed --> cancelled: admin: full refund
     disputed --> completed: admin: release / split
     interrupted_power --> [*]
+    cancelled_by_student --> [*]
+    student_late_cancelled --> [*]
+    cancelled_by_teacher --> [*]
 ```
 
 ## Who makes each move
@@ -56,13 +62,14 @@ stateDiagram-v2
 | pending -> cancelled | `bookings.tasks.purge_expired_reservations_task` |
 | confirmed -> in_progress, no-show -> disputed | `integrations/views.py` Zoom webhook; `audit_attendance_and_noshows_task` (active probe) |
 | confirmed/in_progress -> no-show / completed_pending_memo / disputed | `audit_attendance_and_noshows_task` |
-| any live -> interrupted_power | `ReportOutageView` |
+| confirmed -> interrupted_power | `ReportOutageView` (the lesson's tutor or staff only) |
+| confirmed -> cancelled_by_student / student_late_cancelled / cancelled_by_teacher; pending_payment -> cancelled | `CancelBookingView` -> `services/cancellation.py` (see `CANCELLATION_AND_REFUNDS.md`) |
 | -> completed (memo) | `SubmitMemoView` (only the lesson's tutor, only after the attendance job has settled the lesson: completed_pending_memo, completed, completed_memo_forfeited; validated input; flashcards in the same transaction) |
 | completed_pending_memo/completed -> forfeited | `enforce_memo_sla_task` (re-checks for a memo under the row lock) |
 | completed_pending_memo -> completed | `payments.tasks.release_cleared_escrow_task` |
 | disputed -> cancelled / completed | `ResolveDisputeView` (dispute must be OPEN *and* booking DISPUTED; both locked) |
 
-## Adding a new edge (e.g. the Task 9.6 cancellation engine)
+## Adding a new edge
 
 1. Add the edge to `ALLOWED_TRANSITIONS` and to the diagram above, with a comment saying which flow needs it.
 2. Call `transition_booking()` from the new flow; use `result.changed` to gate refunds/credits.

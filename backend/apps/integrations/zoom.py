@@ -107,6 +107,16 @@ class ZoomClient:
             "participant_count": 0
         }
 
+    def delete_meeting(self, meeting_id: str) -> bool:
+        """Remove a meeting (cancelled or rescheduled lesson). A meeting Zoom no longer has counts as deleted."""
+        token = self.get_access_token()
+        if not token:
+            return True        # simulated rooms (no credentials) have nothing to delete
+        resp = requests.delete(f"https://api.zoom.us/v2/meetings/{meeting_id}", headers={'Authorization': f'Bearer {token}'}, timeout=10)
+        if resp.status_code in (204, 404):
+            return True
+        raise ZoomError(f"Zoom refused to delete meeting {meeting_id} (HTTP {resp.status_code}): {resp.text[:300]}")
+
     @staticmethod
     def get_webhook_secret() -> str:
         from django.conf import settings

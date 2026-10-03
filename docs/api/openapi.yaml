@@ -577,6 +577,76 @@ paths:
               schema:
                 $ref: '#/components/schemas/BookingCreate'
           description: ''
+  /api/v1/bookings/{booking_id}/cancel/:
+    post:
+      operationId: v1_bookings_cancel_create
+      description: |-
+        The student or the tutor cancels a lesson. Refunds, bonus credit and strikes follow the D-6 policy (see
+        docs/CANCELLATION_AND_REFUNDS.md). A student cancelling inside the free window must send acknowledge_forfeit=true.
+      parameters:
+      - in: path
+        name: booking_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CancelRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CancelRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CancelRequestRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+  /api/v1/bookings/{booking_id}/cancel-preview/:
+    get:
+      operationId: v1_bookings_cancel_preview_retrieve
+      description: 'What would happen if I cancelled now? Read-only: shown before
+        the student/tutor confirms.'
+      parameters:
+      - in: path
+        name: booking_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelPreview'
+          description: ''
   /api/v1/bookings/{booking_id}/memo/:
     post:
       operationId: v1_bookings_memo_create
@@ -617,10 +687,11 @@ paths:
     post:
       operationId: v1_bookings_report_outage_create
       description: |-
-        Handles Eskom load shedding / grid power interruption during or before a lesson:
-        1. Marks booking as INTERRUPTED_POWER.
-        2. Refunds 1 lesson credit to student's wallet (or increments active CreditBundle).
-        3. Waives any cancellation penalty for the teacher.
+        The lesson's tutor (or staff) reports an Eskom load-shedding / grid outage around the lesson (D-6):
+        1. Marks the booking INTERRUPTED_POWER.
+        2. Queues a full gateway refund for the student (they may convert it to wallet credit). The tutor is not paid and gets no strike.
+        A student cannot file this report (it would refund them while the tutor goes unpaid): a student problem goes through a dispute.
+        A lesson the tutor taught for the minimum lesson time is a delivered lesson, not an outage.
       parameters:
       - in: path
         name: booking_id
@@ -653,6 +724,54 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/v1/bookings/{booking_id}/reschedule/:
+    post:
+      operationId: v1_bookings_reschedule_create
+      description: |-
+        The student moves a paid, still-future lesson to another open slot of the same tutor (once, more than 2 hours before it
+        starts). The booking keeps its id, payment and escrow. Tutors who cannot teach a lesson cancel it instead.
+      parameters:
+      - in: path
+        name: booking_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RescheduleRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RescheduleRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RescheduleRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingDetail'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
           description: ''
   /api/v1/bookings/{booking_id}/review/:
     post:
@@ -929,6 +1048,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Wallet'
+          description: ''
+  /api/v1/refunds/:
+    get:
+      operationId: v1_refunds_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRefundList'
+          description: ''
+  /api/v1/refunds/{refund_id}/convert-to-wallet/:
+    post:
+      operationId: v1_refunds_convert_to_wallet_create
+      description: Turn a still-pending gateway refund into 30-day wallet credit (instead
+        of waiting for the card/PayPal refund).
+      parameters:
+      - in: path
+        name: refund_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refund'
           description: ''
   /api/v1/student/bookings/{id}/review/:
     post:
@@ -1242,7 +1405,7 @@ components:
           format: date-time
         status:
           allOf:
-          - $ref: '#/components/schemas/StatusEnum'
+          - $ref: '#/components/schemas/BookingStatusEnum'
           readOnly: true
       required:
       - id
@@ -1299,7 +1462,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/StatusEnum'
+          - $ref: '#/components/schemas/BookingStatusEnum'
           readOnly: true
           default: pending_payment
         start_time_utc:
@@ -1367,8 +1530,23 @@ components:
           type: string
           format: date-time
           readOnly: true
+        cancelled_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        reschedule_count:
+          type: integer
+          readOnly: true
+        original_start_time_utc:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: Where the lesson started out, before its first reschedule
       required:
       - booking_reference
+      - cancelled_at
       - created_at
       - end_time_utc
       - id
@@ -1380,8 +1558,10 @@ components:
       - material_slug
       - material_title
       - memo
+      - original_start_time_utc
       - price_usd
       - price_zar
+      - reschedule_count
       - start_time_utc
       - status
       - student
@@ -1394,6 +1574,38 @@ components:
       - zoom_password
       - zoom_start_url
       - zoom_url
+    BookingStatusEnum:
+      enum:
+      - pending_payment
+      - confirmed
+      - in_progress
+      - completed
+      - cancelled
+      - disputed
+      - interrupted_power
+      - student_no_show
+      - teacher_no_show
+      - completed_pending_memo
+      - completed_memo_forfeited
+      - cancelled_by_student
+      - student_late_cancelled
+      - cancelled_by_teacher
+      type: string
+      description: |-
+        * `pending_payment` - Pending Payment
+        * `confirmed` - Confirmed
+        * `in_progress` - In Progress
+        * `completed` - Completed
+        * `cancelled` - Cancelled
+        * `disputed` - Disputed
+        * `interrupted_power` - Interrupted (Power Outage)
+        * `student_no_show` - Student No Show
+        * `teacher_no_show` - Teacher No Show
+        * `completed_pending_memo` - Completed (Pending Memo)
+        * `completed_memo_forfeited` - Completed (Memo Forfeited)
+        * `cancelled_by_student` - Cancelled by Student (refunded)
+        * `student_late_cancelled` - Cancelled by Student (late, fee kept)
+        * `cancelled_by_teacher` - Cancelled by Tutor (refunded)
     BookingStudent:
       type: object
       description: Minimal student view embedded in a booking. Contact details are
@@ -1417,6 +1629,62 @@ components:
       - full_name
       - id
       - timezone
+    CancelPreview:
+      type: object
+      properties:
+        can_cancel:
+          type: boolean
+        outcome:
+          type: string
+        message:
+          type: string
+        seconds_until_start:
+          type: integer
+        refund_amount:
+          type: string
+          nullable: true
+        refund_currency:
+          type: string
+          nullable: true
+        bonus_credits:
+          type: integer
+        strike:
+          type: boolean
+        free_cancel_until:
+          type: string
+          format: date-time
+      required:
+      - bonus_credits
+      - can_cancel
+      - message
+      - outcome
+      - refund_amount
+      - refund_currency
+      - seconds_until_start
+      - strike
+    CancelRequestRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          default: ''
+          maxLength: 2000
+        acknowledge_forfeit:
+          type: boolean
+          default: false
+    CancelResult:
+      type: object
+      properties:
+        outcome:
+          type: string
+        status:
+          type: string
+        message:
+          type: string
+      required:
+      - message
+      - outcome
+      - status
     CategoryEnum:
       enum:
       - daily_news
@@ -1457,7 +1725,12 @@ components:
         purchased_at:
           type: string
           format: date-time
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
       required:
+      - expires_at
       - pack_name
       - purchased_at
       - remaining
@@ -1512,6 +1785,16 @@ components:
           maxLength: 512
       required:
       - token
+    ErrorCode:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+      required:
+      - code
+      - error
     LessonMemo:
       type: object
       properties:
@@ -1736,6 +2019,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MaterialList'
+    PaginatedRefundList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Refund'
     PaginatedTeacherAvailabilityList:
       type: object
       required:
@@ -1876,6 +2182,77 @@ components:
         phone_number:
           type: string
           maxLength: 32
+    Refund:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        booking_id:
+          type: string
+          format: uuid
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
+        currency:
+          type: string
+          readOnly: true
+        reason:
+          allOf:
+          - $ref: '#/components/schemas/RefundReasonEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/RefundStatusEnum'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        processed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - amount
+      - booking_id
+      - created_at
+      - currency
+      - id
+      - processed_at
+      - reason
+      - status
+    RefundReasonEnum:
+      enum:
+      - student_cancel
+      - teacher_cancel
+      - teacher_no_show
+      - outage
+      - dispute
+      type: string
+      description: |-
+        * `student_cancel` - Student cancelled in time
+        * `teacher_cancel` - Tutor cancelled
+        * `teacher_no_show` - Tutor did not attend
+        * `outage` - Power outage interrupted the lesson
+        * `dispute` - Dispute decided for the student
+    RefundStatusEnum:
+      enum:
+      - pending_gateway
+      - processed
+      - converted
+      - failed
+      type: string
+      description: |-
+        * `pending_gateway` - Waiting for the gateway
+        * `processed` - Paid to the original payment method
+        * `converted` - Converted to wallet credit
+        * `failed` - Gateway refused (needs a human)
     Register:
       type: object
       properties:
@@ -1968,6 +2345,14 @@ components:
       description: |-
         * `student` - student
         * `teacher` - teacher
+    RescheduleRequestRequest:
+      type: object
+      properties:
+        start_time_utc:
+          type: string
+          format: date-time
+      required:
+      - start_time_utc
     Reservation:
       type: object
       properties:
@@ -2051,32 +2436,6 @@ components:
       - message
       - status
       - success
-    StatusEnum:
-      enum:
-      - pending_payment
-      - confirmed
-      - in_progress
-      - completed
-      - cancelled
-      - disputed
-      - interrupted_power
-      - student_no_show
-      - teacher_no_show
-      - completed_pending_memo
-      - completed_memo_forfeited
-      type: string
-      description: |-
-        * `pending_payment` - Pending Payment
-        * `confirmed` - Confirmed
-        * `in_progress` - In Progress
-        * `completed` - Completed
-        * `cancelled` - Cancelled
-        * `disputed` - Disputed
-        * `interrupted_power` - Interrupted (Power Outage)
-        * `student_no_show` - Student No Show
-        * `teacher_no_show` - Teacher No Show
-        * `completed_pending_memo` - Completed (Pending Memo)
-        * `completed_memo_forfeited` - Completed (Memo Forfeited)
     TagsEnum:
       enum:
       - Patience & Empathy

@@ -109,7 +109,8 @@ class BookingDetailSerializer(serializers.ModelSerializer):
             'start_time_utc', 'end_time_utc', 'local_date', 'local_start_time', 'local_end_time', 'viewer_timezone',
             'price_usd', 'price_zar', 'lock_expires_at',
             'zoom_url', 'zoom_join_url', 'zoom_start_url', 'zoom_meeting_id', 'zoom_password',
-            'student_rating', 'student_review', 'memo', 'created_at'
+            'student_rating', 'student_review', 'memo', 'created_at',
+            'cancelled_at', 'reschedule_count', 'original_start_time_utc',
         )
         read_only_fields = fields
 

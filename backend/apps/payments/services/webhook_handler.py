@@ -128,7 +128,8 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
                                reason=f'DEF-501: {reason}')
 
             # Restitution: credit student 1 lesson credit so funds are not lost
-            grant_credit(booking.student, credits=1, pack_name='DEF-501 restitution')
+            grant_credit(booking.student, credits=1, pack_name='DEF-501 restitution',
+                         unit_value=tx.amount, currency=tx.currency)
 
             # Open a DisputeCase for admin review in tribunal
             DisputeCase.objects.get_or_create(
@@ -176,7 +177,8 @@ def process_payment_webhook(booking_id: str, gateway: str, transaction_id: str, 
             transition_booking(booking, Booking.Status.DISPUTED, actor=f'system:{gateway}_webhook',
                                reason='DEF-501: IntegrityError race on confirmation')
 
-            grant_credit(booking.student, credits=1, pack_name='DEF-501 race restitution')
+            grant_credit(booking.student, credits=1, pack_name='DEF-501 race restitution',
+                         unit_value=tx.amount, currency=tx.currency)
 
             DisputeCase.objects.get_or_create(
                 booking=booking,

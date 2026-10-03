@@ -344,6 +344,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bookings/{booking_id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description The student or the tutor cancels a lesson. Refunds, bonus credit and strikes follow the D-6 policy (see
+         *     docs/CANCELLATION_AND_REFUNDS.md). A student cancelling inside the free window must send acknowledge_forfeit=true.
+         */
+        post: operations["v1_bookings_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{booking_id}/cancel-preview/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description What would happen if I cancelled now? Read-only: shown before the student/tutor confirms. */
+        get: operations["v1_bookings_cancel_preview_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/bookings/{booking_id}/memo/": {
         parameters: {
             query?: never;
@@ -374,12 +411,33 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description Handles Eskom load shedding / grid power interruption during or before a lesson:
-         *     1. Marks booking as INTERRUPTED_POWER.
-         *     2. Refunds 1 lesson credit to student's wallet (or increments active CreditBundle).
-         *     3. Waives any cancellation penalty for the teacher.
+         * @description The lesson's tutor (or staff) reports an Eskom load-shedding / grid outage around the lesson (D-6):
+         *     1. Marks the booking INTERRUPTED_POWER.
+         *     2. Queues a full gateway refund for the student (they may convert it to wallet credit). The tutor is not paid and gets no strike.
+         *     A student cannot file this report (it would refund them while the tutor goes unpaid): a student problem goes through a dispute.
+         *     A lesson the tutor taught for the minimum lesson time is a delivered lesson, not an outage.
          */
         post: operations["v1_bookings_report_outage_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{booking_id}/reschedule/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * @description The student moves a paid, still-future lesson to another open slot of the same tutor (once, more than 2 hours before it
+         *     starts). The booking keeps its id, payment and escrow. Tutors who cannot teach a lesson cancel it instead.
+         */
+        post: operations["v1_bookings_reschedule_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -573,6 +631,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/refunds/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_refunds_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/refunds/{refund_id}/convert-to-wallet/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Turn a still-pending gateway refund into 30-day wallet credit (instead of waiting for the card/PayPal refund). */
+        post: operations["v1_refunds_convert_to_wallet_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/student/bookings/{id}/review/": {
         parameters: {
             query?: never;
@@ -754,7 +845,7 @@ export interface components {
             readonly id: string;
             /** Format: date-time */
             start_time_utc: string;
-            readonly status: components["schemas"]["StatusEnum"];
+            readonly status: components["schemas"]["BookingStatusEnum"];
         };
         BookingCreateRequest: {
             /** Format: uuid */
@@ -775,7 +866,7 @@ export interface components {
             readonly material_slug: string | null;
             readonly material_title: string | null;
             /** @default pending_payment */
-            readonly status: components["schemas"]["StatusEnum"];
+            readonly status: components["schemas"]["BookingStatusEnum"];
             /** Format: date-time */
             readonly start_time_utc: string;
             /** Format: date-time */
@@ -801,7 +892,33 @@ export interface components {
             readonly memo: components["schemas"]["LessonMemo"];
             /** Format: date-time */
             readonly created_at: string;
+            /** Format: date-time */
+            readonly cancelled_at: string | null;
+            readonly reschedule_count: number;
+            /**
+             * Format: date-time
+             * @description Where the lesson started out, before its first reschedule
+             */
+            readonly original_start_time_utc: string | null;
         };
+        /**
+         * @description * `pending_payment` - Pending Payment
+         *     * `confirmed` - Confirmed
+         *     * `in_progress` - In Progress
+         *     * `completed` - Completed
+         *     * `cancelled` - Cancelled
+         *     * `disputed` - Disputed
+         *     * `interrupted_power` - Interrupted (Power Outage)
+         *     * `student_no_show` - Student No Show
+         *     * `teacher_no_show` - Teacher No Show
+         *     * `completed_pending_memo` - Completed (Pending Memo)
+         *     * `completed_memo_forfeited` - Completed (Memo Forfeited)
+         *     * `cancelled_by_student` - Cancelled by Student (refunded)
+         *     * `student_late_cancelled` - Cancelled by Student (late, fee kept)
+         *     * `cancelled_by_teacher` - Cancelled by Tutor (refunded)
+         * @enum {string}
+         */
+        BookingStatusEnum: "pending_payment" | "confirmed" | "in_progress" | "completed" | "cancelled" | "disputed" | "interrupted_power" | "student_no_show" | "teacher_no_show" | "completed_pending_memo" | "completed_memo_forfeited" | "cancelled_by_student" | "student_late_cancelled" | "cancelled_by_teacher";
         /** @description Minimal student view embedded in a booking. Contact details are only for the student themselves/staff. */
         BookingStudent: {
             /** Format: uuid */
@@ -810,6 +927,29 @@ export interface components {
             first_name: string;
             timezone: string;
             country: string;
+        };
+        CancelPreview: {
+            can_cancel: boolean;
+            outcome: string;
+            message: string;
+            seconds_until_start: number;
+            refund_amount: string | null;
+            refund_currency: string | null;
+            bonus_credits: number;
+            strike: boolean;
+            /** Format: date-time */
+            free_cancel_until?: string;
+        };
+        CancelRequestRequest: {
+            /** @default  */
+            reason: string;
+            /** @default false */
+            acknowledge_forfeit: boolean;
+        };
+        CancelResult: {
+            outcome: string;
+            status: string;
+            message: string;
         };
         /**
          * @description * `daily_news` - Daily News & Discussion
@@ -835,6 +975,8 @@ export interface components {
             total: number;
             /** Format: date-time */
             purchased_at: string;
+            /** Format: date-time */
+            expires_at: string | null;
         };
         CreditLedgerEntry: {
             id: string;
@@ -853,6 +995,10 @@ export interface components {
         };
         EmailVerifyConfirmRequest: {
             token: string;
+        };
+        ErrorCode: {
+            error: string;
+            code: string;
         };
         LessonMemo: {
             /** Format: uuid */
@@ -953,6 +1099,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["MaterialList"][];
         };
+        PaginatedRefundList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Refund"][];
+        };
         PaginatedTeacherAvailabilityList: {
             /** @example 123 */
             count: number;
@@ -1011,6 +1172,38 @@ export interface components {
             timezone?: string;
             phone_number?: string;
         };
+        Refund: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly booking_id: string;
+            /** Format: decimal */
+            readonly amount: string;
+            readonly currency: string;
+            readonly reason: components["schemas"]["RefundReasonEnum"];
+            readonly status: components["schemas"]["RefundStatusEnum"];
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly processed_at: string | null;
+        };
+        /**
+         * @description * `student_cancel` - Student cancelled in time
+         *     * `teacher_cancel` - Tutor cancelled
+         *     * `teacher_no_show` - Tutor did not attend
+         *     * `outage` - Power outage interrupted the lesson
+         *     * `dispute` - Dispute decided for the student
+         * @enum {string}
+         */
+        RefundReasonEnum: "student_cancel" | "teacher_cancel" | "teacher_no_show" | "outage" | "dispute";
+        /**
+         * @description * `pending_gateway` - Waiting for the gateway
+         *     * `processed` - Paid to the original payment method
+         *     * `converted` - Converted to wallet credit
+         *     * `failed` - Gateway refused (needs a human)
+         * @enum {string}
+         */
+        RefundStatusEnum: "pending_gateway" | "processed" | "converted" | "failed";
         Register: {
             /** Format: uuid */
             readonly id: string;
@@ -1049,6 +1242,10 @@ export interface components {
          * @enum {string}
          */
         RegisterRoleEnum: "student" | "teacher";
+        RescheduleRequestRequest: {
+            /** Format: date-time */
+            start_time_utc: string;
+        };
         Reservation: {
             /** Format: uuid */
             booking_id: string;
@@ -1084,21 +1281,6 @@ export interface components {
             status: string;
             message: string;
         };
-        /**
-         * @description * `pending_payment` - Pending Payment
-         *     * `confirmed` - Confirmed
-         *     * `in_progress` - In Progress
-         *     * `completed` - Completed
-         *     * `cancelled` - Cancelled
-         *     * `disputed` - Disputed
-         *     * `interrupted_power` - Interrupted (Power Outage)
-         *     * `student_no_show` - Student No Show
-         *     * `teacher_no_show` - Teacher No Show
-         *     * `completed_pending_memo` - Completed (Pending Memo)
-         *     * `completed_memo_forfeited` - Completed (Memo Forfeited)
-         * @enum {string}
-         */
-        StatusEnum: "pending_payment" | "confirmed" | "in_progress" | "completed" | "cancelled" | "disputed" | "interrupted_power" | "student_no_show" | "teacher_no_show" | "completed_pending_memo" | "completed_memo_forfeited";
         /**
          * @description * `Patience & Empathy` - Patience & Empathy
          *     * `Clear Pronunciation` - Clear Pronunciation
@@ -1861,6 +2043,70 @@ export interface operations {
             };
         };
     };
+    v1_bookings_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CancelRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["CancelRequestRequest"];
+                "multipart/form-data": components["schemas"]["CancelRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancelResult"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+        };
+    };
+    v1_bookings_cancel_preview_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancelPreview"];
+                };
+            };
+        };
+    };
     v1_bookings_memo_create: {
         parameters: {
             query?: never;
@@ -1919,6 +2165,49 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    v1_bookings_reschedule_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RescheduleRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["RescheduleRequestRequest"];
+                "multipart/form-data": components["schemas"]["RescheduleRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetail"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
                 };
             };
         };
@@ -2184,6 +2473,49 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Wallet"];
+                };
+            };
+        };
+    };
+    v1_refunds_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedRefundList"];
+                };
+            };
+        };
+    };
+    v1_refunds_convert_to_wallet_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                refund_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Refund"];
                 };
             };
         };

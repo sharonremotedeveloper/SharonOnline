@@ -126,3 +126,19 @@ def reconcile_pending_transactions_task():
 
     logger.info(f"Reconciled {count} abandoned payment transactions to FAILED.")
     return {"reconciled_count": count}
+
+
+@shared_task(name='apps.payments.tasks.expire_credits_task')
+@distributed_task_lock('lock:beat:expire_credits', timeout_seconds=3000)
+def expire_credits_task():
+    """Daily: write off wallet credit lots whose 30-day expiry has passed (value moves from 2040 to breakage revenue 4020)."""
+    from apps.payments.services.credits import expire_credits
+    return expire_credits()
+
+
+@shared_task(name='apps.payments.tasks.process_pending_refunds_task')
+@distributed_task_lock('lock:beat:process_pending_refunds', timeout_seconds=800)
+def process_pending_refunds_task():
+    """Every 15 minutes: send queued refunds to the configured gateway (Task 10.7 plugs in PayPal / PayFast)."""
+    from apps.payments.services.refunds import process_pending_refunds
+    return process_pending_refunds()

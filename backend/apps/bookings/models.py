@@ -15,6 +15,10 @@ class Booking(models.Model):
         TEACHER_NO_SHOW = 'teacher_no_show', 'Teacher No Show'
         COMPLETED_PENDING_MEMO = 'completed_pending_memo', 'Completed (Pending Memo)'
         COMPLETED_MEMO_FORFEITED = 'completed_memo_forfeited', 'Completed (Memo Forfeited)'
+        # Paid lessons that were cancelled (Task 9.6). Not CANCELLED: see state_machine.py.
+        CANCELLED_BY_STUDENT = 'cancelled_by_student', 'Cancelled by Student (refunded)'
+        STUDENT_LATE_CANCELLED = 'student_late_cancelled', 'Cancelled by Student (late, fee kept)'
+        CANCELLED_BY_TEACHER = 'cancelled_by_teacher', 'Cancelled by Tutor (refunded)'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     teacher = models.ForeignKey('teachers.TeacherProfile', on_delete=models.PROTECT, related_name='bookings')
@@ -44,6 +48,13 @@ class Booking(models.Model):
     tutor_late_alert_sent = models.BooleanField(default=False)
     escrow_cleared_at = models.DateTimeField(null=True, blank=True)
 
+    # Cancellation + rescheduling (Task 9.6)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancelled_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    cancel_reason = models.CharField(max_length=255, blank=True)
+    reschedule_count = models.PositiveSmallIntegerField(default=0)
+    original_start_time_utc = models.DateTimeField(null=True, blank=True, help_text="Where the lesson started out, before its first reschedule")
+
     # Asymmetric Feedback & Rating
     student_rating = models.PositiveSmallIntegerField(null=True, blank=True, help_text="1 to 5 star rating")
     student_review = models.TextField(blank=True, help_text="PRIVATE written review: staff only. Never shown to the tutor or other students.")
@@ -72,6 +83,19 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"Booking {self.id} | {self.teacher.user.username} with {self.student.username} at {self.start_time_utc.strftime('%Y-%m-%d %H:%M UTC')}"
+
+
+class BookingReschedule(models.Model):
+    """Append-only record of a lesson being moved (the Booking row keeps its id, payment and escrow)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='reschedules')
+    old_start_time_utc = models.DateTimeField()
+    new_start_time_utc = models.DateTimeField()
+    actor = models.CharField(max_length=80)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
 
 
 class LessonMemo(models.Model):

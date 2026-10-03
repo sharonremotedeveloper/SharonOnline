@@ -52,7 +52,7 @@ class UserSerializer(serializers.ModelSerializer):
     def get_credits(self, user):
         if user.role != User.Role.STUDENT:
             return None
-        return user.credit_bundles.aggregate(total=Sum('remaining_credits'))['total'] or 0
+        return user.credit_bundles.active().aggregate(total=Sum('remaining_credits'))['total'] or 0
 
     @extend_schema_field(serializers.CharField())
     def get_avatar_url(self, user):

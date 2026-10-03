@@ -238,7 +238,7 @@ def test_eskom_power_outage_interruption_and_refund(teacher_user, student_user):
         {"reason": "Stage 4 Eskom Outage in Johannesburg Sandton Block 3"},
         format='json'
     )
-    force_authenticate(request, user=student_user)
+    force_authenticate(request, user=teacher_user.user)     # D-6: the tutor reports an outage, a student cannot
 
     view = ReportOutageView.as_view()
     response = view(request, booking_id=str(booking.id))
@@ -252,5 +252,5 @@ def test_eskom_power_outage_interruption_and_refund(teacher_user, student_user):
     assert booking.status == Booking.Status.INTERRUPTED_POWER
 
     # Student credit refunded
-    bundle.refresh_from_db()
-    assert bundle.remaining_credits == 1
+    # Student made whole: nothing was captured here so it is a wallet credit lot (a paid lesson gets a gateway refund instead)
+    assert sum(b.remaining_credits for b in CreditBundle.objects.filter(user=student_user)) == 1

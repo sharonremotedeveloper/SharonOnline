@@ -58,3 +58,16 @@ def sync_booking_to_teacher_gcal(booking) -> str:
         logger.error(f"Failed to communicate with Google Calendar API: {e}")
 
     return ""
+
+
+def delete_teacher_gcal_event(user, event_id: str) -> bool:
+    """Remove a lesson from the tutor's Google Calendar (lesson cancelled or moved). Returns False when there was nothing to do."""
+    token = user.google_calendar_token
+    access_token = token.get('access_token') if token else None
+    if not (event_id and access_token):
+        return False
+    resp = requests.delete(f"https://www.googleapis.com/calendar/v3/calendars/primary/events/{event_id}",
+                           headers={"Authorization": f"Bearer {access_token}"}, timeout=10)
+    if resp.status_code in (200, 204, 404, 410):       # already gone counts as done
+        return True
+    raise RuntimeError(f"Google Calendar refused to delete event {event_id}: HTTP {resp.status_code}")
