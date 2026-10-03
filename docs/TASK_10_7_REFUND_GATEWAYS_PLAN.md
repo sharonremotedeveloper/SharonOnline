@@ -1,6 +1,6 @@
 # Task 10.7 - Real refund gateways (PayPal capture refunds, PayFast refunds)
 
-**Created:** 2026-10-04 · **Branch:** `feature/10-7-refund-gateways` · **Parent:** `PHASE_10_EXECUTION_PLAN.md` Sprint 10-C · **Status:** plan, awaiting Architect review
+**Created:** 2026-10-04 · **Branch:** `feature/10-7-refund-gateways` · **Parent:** `PHASE_10_EXECUTION_PLAN.md` Sprint 10-C · **Status:** Architect-approved with changes (section 2b); implementation in progress
 
 Goal: when the platform decides a student is owed money back (cancel, tutor no-show, outage, arbitration), the money actually returns to the
 original payment method through the gateway, exactly once, with a ledger that matches the gateway, and a human only has to step in for the
@@ -85,3 +85,90 @@ webhook first, webhook second) posts exactly one 2050 -> cash journal and calls 
 `failed`; a rejected refund alerts the admin and shows in the queue; the cumulative cap and currency guards refuse an over-refund before any call;
 `PAYFAST_REFUNDS_ENABLED=false` leaves PayFast refunds visibly waiting; full backend + frontend gates, the Postgres ledger job and the no-float
 guard stay green; docs, ERR log and roadmap updated. The live PayPal sandbox pass is a separate, credential-gated step.
+
+
+---
+
+## 2b. Architect-approved design (2026-10-04) - SUPERSEDES section 2 wherever they differ
+
+The Architect review (approve with changes) found: a wallet-conversion race that could pay twice, a webhook that could not finish a `submitted`
+refund, a stale-worker overwrite, per-row attempt exhaustion that would mass-fail refunds during a PayPal outage, an untestable SKIP LOCKED claim on
+SQLite, and several guard/audit gaps. The design below resolves all 12 required changes. Engineers build exactly these names.
+
+### Decisions recorded for Anesu (provisional, ADR in docs)
+- **Wallet conversion window.** A student may convert a pending gateway refund to wallet credit only **before the first gateway call or live claim**
+  (`attempts == 0`, no live claim). To keep a usable window, the first gateway attempt is delayed by `REFUND_FIRST_ATTEMPT_DELAY_MINUTES` (default **60**,
+  provisional). Anesu to confirm 60 minutes or another value. PayFast-disabled / manual rows stay convertible (they are never attempted).
+- **PayFast** ships as a stub that returns `manual` plus a doc listing what is UNVERIFIED; `PAYFAST_REFUNDS_ENABLED` defaults False. Live PayFast refunds are deferred.
+- **Admin UI page deferred**: ship the admin API + Django admin only. The student "On its way" label rides with the API change.
+
+### New fields on `RefundRequest` (exact names)
+`submitted_at` (DateTime null), `attempts` (PositiveSmallInt default 0), `next_attempt_at` (DateTime null), `last_attempt_at` (DateTime null),
+`first_attempt_at` (DateTime null), `claim_token` (Char 32, '' when free), `claimed_until` (DateTime null), `gateway_request_id` (Char 80, '' until the first claim; then
+stored, never re-derived), `request_epoch` (PositiveSmallInt default 0), `failure_kind` (Char 24 blank), `last_http_status` (PositiveSmallInt null), `last_error_code`
+(Char 64 blank). Index `(status, next_attempt_at)`. `gateway_reference` stays = the provider refund id. New status `SUBMITTED = 'submitted'`.
+`failure_kind` values: `rejected | already_refunded | guard | exhausted | replay_window | provider_failed`.
+
+New immutable model `RefundAttempt` (`ImmutableFinancialQuerySet`): refund FK, `seq`, `kind` (`send|poll|admin_retry|admin_mark_paid`), `actor` (FK user, null = system),
+`request_id`, `result_state`, `http_status`, `error_code`, `created_at`. One row per claim result and per admin action, written inside the apply transaction.
+
+### State machine (status x event -> next; "token" = the claim token must match)
+| From | Event (actor) | To |
+| :--- | :--- | :--- |
+| awaiting_clearance | activate_deferred (system) | pending_gateway |
+| awaiting_clearance | void_deferred (system) | void |
+| pending_gateway | claim (sweeper) | pending_gateway (claim_token + claimed_until set, attempts+1) |
+| pending_gateway | completed (sweeper w/ token, webhook, admin mark-paid) | processed |
+| pending_gateway | submitted (token) | submitted |
+| pending_gateway | transient (token) | pending_gateway, `next_attempt_at` = backoff; **never failed** unless attempts >= `REFUND_MAX_ATTEMPTS` AND age since `first_attempt_at` >= `REFUND_TRANSIENT_WINDOW_HOURS` (168) |
+| pending_gateway | rejected (token) | failed (`rejected`, or `already_refunded` for CAPTURE_FULLY_REFUNDED) |
+| pending_gateway | guard fails (sweeper, before claim) | failed (`guard`) |
+| pending_gateway | manual (token) | pending_gateway, `next_attempt_at` +6 h, attempts restored (does not count) |
+| pending_gateway | convert (student) | converted - **only if attempts == 0 and no live claim and last_attempt_at is null**, else 409 `refund_in_progress` |
+| submitted | poll (sweeper, token) | processed / submitted (next poll) / failed (`provider_failed`) |
+| submitted | webhook completed | processed |
+| submitted | convert / mark-paid | **not allowed** (poll or webhook finishes it) |
+| failed | admin retry (IsPlatformAdmin, audited) | pending_gateway for `guard`, `rejected`, `provider_failed`; for `exhausted`, `replay_window`, `already_refunded` requires `{"confirm_not_refunded_in_gateway": true}` and re-runs the guards; a retry from `rejected` bumps `request_epoch` (new request id `refund-<id>-r<n>`), from an ambiguous failure keeps the id |
+| failed | webhook completed with matching ids / admin mark-paid | processed |
+| processed, converted, void | any apply/poll | no-op (`'noop'`) |
+
+Replay window: measured from `first_attempt_at`, `REFUND_REPLAY_WINDOW_DAYS=30`; beyond it a claimed refund with no provider id goes to `failed(replay_window)` for a human to verify in PayPal (it is an "unknown who refunded" guard, not a double-pay guard: every refund is the full captured amount, so a blind replay yields CAPTURE_FULLY_REFUNDED).
+
+### Claim / call / apply protocol (portable, race-safe on SQLite and Postgres)
+- **Claim = compare-and-swap UPDATE**, one row per loop iteration just before its call: `UPDATE ... SET claim_token=:t, claimed_until=:now+lease, last_attempt_at=:now, first_attempt_at=COALESCE(first_attempt_at,:now), attempts=attempts+1, gateway_request_id=COALESCE(NULLIF(gateway_request_id,''),:rid) WHERE id=:id AND status='pending_gateway' AND (next_attempt_at IS NULL OR next_attempt_at<=:now) AND (claimed_until IS NULL OR claimed_until<=:now)`; `rowcount == 1` wins. SKIP LOCKED is only a candidate-selection optimisation on Postgres. The first attempt for a new refund is not due before `created_at + REFUND_FIRST_ATTEMPT_DELAY_MINUTES`.
+- Sweep budget: at most `REFUND_SWEEP_LIMIT` (25) rows and `REFUND_SWEEP_BUDGET_SECONDS` (600) wall-clock per run (beat lock TTL is 800 s); `distributed_task_lock` is best-effort, the CAS is the real guard.
+- **Call with no DB lock.** Build a `RefundOrder` DTO from the claimed row.
+- **Apply = `apply_result(refund_id, token, result, *, kind)`**, the single entry point; lock order is always PaymentTransaction then RefundRequest (same as `paypal_events.apply_refund`); the token must still match (fencing against a stale worker) else `'noop'`. Writes one `RefundAttempt`. Returns `'processed'|'submitted'|'retry'|'failed'|'manual'|'noop'`.
+- **Per-gateway circuit breaker per sweep:** 3 consecutive `transient`/`provider_level` results from one gateway stop sending to it for the rest of the sweep; rows not attempted are untouched and burn no attempt; one provider-level alert `refund_provider_outage` (key = gateway) once per trip, `resolve_alert` on the next success. Config errors (401 after the single token refresh, 403, sandbox/live 404 mismatch) are provider-level, never per-row failure.
+- Backoff: 15 min, 1 h, 4 h, 12 h, then 24 h. `lookup` polls of `submitted` refunds every `REFUND_POLL_INTERVAL_MINUTES` (60); alert `refund_submitted_stale` after 14 days.
+
+### Guards (before any gateway call; a failing guard -> `failed(guard)` + alert, never a call)
+Payment transaction status must be `SUCCESS` (REFUNDED/FAILED/INITIALIZED/UNALLOCATED/PENDING_CAPTURE all fail); `capture_ref` real (not `INIT-`, matches `^[A-Za-z0-9_-]{5,64}$`); `refund.currency == tx.currency == funding.currency`; `quantize_money(amount, currency) == amount` (JPY must be whole yen: fail, never round); amount > 0; **no unresolved `GatewayAnomaly(reason='external_refund')` on the transaction**; **cumulative cap** computed under a `select_for_update` on the PaymentTransaction: sibling refunds that are `processed`, `submitted`, or `pending_gateway|failed` with `attempts > 0` (money may have moved) plus this one never exceed `tx.amount`. `awaiting_clearance` rows are never claimed (explicit test). `_gateway_cash_account` must key on `tx.gateway` only (currently ZAR currency always picks 1010).
+
+### Contract (see `services/refund_gateways.py`, committed)
+`RefundOrder` frozen DTO, `RefundResult(state, reference, detail, code, http_status, retry_after_s, provider_level)`, adapters MUST NOT raise (the router wraps both calls: unexpected exception -> `transient`, logged as `type(exc).__name__` only). `RoutingRefundGateway` (in `refund_gateways.py`, loaded lazily by `import_string`, no import cycle) picks by `order.gateway` and returns `manual` when PayPal credentials are empty or `PAYFAST_REFUNDS_ENABLED` is false, so a dev/CI process never reaches the network by default. `settings/base.py` default stays `ManualSandboxRefundGateway` (tests need it); production selects Routing via env, and `scripts/check_deploy.py` must fail a production check while the backend is Manual. The duplicate `ManualSandboxRefundGateway` in `refunds.py` becomes an alias import so `apps.payments.services.refunds.ManualSandboxRefundGateway` keeps resolving.
+
+### PayPal refund request/response mapping (R-A)
+`POST /v2/payments/captures/{capture_id}/refund`, headers `PayPal-Request-Id: <order.request_id>`, body `{amount:{value,currency_code}, invoice_id, note_to_payer}` (value `format(quantize_money(...),'f')`; JPY whole yen; invoice_id UNVERIFIED in sandbox - omit it if PayPal rejects reuse). Response status: `COMPLETED -> completed`, `PENDING -> submitted`, `FAILED|CANCELLED|DENIED -> rejected`, unknown -> `transient` (never completed). HTTP errors: 400/404/422 business -> `rejected` (`CAPTURE_FULLY_REFUNDED` -> code kept so the service files it as `already_refunded`; `REFUND_TIME_LIMIT_EXCEEDED`, `INSTRUMENT_DECLINED`, `REFUND_AMOUNT_EXCEEDED`, `CAPTURE_NOT_COMPLETED` -> `rejected`); 401 after the single refresh, 403 `NOT_AUTHORIZED|PERMISSION_DENIED`, 404 from a sandbox/live mismatch -> `transient` with `provider_level=True`; 408/409/429 (honour Retry-After)/5xx/transport -> `transient`. `lookup` = `get_refund(order.provider_refund_id)`; a PayPal `PENDING` stays `submitted`, `COMPLETED` -> completed, `FAILED|CANCELLED` -> rejected.
+
+### Webhook fix (R-B, `services/paypal_events.py` `apply_refund`)
+Match by `gateway_reference` first; found and `SUBMITTED` -> `mark_processed`, else `duplicate`; the "ours" lookup includes `SUBMITTED`; catch `RefundStateError`: a refund that arrives for a `converted` or `void` request records anomaly `refund_after_convert` (CRITICAL admin alert: money moved twice). `mark_processed` accepts `pending_gateway`, `submitted`, `failed`.
+
+### Security / audit / ops
+- Admin API: `GET /admin/refunds/?status=&failure_kind=&gateway=&in_flight=&waiting_manual=` (oldest first, bucket counts) and `POST /admin/refunds/<id>/retry/`, both `IsPlatformAdmin`; the serializer omits raw provider bodies; retry is rate-limited and 409 unless the refund is `failed`. Django-admin "mark as paid" goes through `mark_paid_manually(refund_id, *, actor, reference)` and writes a `RefundAttempt`.
+- Logging: never log headers, request bodies, URLs with query strings, PayPal tokens, PayFast passphrase/signature/param strings, or exception text; log `refund_id, booking_id, tx_id, gateway, request_id, attempt, state, http_status, error_code, duration_ms`. Capture id: `quote(safe='')` AND the regex above. PayFast API signing differs from the ITN signature (alphabetical, header fields): do not reuse `build_param_string`.
+- Alert codes (key = refund id unless noted): `refund_failed_<kind>`, `refund_manual_waiting` (after `REFUND_MANUAL_ALERT_AFTER_HOURS`=72), `refund_submitted_stale`, `refund_provider_outage` (key = gateway), `refund_after_convert` (critical). `resolve_alert` on processed/converted/retry.
+- Settings (exact): `REFUND_GATEWAY_BACKEND`, `REFUND_MAX_ATTEMPTS=8`, `REFUND_TRANSIENT_WINDOW_HOURS=168`, `REFUND_ATTEMPT_LEASE_MINUTES=10`, `REFUND_MANUAL_ALERT_AFTER_HOURS=72`, `REFUND_REPLAY_WINDOW_DAYS=30`, `REFUND_SWEEP_LIMIT=25`, `REFUND_SWEEP_BUDGET_SECONDS=600`, `REFUND_POLL_INTERVAL_MINUTES=60`, `REFUND_FIRST_ATTEMPT_DELAY_MINUTES=60`, `PAYFAST_REFUNDS_ENABLED=False`, `PAYPAL_REFUND_NOTE`.
+- `process_pending_refunds()` returns `{'sent','completed','submitted','rejected','transient','manual','polled','skipped_breaker'}` (ints). The three legacy tests in `tests/test_refunds_credits_strikes.py` (~194-215: FakeGateway / BrokenGateway / the asserted dict shape) are rewritten deliberately to the new contract, not deleted, and no str-to-result shim is added.
+
+### Function signatures (refunds.py, R-B)
+`claim_due_refunds(*, limit, now=None)` (yields `RefundClaim(refund_id, token, kind, order)`), `apply_result(refund_id, token, result, *, kind)`, `mark_submitted(refund_id, provider_ref, *, token)`, `mark_failed(refund_id, detail, *, kind, token=None)` (accepts pending_gateway and submitted), `mark_processed(refund_id, gateway_reference)` (accepts pending_gateway/submitted/failed), `retry_failed(refund_id, *, actor, confirm_not_refunded=False)`, `mark_paid_manually(refund_id, *, actor, reference)`, `convert_to_wallet(refund_id)` (new rule above).
+
+### Slices (revised)
+| Slice | Scope | Depends |
+| :--- | :--- | :--- |
+| R-A | `gateways/paypal.py` `create_refund` + refund classification; `services/refund_gateways.py` adapters (`PayPalRefundGateway`, `PayFastRefundGateway` stub -> manual, `RoutingRefundGateway`) + `docs/PAYFAST_REFUNDS_UNVERIFIED.md`; tests/test_refund_gateways.py | contract (committed) |
+| R-B | models + migration (fields, `SUBMITTED`, `RefundAttempt`), `refunds.py` rewrite per this section, `paypal_events.py` fix, `tasks.py`, settings, Django-admin mark-paid via service, alerts, student e-mail on processed, fix `_gateway_cash_account`, rewrite the 3 legacy tests; tests/test_refund_processing.py | contract |
+| R-C | admin API list/retry + OpenAPI + generated TS + student "On its way" label; docs (CANCELLATION_AND_REFUNDS, SETTLEMENT_PATHS, ADR, ops runbook); roadmap | R-B |
+| QA | independent review + mutation checks | R-A, R-B, R-C |
+| ARCH | final diff review | all |
