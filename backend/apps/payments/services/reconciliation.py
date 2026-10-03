@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 from datetime import timedelta
 
@@ -10,6 +11,8 @@ from apps.payments.models import GatewayAnomaly, PaymentTransaction
 from apps.payments.services.anomalies import record_anomaly
 from apps.payments.services.paypal_capture import (CaptureRejected, record_pending_capture, settle_completed_capture,
                                                    verify_capture_amount)
+
+logger = logging.getLogger(__name__)
 
 # An unpaid, unapproved credit-pack order has no booking hold to lapse; PayPal itself stops honouring an unapproved order
 # after hours, so a day is far past any real checkout.
@@ -110,6 +113,18 @@ def _apply_order_result(transaction: PaymentTransaction, result: ReconciliationR
     return result
 
 
+def _refresh_pending_reason(transaction: PaymentTransaction, result: ReconciliationResult) -> None:
+    """PayPal can change why a capture is pending; keep our record (and so the grace breaker's count) in step."""
+    payload = result.payload or {}
+    capture = paypal.extract_capture(payload) or payload
+    reason = paypal.classify_capture(capture).reason if isinstance(capture, dict) else ''
+    if reason and reason != transaction.pending_reason:
+        logger.warning("PayPal changed the pending reason of %s from %s to %s", transaction.gateway_reference,
+                       transaction.pending_reason or 'none', reason)
+        PaymentTransaction.objects.filter(pk=transaction.pk).update(pending_reason=reason[:64])
+        transaction.pending_reason = reason[:64]
+
+
 def reconcile_pending_capture(transaction: PaymentTransaction, *, lookup=None) -> ReconciliationResult:
     """
     Resolve a PENDING_CAPTURE transaction from PayPal's own record of its capture: COMPLETED goes through the same verified
@@ -131,6 +146,8 @@ def reconcile_pending_capture(transaction: PaymentTransaction, *, lookup=None) -
             return ReconciliationResult('unresolved', f'PayPal capture could not be applied: {exc.reason}', result.payload)
     elif result.state == 'failed':
         grace.on_failed(transaction)
+    elif result.state == 'pending':
+        _refresh_pending_reason(transaction, result)
     PaymentTransaction.objects.filter(pk=transaction.pk).update(
         reconciliation_attempts=transaction.reconciliation_attempts + 1, last_reconciled_at=timezone.now())
     return result

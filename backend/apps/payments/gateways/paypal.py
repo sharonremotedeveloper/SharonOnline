@@ -253,10 +253,12 @@ def capture_order(order_id: str, *, request_id: str) -> dict:
         raise
 
 
+# Our own PayPal Business account settings hold the payment (receiving preferences / currency handling): not the buyer.
 MERCHANT_SIDE_PENDING_REASONS = frozenset({
-    'RECEIVING_PREFERENCE_MANDATES_MANUAL_ACTION', 'INTERNATIONAL_WITHDRAWAL', 'TRANSACTION_APPROVED_AWAITING_FUNDING',
+    'RECEIVING_PREFERENCE_MANDATES_MANUAL_ACTION', 'INTERNATIONAL_WITHDRAWAL',
 })
-RISK_BASED_PENDING_REASONS = frozenset({'PENDING_REVIEW'})
+# Buyer-side: PayPal is reviewing the payment, or the buyer's bank has not delivered the funds yet. Either can still fail.
+RISK_BASED_PENDING_REASONS = frozenset({'PENDING_REVIEW', 'TRANSACTION_APPROVED_AWAITING_FUNDING'})
 
 
 @dataclass(frozen=True)

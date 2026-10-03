@@ -33,7 +33,8 @@ pytestmark = pytest.mark.django_db
 S = Booking.Status
 User = get_user_model()
 RISK = 'PENDING_REVIEW'
-MERCHANT = ['RECEIVING_PREFERENCE_MANDATES_MANUAL_ACTION', 'INTERNATIONAL_WITHDRAWAL', 'TRANSACTION_APPROVED_AWAITING_FUNDING']
+MERCHANT = ['RECEIVING_PREFERENCE_MANDATES_MANUAL_ACTION', 'INTERNATIONAL_WITHDRAWAL']
+AWAITING = 'TRANSACTION_APPROVED_AWAITING_FUNDING'          # buyer-side bank funding: RISK-based, not merchant-side
 INIT, CAPTURE, WEBHOOK = '/api/v1/payments/checkout/init/', '/api/v1/payments/paypal/capture/', '/api/v1/payments/webhooks/paypal/'
 
 
@@ -295,7 +296,7 @@ def test_merchant_side_pendings_do_not_count_toward_the_breaker(make, settings):
 def test_merchant_side_grace_is_not_blocked_by_a_tripped_breaker(make, settings):
     settings.GRACE_MAX_OPEN = 1
     risk_grace(make, 1)
-    merchant = make.pending(make.booking(student=make.user('m1')), reason=MERCHANT[2], payer_id='M1', payer_email='m1@e.com')
+    merchant = make.pending(make.booking(student=make.user('m1')), reason=MERCHANT[1], payer_id='M1', payer_email='m1@e.com')
     assert decide(merchant).allowed
 
 

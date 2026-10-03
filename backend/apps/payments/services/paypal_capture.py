@@ -98,8 +98,10 @@ def record_pending_capture(tx_pk, capture: dict, outcome, order: dict) -> Paymen
             return tx
         tx.status = PaymentTransaction.Status.PENDING_CAPTURE
         tx.pending_reason = (outcome.reason or '')[:64]
-        tx.payer_id = str(payer.get('payer_id') or '')[:64]
-        tx.payer_email = str(payer.get('email_address') or '')[:254]
+        # Only ever fill or update the payer identity (the per-payer grace cap depends on it); a report without payer data
+        # (for example a webhook that cannot re-read the order) must not blank it.
+        tx.payer_id = str(payer.get('payer_id') or '')[:64] or tx.payer_id
+        tx.payer_email = str(payer.get('email_address') or '')[:254] or tx.payer_email
         capture_id = capture.get('id')
         if capture_id and tx.gateway_reference != capture_id and not PaymentTransaction.objects.filter(
                 gateway_reference=capture_id).exclude(pk=tx.pk).exists():

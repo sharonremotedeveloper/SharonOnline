@@ -232,16 +232,16 @@ def test_classify_completed():
     assert classify_capture({'status': 'COMPLETED'}) == CaptureOutcome('completed', '', False, False)
 
 
-@pytest.mark.parametrize('reason', ['RECEIVING_PREFERENCE_MANDATES_MANUAL_ACTION', 'INTERNATIONAL_WITHDRAWAL',
-                                    'TRANSACTION_APPROVED_AWAITING_FUNDING'])
+@pytest.mark.parametrize('reason', ['RECEIVING_PREFERENCE_MANDATES_MANUAL_ACTION', 'INTERNATIONAL_WITHDRAWAL'])
 def test_classify_pending_merchant_side(reason):
     out = classify_capture({'status': 'PENDING', 'status_details': {'reason': reason}})
     assert out == CaptureOutcome('pending', reason, True, False)
 
 
-def test_classify_pending_review_is_risk_based():
-    out = classify_capture({'status': 'PENDING', 'status_details': {'reason': 'PENDING_REVIEW'}})
-    assert out == CaptureOutcome('pending', 'PENDING_REVIEW', False, True)
+@pytest.mark.parametrize('reason', ['PENDING_REVIEW', 'TRANSACTION_APPROVED_AWAITING_FUNDING'])
+def test_classify_pending_review_is_risk_based(reason):
+    out = classify_capture({'status': 'PENDING', 'status_details': {'reason': reason}})
+    assert out == CaptureOutcome('pending', reason, False, True)
 
 
 @pytest.mark.parametrize('reason', ['ECHECK', 'VERIFICATION_REQUIRED', 'OTHER', 'MULTI_CURRENCY', 'UNILATERAL'])

@@ -302,8 +302,12 @@ PAYFAST_CANCEL_URL = os.environ.get('PAYFAST_CANCEL_URL') or f'{FRONTEND_BASE_UR
 # Extra source-IP ranges allowed for ITNs (comma-separated CIDRs). Copy PayFast's currently published ranges here;
 # DNS resolution of PayFast's hosts is used in addition.
 PAYFAST_EXTRA_ALLOWED_CIDRS = [c.strip() for c in os.environ.get('PAYFAST_EXTRA_ALLOWED_CIDRS', '').split(',') if c.strip()]
-# Task 10.2 pending-payment grace: at most this many risk-based (PENDING_REVIEW) grace bookings open at once.
+# Task 10.2 pending-payment grace. Circuit breaker: at most this many risk-based (buyer-side: PENDING_REVIEW,
+# TRANSACTION_APPROVED_AWAITING_FUNDING) grace bookings open at once.
 GRACE_MAX_OPEN = int(os.environ.get('GRACE_MAX_OPEN', '5'))
+# Overall ceiling across ALL open grace bookings, merchant-side ones included (they are exempt from the breaker, so
+# without this a mis-set PayPal account could let unlimited distinct students take unpaid lessons). PROVISIONAL default.
+GRACE_MAX_OPEN_TOTAL = int(os.environ.get('GRACE_MAX_OPEN_TOTAL', '15'))
 # True: the capture endpoint confirms the booking through the verified path; False: only the webhook does.
 PAYPAL_CAPTURE_CONFIRMS = _env_bool('PAYPAL_CAPTURE_CONFIRMS', True)
 # EUR/JPY lesson checkout is blocked when the newest admin-entered FX rate is older than this (Task 10.1d).

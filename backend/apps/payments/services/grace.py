@@ -4,10 +4,13 @@ Pending-payment grace bookings (Task 10.2 slice E + failure runbook G, plan sect
 A grace booking is a lesson confirmed (Zoom link issued) while PayPal still reports the capture PENDING. Policy
 (docs/PHASE_10_2_PAYPAL_ORDERS_PLAN.md P-1..P-8):
   * one open grace booking per student account AND per PayPal payer (payer id, falling back to payer e-mail);
-  * only for merchant-side reasons and PENDING_REVIEW; never for ECHECK / VERIFICATION_REQUIRED / OTHER / unknown / DECLINED;
+  * only for merchant-side reasons (our PayPal account settings) and the buyer-side risk-based reasons PENDING_REVIEW and
+    TRANSACTION_APPROVED_AWAITING_FUNDING; never for ECHECK / VERIFICATION_REQUIRED / OTHER / unknown / DECLINED;
   * never for credit-pack purchases;
-  * circuit breaker: settings.GRACE_MAX_OPEN open RISK-BASED (PENDING_REVIEW) grace bookings switch risk-based grace off;
-    merchant-side reasons never count toward it, but each one alerts the admin immediately;
+  * circuit breaker: settings.GRACE_MAX_OPEN open grace bookings that are not merchant-side switch risk-based grace off
+    (a row whose reason later drifts to anything unknown still counts: fail safe);
+  * overall ceiling: settings.GRACE_MAX_OPEN_TOTAL open grace bookings of ANY kind switch all grace off;
+    merchant-side reasons never count toward the breaker, but each one alerts the admin immediately;
   * NOTHING is posted to the ledger while the capture is pending (no cash has arrived), and the funding is marked
     GATEWAY_PENDING so escrow release, arbitration release and tutor payout all refuse the booking until it clears.
 
@@ -44,6 +47,7 @@ logger = logging.getLogger(__name__)
 S = Booking.Status
 PENDING_STILL_OPEN_CODE = 'grace_payment_still_pending'
 BREAKER_ALERT = 'grace_circuit_breaker_open'
+CEILING_ALERT = 'grace_total_ceiling_open'
 GRACE_ADVISORY_LOCK = 7_102_002     # serialises grace decisions so the per-account / per-payer caps and the breaker cannot be raced
 
 # A grace booking in one of these states carries no tutor-payment exposure any more (the lesson was cancelled or did not
@@ -77,7 +81,15 @@ def open_grace_funding():
 
 
 def open_risk_based_count(exclude_tx=None) -> int:
-    qs = open_grace_funding().filter(payment_transaction__pending_reason__in=paypal.RISK_BASED_PENDING_REASONS)
+    """Open grace rows that are NOT merchant-side. Defined by exclusion so a reason that drifts to something unknown still counts."""
+    qs = open_grace_funding().exclude(payment_transaction__pending_reason__in=paypal.MERCHANT_SIDE_PENDING_REASONS)
+    if exclude_tx is not None:
+        qs = qs.exclude(payment_transaction=exclude_tx)
+    return qs.count()
+
+
+def open_total_count(exclude_tx=None) -> int:
+    qs = open_grace_funding()
     if exclude_tx is not None:
         qs = qs.exclude(payment_transaction=exclude_tx)
     return qs.count()
@@ -113,6 +125,8 @@ def evaluate_grace(tx, outcome) -> GraceDecision:
     if others.filter(same_payer).exists():                                            # P-2, per PayPal payer
         return GraceDecision(False, 'payer_cap')
 
+    if open_total_count(exclude_tx=tx) >= settings.GRACE_MAX_OPEN_TOTAL:                          # overall ceiling, any reason
+        return GraceDecision(False, 'total_ceiling')
     if outcome.risk_based and open_risk_based_count(exclude_tx=tx) >= settings.GRACE_MAX_OPEN:   # P-6
         return GraceDecision(False, 'circuit_breaker')
     return GraceDecision(True, 'merchant_side' if outcome.merchant_side else 'risk_based')
@@ -131,8 +145,17 @@ def _serialize_grace_decisions() -> None:
 def _alert_breaker(tx=None) -> None:
     alert_admin(
         BREAKER_ALERT, 'Grace bookings switched off (circuit breaker)',
-        f"{settings.GRACE_MAX_OPEN} risk-based (PENDING_REVIEW) grace bookings are open at once, so new pending PayPal "
+        f"{settings.GRACE_MAX_OPEN} risk-based (PENDING_REVIEW / AWAITING_FUNDING) grace bookings are open at once, so new pending PayPal "
         f"payments no longer confirm lessons until some resolve. Review the open pending payments in PayPal.",
+        key='grace', tx=tx)
+
+
+def _alert_ceiling(tx=None) -> None:
+    alert_admin(
+        CEILING_ALERT, 'Grace bookings switched off (overall ceiling)',
+        f"{settings.GRACE_MAX_OPEN_TOTAL} grace bookings (lessons confirmed while PayPal still holds the payment) are open "
+        f"at once, so no more pending PayPal payments confirm lessons until some resolve. Check PayPal: merchant-side "
+        f"pendings mean the receiving preferences of the PayPal Business account must be fixed.",
         key='grace', tx=tx)
 
 
@@ -187,12 +210,17 @@ def confirm_grace_booking(tx) -> GraceDecision:
             finish_confirmed_booking(booking)
             logger.warning("[GRACE BOOKING] booking %s confirmed while PayPal capture %s is PENDING (%s)",
                            booking.id, tx.gateway_reference, tx.pending_reason)
-            if tx.pending_reason in paypal.RISK_BASED_PENDING_REASONS and open_risk_based_count() >= settings.GRACE_MAX_OPEN:
+            if (tx.pending_reason not in paypal.MERCHANT_SIDE_PENDING_REASONS
+                    and open_risk_based_count() >= settings.GRACE_MAX_OPEN):
                 _alert_breaker(tx)                                  # tripped by this grant: alert once
+            if open_total_count() >= settings.GRACE_MAX_OPEN_TOTAL:
+                _alert_ceiling(tx)
     if not decision.allowed:
         logger.info("Grace refused for transaction %s: %s", tx.pk, decision.reason)
         if decision.reason == 'circuit_breaker':
             _alert_breaker(tx)
+        elif decision.reason == 'total_ceiling':
+            _alert_ceiling(tx)
     return decision
 
 
@@ -203,6 +231,8 @@ def confirm_grace_booking(tx) -> GraceDecision:
 def _refresh_breaker() -> None:
     if open_risk_based_count() < settings.GRACE_MAX_OPEN:
         resolve_alert(BREAKER_ALERT, 'grace')
+    if open_total_count() < settings.GRACE_MAX_OPEN_TOTAL:
+        resolve_alert(CEILING_ALERT, 'grace')
 
 
 def on_completed(tx) -> bool:

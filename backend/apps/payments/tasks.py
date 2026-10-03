@@ -3,7 +3,7 @@ from datetime import timedelta
 from decimal import Decimal
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Exists, OuterRef, Sum
+from django.db.models import Exists, F, OuterRef, Sum
 from celery import shared_task
 from django.utils.html import escape
 
@@ -22,6 +22,8 @@ from apps.integrations.services.attendance import TEACHER, credited_attendance_m
 logger = logging.getLogger(__name__)
 
 PENDING_ALERT_AFTER = timedelta(days=7)
+# PayPal itself gives up on an unresolved pending after about a month: from then on a person must decide.
+PENDING_CRITICAL_AFTER = timedelta(days=35)
 
 
 @shared_task(bind=True, autoretry_for=(EmailDeliveryError,), retry_backoff=30, retry_backoff_max=900, max_retries=8)
@@ -191,7 +193,8 @@ def reconcile_pending_transactions_task():
     # PayPal captures that came back PENDING (grace bookings or held slots): poll them by capture id until they resolve,
     # and tell the admin about any that has been pending for more than a week.
     pending_txs = list(PaymentTransaction.objects.filter(
-        status=PaymentTransaction.Status.PENDING_CAPTURE).select_related('booking', 'credit_purchase')[:100])
+        status=PaymentTransaction.Status.PENDING_CAPTURE).select_related('booking', 'credit_purchase')
+        .order_by(F('last_reconciled_at').asc(nulls_first=True), 'created_at')[:100])
     pending_results = {'completed': 0, 'failed': 0, 'pending': 0, 'unresolved': 0}
     for payment_transaction in pending_txs:
         result = reconcile_pending_capture(payment_transaction)
@@ -201,6 +204,13 @@ def reconcile_pending_transactions_task():
                 'grace_pending_over_7_days', 'A PayPal payment has been pending for more than 7 days',
                 f"Capture {payment_transaction.gateway_reference} ({payment_transaction.amount} {payment_transaction.currency}) "
                 f"has been pending since {payment_transaction.created_at:%Y-%m-%d}. Check it in PayPal.",
+                key=payment_transaction.merchant_reference or str(payment_transaction.pk), tx=payment_transaction)
+        if result.state in ('pending', 'unresolved') and now - payment_transaction.created_at > PENDING_CRITICAL_AFTER:
+            alert_admin(
+                'grace_pending_over_35_days', 'CRITICAL: a PayPal payment is still pending after 35 days',
+                f"Capture {payment_transaction.gateway_reference} ({payment_transaction.amount} {payment_transaction.currency}) "
+                f"has been pending since {payment_transaction.created_at:%Y-%m-%d}. PayPal normally returns an unresolved "
+                f"payment to the buyer after about a month: decide now whether the lesson stands, and contact the student.",
                 key=payment_transaction.merchant_reference or str(payment_transaction.pk), tx=payment_transaction)
     return {"reconciled_count": len(abandoned_txs), **results, "pending_captures": pending_results}
 
