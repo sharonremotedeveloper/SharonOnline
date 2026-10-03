@@ -73,3 +73,42 @@ def test_real_redis_stale_owner_cannot_mutate_successor():
     assert release_slot_lock(teacher_id, slot, 'student-a', token='owner-a') is False
     assert extend_slot_lock(teacher_id, slot, 'student-a', 900, token='owner-a') is False
     assert cache.get(key) == 'owner-b'
+
+
+def test_real_redis_the_rightful_owner_can_extend_and_release():
+    """Positive controls. Django's Redis cache pickles values, so these fail if the Lua owner check compares plain strings."""
+    teacher_id = str(uuid.uuid4())
+    slot = '2026-10-15T11:00:00Z'
+    key = build_slot_lock_key(teacher_id, slot)
+
+    assert acquire_slot_lock(teacher_id, slot, 'student-a', token='owner-a') is True
+    assert extend_slot_lock(teacher_id, slot, 'student-a', 900, token='owner-a') is True       # checkout extends the hold this way
+    assert 0 < cache._cache.get_client(key).ttl(cache.make_key(key)) <= 900
+    assert extend_slot_lock(teacher_id, slot, 'student-b', 900, token='owner-b') is False
+    assert release_slot_lock(teacher_id, slot, 'student-b', token='owner-b') is False
+    assert cache.get(key) == 'owner-a'
+    assert release_slot_lock(teacher_id, slot, 'student-a', token='owner-a') is True
+    assert cache.get(key) is None
+
+
+def test_real_redis_a_stale_owner_is_refused_while_the_successor_still_works():
+    teacher_id = str(uuid.uuid4())
+    slot = '2026-10-15T11:30:00Z'
+    key = build_slot_lock_key(teacher_id, slot)
+    assert acquire_slot_lock(teacher_id, slot, 'student-a', token='owner-a') is True
+    cache.delete(key)
+    assert acquire_slot_lock(teacher_id, slot, 'student-b', token='owner-b') is True
+    assert release_slot_lock(teacher_id, slot, 'student-a', token='owner-a') is False
+    assert extend_slot_lock(teacher_id, slot, 'student-b', 900, token='owner-b') is True
+    assert release_slot_lock(teacher_id, slot, 'student-b', token='owner-b') is True
+
+
+def test_real_redis_a_periodic_task_releases_its_own_lock():
+    from apps.common.locks import distributed_task_lock
+
+    @distributed_task_lock(f'lock:beat:race-{uuid.uuid4().hex}', timeout_seconds=300)
+    def job():
+        return 'ran'
+
+    assert job() == 'ran'
+    assert job() == 'ran'          # a lock that was not released would make this a skipped run
