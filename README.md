@@ -19,7 +19,7 @@ Comprehensive documentation for developers (**Anesu MUPESA**) and collaborating 
 ---
 
 ## 🛠️ Architecture Stack
-* **Frontend:** Next.js 14+ (App Router, TypeScript, Tailwind CSS)
+* **Frontend:** Next.js 16 (App Router, TypeScript, Tailwind CSS)
 * **Backend:** Django 5.x / Django REST Framework (Python 3.12, Celery, Redis)
 * **Database:** PostgreSQL 16 (Neon Serverless for Staging/Prod; Docker Postgres / SQLite for dev)
 * **Cache & Distributed Locks:** Redis 7 (Upstash Serverless in Prod; LocMem / Docker Redis in Dev)

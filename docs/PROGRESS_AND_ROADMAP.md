@@ -240,7 +240,7 @@ A four-way audit (backend, frontend, spec-vs-roadmap, infra) found that Phases 1
 | Phase | Theme | Status |
 | :--- | :--- | :--- |
 | **Phase 7** | Security emergency + spec freeze (decisions D-1..D-12) | `7A + 7B DONE (7.1-7.9, adversarial-review fixes; 220 tests); 7.10 + D-3,4,7-12 awaiting Anesu` |
-| **Phase 8** | Honest frontend + real auth | `IN PROGRESS - 8.1-8.8 + 9.2 done (honest client, HttpOnly cookie sessions via Next BFF proxy, signed-session middleware, real reserve->booking_id, password reset/change, e-mail verification, login by e-mail); 8.9 Next.js major upgrade open` |
+| **Phase 8** | Honest frontend + real auth | `DONE - 8.1-8.9 + 9.2 done (honest client, HttpOnly cookie sessions via Next BFF proxy, signed-session middleware, real reserve->booking_id, password reset/change, e-mail verification, login by e-mail, Next 16 / React 19 upgrade)` |
 | **Phase 9** | Booking core (`transition_booking()`, reserve → book) | `DONE (2026-10-03) - 9.1-9.10: state machine + audit trail, holds, slot grid, booking list, cancel / reschedule engine (D-6), settlement paths, verified Zoom attendance, memo, reviews; 876 backend + 93 frontend tests` |
 | **Phase 10** | Real payments (PayPal/PayFast sandbox, credits, refunds, multi-currency ledger) | `NEXT - about half the groundwork exists (Codex remediation merged 2026-10-03: funding provenance, credit packs + redemption, FX snapshots, ledger trigger, CI). Plan: PHASE_10_EXECUTION_PLAN.md. Remaining: lesson price catalog, PayPal orders + buttons, real refund gateways, receipts, sandbox verification. Needs Anesu: PayPal sandbox credentials, pack expiry, currencies, FX source` |
 | **Phase 11** | Tutor lifecycle + real payouts | `NOT STARTED` |

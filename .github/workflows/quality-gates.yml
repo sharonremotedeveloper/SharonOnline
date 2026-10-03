@@ -75,15 +75,9 @@ jobs:
         run: |
           pip install pip-audit
           pip-audit -r backend/requirements.txt --strict
-      # Reports instead of failing, and says so as a warning (not a red error) so the job reads as what it is.
-      - name: npm audit (production dependencies, informational until Task 8.9)
+      - name: npm audit (production dependencies)
         working-directory: frontend
-        run: |
-          if npm audit --omit=dev --audit-level=high; then
-            echo "npm audit: no high or critical advisories in production dependencies"
-          else
-            echo "::warning title=npm audit::High/critical advisories remain in Next.js 14 and its dependencies; the Task 8.9 upgrade fixes them. Details are in the log above."
-          fi
+        run: npm audit --omit=dev --audit-level=high
 
   postgres-ledger:
     runs-on: ubuntu-latest
