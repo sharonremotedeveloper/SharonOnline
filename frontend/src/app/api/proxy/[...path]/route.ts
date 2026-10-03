@@ -6,13 +6,13 @@ import { buildCookies, SESSION_COOKIE } from "@/lib/session";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-type Ctx = { params: Promise<{ path: string[] }> };
+type Ctx = { params: { path: string[] } };
 
 /**
  * Authenticated pass-through to the Django API. The browser never holds a token: this handler reads the HttpOnly
  * cookies, attaches `Authorization`, refreshes when needed and forwards. Token-issuing endpoints are not reachable here.
  */
-async function handle(req: NextRequest, ctx: Ctx): Promise<NextResponse> {
+async function handle(req: NextRequest, { params }: Ctx): Promise<NextResponse> {
   const blocked = rejectCrossOrigin(req);
   if (blocked) return blocked;
 
@@ -22,7 +22,7 @@ async function handle(req: NextRequest, ctx: Ctx): Promise<NextResponse> {
 
   const { access, refresh } = readAuthCookies(req);
   const out = await proxyRequest(
-    { method: req.method, segments: (await ctx.params).path, search: req.nextUrl.search, headers: req.headers, body, access, refresh, ip: requestIp(req) },
+    { method: req.method, segments: params.path, search: req.nextUrl.search, headers: req.headers, body, access, refresh, ip: requestIp(req) },
     fetch
   );
 

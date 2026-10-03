@@ -11,7 +11,7 @@ import { dashboardFor, SESSION_COOKIE, verifySession } from "@/lib/session";
  * fails verification. When the short-lived session is missing/expired we bounce through /api/session/renew, which
  * silently re-authenticates from the refresh cookie or lands on /login.
  */
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const claims = await verifySession(request.cookies.get(SESSION_COOKIE)?.value);
 
