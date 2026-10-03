@@ -295,3 +295,19 @@ class TestNoFundingRecord:
                                    end_time_utc=start + timedelta(minutes=25), status=S.CONFIRMED)
         assert cancel(student_user, b, acknowledge_forfeit=True).status_code == 200
         assert reload(b).status == S.STUDENT_LATE_CANCELLED
+
+
+@pytest.mark.django_db
+def test_cancelled_lessons_show_up_in_the_admin_escrow_view(admin_user, teacher_user, student_user):
+    """The finance view must list every outcome that moves money, including the three cancellation statuses."""
+    refunded = captured(teacher_user, student_user, 5 * H, ref='ADM-1')
+    kept = captured(teacher_user, student_user, 90, ref='ADM-2')
+    by_tutor = captured(teacher_user, student_user, 30 * H, ref='ADM-3')
+    assert cancel(student_user, refunded).status_code == 200
+    assert cancel(student_user, kept, acknowledge_forfeit=True).status_code == 200
+    assert cancel(teacher_user.user, by_tutor).status_code == 200
+    c = APIClient(); c.force_authenticate(user=admin_user)
+    items = {i['booking_ref']: i['escrow_status'] for i in c.get('/api/v1/admin/finance/ledger/?view=items').json()}
+    ref = lambda b: f"BK-{str(b.id)[:6].upper()}"
+    assert items[ref(refunded)] == 'refunded' and items[ref(by_tutor)] == 'refunded'
+    assert items[ref(kept)] == 'holding'            # released to the tutor by the 24h job, not yet

@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from apps.bookings.models import Booking, BookingReschedule
 from apps.bookings.services.holds import live_hold_q
-from apps.bookings.services.lock_service import acquire_slot_lock, release_slot_lock
+from apps.bookings.services.lock_service import acquire_slot_lock, new_slot_lock_token, release_slot_lock
 from apps.bookings.services.slot_generator import LESSON_DURATION_MINUTES, generate_teacher_slots
 from apps.integrations.tasks import cleanup_gcal_event, cleanup_zoom_meeting, dispatch_booking_fulfillment
 from django.db.models import Q
@@ -72,8 +72,10 @@ def reschedule_booking(booking_id, student, new_start, now=None) -> Booking:
         if mine.filter(start_time_utc__lt=new_end, end_time_utc__gt=new_start).exists():
             raise RescheduleError(409, 'slot_unavailable', 'You already have a lesson at that time.')
 
+        # Same ownership-token rule as a reservation: only the holder of this exact token can release or extend the lock.
+        token = new_slot_lock_token()
         lock_args = (str(teacher.id), slot['start_time_utc'], str(student.id))
-        if not acquire_slot_lock(*lock_args):
+        if not acquire_slot_lock(*lock_args, token=token):
             raise taken
 
         old_start, old_meeting = booking.start_time_utc, booking.zoom_meeting_id
@@ -85,12 +87,13 @@ def reschedule_booking(booking_id, student, new_start, now=None) -> Booking:
                 booking.reschedule_count += 1
                 booking.reminder_24h_sent = booking.reminder_1h_sent = booking.reminder_10m_sent = booking.tutor_late_alert_sent = False
                 booking.zoom_meeting_id = booking.zoom_join_url = booking.zoom_start_url = booking.zoom_password = ''
+                booking.slot_lock_token = token
                 booking.teacher_gcal_event_id = ''
                 booking.save()
                 BookingReschedule.objects.create(booking=booking, old_start_time_utc=old_start, new_start_time_utc=new_start,
                                                  actor=f'user:{student.username}')
         except IntegrityError:
-            release_slot_lock(*lock_args)
+            release_slot_lock(*lock_args, token=token)
             raise taken
         booking_pk = str(booking.id)
         transaction.on_commit(lambda: _after_move(booking_pk, old_meeting, old_gcal))

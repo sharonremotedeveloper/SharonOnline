@@ -16,10 +16,8 @@ from apps.payments.services.ledger_service import (
     record_escrow_clearance_entry,
     record_payout_batch_entry,
     record_dispute_settlement_entry,
-    record_outage_refund_entry,
     record_compensation_entry,
     record_def501_quarantine_entry,
-    record_student_refund_entry,
     get_general_ledger_trial_balance,
     get_ledger_telemetry,
     UnbalancedJournalEntryError,
@@ -27,6 +25,8 @@ from apps.payments.services.ledger_service import (
 )
 from apps.payments.services.webhook_handler import process_payment_webhook
 from apps.payments.services.funding import ensure_gateway_funding
+from apps.payments.services import refunds
+from apps.payments.models import RefundRequest
 from apps.payments.tasks import release_cleared_escrow_task
 from apps.admin_api.models import DisputeCase, PayoutBatch
 
@@ -363,7 +363,7 @@ def test_trial_balance_zero_sum_audit(student_user, teacher_user, admin_user):
         status=Booking.Status.INTERRUPTED_POWER
     )
     fund_booking(b_outage)
-    record_outage_refund_entry(booking=b_outage, user=student_user)
+    refunds.request_refund(b_outage, RefundRequest.Reason.OUTAGE, event_type=LedgerEntry.EventType.OUTAGE_REFUND)
 
     # 5. 1 Tutor No-Show compensation
     record_compensation_entry(user=student_user, booking=b_outage, amount_usd=Decimal('9.00'), reason="No show audit test")
@@ -572,9 +572,13 @@ def test_ledger_dispute_resolutions_full_refund_and_release_tutor(student_user, 
         status=DisputeCase.Status.OPEN
     )
 
-    # 1. FULL_REFUND_STUDENT
-    refund_entries = record_dispute_settlement_entry(dispute_case=dispute, resolution='full_refund_student')
+    # 1. FULL_REFUND_STUDENT goes through the refund service (gateway refund payable), never the dispute settlement helper
+    with pytest.raises(ValueError):
+        record_dispute_settlement_entry(dispute_case=dispute, resolution='full_refund_student')
+    refunds.request_refund(booking, RefundRequest.Reason.DISPUTE, event_type=LedgerEntry.EventType.DISPUTE_RESOLVED, dispute_case=dispute)
+    refund_entries = list(LedgerEntry.objects.filter(dispute_case=dispute))
     assert len(refund_entries) == 2
+    assert {e.account for e in refund_entries} == {LedgerAccount.LIABILITY_STUDENT_ESCROW, LedgerAccount.LIABILITY_REFUNDS_PAYABLE}
     dr = sum(e.amount for e in refund_entries if e.entry_type == LedgerEntry.EntryType.DEBIT)
     cr = sum(e.amount for e in refund_entries if e.entry_type == LedgerEntry.EntryType.CREDIT)
     assert dr == cr == Decimal('9.00')
@@ -633,55 +637,46 @@ def test_ledger_sarb_zar_rounding_balancing_guarantee():
 @pytest.mark.django_db
 def test_student_refund_journal_entries_gateway_and_wallet(student_user, teacher_user):
     """
-    Tests student refund double-entry balances:
-    - Gateway Cash refund: DR Escrow Liability -> CR Gateway Cash
-    - Wallet Credit restitution: DR Escrow Liability -> CR Student Wallet Credits
+    A refund is two ledger steps through the refund service:
+    - decision: DR Escrow Liability -> CR Gateway Refunds Payable
+    - then EITHER the gateway pays it (DR Refunds Payable -> CR Gateway Cash) OR the student converts it
+      (DR Refunds Payable -> CR Student Wallet Credits)
     """
     now = timezone.now()
-    booking = Booking.objects.create(
-        teacher=teacher_user,
-        student=student_user,
-        start_time_utc=now + timedelta(days=1),
-        end_time_utc=now + timedelta(days=1, minutes=25),
-        status=Booking.Status.CANCELLED
-    )
-    tx = PaymentTransaction.objects.create(
-        booking=booking,
-        gateway=PaymentTransaction.Gateway.PAYPAL,
-        gateway_reference=f"REFUND-TX-{uuid.uuid4().hex[:8]}",
-        amount=Decimal('9.00'),
-        currency='USD',
-        status=PaymentTransaction.Status.REFUNDED
-    )
-    ensure_gateway_funding(tx, booking)
 
-    # 1. Direct gateway cash refund
-    gw_entries = record_student_refund_entry(
-        booking=booking,
-        payment_transaction=tx,
-        refund_method='gateway',
-        reason="Student cancelled >24h prior"
-    )
-    assert len(gw_entries) == 2
-    dr_gw = [e for e in gw_entries if e.entry_type == LedgerEntry.EntryType.DEBIT][0]
-    cr_gw = [e for e in gw_entries if e.entry_type == LedgerEntry.EntryType.CREDIT][0]
-    assert dr_gw.account == LedgerAccount.LIABILITY_STUDENT_ESCROW
-    assert cr_gw.account == LedgerAccount.ASSET_GATEWAY_PAYPAL
-    assert dr_gw.amount == cr_gw.amount == Decimal('9.00')
+    def paid_booking(reference, hours):
+        booking = Booking.objects.create(
+            teacher=teacher_user, student=student_user, status=Booking.Status.CONFIRMED,
+            start_time_utc=now + timedelta(days=1, hours=hours), end_time_utc=now + timedelta(days=1, hours=hours, minutes=25))
+        tx = PaymentTransaction.objects.create(
+            booking=booking, gateway=PaymentTransaction.Gateway.PAYPAL, gateway_reference=f"{reference}-{uuid.uuid4().hex[:8]}",
+            amount=Decimal('9.00'), currency='USD', status=PaymentTransaction.Status.SUCCESS)
+        ensure_gateway_funding(tx, booking)
+        return booking
 
-    # 2. Wallet credit restitution
-    wallet_entries = record_student_refund_entry(
-        booking=booking,
-        payment_transaction=tx,
-        refund_method='wallet_credit',
-        reason="Teacher no-show full refund"
-    )
-    assert len(wallet_entries) == 2
-    dr_wl = [e for e in wallet_entries if e.entry_type == LedgerEntry.EntryType.DEBIT][0]
-    cr_wl = [e for e in wallet_entries if e.entry_type == LedgerEntry.EntryType.CREDIT][0]
-    assert dr_wl.account == LedgerAccount.LIABILITY_STUDENT_ESCROW
-    assert cr_wl.account == LedgerAccount.LIABILITY_STUDENT_WALLET
-    assert dr_wl.amount == cr_wl.amount == Decimal('9.00')
+    def legs(entries):
+        dr = [e for e in entries if e.entry_type == LedgerEntry.EntryType.DEBIT]
+        cr = [e for e in entries if e.entry_type == LedgerEntry.EntryType.CREDIT]
+        assert len(dr) == len(cr) == 1 and dr[0].amount == cr[0].amount == Decimal('9.00')
+        return dr[0].account, cr[0].account
+
+    # 1. the gateway pays it
+    b1 = paid_booking('REFUND-GW', 0)
+    r1 = refunds.request_refund(b1, RefundRequest.Reason.STUDENT_CANCEL).refund
+    assert legs(list(LedgerEntry.objects.filter(booking=b1, event_type=LedgerEntry.EventType.REFUND_ISSUED))) == (
+        LedgerAccount.LIABILITY_STUDENT_ESCROW, LedgerAccount.LIABILITY_REFUNDS_PAYABLE)
+    refunds.mark_processed(r1.pk, 'GW-REF-1')
+    assert legs(list(LedgerEntry.objects.filter(booking=b1, event_type=LedgerEntry.EventType.GATEWAY_REFUND_PAID))) == (
+        LedgerAccount.LIABILITY_REFUNDS_PAYABLE, LedgerAccount.ASSET_GATEWAY_PAYPAL)
+
+    # 2. the student converts it to wallet credit instead
+    b2 = paid_booking('REFUND-WALLET', 3)
+    r2 = refunds.request_refund(b2, RefundRequest.Reason.STUDENT_CANCEL).refund
+    refunds.convert_to_wallet(r2.pk)
+    converted = [e for e in LedgerEntry.objects.filter(booking=b2, event_type=LedgerEntry.EventType.REFUND_ISSUED)
+                 if e.account == LedgerAccount.LIABILITY_STUDENT_WALLET or
+                 (e.account == LedgerAccount.LIABILITY_REFUNDS_PAYABLE and e.entry_type == LedgerEntry.EntryType.DEBIT)]
+    assert legs(converted) == (LedgerAccount.LIABILITY_REFUNDS_PAYABLE, LedgerAccount.LIABILITY_STUDENT_WALLET)
 
 
 @pytest.mark.django_db

@@ -4,7 +4,7 @@ Codex worked in an isolated worktree (`C:\Dev\Active Projects\Notion\sharon-reme
 
 ## Verdict
 
-**Sound, and worth keeping. Merged.** I read the security-sensitive code, re-ran its suite (774 passed, 3 environment skips, as claimed), and then ran everything together after integrating (backend **978 passed, 3 skipped**; frontend 95 tests, zero-warning ESLint, API-type drift check and `next build` clean).
+**Sound, and worth keeping. Merged.** I read the security-sensitive code, re-ran its suite (774 passed, 3 environment skips, as claimed), and then ran everything together after integrating (backend **980 passed, 3 skipped**; frontend 95 tests, zero-warning ESLint, API-type drift check and `next build` clean).
 
 | Batch | What it does | Review |
 | :--- | :--- | :--- |
@@ -27,7 +27,7 @@ Codex worked in an isolated worktree (`C:\Dev\Active Projects\Notion\sharon-reme
 | Tutor no-show, memo SLA, dispute, DEF-501 | Both rewrote the grant calls. | Funding-based amounts (Codex) + my gateway refund, bonus lot and windowed strikes. DEF-501 keeps Codex's idempotent grants. |
 | Zoom attendance | Both implemented 9.8. | Codex's version (superset). My tests stay as `tests/test_zoom_attendance_9_8.py`. |
 | Migrations | Both sides numbered new migrations from the same fork point (bookings 0010/0011, payments 0008, teachers 0005). | Dropped mine and regenerated on top of Codex's chain: bookings `0013`, payments `0013` + `0014` (30-day expiry backfill for existing credits), teachers `0006`. Nothing had been deployed. |
-| Error IDs | Both used ERR-018..020. | Codex's kept; mine renumbered to ERR-021 (Zoom attendance) and ERR-022 (refunds, credits, strikes). |
+| Error IDs | Both sides used ERR-018 onwards for different things. | Codex's kept; mine renumbered to ERR-026 (Zoom attendance), ERR-027 (refunds, credits, strikes), ERR-028 (payout-settings throttle) and ERR-029 (post-merge audit). |
 | OpenAPI enum names | Booking and refund `status` enums collided. | `ENUM_NAME_OVERRIDES` (`BookingStatusEnum`, `RefundStatusEnum`, `RefundReasonEnum`); frontend types follow. |
 | Generated files | Both regenerated them. | Regenerated from the merged code. |
 
@@ -38,3 +38,16 @@ Codex worked in an isolated worktree (`C:\Dev\Active Projects\Notion\sharon-reme
 3. **CI:** add `manage.py check --deploy`, `pip-audit` / `npm audit`, Dependabot, and (Anesu) branch protection on `develop` / `main`. The Postgres and Redis jobs have never run: the first run may need fixes.
 4. `TECH_DEBT_REMEDIATION_HANDOFF.md` says "external actions out of scope until Anesu approves": still true. Nothing here touched a provider.
 5. Codex's no-show path stops with the booking already marked `teacher_no_show` when funding is missing (it logs and records an anomaly). That is safe, and finance sees it, but an admin view of open `SettlementAnomaly` rows is needed (Phase 15 admin).
+
+## Post-merge consistency audit (same day)
+
+After merging I audited the result for places where the two lines of work still followed different rules. Findings, all fixed and covered by tests (ERR-029):
+
+| Finding | Fix |
+| :--- | :--- |
+| `record_student_refund_entry` and `record_outage_refund_entry` had no production callers any more but still booked refunds to the *wallet* (the old rule) | Deleted. `refunds.request_refund` is the only place a refund is booked. The dispute helper's `full_refund_student` branch (also wallet, and unreachable) now raises, pointing to the refund service. Ledger tests moved onto the live path. |
+| Admin escrow view listed only the old statuses, so lessons cancelled with the three new statuses were invisible to finance | Added them; test checks refunded / kept-fee cancellations show correctly |
+| Wallet history contract did not list the new `expiry` entry type | Added to the schema; OpenAPI and TS types regenerated |
+| Reschedule locked the new slot with the student id; Codex's rule is a unique ownership token (also stored on the booking) | Reschedule now uses `new_slot_lock_token()`; test asserts the token |
+
+Verified clean: no conflict markers or unmerged index entries; migrations apply on a **brand-new database** and on a database built at the **pre-merge schema with legacy rows** (booking, captured payment, partly spent credit pack): the booking funding and opening wallet entry are backfilled, the legacy credits get a 30-day expiry and stay spendable, nothing is lost. Attendance reads outside the Zoom service only use rows with an identified role, so unrecognised participants cannot affect anything.

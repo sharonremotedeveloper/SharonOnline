@@ -270,6 +270,9 @@ class EscrowLedgerView(APIView):
                 Booking.Status.STUDENT_NO_SHOW,
                 Booking.Status.TEACHER_NO_SHOW,
                 Booking.Status.INTERRUPTED_POWER,
+                Booking.Status.CANCELLED_BY_STUDENT,       # refunded
+                Booking.Status.STUDENT_LATE_CANCELLED,     # fee kept, released to the tutor at +24h
+                Booking.Status.CANCELLED_BY_TEACHER,       # refunded
             ]
         ).select_related('teacher', 'teacher__user', 'student', 'funding')[:30]
 

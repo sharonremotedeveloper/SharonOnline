@@ -386,74 +386,6 @@ def record_payout_batch_entry(
     )
 
 
-def record_student_refund_entry(
-    booking,
-    payment_transaction: Optional[PaymentTransaction] = None,
-    amount_usd: Optional[Decimal] = None,
-    refund_method: str = 'wallet_credit',  # 'wallet_credit' or 'gateway'
-    reason: str = "Student refund issued",
-    fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR,
-) -> List[LedgerEntry]:
-    """
-    Triggered when a booking is refunded to a student (e.g. teacher no-show, student cancellation).
-    Lifecycle Double-Entry:
-    - If refund_method == 'gateway' (Direct cash reversal):
-      DR Liability: Student Escrow Deposits
-      CR Asset: Gateway Cash (PayFast / PayPal)
-    - If refund_method == 'wallet_credit' (Customer wallet / lesson store credit):
-      DR Liability: Student Escrow Deposits
-      CR Liability: Student Wallet Credits
-    """
-    from apps.payments.services.funding import funding_for_settlement
-    funding = funding_for_settlement(booking, context='record_student_refund_entry')
-    if funding is None:
-        raise ValueError(f'Booking {booking.id} has no funding provenance; refund journal stopped.')
-    gross_amount = Decimal(str(funding.captured_amount)).quantize(Decimal('0.01'))
-    currency = funding.currency
-    fx_rate_to_zar = funding.fx_rate_to_zar
-    fx_source = funding.fx_source
-    payment_transaction = funding.payment_transaction
-
-    if refund_method == 'gateway':
-        if payment_transaction and (payment_transaction.gateway == PaymentTransaction.Gateway.PAYFAST or currency == 'ZAR'):
-            cr_account = LedgerAccount.ASSET_GATEWAY_PAYFAST
-        else:
-            cr_account = LedgerAccount.ASSET_GATEWAY_PAYPAL
-        cr_desc = f"Gateway refund payout to original payment method ({payment_transaction.gateway.upper() if payment_transaction else 'PAYPAL'})"
-    else:
-        cr_account = LedgerAccount.LIABILITY_STUDENT_WALLET
-        cr_desc = f"Student wallet credit restitution granted for {reason}"
-
-    entries = [
-        {
-            'account': LedgerAccount.LIABILITY_STUDENT_ESCROW,
-            'entry_type': LedgerEntry.EntryType.DEBIT,
-            'amount': gross_amount,
-            'currency': currency,
-            'description': f"Escrow liability cancelled for booking BK-{str(booking.id)[:6].upper()}: {reason}"
-        },
-        {
-            'account': cr_account,
-            'entry_type': LedgerEntry.EntryType.CREDIT,
-            'amount': gross_amount,
-            'currency': currency,
-            'description': cr_desc
-        }
-    ]
-
-    return record_journal_entries(
-        entries=entries,
-        event_type=LedgerEntry.EventType.REFUND_ISSUED,
-        description=f"Refund issued for booking {booking.id}: {reason}",
-        booking=booking,
-        payment_transaction=payment_transaction,
-        user=booking.student,
-        currency=currency,
-        fx_rate_to_zar=fx_rate_to_zar,
-        fx_source=fx_source,
-    )
-
-
 def record_dispute_settlement_entry(
     dispute_case,
     resolution: str,
@@ -476,23 +408,9 @@ def record_dispute_settlement_entry(
     payment_transaction = funding.payment_transaction
 
     if resolution == 'full_refund_student':
-        # Student refund to platform credit wallet
-        entries = [
-            {
-                'account': LedgerAccount.LIABILITY_STUDENT_ESCROW,
-                'entry_type': LedgerEntry.EntryType.DEBIT,
-                'amount': amount_usd,
-                'currency': currency,
-                'description': f"Escrow cancelled - refunded to student for dispute {dispute_case.id}"
-            },
-            {
-                'account': LedgerAccount.LIABILITY_STUDENT_WALLET,
-                'entry_type': LedgerEntry.EntryType.CREDIT,
-                'amount': amount_usd,
-                'currency': currency,
-                'description': f"Student credit wallet restitution for dispute {dispute_case.id}"
-            }
-        ]
+        # A refund to the student is never booked here: it goes through payments/services/refunds.py::request_refund (gateway
+        # refund, or a restored credit), which is the single place that decides where the money goes.
+        raise ValueError("Full refunds are issued with refunds.request_refund, not as a dispute settlement entry.")
     elif resolution == 'release_tutor':
         tutor_net = (amount_usd * Decimal('0.80')).quantize(Decimal('0.01'))
         platform_fee = amount_usd - tutor_net
@@ -574,58 +492,6 @@ def record_dispute_settlement_entry(
         dispute_case=dispute_case,
         payment_transaction=payment_transaction,
         user=dispute_case.student,
-        currency=currency,
-        fx_rate_to_zar=fx_rate_to_zar,
-        fx_source=fx_source,
-    )
-
-
-def record_outage_refund_entry(
-    booking,
-    user=None,
-    amount_usd: Optional[Decimal] = None,
-    fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR,
-    payment_transaction: Optional[PaymentTransaction] = None,
-) -> List[LedgerEntry]:
-    """
-    Triggered upon load-shedding / Eskom power outage mid-lesson interruption.
-    DR Liability: Student Escrow Deposits (Holding)
-    CR Liability: Student Wallet Credits (Student Credit Wallet)
-    """
-    from apps.payments.services.funding import funding_for_settlement
-    funding = funding_for_settlement(booking, context='record_outage_refund_entry')
-    if funding is None:
-        raise ValueError(f'Booking {booking.id} has no funding provenance; outage refund stopped.')
-    amount = Decimal(str(funding.captured_amount)).quantize(Decimal('0.01'))
-    currency = funding.currency
-    fx_rate_to_zar = funding.fx_rate_to_zar
-    fx_source = funding.fx_source
-    payment_transaction = funding.payment_transaction
-
-    entries = [
-        {
-            'account': LedgerAccount.LIABILITY_STUDENT_ESCROW,
-            'entry_type': LedgerEntry.EntryType.DEBIT,
-            'amount': amount,
-            'currency': currency,
-            'description': f"Escrow hold released due to Eskom load-shedding force majeure BK-{str(booking.id)[:6].upper()}"
-        },
-        {
-            'account': LedgerAccount.LIABILITY_STUDENT_WALLET,
-            'entry_type': LedgerEntry.EntryType.CREDIT,
-            'amount': amount,
-            'currency': currency,
-            'description': f"Student credit wallet refunded due to Eskom power outage"
-        }
-    ]
-
-    return record_journal_entries(
-        entries=entries,
-        event_type=LedgerEntry.EventType.OUTAGE_REFUND,
-        description=f"Eskom load-shedding force majeure refund for booking {booking.id}",
-        booking=booking,
-        payment_transaction=payment_transaction,
-        user=user or booking.student,
         currency=currency,
         fx_rate_to_zar=fx_rate_to_zar,
         fx_source=fx_source,

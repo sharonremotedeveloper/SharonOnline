@@ -3361,6 +3361,7 @@ components:
       - redemption
       - refund
       - bonus
+      - expiry
       type: string
       description: |-
         * `opening` - opening
@@ -3368,6 +3369,7 @@ components:
         * `redemption` - redemption
         * `refund` - refund
         * `bonus` - bonus
+        * `expiry` - expiry
     User:
       type: object
       properties:
