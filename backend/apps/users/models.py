@@ -16,6 +16,9 @@ class User(AbstractUser):
     phone_number = models.CharField(max_length=32, blank=True)
     email_verified = models.BooleanField(default=False, help_text="True once the user proved control of `email` (verification or password-reset link).")
     google_calendar_token = models.JSONField(null=True, blank=True, help_text="OAuth tokens for teacher calendar sync")
+    booking_blocked_reason = models.CharField(
+        max_length=255, blank=True,
+        help_text="Non-empty = the student cannot book (e.g. a lesson was delivered but its payment failed). Staff clear it.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

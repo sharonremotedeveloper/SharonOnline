@@ -184,6 +184,10 @@ def redeem_booking_credit(*, booking, student):
     existing = BookingFunding.objects.filter(booking=booking).first()
     if existing and booking.status == Booking.Status.CONFIRMED:
         return booking, False
+    from apps.bookings.services.booking_block import booking_block_message
+    blocked = booking_block_message(student)
+    if blocked:
+        raise CreditRedemptionError(409, blocked)
     if booking.status != Booking.Status.PENDING_PAYMENT:
         raise CreditRedemptionError(409, f"Booking is '{booking.status}' and cannot redeem a credit.")
     if not hold_is_live(booking, timezone.now()):

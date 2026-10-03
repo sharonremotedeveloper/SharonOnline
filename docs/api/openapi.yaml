@@ -2810,12 +2810,16 @@ components:
         * `dispute` - Dispute decided for the student
     RefundStatusEnum:
       enum:
+      - awaiting_clearance
+      - void
       - pending_gateway
       - processed
       - converted
       - failed
       type: string
       description: |-
+        * `awaiting_clearance` - Waiting for the payment to clear
+        * `void` - Not needed (the payment never cleared)
         * `pending_gateway` - Waiting for the gateway
         * `processed` - Paid to the original payment method
         * `converted` - Converted to wallet credit

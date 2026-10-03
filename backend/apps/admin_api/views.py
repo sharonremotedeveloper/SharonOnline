@@ -15,7 +15,7 @@ from apps.users.permissions import IsPlatformAdmin
 from apps.teachers.models import TeacherProfile
 from apps.bookings.models import Booking
 from apps.bookings.services.state_machine import InvalidTransition, transition_booking
-from apps.payments.models import CreditBundle, CreditWalletEntry, LedgerEntry, PaymentTransaction
+from apps.payments.models import BookingFunding, CreditBundle, CreditWalletEntry, LedgerEntry, PaymentTransaction
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.settlement import is_settled, successful_transaction
 from apps.payments.services.funding import funding_for_settlement
@@ -193,6 +193,18 @@ class ResolveDisputeView(APIView):
                 return Response({'error': 'Settlement stopped: booking funding provenance is missing.'},
                                 status=status.HTTP_409_CONFLICT)
 
+            # A grace booking's money is not in escrow: a payment that is still pending cannot be released at all, and one
+            # that failed can only be settled by the platform paying the tutor (release) - never a split or student credit.
+            if funding.source_type == BookingFunding.SourceType.GATEWAY_PENDING and \
+                    resolution != DisputeCase.Resolution.FULL_REFUND_STUDENT:
+                return Response({'error': 'This lesson\'s PayPal payment has not cleared yet, so no money can be released. '
+                                          'Wait for it to clear or fail.', 'code': 'payment_not_cleared'},
+                                status=status.HTTP_409_CONFLICT)
+            if funding.source_type == BookingFunding.SourceType.PLATFORM_ABSORBED and \
+                    resolution == DisputeCase.Resolution.SPLIT_50_50:
+                return Response({'error': 'The student never paid for this lesson, so there is nothing to split or credit.',
+                                 'code': 'payment_not_collected'}, status=status.HTTP_409_CONFLICT)
+
             # A lesson whose money already left escrow (e.g. a tutor no-show that was refunded, then disputed when the tutor's
             # late Zoom event arrived) cannot also be paid out to the tutor: the student is already whole.
             if resolution != DisputeCase.Resolution.FULL_REFUND_STUDENT and is_settled(booking):
@@ -232,7 +244,13 @@ class ResolveDisputeView(APIView):
                                  unit_amount=funding.captured_amount, currency=funding.currency,
                                  fx_rate_to_zar=funding.fx_rate_to_zar, fx_source=funding.fx_source,
                                  booking=booking, idempotency_key=f'dispute-split:{dispute.id}')
-                record_dispute_settlement_entry(dispute_case=dispute, resolution=resolution, payment_transaction=paid_tx)
+                if funding.source_type == BookingFunding.SourceType.PLATFORM_ABSORBED:
+                    # release_tutor on a lesson whose payment failed: the platform funds the tutor (ledger 5040 -> 2020)
+                    from apps.payments.services.ledger_service import record_absorbed_tutor_payment_entry
+                    record_absorbed_tutor_payment_entry(
+                        booking, funding, event_type=LedgerEntry.EventType.DISPUTE_RESOLVED, dispute_case=dispute)
+                else:
+                    record_dispute_settlement_entry(dispute_case=dispute, resolution=resolution, payment_transaction=paid_tx)
 
             if resolution != DisputeCase.Resolution.FULL_REFUND_STUDENT:
                 # The tutor was just paid by this decision: mark the escrow cleared so the 24h job can never pay again.
@@ -327,6 +345,7 @@ class EscrowLedgerView(APIView):
                 'platform_fee_usd': money_str(platform_fee, 'USD'),
                 'teacher_net_zar': money_str(net_tutor_zar, 'ZAR'),
                 'escrow_status': escrow_status,
+                'payment_pending': funding.source_type == BookingFunding.SourceType.GATEWAY_PENDING,
                 'release_date': release_time.strftime('%Y-%m-%d %H:%M')
             })
 
@@ -360,7 +379,8 @@ class PayoutBatchView(APIView):
             ).aggregate(
                 credits=Sum('amount_zar', filter=Q(entry_type=LedgerEntry.EntryType.CREDIT)),
                 debits=Sum('amount_zar', filter=Q(entry_type=LedgerEntry.EntryType.DEBIT)),
-                lessons=Count('booking', distinct=True, filter=Q(event_type=LedgerEntry.EventType.ESCROW_CLEARED)),
+                lessons=Count('booking', distinct=True, filter=Q(event_type__in=[
+                    LedgerEntry.EventType.ESCROW_CLEARED, LedgerEntry.EventType.PAYMENT_FAILURE_ABSORBED])),
             )
             payable = (totals['credits'] or Decimal('0.00')) - (totals['debits'] or Decimal('0.00'))
             if payable <= 0:

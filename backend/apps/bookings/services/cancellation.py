@@ -122,6 +122,14 @@ def preview(booking, user, now=None) -> dict:
         'bonus_credits': settings.TUTOR_CANCEL_BONUS_CREDITS if plan.bonus else 0,
         'strike': bool(plan.strike),
     }
+    funding = BookingFunding.objects.filter(booking=booking).first()
+    if plan.refund and funding and funding.source_type == BookingFunding.SourceType.GATEWAY_PENDING:
+        # A grace booking: PayPal has not cleared the money yet, so nothing can be refunded yet. If the payment clears it is
+        # refunded automatically; if it fails there is nothing to refund.
+        body['refund_amount'] = None
+        body['refund_currency'] = None
+        body['message'] = ('PayPal is still verifying your payment, so nothing has been collected yet. If it clears you will be '
+                           'refunded in full to your original payment method; if it does not, you owe nothing.')
     if party == STUDENT and booking.status == S.CONFIRMED:
         body['free_cancel_until'] = (booking.start_time_utc - timedelta(hours=settings.STUDENT_FREE_CANCEL_HOURS)).isoformat()
     return body

@@ -1479,13 +1479,15 @@ export interface components {
          */
         RefundReasonEnum: "student_cancel" | "teacher_cancel" | "teacher_no_show" | "outage" | "dispute";
         /**
-         * @description * `pending_gateway` - Waiting for the gateway
+         * @description * `awaiting_clearance` - Waiting for the payment to clear
+         *     * `void` - Not needed (the payment never cleared)
+         *     * `pending_gateway` - Waiting for the gateway
          *     * `processed` - Paid to the original payment method
          *     * `converted` - Converted to wallet credit
          *     * `failed` - Gateway refused (needs a human)
          * @enum {string}
          */
-        RefundStatusEnum: "pending_gateway" | "processed" | "converted" | "failed";
+        RefundStatusEnum: "awaiting_clearance" | "void" | "pending_gateway" | "processed" | "converted" | "failed";
         Register: {
             /** Format: uuid */
             readonly id: string;

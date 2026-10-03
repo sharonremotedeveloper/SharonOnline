@@ -18,6 +18,27 @@ ledger, not from a flag that could be forgotten).
 | `disputed` -> `completed` | admin: *release tutor* | pays | 80 % | `dispute_resolved` (+ booking/tx marked cleared) |
 | `disputed` -> `completed` | admin: *50/50 split* | 1 courtesy credit (platform expense) | 80 % | `dispute_resolved` (+ marked cleared) |
 
+### Grace bookings (PayPal capture still PENDING, Task 10.2 slice E/G)
+
+A *grace booking* is confirmed while PayPal has not yet guaranteed the money (`BookingFunding.source_type = gateway_pending`).
+**Nothing is posted to the ledger while it is pending**, so there is no escrow to release, refund or pay out. Every path that
+reads "booking confirmed" must therefore ask "is the money cleared?" first (`funding.py::require_cleared`, `UNCLEARED_SOURCES`).
+
+| Grace outcome | Who decides / when | Student | Tutor | Ledger event |
+| :--- | :--- | :--- | :--- | :--- |
+| PENDING -> COMPLETED (webhook `PAYMENT.CAPTURE.COMPLETED` or the hourly reconcile job) | `grace.on_completed` | pays; funding becomes `gateway` | normal 80 % path resumes (release job at +24 h) | `payment_captured` at the **checkout-stamped FX** (the booking is not touched and the money is never "surplus") |
+| lesson finished (+24 h) but still pending | release job | - | **not paid**; a `SettlementAnomaly` `grace_payment_still_pending` and an admin alert are raised once | none |
+| PENDING -> DENIED/FAILED **before** the lesson | `grace.on_failed` | booking `confirmed -> cancelled`, slot freed, **no refund** (nothing was received), ticket + e-mail | nothing (e-mailed that the lesson was cancelled) | none |
+| PENDING -> DENIED/FAILED **after** the lesson started/was delivered (P-3) | `grace.on_failed` then the normal release job (same 24 h window, attendance rule and dispute exclusion) | not charged; **booking blocked** (`User.booking_blocked_reason`) until staff clear it; ticket + e-mail | **80 % paid by the platform**: funding becomes `platform_absorbed` | `payment_failure_absorbed`: DR **5040** platform-absorbed payment failure 80 %, CR 2020 tutor payable 80 % (escrow untouched, no commission) |
+| grace booking cancelled / tutor no-show **before the payment clears** | `refunds.request_refund` | no refund yet: a `RefundRequest` in `awaiting_clearance` | nothing | none |
+| ... then the payment **clears** | `grace.on_completed` -> `refunds.activate_deferred_refunds` | the money is refunded for real (convertible to wallet credit as usual) | nothing | `payment_captured`, then DR 2010 / CR 2050 (`refund_issued` / `outage_refund` / `dispute_resolved`) |
+| ... or the payment **fails** | `grace.on_failed` -> `refunds.void_deferred_refunds` | owes nothing; refund request becomes `void` | nothing | none |
+| arbitration on a grace booking: *release tutor* / *split* | `ResolveDisputeView` | pending -> 409 `payment_not_cleared`; absorbed + release -> platform pays the tutor; absorbed + split -> 409 `payment_not_collected` | as stated | `dispute_resolved` (absorbed journal for release) |
+| PayPal reports COMPLETED after the payment had been written off as failed | `grace.on_completed` | money is real: held in 2030 for a gateway refund (`GatewayAnomaly` `payment_completed_after_failure`) | - | `unallocated_payment` |
+
+Chart of accounts addition: **5040** `5040_expense_absorbed_payment_failure` - tutor share funded by the platform because the student's
+pending payment failed after the lesson. It is counted in the telemetry expense totals and nets against platform commission.
+
 Ledger amounts are always the **captured amount in its own currency** (a PayFast R168.75 payment is settled as R168.75, not as the
 tutor's USD list price), so a booking's escrow account returns to exactly zero. There is no list-price fallback: a missing immutable
 `BookingFunding` snapshot blocks settlement and creates a durable `SettlementAnomaly` for reconciliation.

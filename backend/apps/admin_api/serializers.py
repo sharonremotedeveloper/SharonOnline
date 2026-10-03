@@ -172,6 +172,8 @@ class FinanceEscrowItemSerializer(serializers.Serializer):
     platform_fee_usd = serializers.FloatField()
     teacher_net_zar = serializers.FloatField()
     escrow_status = serializers.CharField()
+    # True for a grace booking whose PayPal payment has not cleared: the lesson is confirmed but NO money is in escrow yet.
+    payment_pending = serializers.BooleanField(required=False, default=False)
     release_date = serializers.CharField()
 
 

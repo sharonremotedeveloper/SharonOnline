@@ -43,6 +43,13 @@ never from the current list price:
 * **no funding record** (a data fault) -> `MissingFunding`: nothing is refunded, a `SettlementAnomaly` is recorded for finance, and a
   cancel is refused with 409 `funding_unavailable` rather than guessing.
 
+* **paid through PayPal but still PENDING (a grace booking, Task 10.2)** -> **no refund of money not yet received.** Cancelling it (student,
+  tutor, tutor no-show, outage, arbitration "full refund") records the obligation as a `RefundRequest` with status `awaiting_clearance`
+  and posts **nothing** to the ledger; the cancel preview says "PayPal is still verifying your payment" and shows no refund amount. If the
+  payment later **clears**, the capture is posted and the refund becomes real (`pending_gateway`, DR 2010 / CR 2050); if it **fails**, the
+  request becomes `void` and nothing is owed. If the payment had already failed (`platform_absorbed` funding or a failed transaction),
+  no refund request is created at all. See `SETTLEMENT_PATHS.md`.
+
 `RefundRequest` is unique per (booking, reason). Credits are lots with a wallet history (`CreditWalletEntry`: purchase / redemption /
 refund / bonus / expiry), and the per-credit value field is `unit_amount`.
 

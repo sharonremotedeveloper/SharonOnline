@@ -34,6 +34,7 @@ ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
         S.CANCELLED_BY_TEACHER,     # tutor cancelled: refunded (+ bonus credit and a strike when late)
         S.COMPLETED_PENDING_MEMO,   # lesson ended with >=20 teacher minutes
         S.DISPUTED,                 # lesson ended with <20 teacher minutes
+        S.CANCELLED,                # grace booking whose PENDING PayPal payment failed before the lesson (payments/services/grace.py)
     }),
     S.IN_PROGRESS: frozenset({
         S.COMPLETED_PENDING_MEMO, S.DISPUTED, S.INTERRUPTED_POWER,

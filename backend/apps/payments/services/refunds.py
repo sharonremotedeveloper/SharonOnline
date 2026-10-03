@@ -85,6 +85,23 @@ def request_refund(booking, reason: str, *, event_type: str = EV.REFUND_ISSUED, 
     note = description or dict(RefundRequest.Reason.choices).get(reason, reason)
     amount, currency = funding.captured_amount, funding.currency.upper()
     fx = dict(fx_rate_to_zar=funding.fx_rate_to_zar, fx_source=funding.fx_source)
+    if funding.source_type == BookingFunding.SourceType.PLATFORM_ABSORBED:
+        # The pending payment failed: the student never paid, so there is nothing to give back.
+        logger.info("[REFUND] Booking %s: payment never cleared, no refund owed (%s).", booking.id, reason)
+        return RefundOutcome()
+    if (funding.source_type == BookingFunding.SourceType.GATEWAY_PENDING
+            and funding.payment_transaction.status == PaymentTransaction.Status.FAILED):
+        logger.info("[REFUND] Booking %s: its pending payment already failed, no refund owed (%s).", booking.id, reason)
+        return RefundOutcome()
+    if funding.source_type == BookingFunding.SourceType.GATEWAY_PENDING:
+        # Grace booking cancelled/refundable before PayPal cleared the payment: no money has arrived, so NO ledger entry
+        # and no gateway refund yet. The obligation is recorded and becomes a real refund only if the payment clears
+        # (`activate_deferred_refunds`); it is voided if the payment fails (`void_deferred_refunds`).
+        refund, _ = RefundRequest.objects.get_or_create(
+            booking=booking, reason=reason,
+            defaults={'payment_transaction': funding.payment_transaction, 'user': booking.student, 'amount': amount,
+                      'currency': currency, 'status': RefundRequest.Status.AWAITING_CLEARANCE})
+        return RefundOutcome(refund=refund)
     with transaction.atomic():
         if funding.source_type == BookingFunding.SourceType.CREDIT:
             lot = grant_credit(booking.student, source=CreditBundle.Source.REFUND, pack_name=f'Refund: {note}'[:64],
@@ -116,6 +133,49 @@ def request_refund(booking, reason: str, *, event_type: str = EV.REFUND_ISSUED, 
             booking=booking, payment_transaction=paid, dispute_case=dispute_case, user=booking.student,
             currency=currency, **fx)
         return RefundOutcome(refund=refund)
+
+
+_EVENT_FOR_REASON = {
+    RefundRequest.Reason.OUTAGE: EV.OUTAGE_REFUND,
+    RefundRequest.Reason.DISPUTE: EV.DISPUTE_RESOLVED,
+}
+
+
+def activate_deferred_refunds(booking) -> int:
+    """
+    The pending payment cleared (its capture journal is already posted, so escrow holds the money): turn every refund that
+    was waiting on it into a real one (DR 2010, CR 2050), exactly as `request_refund` would have. Idempotent.
+    """
+    funding = BookingFunding.objects.get(booking=booking)
+    fx = dict(fx_rate_to_zar=funding.fx_rate_to_zar, fx_source=funding.fx_source)
+    done = 0
+    with transaction.atomic():
+        waiting = (RefundRequest.objects.select_for_update()
+                   .filter(booking=booking, status=RefundRequest.Status.AWAITING_CLEARANCE))
+        for refund in waiting:
+            record_journal_entries(
+                entries=[
+                    {'account': LedgerAccount.LIABILITY_STUDENT_ESCROW, 'entry_type': DR, 'amount': refund.amount,
+                     'currency': refund.currency, 'description': "Escrow released to the student: payment cleared after cancellation"},
+                    {'account': LedgerAccount.LIABILITY_REFUNDS_PAYABLE, 'entry_type': CR, 'amount': refund.amount,
+                     'currency': refund.currency, 'description': "Gateway refund owed to the student: payment cleared after cancellation"},
+                ],
+                event_type=_EVENT_FOR_REASON.get(refund.reason, EV.REFUND_ISSUED),
+                description=f"Deferred refund ({refund.reason}) activated: gateway refund queued for booking {booking.id}",
+                booking=booking, payment_transaction=refund.payment_transaction, user=booking.student,
+                currency=refund.currency, **fx)
+            refund.status = RefundRequest.Status.PENDING_GATEWAY
+            refund.save(update_fields=['status', 'updated_at'])
+            done += 1
+    return done
+
+
+def void_deferred_refunds(booking) -> int:
+    """The pending payment failed: no money ever arrived, so the refunds that were waiting on it are not owed."""
+    return RefundRequest.objects.filter(
+        booking=booking, status=RefundRequest.Status.AWAITING_CLEARANCE
+    ).update(status=RefundRequest.Status.VOID, failure_detail='The payment never cleared; nothing was collected.',
+             updated_at=timezone.now())
 
 
 def _fx_of(refund) -> dict:

@@ -3,20 +3,60 @@ from datetime import timedelta
 from decimal import Decimal
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Exists, OuterRef, Sum
 from celery import shared_task
+from django.utils.html import escape
 
 from apps.bookings.models import Booking, AttendanceAudit
 from apps.bookings.services.state_machine import transition_booking
 from apps.payments.services.settlement import RELEASABLE_STATUSES, attendance_verified_for_release, settled_exists
-from apps.payments.models import PaymentTransaction
-from apps.payments.services.reconciliation import reconcile_initialized_transaction
+from apps.payments.models import BookingFunding, PaymentTransaction, SettlementAnomaly
+from apps.payments.services.alerts import alert_admin
+from apps.payments.services.reconciliation import reconcile_initialized_transaction, reconcile_pending_capture
 from apps.payments.services.funding import funding_for_settlement
 from apps.admin_api.models import DisputeCase
 from apps.common.locks import distributed_task_lock
+from apps.integrations.email import EmailDeliveryError, send_email
 from apps.integrations.services.attendance import TEACHER, credited_attendance_minutes
 
 logger = logging.getLogger(__name__)
+
+PENDING_ALERT_AFTER = timedelta(days=7)
+
+
+@shared_task(bind=True, autoretry_for=(EmailDeliveryError,), retry_backoff=30, retry_backoff_max=900, max_retries=8)
+def send_admin_alert_email_task(self, subject: str, detail: str):
+    """One e-mail to the support inbox for an admin alert (the durable record is the GatewayAnomaly row)."""
+    from django.conf import settings
+    send_email(settings.SUPPORT_TO_EMAIL, f"[Sharon Online alert] {subject}", f"<p>{escape(detail)}</p>", detail)
+
+
+@shared_task(bind=True, autoretry_for=(EmailDeliveryError,), retry_backoff=30, retry_backoff_max=900, max_retries=5)
+def send_payment_failure_email_task(self, transaction_id: str, kind: str, ticket_id: str):
+    """Tell the student, in plain words, that a pending payment did not go through."""
+    from apps.payments.services.notices import student_email
+    tx = PaymentTransaction.objects.select_related('booking__student', 'credit_purchase__user').filter(pk=transaction_id).first()
+    if tx is None:
+        return
+    student = tx.credit_purchase.user if tx.credit_purchase_id else tx.booking.student
+    if not student.email:
+        return
+    subject, html, text = student_email(student, tx, kind, ticket_id)
+    send_email(student.email, subject, html, text)
+
+
+def _flag_payment_still_pending(booking, funding) -> None:
+    """T+24h and the grace payment is still PENDING: a durable SettlementAnomaly plus one admin alert, never a payout."""
+    anomaly, created = SettlementAnomaly.objects.get_or_create(
+        booking=booking, code='grace_payment_still_pending', resolved=False,
+        defaults={'detail': f"Lesson finished and its dispute window passed, but PayPal capture "
+                            f"{funding.payment_transaction.gateway_reference} is still pending. Tutor payout is blocked."})
+    logger.warning("Escrow release blocked for booking %s: grace payment still pending.", booking.id)
+    alert_admin(
+        'grace_payment_still_pending', 'A delivered lesson is still waiting for its payment to clear',
+        f"Booking {booking.id}: PayPal capture {funding.payment_transaction.gateway_reference} "
+        f"({funding.captured_amount} {funding.currency}) is still pending 24h after the lesson. The tutor is not paid until it clears or fails.",
+        key=str(booking.id), tx=funding.payment_transaction, booking=booking)
 
 
 @shared_task(name='apps.payments.tasks.release_cleared_escrow_task')
@@ -49,6 +89,10 @@ def release_cleared_escrow_task():
             )
             .exclude(id__in=open_dispute_booking_ids)
             .exclude(settled_exists())  # arbitration / refunds may already have settled this booking's escrow
+            # a grace booking already flagged "payment still pending" is waiting for a person / the reconcile job; do not
+            # let such rows fill the 50-row batch every 15 minutes (on_completed / on_failed resolve the anomaly)
+            .exclude(Exists(SettlementAnomaly.objects.filter(
+                booking=OuterRef('pk'), code='grace_payment_still_pending', resolved=False)))
             .select_related('teacher__user')[:50]
         )
 
@@ -66,12 +110,18 @@ def release_cleared_escrow_task():
             if funding is None:
                 logger.error('Escrow release stopped for booking %s: missing funding provenance.', booking.id)
                 continue
+            if funding.source_type == BookingFunding.SourceType.GATEWAY_PENDING:
+                # Grace booking: the lesson is over and PayPal still has not cleared the money. Nothing is released and
+                # nobody is paid; a person has to look at it (it re-raises nothing while the anomaly is open).
+                _flag_payment_still_pending(booking, funding)
+                continue
             tx = funding.payment_transaction
+            absorbed = funding.source_type == BookingFunding.SourceType.PLATFORM_ABSORBED
             gross = funding.captured_amount
             tutor_net = (gross * Decimal('0.80')).quantize(Decimal('0.01'))
             platform_fee = gross - tutor_net
 
-            if tx:
+            if tx and not absorbed:
                 tx.escrow_cleared = True
                 tx.save(update_fields=['escrow_cleared', 'updated_at'])
 
@@ -82,12 +132,17 @@ def release_cleared_escrow_task():
                                    reason='24h escrow window cleared')
 
             # Record GAAP/SARB double-entry ledger clearance entries
-            from apps.payments.services.ledger_service import record_escrow_clearance_entry
-            record_escrow_clearance_entry(
-                booking=booking,
-                payment_transaction=tx,
-                funding=funding,
-            )
+            if absorbed:
+                # The student's payment failed after the lesson: the platform funds the tutor's share (ledger 5040 -> 2020).
+                from apps.payments.services.ledger_service import record_absorbed_tutor_payment_entry
+                record_absorbed_tutor_payment_entry(booking, funding)
+            else:
+                from apps.payments.services.ledger_service import record_escrow_clearance_entry
+                record_escrow_clearance_entry(
+                    booking=booking,
+                    payment_transaction=tx,
+                    funding=funding,
+                )
 
             cleared_count += 1
             if funding.currency == 'USD':
@@ -132,7 +187,22 @@ def reconcile_pending_transactions_task():
         results[result.state] = results.get(result.state, 0) + 1
 
     logger.info("Gateway reconciliation inspected %s transactions: %s", len(abandoned_txs), results)
-    return {"reconciled_count": len(abandoned_txs), **results}
+
+    # PayPal captures that came back PENDING (grace bookings or held slots): poll them by capture id until they resolve,
+    # and tell the admin about any that has been pending for more than a week.
+    pending_txs = list(PaymentTransaction.objects.filter(
+        status=PaymentTransaction.Status.PENDING_CAPTURE).select_related('booking', 'credit_purchase')[:100])
+    pending_results = {'completed': 0, 'failed': 0, 'pending': 0, 'unresolved': 0}
+    for payment_transaction in pending_txs:
+        result = reconcile_pending_capture(payment_transaction)
+        pending_results[result.state] = pending_results.get(result.state, 0) + 1
+        if result.state in ('pending', 'unresolved') and now - payment_transaction.created_at > PENDING_ALERT_AFTER:
+            alert_admin(
+                'grace_pending_over_7_days', 'A PayPal payment has been pending for more than 7 days',
+                f"Capture {payment_transaction.gateway_reference} ({payment_transaction.amount} {payment_transaction.currency}) "
+                f"has been pending since {payment_transaction.created_at:%Y-%m-%d}. Check it in PayPal.",
+                key=payment_transaction.merchant_reference or str(payment_transaction.pk), tx=payment_transaction)
+    return {"reconciled_count": len(abandoned_txs), **results, "pending_captures": pending_results}
 
 
 @shared_task(name='apps.payments.tasks.expire_credits_task')

@@ -28,7 +28,8 @@ class ReconciliationResult:
 def query_gateway(transaction: PaymentTransaction) -> ReconciliationResult:
     """Read provider state without guessing that an old checkout failed."""
     if transaction.gateway == PaymentTransaction.Gateway.PAYPAL:
-        if transaction.gateway_order_id:
+        # An unpaid checkout is looked up by its order; a PENDING_CAPTURE one already has a capture id, which is exact.
+        if transaction.gateway_order_id and transaction.status == PaymentTransaction.Status.INITIALIZED:
             return _query_paypal_order(transaction)
         if transaction.gateway_reference.startswith('INIT-'):
             return ReconciliationResult(
@@ -105,6 +106,32 @@ def _apply_order_result(transaction: PaymentTransaction, result: ReconciliationR
             record_pending_capture(transaction.pk, capture, paypal.classify_capture(capture), order)
     except CaptureRejected as exc:
         return ReconciliationResult('unresolved', f'capture rejected: {exc.reason}', order)
+    return result
+
+
+def reconcile_pending_capture(transaction: PaymentTransaction, *, lookup=None) -> ReconciliationResult:
+    """
+    Resolve a PENDING_CAPTURE transaction from PayPal's own record of its capture: COMPLETED goes through the same verified
+    settle path as the webhook (grace bookings upgrade, normal ones confirm), DECLINED/FAILED/REVERSED run the failure
+    runbook, anything else stays pending. Provider errors change nothing.
+    """
+    from apps.payments.services import grace
+    lookup = lookup or query_gateway
+    result = lookup(transaction)
+    if result.state == 'completed':
+        payload = result.payload or {}
+        # The lookup may return the whole order (Orders v2) or a bare capture (legacy rows): normalise to the capture.
+        capture = paypal.extract_capture(payload) or dict(payload)
+        capture = {**capture, 'id': capture.get('id') or transaction.gateway_reference}
+        try:
+            verify_capture_amount(transaction, capture, payload=payload)
+            settle_completed_capture(transaction.pk, capture, payload=payload)
+        except CaptureRejected as exc:
+            return ReconciliationResult('unresolved', f'PayPal capture could not be applied: {exc.reason}', result.payload)
+    elif result.state == 'failed':
+        grace.on_failed(transaction)
+    PaymentTransaction.objects.filter(pk=transaction.pk).update(
+        reconciliation_attempts=transaction.reconciliation_attempts + 1, last_reconciled_at=timezone.now())
     return result
 
 

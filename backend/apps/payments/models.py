@@ -287,6 +287,10 @@ class RefundRequest(models.Model):
         DISPUTE = 'dispute', 'Dispute decided for the student'
 
     class Status(models.TextChoices):
+        # The lesson was cancelled while its PayPal payment was still pending: nothing is owed until the money actually
+        # arrives. It then becomes PENDING_GATEWAY (money received -> returned), or VOID (the payment failed).
+        AWAITING_CLEARANCE = 'awaiting_clearance', 'Waiting for the payment to clear'
+        VOID = 'void', 'Not needed (the payment never cleared)'
         PENDING_GATEWAY = 'pending_gateway', 'Waiting for the gateway'
         PROCESSED = 'processed', 'Paid to the original payment method'
         CONVERTED = 'converted', 'Converted to wallet credit'
@@ -359,6 +363,9 @@ class BookingFunding(models.Model):
         GATEWAY = 'gateway', 'Gateway payment'
         # Booking confirmed while the capture is still PENDING (grace booking). Settlement and payout refuse it.
         GATEWAY_PENDING = 'gateway_pending', 'Gateway payment pending clearance'
+        # The pending payment FAILED after the lesson was (or was about to be) delivered: the platform pays the tutor's
+        # share from its own funds (ledger 5040) instead of from escrow (Task 10.2, plan P-3).
+        PLATFORM_ABSORBED = 'platform_absorbed', 'Payment failed; platform absorbs the tutor share'
         CREDIT = 'credit', 'Wallet credit'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -385,6 +392,20 @@ class BookingFunding(models.Model):
                 name='booking_funding_exactly_one_source',
             ),
         ]
+
+    # The ONLY permitted change to a funding snapshot: a pending payment resolving. Amount, currency, FX and the payment
+    # link never change; only the provenance flag moves, and only out of GATEWAY_PENDING.
+    _RESOLUTIONS = {
+        SourceType.GATEWAY_PENDING: (SourceType.GATEWAY, SourceType.PLATFORM_ABSORBED),
+    }
+
+    def resolve_pending(self, new_source_type: str) -> None:
+        allowed = self._RESOLUTIONS.get(self.source_type, ())
+        if new_source_type not in allowed:
+            raise LedgerImmutabilityError(
+                f"Funding provenance can only move out of GATEWAY_PENDING (not {self.source_type} -> {new_source_type}).")
+        self.source_type = new_source_type
+        models.Model.save(self, update_fields=['source_type'])
 
     def save(self, *args, **kwargs):
         if not self._state.adding:
@@ -467,6 +488,8 @@ class LedgerAccount(models.TextChoices):
     EXPENSE_DISPUTE_SETTLEMENT = '5010_expense_dispute_settlement', '5010 - Expense: Platform Dispute Settlements'
     EXPENSE_STUDENT_COMPENSATION = '5020_expense_student_compensation', '5020 - Expense: Student Goodwill / Compensation'
     EXPENSE_GATEWAY_FEES = '5030_expense_gateway_fees', '5030 - Expense: Payment Gateway Processing Fees'
+    EXPENSE_ABSORBED_PAYMENT_FAILURE = (
+        '5040_expense_absorbed_payment_failure', '5040 - Expense: Platform-Absorbed Payment Failure (tutor paid, student never paid)')
 
 
 class LedgerEntryQuerySet(models.QuerySet):
@@ -495,6 +518,7 @@ class LedgerEntry(models.Model):
         UNALLOCATED_PAYMENT = 'unallocated_payment', 'Unallocated / Duplicate Payment Held for Refund'
         GATEWAY_REFUND_PAID = 'gateway_refund_paid', 'Gateway Refund Paid to Original Payment Method'
         CREDIT_EXPIRED = 'credit_expired', 'Wallet Credit Expired (breakage)'
+        PAYMENT_FAILURE_ABSORBED = 'payment_failure_absorbed', 'Tutor Paid by Platform After Pending Payment Failed'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     journal_batch_id = models.UUIDField(db_index=True, help_text="Groups balancing debits and credits of a single transaction")

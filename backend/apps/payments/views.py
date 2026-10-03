@@ -23,9 +23,11 @@ from django.utils import timezone
 from apps.bookings.models import Booking
 from apps.users.permissions import IsTeacher
 from apps.bookings.services.holds import SLOT_OWNING_STATUSES, hold_expires_at, hold_is_live, inflight_grace, max_hold
+from apps.bookings.services.booking_block import booking_block_message
 from apps.bookings.services.lock_service import extend_slot_lock
 from .gateways import payfast, paypal
-from .models import FxRate, LessonPrice, CreditBundle, CreditPack, CreditPurchase, CreditWalletEntry, GatewayAnomaly, PaymentTransaction, TutorPayoutAccount
+from .services import grace
+from .models import BookingFunding, FxRate, LessonPrice, CreditBundle, CreditPack, CreditPurchase, CreditWalletEntry, GatewayAnomaly, PaymentTransaction, TutorPayoutAccount
 from .serializers import (
     PayoutAccountMaskedSerializer, PayoutAccountWriteSerializer, TutorWalletSerializer, masked_payout_account,
 )
@@ -205,6 +207,9 @@ class CheckoutInitializeView(APIView):
 
     @staticmethod
     def _validate_booking(booking):
+        blocked = booking_block_message(booking.student)
+        if blocked:
+            return Response({"error": blocked, "code": "booking_blocked"}, status=409)
         if booking.status != Booking.Status.PENDING_PAYMENT:
             return Response({"error": f"Booking is '{booking.status}' and cannot be paid for."}, status=409)
         if not (booking.teacher.is_active and booking.teacher.is_verified):
@@ -398,6 +403,14 @@ class PayPalCaptureView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
     throttle_classes = (ScopedRateThrottle,)
     throttle_scope = 'checkout'
+    GRACE_MESSAGE = ('PayPal is still verifying this payment. Your lesson is booked. '
+                     'If the payment cannot be completed we will contact you.')
+
+    @staticmethod
+    def _is_grace_confirmed(tx):
+        return bool(tx.booking_id) and BookingFunding.objects.filter(
+            payment_transaction=tx, source_type=BookingFunding.SourceType.GATEWAY_PENDING,
+            booking__status=Booking.Status.CONFIRMED).exists()
 
     @staticmethod
     def _reply(outcome, tx, message='', retryable=False, http=status.HTTP_200_OK):
@@ -424,6 +437,8 @@ class PayPalCaptureView(APIView):
         if tx.status == PaymentTransaction.Status.SUCCESS:
             return self._reply('confirmed', tx)
         if tx.status == PaymentTransaction.Status.PENDING_CAPTURE:
+            if self._is_grace_confirmed(tx):
+                return self._reply('pending_confirmed', tx, self.GRACE_MESSAGE)
             return self._reply('pending', tx, 'PayPal is still verifying this payment.')
         if tx.status in (PaymentTransaction.Status.FAILED, PaymentTransaction.Status.REFUNDED,
                          PaymentTransaction.Status.UNALLOCATED):
@@ -469,6 +484,10 @@ class PayPalCaptureView(APIView):
 
         if outcome.state == 'pending':
             record_pending_capture(tx.pk, capture, outcome, order)
+            tx.refresh_from_db()
+            # Grace booking (plan P-1): confirm the lesson now if policy allows; the money is awaited, nothing is posted yet.
+            if grace.handle_pending_capture(tx, outcome).allowed:
+                return self._reply('pending_confirmed', tx, self.GRACE_MESSAGE)
             return self._reply('pending', tx, 'PayPal is still verifying this payment.')
         if not settings.PAYPAL_CAPTURE_CONFIRMS:
             return self._reply('pending', tx, 'Payment received; confirming shortly.')
