@@ -79,9 +79,9 @@ class TestCreditLots:
         lot = grant_credit(student_user, credits=3, source=CreditBundle.Source.REFUND, unit_amount=Decimal('9.00'))
         # the 2040 liability was credited when the lot was granted (as the callers do)
         LedgerEntry.objects.create(journal_batch_id='00000000-0000-0000-0000-000000000001', account=ACC.EXPENSE_STUDENT_COMPENSATION,
-                                   entry_type='debit', amount=Decimal('27.00'), amount_zar=Decimal('506.25'), event_type=EV.COMPENSATION_AWARDED, description='seed')
+                                   entry_type='debit', amount=Decimal('27.00'), fx_rate_to_zar=Decimal('18.75'), fx_source='test_seed', amount_zar=Decimal('506.25'), event_type=EV.COMPENSATION_AWARDED, description='seed')
         LedgerEntry.objects.create(journal_batch_id='00000000-0000-0000-0000-000000000001', account=ACC.LIABILITY_STUDENT_WALLET,
-                                   entry_type='credit', amount=Decimal('27.00'), amount_zar=Decimal('506.25'), event_type=EV.COMPENSATION_AWARDED, description='seed')
+                                   entry_type='credit', amount=Decimal('27.00'), fx_rate_to_zar=Decimal('18.75'), fx_source='test_seed', amount_zar=Decimal('506.25'), event_type=EV.COMPENSATION_AWARDED, description='seed')
         CreditBundle.objects.filter(pk=lot.pk).update(expires_at=timezone.now() - timedelta(hours=1))
         CreditBundle.objects.filter(pk=lot.pk).update(remaining_credits=2)                 # one credit was spent
         first = expire_credits()
