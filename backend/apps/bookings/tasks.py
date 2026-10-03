@@ -104,8 +104,9 @@ def audit_attendance_and_noshows_task():
 
     # 2. T+10m No-Show Adjudication
     t10_cutoff = now - timedelta(minutes=10)
+    # CONFIRMED (nobody verified yet) and IN_PROGRESS (the tutor is in; the student may never have come).
     t10_candidates = Booking.objects.filter(
-        status=Booking.Status.CONFIRMED,
+        status__in=[Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS],
         start_time_utc__lte=t10_cutoff,
         end_time_utc__gt=now
     ).select_related('teacher__user', 'student')
@@ -113,7 +114,7 @@ def audit_attendance_and_noshows_task():
     for candidate in t10_candidates:
         with transaction.atomic():
             booking = Booking.objects.select_for_update().filter(id=candidate.id).first()
-            if not booking or booking.status != Booking.Status.CONFIRMED:
+            if not booking or booking.status not in (Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS):
                 continue
 
             teacher_email = booking.teacher.user.email
@@ -128,6 +129,9 @@ def audit_attendance_and_noshows_task():
                 booking=booking,
                 participant_email=student_email
             ).exists()
+
+            if booking.status == Booking.Status.IN_PROGRESS and not teacher_attended:
+                continue    # inconsistent data (room open, no tutor record): the end-of-lesson check disputes it
 
             # Active Zoom Probe Guard (Pillar 1)
             # Before issuing no-show penalties, query live Zoom status

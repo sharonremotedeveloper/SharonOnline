@@ -92,6 +92,7 @@ def test_zoom_hmac_signature_verification_success(zoom_booking):
                 "id": zoom_booking.zoom_meeting_id,
                 "host_id": "host_user_123",
                 "participant": {
+                    "id": "host_user_123",
                     "user_id": "zoom_user_teacher_1",
                     "user_name": "Teacher Tester",
                     "email": zoom_booking.teacher.user.email,
@@ -174,7 +175,9 @@ def test_out_of_order_participant_left_then_joined(zoom_booking):
         "payload": {
             "object": {
                 "id": zoom_booking.zoom_meeting_id,
+                "host_id": "host_user_123",
                 "participant": {
+                    "id": "host_user_123",
                     "user_id": "usr_ooo_1",
                     "email": teacher_email,
                     "leave_time": "2026-10-01T10:25:00Z"
@@ -198,6 +201,7 @@ def test_out_of_order_participant_left_then_joined(zoom_booking):
             "object": {
                 "id": zoom_booking.zoom_meeting_id,
                 "participant": {
+                    "id": "host_user_123",
                     "user_id": "usr_ooo_1",
                     "email": teacher_email,
                     "join_time": "2026-10-01T10:00:00Z"
@@ -226,7 +230,9 @@ def test_meeting_ended_finalizes_open_records(zoom_booking):
         "payload": {
             "object": {
                 "id": zoom_booking.zoom_meeting_id,
+                "host_id": "host_user_123",
                 "participant": {
+                    "id": "host_user_123",
                     "user_id": "usr_open_1",
                     "email": teacher_email,
                     "join_time": (timezone.now() - timedelta(minutes=24)).isoformat()
@@ -307,7 +313,9 @@ def test_late_webhook_post_adjudication_quarantine_creates_dispute(zoom_booking)
         "payload": {
             "object": {
                 "id": zoom_booking.zoom_meeting_id,
+                "host_id": "host_user_123",
                 "participant": {
+                    "id": "host_user_123",
                     "user_id": "late_tutor_1",
                     "email": zoom_booking.teacher.user.email,
                     "join_time": (timezone.now() - timedelta(minutes=15)).isoformat()
@@ -343,7 +351,9 @@ def test_concurrent_webhook_and_beat_interleaving(zoom_booking):
         "payload": {
             "object": {
                 "id": zoom_booking.zoom_meeting_id,
+                "host_id": "host_user_123",
                 "participant": {
+                    "id": "host_user_123",
                     "user_id": "thread_tutor_1",
                     "email": teacher_email,
                     "join_time": timezone.now().isoformat()

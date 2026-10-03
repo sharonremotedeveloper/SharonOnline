@@ -2,9 +2,7 @@ import json
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 import logging
-import dateutil.parser
 from django.db import transaction
-from django.db.models import Q
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -12,9 +10,8 @@ from rest_framework import status, permissions
 from rest_framework.permissions import AllowAny
 from rest_framework.throttling import ScopedRateThrottle
 
-from apps.bookings.models import Booking, AttendanceAudit
-from apps.bookings.services.state_machine import InvalidTransition, transition_booking
-from apps.admin_api.models import DisputeCase
+from apps.bookings.models import Booking
+from .services import attendance
 from .zoom import zoom_client
 
 logger = logging.getLogger(__name__)
@@ -63,17 +60,18 @@ class ZoomWebhookReceiverView(APIView):
             logger.warning(f"[ZOOM WEBHOOK] Unauthorized request rejected: {reason}")
             return Response({"error": reason}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # 4. Extract meeting object & participant data
-        payload = payload_data.get('payload', {})
-        meeting_obj = payload.get('object', {})
-        raw_meeting_id = meeting_obj.get('id')
-        if not raw_meeting_id:
-            logger.info(f"[ZOOM WEBHOOK] Event {event} skipped: no meeting ID provided.")
+        # 4. Extract the meeting object. Zoom's shape is not guaranteed, so anything odd is acknowledged and ignored.
+        payload = payload_data.get('payload')
+        meeting_obj = payload.get('object') if isinstance(payload, dict) else None
+        if not isinstance(meeting_obj, dict) or not meeting_obj.get('id'):
+            logger.info(f"[ZOOM WEBHOOK] Event {event} skipped: no usable meeting object.")
             return Response({"status": "skipped", "reason": "No meeting id"}, status=status.HTTP_200_OK)
 
-        meeting_id = str(raw_meeting_id).strip()
+        meeting_id = str(meeting_obj['id']).strip()
+        participant = meeting_obj.get('participant')
 
-        # 5. Process under transactional row lock (Concurrency Guard Pillar 2)
+        # 5. Process under transactional row lock (Concurrency Guard Pillar 2). Who the participant is and what the
+        #    event means is decided in services/attendance.py (docs/ZOOM_ATTENDANCE.md).
         with transaction.atomic():
             booking = (
                 Booking.objects.select_for_update()
@@ -81,166 +79,20 @@ class ZoomWebhookReceiverView(APIView):
                 .select_related('teacher__user', 'student')
                 .first()
             )
-
             if not booking:
                 logger.warning(f"[ZOOM WEBHOOK] Received event {event} for unrecognized meeting_id: {meeting_id}")
                 return Response({"status": "ignored", "reason": "Booking not found"}, status=status.HTTP_200_OK)
 
-            participant = meeting_obj.get('participant', {})
-            p_email = (participant.get('email') or '').strip().lower()
-            p_user_id = str(participant.get('user_id') or participant.get('id') or '').strip()
-            join_time_raw = participant.get('join_time')
-            leave_time_raw = participant.get('leave_time')
-
-            # Identify participant email mapping
-            teacher_email = booking.teacher.user.email.strip().lower()
-            student_email = booking.student.email.strip().lower()
-            host_id = str(meeting_obj.get('host_id') or '').strip()
-
-            if p_email == teacher_email:
-                mapped_email = booking.teacher.user.email
-            elif p_email == student_email:
-                mapped_email = booking.student.email
-            elif p_user_id and host_id and p_user_id == host_id:
-                mapped_email = booking.teacher.user.email
-            else:
-                # Default guest / external client mapping
-                mapped_email = booking.student.email
-
-            # Handle participant_joined
-            if event == 'meeting.participant_joined':
-                try:
-                    join_dt = dateutil.parser.isoparse(join_time_raw) if join_time_raw else timezone.now()
-                except Exception:
-                    join_dt = timezone.now()
-
-                # Look up existing record to handle out-of-order delivery
-                audit_qs = AttendanceAudit.objects.filter(
-                    booking=booking,
-                    participant_email=mapped_email
-                )
-                if p_user_id:
-                    audit_record = audit_qs.filter(Q(zoom_user_id=p_user_id) | Q(zoom_user_id='')).first()
-                else:
-                    audit_record = audit_qs.first()
-
-                if not audit_record:
-                    audit_record = AttendanceAudit.objects.create(
-                        booking=booking,
-                        participant_email=mapped_email,
-                        zoom_user_id=p_user_id,
-                        join_time_utc=join_dt,
-                        raw_payload=participant
-                    )
-                else:
-                    if not audit_record.join_time_utc:
-                        audit_record.join_time_utc = join_dt
-                    if p_user_id and not audit_record.zoom_user_id:
-                        audit_record.zoom_user_id = p_user_id
-
-                    # If participant_left was ingested before participant_joined
-                    if audit_record.leave_time_utc and audit_record.join_time_utc:
-                        duration_sec = (audit_record.leave_time_utc - audit_record.join_time_utc).total_seconds()
-                        audit_record.total_minutes = max(0, int(duration_sec // 60))
-                    audit_record.save()
-
-                # State Machine Progression & Late Webhook Concurrency Guard
-                if booking.status == Booking.Status.CONFIRMED:
-                    transition_booking(booking, Booking.Status.IN_PROGRESS, actor='system:zoom_webhook',
-                                       reason=f'{mapped_email} joined')
-                    logger.info(f"[ZOOM WEBHOOK] Booking {booking.id} transitioned to IN_PROGRESS.")
-
-                elif booking.status in [Booking.Status.TEACHER_NO_SHOW, Booking.Status.STUDENT_NO_SHOW]:
-                    # Late Webhook Hazard: participant joined after adjudication!
-                    logger.warning(
-                        f"[LATE WEBHOOK HAZARD] Booking {booking.id} is in {booking.status}, "
-                        f"but received late participant_joined event for {mapped_email}! Quarantining to DISPUTED."
-                    )
-                    adjudicated = booking.status
-                    transition_booking(booking, Booking.Status.DISPUTED, actor='system:zoom_webhook',
-                                       reason=f'late join telemetry after {adjudicated} verdict')
-
-                    # Auto-create audit DisputeCase in arbitration tribunal
-                    DisputeCase.objects.get_or_create(
-                        booking=booking,
-                        defaults={
-                            "student": booking.student,
-                            "teacher": booking.teacher,
-                            "student_statement": f"Automated Alert: Late Zoom attendance telemetry received after {adjudicated} adjudication.",
-                            "teacher_statement": f"Telemetry proof: Participant {mapped_email} joined at {join_dt.isoformat()}.",
-                            "status": DisputeCase.Status.OPEN,
-                            "admin_notes": "Late webhook arrived post-adjudication. Quarantined for admin manual arbitration."
-                        }
-                    )
-
-            # Handle participant_left
-            elif event == 'meeting.participant_left':
-                try:
-                    leave_dt = dateutil.parser.isoparse(leave_time_raw) if leave_time_raw else timezone.now()
-                except Exception:
-                    leave_dt = timezone.now()
-
-                audit_qs = AttendanceAudit.objects.filter(
-                    booking=booking,
-                    participant_email=mapped_email
-                )
-                if p_user_id:
-                    audit_record = audit_qs.filter(Q(zoom_user_id=p_user_id) | Q(zoom_user_id='')).first()
-                else:
-                    audit_record = audit_qs.first()
-
-                if not audit_record:
-                    # Out of order: participant_left arrived before participant_joined
-                    audit_record = AttendanceAudit.objects.create(
-                        booking=booking,
-                        participant_email=mapped_email,
-                        zoom_user_id=p_user_id,
-                        leave_time_utc=leave_dt,
-                        raw_payload=participant
-                    )
-                else:
-                    audit_record.leave_time_utc = leave_dt
-                    if p_user_id and not audit_record.zoom_user_id:
-                        audit_record.zoom_user_id = p_user_id
-
-                    if audit_record.join_time_utc and audit_record.leave_time_utc:
-                        duration_sec = (audit_record.leave_time_utc - audit_record.join_time_utc).total_seconds()
-                        audit_record.total_minutes = max(0, int(duration_sec // 60))
-                    audit_record.save()
-
-                logger.info(
-                    f"[ZOOM WEBHOOK] Participant {mapped_email} left booking {booking.id}. "
-                    f"Total duration: {audit_record.total_minutes}m."
-                )
-
-                # Late Webhook Hazard guard on leave event as well
-                if booking.status in [Booking.Status.TEACHER_NO_SHOW, Booking.Status.STUDENT_NO_SHOW]:
-                    adjudicated = booking.status
-                    transition_booking(booking, Booking.Status.DISPUTED, actor='system:zoom_webhook',
-                                       reason=f'late leave telemetry after {adjudicated} verdict')
-                    DisputeCase.objects.get_or_create(
-                        booking=booking,
-                        defaults={
-                            "student": booking.student,
-                            "teacher": booking.teacher,
-                            "student_statement": f"Automated Alert: Late Zoom telemetry received after {adjudicated} adjudication.",
-                            "teacher_statement": f"Telemetry proof: Participant {mapped_email} logged {audit_record.total_minutes}m.",
-                            "status": DisputeCase.Status.OPEN,
-                            "admin_notes": "Late webhook arrived post-adjudication. Quarantined for admin manual arbitration."
-                        }
-                    )
-
-            # Handle meeting.ended
+            now = timezone.now()
+            if event in ('meeting.participant_joined', 'meeting.participant_left'):
+                if not isinstance(participant, dict) or not participant:
+                    return Response({"status": "skipped", "reason": "No participant"}, status=status.HTTP_200_OK)
+                handler = attendance.on_participant_joined if event == 'meeting.participant_joined' else attendance.on_participant_left
+                handler(booking, meeting_obj, participant, now)
+            elif event == 'meeting.started':
+                attendance.on_meeting_started(booking, meeting_obj, now)
             elif event == 'meeting.ended':
-                now_utc = timezone.now()
-                open_audits = AttendanceAudit.objects.filter(booking=booking, leave_time_utc__isnull=True)
-                for aud in open_audits:
-                    aud.leave_time_utc = now_utc
-                    if aud.join_time_utc:
-                        duration_sec = (aud.leave_time_utc - aud.join_time_utc).total_seconds()
-                        aud.total_minutes = max(0, int(duration_sec // 60))
-                    aud.save()
-                logger.info(f"[ZOOM WEBHOOK] Meeting ended for booking {booking.id}. Finalized {open_audits.count()} open records.")
+                attendance.on_meeting_ended(booking, meeting_obj, now)
 
         return Response({
             "status": "success",
