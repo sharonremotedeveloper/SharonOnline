@@ -1689,9 +1689,10 @@ export interface components {
          *     * `redemption` - redemption
          *     * `refund` - refund
          *     * `bonus` - bonus
+         *     * `expiry` - expiry
          * @enum {string}
          */
-        TypeEnum: "opening" | "purchase" | "redemption" | "refund" | "bonus";
+        TypeEnum: "opening" | "purchase" | "redemption" | "refund" | "bonus" | "expiry";
         User: {
             /** Format: uuid */
             readonly id: string;

@@ -181,3 +181,17 @@ def pytest_django_on_commit():
     """Run transaction.on_commit callbacks immediately (the test DB wraps tests in a transaction)."""
     from django.test import TestCase
     return TestCase.captureOnCommitCallbacks(execute=True)
+
+
+@pytest.mark.django_db
+def test_the_new_slot_lock_is_held_by_a_token_only_that_booking_knows(tutor, student_user):
+    """Codex's lock-ownership rule applies to a reschedule too: the lock is stored with a unique token, also kept on the booking."""
+    from django.core.cache import cache
+    from apps.bookings.services.lock_service import build_slot_lock_key
+    b = captured(tutor, student_user, 30 * H)
+    new = open_slots(tutor)[5]
+    assert resched(student_user, b, new).status_code == 200
+    b.refresh_from_db()
+    key = build_slot_lock_key(str(tutor.id), new.isoformat())
+    assert b.slot_lock_token and cache.get(key) == b.slot_lock_token
+    assert cache.get(key) != str(student_user.id)
