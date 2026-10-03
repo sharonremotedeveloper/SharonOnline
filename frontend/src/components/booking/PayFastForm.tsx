@@ -4,7 +4,8 @@ import { useState } from "react";
 import { ShieldCheck, CreditCard, Lock, ArrowRight, ExternalLink } from "lucide-react";
 
 interface PayFastFormProps {
-  amountZar: string;
+  /** Formatted amount to display (from the platform price list, or the server's checkout/init response); null while unknown. */
+  amountLabel: string | null;
   bookingReference: string;
   itemDescription: string;
   /** Initializes the signed PayFast redirect. Booking success still comes only from the ITN webhook. */
@@ -13,7 +14,7 @@ interface PayFastFormProps {
 }
 
 export function PayFastForm({
-  amountZar,
+  amountLabel,
   bookingReference,
   itemDescription,
   onSuccess,
@@ -46,7 +47,7 @@ export function PayFastForm({
         </div>
 
         <span className="text-sm font-extrabold text-teal font-serif">
-          R{amountZar} ZAR
+          {amountLabel ?? "Price unavailable"}
         </span>
       </div>
 
@@ -76,7 +77,7 @@ export function PayFastForm({
           ) : (
             <>
               <Lock className="w-3.5 h-3.5" />
-              <span>Pay R{amountZar} ZAR via PayFast</span>
+              <span>Pay{amountLabel ? ` ${amountLabel}` : ""} via PayFast</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </>
           )}

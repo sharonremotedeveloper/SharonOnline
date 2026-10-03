@@ -32,10 +32,9 @@ export interface ReservationResponse {
 type GeneratedBookingDetail = components["schemas"]["BookingDetail"];
 type GeneratedTeacher = GeneratedBookingDetail["teacher"];
 
-/** API-generated booking contract with the one intentional runtime normalization: Decimal -> number. */
-export type BookingDetail = Omit<GeneratedBookingDetail, "teacher"> & {
+/** API-generated booking contract with the one intentional runtime normalization: Decimal -> number, and prices removed (the amount due comes from checkout/init). */
+export type BookingDetail = Omit<GeneratedBookingDetail, "teacher" | "price_usd" | "price_zar"> & {
   teacher: Omit<GeneratedTeacher, "price_per_25min_usd" | "rating_avg"> & {
-    price_per_25min_usd?: number;
     rating_avg?: number;
   };
 };

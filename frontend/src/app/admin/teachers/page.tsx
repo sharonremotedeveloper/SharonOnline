@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { LessonPriceLabel } from "@/components/ui/LessonPriceLabel";
 import { useApiData } from "@/hooks/useApiData";
 
 export default function AdminTeachersPage() {
@@ -131,7 +132,7 @@ export default function AdminTeachersPage() {
                   </td>
 
                   <td className="py-4 px-4 font-extrabold text-teal font-serif text-sm">
-                    ${Number(tutor.hourly_rate ?? tutor.price_per_25min_usd ?? 0).toFixed(2)} USD
+                    <LessonPriceLabel /> <span className="text-[10px] text-ink-muted font-sans">platform price</span>
                   </td>
 
                   <td className="py-4 px-4">

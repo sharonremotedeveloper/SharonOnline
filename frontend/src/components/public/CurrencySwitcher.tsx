@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CURRENCIES, CurrencyCode, detectDefaultCurrency } from "@/lib/currency";
+import { api } from "@/lib/api";
+import { useApiData } from "@/hooks/useApiData";
+import type { LessonPrice } from "@/lib/prices";
 import { Globe } from "lucide-react";
 
 interface CurrencySwitcherProps {
@@ -13,6 +16,9 @@ export function CurrencySwitcher({ onCurrencyChange, variant = "select" }: Curre
   const [selected, setSelected] = useState<CurrencyCode>("USD");
   const [mounted, setMounted] = useState(false);
   const initialCurrencyChange = useRef(onCurrencyChange);
+  // Only currencies the platform actually prices are offered; the list is server truth, not a hardcoded set.
+  const { data: prices, error, loading, reload } = useApiData<LessonPrice[]>(() => api.getLessonPrices(), []);
+  const offered = (prices ?? []).map((p) => p.currency).filter((c) => CURRENCIES[c]);
 
   useEffect(() => {
     setMounted(true);
@@ -31,21 +37,46 @@ export function CurrencySwitcher({ onCurrencyChange, variant = "select" }: Curre
     if (onCurrencyChange) onCurrencyChange(code);
   };
 
-  if (!mounted) {
+  const shell = "flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cream-surface border border-divider text-xs text-ink-muted";
+
+  if (!mounted || loading) {
     return (
-      <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cream-surface border border-divider text-xs text-ink-muted">
+      <div className={shell} aria-busy="true">
         <Globe className="w-3.5 h-3.5" />
-        <span>USD ($)</span>
+        <span>Loading currencies...</span>
       </div>
     );
   }
 
+  if (error) {
+    return (
+      <div className={shell} role="alert">
+        <Globe className="w-3.5 h-3.5" />
+        <span>Currencies unavailable</span>
+        <button type="button" onClick={reload} className="font-bold text-primary hover:underline">
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (offered.length === 0) {
+    return (
+      <div className={shell}>
+        <Globe className="w-3.5 h-3.5" />
+        <span>No currencies available</span>
+      </div>
+    );
+  }
+
+  const active: CurrencyCode = offered.includes(selected) ? selected : offered[0];
+
   if (variant === "inline") {
     return (
       <div className="inline-flex items-center gap-1 p-1 bg-cream-surface rounded-xl border border-divider">
-        {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => {
+        {offered.map((code) => {
           const curr = CURRENCIES[code];
-          const isActive = selected === code;
+          const isActive = active === code;
           return (
             <button
               key={code}
@@ -69,11 +100,11 @@ export function CurrencySwitcher({ onCurrencyChange, variant = "select" }: Curre
     <div className="flex items-center gap-2">
       <Globe className="w-4 h-4 text-ink-muted" />
       <select
-        value={selected}
+        value={active}
         onChange={(e) => handleChange(e.target.value as CurrencyCode)}
         className="bg-cream-surface border border-divider rounded-xl px-3 py-1.5 text-xs font-bold text-ink focus:outline-none focus:ring-2 focus:ring-teal cursor-pointer"
       >
-        {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => (
+        {offered.map((code) => (
           <option key={code} value={code}>
             {CURRENCIES[code].flag} {CURRENCIES[code].label}
           </option>

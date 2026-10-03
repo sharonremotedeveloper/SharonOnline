@@ -21,7 +21,6 @@ export interface PublicTutor {
   rating_avg: number;
   rating_count: number;
   lessons_completed: number;
-  price_per_25min_usd: number;
   specialties: string[];
   learning_goals: Array<"business" | "interview" | "conversation" | "presentation" | "travel">;
   learner_levels: string;

@@ -14,30 +14,28 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { components } from "@/types/api.generated";
-import { CURRENCIES, CurrencyCode, detectDefaultCurrency } from "@/lib/currency";
+import { CurrencyCode, detectDefaultCurrency } from "@/lib/currency";
+import { formatPackPerLesson, formatPackPrice, type CreditPackPrice } from "@/lib/prices";
 import { CurrencySwitcher } from "@/components/public/CurrencySwitcher";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
 
 // Generated from the backend OpenAPI schema (`npm run gen:api`), so a contract change breaks the build instead of the page.
 type WalletResponse = components["schemas"]["Wallet"];
-type CreditPack = {
-  id: number;
-  code: string;
-  name: string;
-  credits: number;
-  prices: Record<CurrencyCode, string>;
-};
+type CreditPack = CreditPackPrice;
 
 export default function StudentWalletPage() {
   const [currency, setCurrency] = useState<CurrencyCode>("USD");
   const { data: wallet, error, loading, reload } = useApiData<WalletResponse>(() => api.getStudentWallet(), []);
-  const { data: packs, error: packsError } = useApiData<CreditPack[]>(() => api.getCreditPacks(), []);
+  const {
+    data: packs,
+    error: packsError,
+    loading: packsLoading,
+    reload: reloadPacks,
+  } = useApiData<CreditPack[]>(() => api.getCreditPacks(), []);
   const [buyingPack, setBuyingPack] = useState<number | null>(null);
   const [purchaseNotice, setPurchaseNotice] = useState<string>("");
   const [pendingPurchaseId, setPendingPurchaseId] = useState<string | null>(null);
-
-  const curr = CURRENCIES[currency];
 
   useEffect(() => {
     setCurrency(detectDefaultCurrency());
@@ -136,7 +134,7 @@ export default function StudentWalletPage() {
           </div>
 
           <p className="text-xs text-white/80 max-w-sm">
-            Each credit unlocks 1 full 25-minute synchronous private lesson with any verified tutor. Credits never expire.
+            Each credit unlocks 1 full 25-minute synchronous private lesson with any verified tutor. Credits expire 30 days after they are granted.
           </p>
         </div>
 
@@ -158,16 +156,27 @@ export default function StudentWalletPage() {
         <div className="space-y-1">
           <h2 className="text-xl font-extrabold text-ink font-serif">Top Up Lesson Packs</h2>
           <p className="text-xs text-ink-muted">
-            Save up to 15% with multi-lesson packs. Billed in {currency}.
+            Billed in {currency}.
           </p>
           {purchaseNotice && <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 inline-block">{purchaseNotice}</p>}
-          {packsError ? <p className="text-[11px] text-primary">Credit packs could not be loaded.</p> : null}
         </div>
+
+        {packsError ? (
+          <ErrorState error={packsError} title="We could not load the lesson packs" onRetry={reloadPacks} />
+        ) : packsLoading ? (
+          <div className="bg-white rounded-3xl p-8 border border-divider text-center text-xs text-ink-muted">
+            Loading lesson packs...
+          </div>
+        ) : !packs || packs.length === 0 ? (
+          <div className="bg-white rounded-3xl p-8 border border-divider text-center text-xs text-ink-muted">
+            No lesson packs are available right now.
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {(packs ?? []).map((bundle) => {
-            const rawPrice = Number(bundle.prices[currency]);
-            const formattedPrice = curr.format(rawPrice);
+            const formattedPrice = formatPackPrice(bundle, currency);
+            const perLesson = formatPackPerLesson(bundle, currency);
 
             return (
               <div
@@ -183,18 +192,15 @@ export default function StudentWalletPage() {
                     <span className="text-xs font-bold text-ink-muted uppercase tracking-wider">
                       {bundle.name}
                     </span>
-                    {bundle.credits > 1 && (
-                      <span className="px-2 py-0.5 rounded-full bg-success/15 text-success text-[10px] font-bold">
-                        Pack savings
-                      </span>
-                    )}
                   </div>
 
                   <div>
-                    <div className="text-2xl font-black text-ink font-serif">{formattedPrice}</div>
-                    <div className="text-[11px] text-ink-muted mt-0.5">
-                      {curr.format(rawPrice / bundle.credits)} / lesson
+                    <div className="text-2xl font-black text-ink font-serif">
+                      {formattedPrice ?? `Not available in ${currency}`}
                     </div>
+                    {formattedPrice && perLesson && (
+                      <div className="text-[11px] text-ink-muted mt-0.5">{perLesson} / lesson</div>
+                    )}
                   </div>
 
                   <p className="text-xs text-ink-muted">{bundle.credits} private 25-minute lessons</p>
@@ -202,7 +208,7 @@ export default function StudentWalletPage() {
 
                 <button
                   type="button"
-                  disabled={buyingPack !== null}
+                  disabled={buyingPack !== null || !formattedPrice}
                   onClick={() => startPackPurchase(bundle)}
                   className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 ${
                     bundle.credits === 10
