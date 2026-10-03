@@ -7,7 +7,7 @@
 | Phase | State |
 | :--- | :--- |
 | 7 Security + spec freeze | Code done. **Open, human:** 7.10 secrets check; decisions D-3, D-4, D-7..D-12. |
-| 8 Honest frontend + real auth | Done except **8.9** (Next.js major upgrade; must land before the first hosted staging). |
+| 8 Honest frontend + real auth | Done, including **8.9** (Next 16 / React 19, 2026-10-03). |
 | 9 Booking core | **Done** (9.1-9.10). |
 | **Codex remediation (8 batches)** | **Reviewed and merged** (`REMEDIATION_INTEGRATION.md`): containment, funding provenance, credit packs and redemption, payment/ledger hardening, Zoom identity, profiles/support, tutor wallet + encrypted payout settings, Eskom, CI. Backend 980 tests, frontend 95. |
 | 10 Real payments | **About half the groundwork exists** (§2). Remaining: PayPal orders and buttons, real refund gateways, lesson price catalog, event coverage, receipts, sandbox verification. |

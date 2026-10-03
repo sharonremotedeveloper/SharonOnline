@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { dashboardFor, SESSION_COOKIE, verifySession } from "@/lib/session";
 
 /**
- * Edge route guard for /student, /teacher and /admin (UI routing only - the Django API re-checks the role from the
+ * Route guard (Next 16 `proxy`, formerly `middleware`) for /student, /teacher and /admin (UI routing only - the Django API re-checks the role from the
  * database on every request and is the real security boundary).
  *
  * The role comes from `sharon_session`, an HttpOnly cookie signed with SESSION_SECRET that we only mint after Django
@@ -11,7 +11,7 @@ import { dashboardFor, SESSION_COOKIE, verifySession } from "@/lib/session";
  * fails verification. When the short-lived session is missing/expired we bounce through /api/session/renew, which
  * silently re-authenticates from the refresh cookie or lands on /login.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const claims = await verifySession(request.cookies.get(SESSION_COOKIE)?.value);
 

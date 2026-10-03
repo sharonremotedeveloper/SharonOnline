@@ -8,14 +8,14 @@
 Browser  ──cookies (HttpOnly)──►  Next.js server  ──Authorization: Bearer──►  Django API
  JS sees:  user profile only      /api/session/*  login, logout, me, renew
            (never a token)        /api/proxy/*    authenticated pass-through
-                                  middleware      verifies signed session cookie
+                                  proxy.ts        verifies signed session cookie
 ```
 
 | Cookie | Holds | Path | Lifetime | Who reads it |
 | :--- | :--- | :--- | :--- | :--- |
 | `sharon_access` | Django access JWT | `/api` | 15 min | proxy only |
 | `sharon_refresh` | Django refresh JWT | `/api` | 14 days | proxy + session routes only |
-| `sharon_session` | `{uid, role, exp}` signed with `SESSION_SECRET` (HMAC-SHA256) | `/` | 15 min | Edge middleware |
+| `sharon_session` | `{uid, role, exp}` signed with `SESSION_SECRET` (HMAC-SHA256) | `/` | 15 min | `proxy.ts` (was `middleware.ts`) |
 
 All: `HttpOnly`, `SameSite=Lax`, `Secure` in production (`SESSION_COOKIE_SECURE=false` only for plain-http staging).
 
@@ -70,3 +70,6 @@ Django: `ACCESS_TOKEN_LIFETIME` is now 15 minutes (the Task 7.7 follow-up).
 ## 6. Bug found during verification (ERR-009)
 
 Next's `NextResponse.cookies.set()` mirrors cookies into an `x-middleware-set-cookie` response header readable by JS - including in production builds. Replaced with our own `Set-Cookie` serialisation; verified absent on a rebuilt `next start`. Always check raw response headers, not only the browser's cookie jar.
+
+
+> **Next 16 note (Task 8.9):** `middleware.ts` became `src/proxy.ts` (exported `proxy`), which runs on the Node.js runtime; `verifySession` uses the global Web Crypto `crypto.subtle`, available in both runtimes. Route-handler `params` are now a Promise.

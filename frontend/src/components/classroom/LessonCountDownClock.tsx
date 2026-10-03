@@ -16,7 +16,7 @@ export function LessonCountDownClock({
   onLessonEnded,
   className = "",
 }: LessonCountDownClockProps) {
-  const [now, setNow] = useState<number>(Date.now());
+  const [now, setNow] = useState<number>(() => Date.now());
 
   useEffect(() => {
     const timer = setInterval(() => {
