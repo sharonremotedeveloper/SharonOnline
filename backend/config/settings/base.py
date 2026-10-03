@@ -299,6 +299,10 @@ PAYFAST_NOTIFY_URL = os.environ.get('PAYFAST_NOTIFY_URL', '')
 # Extra source-IP ranges allowed for ITNs (comma-separated CIDRs). Copy PayFast's currently published ranges here;
 # DNS resolution of PayFast's hosts is used in addition.
 PAYFAST_EXTRA_ALLOWED_CIDRS = [c.strip() for c in os.environ.get('PAYFAST_EXTRA_ALLOWED_CIDRS', '').split(',') if c.strip()]
+# Task 10.2 pending-payment grace: at most this many risk-based (PENDING_REVIEW) grace bookings open at once.
+GRACE_MAX_OPEN = int(os.environ.get('GRACE_MAX_OPEN', '5'))
+# True: the capture endpoint confirms the booking through the verified path; False: only the webhook does.
+PAYPAL_CAPTURE_CONFIRMS = _env_bool('PAYPAL_CAPTURE_CONFIRMS', True)
 # EUR/JPY lesson checkout is blocked when the newest admin-entered FX rate is older than this (Task 10.1d).
 FX_RATE_MAX_AGE_HOURS = int(os.environ.get('FX_RATE_MAX_AGE_HOURS', '24'))
 # D-1: retail lesson prices are platform-set per currency in payments.LessonPrice (Task 10.1); no FX setting here.

@@ -48,6 +48,10 @@ class SupportInquiry(models.Model):
         RESOLVED = 'resolved', 'Resolved'
         CLOSED = 'closed', 'Closed'
 
+    class Category(models.TextChoices):
+        GENERAL = 'general', 'General'
+        PAYMENT_FAILURE = 'payment_failure', 'Payment failure'
+
     class DeliveryState(models.TextChoices):
         PENDING = 'pending', 'Pending'
         RETRYABLE = 'retryable', 'Retryable'
@@ -65,6 +69,12 @@ class SupportInquiry(models.Model):
     sender_type = models.CharField(max_length=20, choices=SenderType.choices, default=SenderType.OTHER)
     subject = models.CharField(max_length=200)
     message = models.TextField()
+    # System-created tickets (e.g. a pending payment that failed) point at the booking/payment they concern.
+    category = models.CharField(max_length=20, choices=Category.choices, default=Category.GENERAL, db_index=True)
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                related_name='support_inquiries')
+    related_booking_id = models.UUIDField(null=True, blank=True)
+    related_transaction_ref = models.CharField(max_length=40, blank=True)
     delivery_state = models.CharField(
         max_length=20, choices=DeliveryState.choices, default=DeliveryState.PENDING, db_index=True,
     )

@@ -32,6 +32,9 @@ class PaymentTransaction(models.Model):
 
     class Status(models.TextChoices):
         INITIALIZED = 'initialized', 'Initialized'
+        # The gateway accepted the capture but has not guaranteed the money (PayPal PENDING). Never settled: no ledger
+        # posting, no escrow, no payout until it resolves (Task 10.2 grace bookings).
+        PENDING_CAPTURE = 'pending_capture', 'Pending capture (not yet guaranteed)'
         SUCCESS = 'success', 'Successful'
         FAILED = 'failed', 'Failed'
         REFUNDED = 'refunded', 'Refunded'
@@ -43,6 +46,12 @@ class PaymentTransaction(models.Model):
     booking = models.ForeignKey('bookings.Booking', on_delete=models.PROTECT, null=True, blank=True, related_name='transactions')
     credit_purchase = models.ForeignKey('payments.CreditPurchase', on_delete=models.PROTECT, null=True, blank=True,
                                         related_name='transactions')
+    # PayPal Orders v2: the order created at checkout (the capture id later replaces gateway_reference).
+    gateway_order_id = models.CharField(max_length=64, null=True, blank=True, unique=True)
+    # Why PayPal left the capture pending (status_details.reason) and who the payer is (per-payer grace cap).
+    pending_reason = models.CharField(max_length=64, blank=True)
+    payer_id = models.CharField(max_length=64, blank=True, db_index=True)
+    payer_email = models.EmailField(blank=True)
     gateway = models.CharField(max_length=20, choices=Gateway.choices)
     gateway_reference = models.CharField(max_length=255, unique=True, db_index=True)
     # Our own reference (sent to the gateway as m_payment_id / custom_id) so webhooks can find the expected amount.
@@ -348,6 +357,8 @@ class CreditWalletEntry(models.Model):
 class BookingFunding(models.Model):
     class SourceType(models.TextChoices):
         GATEWAY = 'gateway', 'Gateway payment'
+        # Booking confirmed while the capture is still PENDING (grace booking). Settlement and payout refuse it.
+        GATEWAY_PENDING = 'gateway_pending', 'Gateway payment pending clearance'
         CREDIT = 'credit', 'Wallet credit'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
