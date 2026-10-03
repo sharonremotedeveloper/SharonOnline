@@ -824,7 +824,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Turn a still-pending gateway refund into 30-day wallet credit (instead of waiting for the card/PayPal refund). */
+        /**
+         * @description Turn a still-pending gateway refund into 30-day wallet credit (instead of waiting for the card/PayPal refund). Only before the
+         *     gateway has been asked: afterwards the money may already be on its way, and the answer is 409 `refund_in_progress`.
+         */
         post: operations["v1_refunds_convert_to_wallet_create"];
         delete?: never;
         options?: never;
@@ -1482,12 +1485,13 @@ export interface components {
          * @description * `awaiting_clearance` - Waiting for the payment to clear
          *     * `void` - Not needed (the payment never cleared)
          *     * `pending_gateway` - Waiting for the gateway
+         *     * `submitted` - On its way
          *     * `processed` - Paid to the original payment method
          *     * `converted` - Converted to wallet credit
          *     * `failed` - Gateway refused (needs a human)
          * @enum {string}
          */
-        RefundStatusEnum: "awaiting_clearance" | "void" | "pending_gateway" | "processed" | "converted" | "failed";
+        RefundStatusEnum: "awaiting_clearance" | "void" | "pending_gateway" | "submitted" | "processed" | "converted" | "failed";
         Register: {
             /** Format: uuid */
             readonly id: string;
