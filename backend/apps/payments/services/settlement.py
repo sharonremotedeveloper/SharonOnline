@@ -17,6 +17,7 @@ SETTLEMENT_EVENT_TYPES = (
     LedgerEntry.EventType.DISPUTE_RESOLVED,    # arbitration decision (refund, release or split)
     LedgerEntry.EventType.REFUND_ISSUED,       # teacher no-show etc.
     LedgerEntry.EventType.OUTAGE_REFUND,       # power outage
+    LedgerEntry.EventType.PAYMENT_FAILURE_ABSORBED,   # pending payment failed after the lesson: platform pays the tutor
 )
 
 # Outcomes whose escrow is released to the tutor by the periodic job once the 24h dispute window has passed.

@@ -13,6 +13,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.bookings.models import Booking
+from apps.bookings.services.booking_block import booking_block_message
 from apps.bookings.services.holds import hold_expires_at, live_hold_q
 from apps.bookings.services.lock_service import acquire_slot_lock, new_slot_lock_token, release_slot_lock
 from apps.bookings.services.slot_generator import LESSON_DURATION_MINUTES, generate_teacher_slots
@@ -33,6 +34,9 @@ def reserve_slot(*, student, teacher_id, start_time_utc, material=None) -> Tuple
     """Returns (booking, created). `created` is False when an identical live hold already existed (safe retry)."""
     if getattr(student, 'role', None) != 'student':
         raise ReservationError(403, "Only student accounts can book lessons.")
+    blocked = booking_block_message(student)
+    if blocked:
+        raise ReservationError(409, blocked)
 
     teacher = (TeacherProfile.objects.select_related('user')
                .filter(id=teacher_id, is_active=True, is_verified=True).first())

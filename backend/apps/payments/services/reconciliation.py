@@ -39,6 +39,30 @@ def query_gateway(transaction: PaymentTransaction) -> ReconciliationResult:
     )
 
 
+def reconcile_pending_capture(transaction: PaymentTransaction, *, lookup=None) -> ReconciliationResult:
+    """
+    Resolve a PENDING_CAPTURE transaction from PayPal's own record of its capture: COMPLETED goes through the same verified
+    settle path as the webhook (grace bookings upgrade, normal ones confirm), DECLINED/FAILED/REVERSED run the failure
+    runbook, anything else stays pending. Provider errors change nothing.
+    """
+    from apps.payments.services import grace
+    from apps.payments.services.paypal_capture import CaptureRejected, settle_completed_capture, verify_capture_amount
+    lookup = lookup or query_gateway
+    result = lookup(transaction)
+    if result.state == 'completed':
+        capture = {**(result.payload or {}), 'id': transaction.gateway_reference}
+        try:
+            verify_capture_amount(transaction, capture, payload=capture)
+            settle_completed_capture(transaction.pk, capture, payload=capture)
+        except CaptureRejected as exc:
+            return ReconciliationResult('unresolved', f'PayPal capture could not be applied: {exc.reason}', result.payload)
+    elif result.state == 'failed':
+        grace.on_failed(transaction)
+    PaymentTransaction.objects.filter(pk=transaction.pk).update(
+        reconciliation_attempts=transaction.reconciliation_attempts + 1, last_reconciled_at=timezone.now())
+    return result
+
+
 def reconcile_initialized_transaction(transaction: PaymentTransaction, *, lookup=None) -> ReconciliationResult:
     lookup = lookup or query_gateway
     result = lookup(transaction)
