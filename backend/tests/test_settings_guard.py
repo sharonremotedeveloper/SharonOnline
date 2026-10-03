@@ -106,3 +106,31 @@ def test_throttle_num_proxies_zero_is_not_none():
     """DRF treats None as 'trust the client X-Forwarded-For'. 0 must stay 0."""
     from django.conf import settings
     assert settings.REST_FRAMEWORK['NUM_PROXIES'] is not None
+
+
+LIVE_PAYFAST = {'PAYFAST_SANDBOX': 'False', 'PAYFAST_MERCHANT_ID': '12345678', 'PAYFAST_MERCHANT_KEY': 'k',
+                'PAYFAST_PASSPHRASE': 'p', 'PAYFAST_TRUSTED_PROXY_COUNT': '1',
+                'PAYFAST_NOTIFY_URL': 'https://api.sharonesl.com/api/v1/payments/webhooks/payfast/',
+                'PAYFAST_RETURN_URL': 'https://sharonesl.com/student/checkout/return',
+                'PAYFAST_CANCEL_URL': 'https://sharonesl.com/student/checkout/cancel'}
+
+
+def test_live_payfast_with_return_and_cancel_urls_passes():
+    validate_production_settings({**GOOD, **LIVE_PAYFAST})
+
+
+@pytest.mark.parametrize('name,value', [
+    ('PAYFAST_RETURN_URL', 'http://sharonesl.com/student/checkout/return'),
+    ('PAYFAST_CANCEL_URL', 'http://sharonesl.com/student/checkout/cancel'),
+    ('PAYFAST_RETURN_URL', 'https://localhost:3000/student/checkout/return'),
+    ('PAYFAST_CANCEL_URL', 'https://127.0.0.1/student/checkout/cancel'),
+])
+def test_live_payfast_rejects_insecure_or_local_return_cancel_urls(name, value):
+    with pytest.raises(ImproperlyConfigured):
+        validate_production_settings({**GOOD, **LIVE_PAYFAST, name: value})
+
+
+def test_live_payfast_return_cancel_urls_default_from_frontend_when_unset():
+    env = {**GOOD, **LIVE_PAYFAST}
+    del env['PAYFAST_RETURN_URL'], env['PAYFAST_CANCEL_URL']
+    validate_production_settings(env)  # defaults derive from the (already guarded https) FRONTEND_BASE_URL

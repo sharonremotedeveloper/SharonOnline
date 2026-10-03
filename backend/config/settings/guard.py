@@ -94,6 +94,10 @@ def validate_production_settings(env=os.environ):
         notify = env.get('PAYFAST_NOTIFY_URL', '')
         if notify and not notify.startswith('https://'):
             errors.append('PAYFAST_NOTIFY_URL must be an https:// URL')
+        for name in ('PAYFAST_RETURN_URL', 'PAYFAST_CANCEL_URL'):  # unset = derived from FRONTEND_BASE_URL (guarded above)
+            url = env.get(name, '')
+            if url and (not url.startswith('https://') or _is_local_origin(url)):
+                errors.append(f'{name} must be a public https:// URL (no localhost)')
 
     if env.get('PAYPAL_CLIENT_ID'):
         if env.get('PAYPAL_MODE', 'sandbox').strip().lower() not in ('live', 'sandbox'):

@@ -296,6 +296,9 @@ PAYFAST_SANDBOX = _env_bool('PAYFAST_SANDBOX', True)
 PAYFAST_SKIP_IP_CHECK = _env_bool('PAYFAST_SKIP_IP_CHECK', False)
 PAYFAST_TRUSTED_PROXY_COUNT = int(os.environ.get('PAYFAST_TRUSTED_PROXY_COUNT', '0'))
 PAYFAST_NOTIFY_URL = os.environ.get('PAYFAST_NOTIFY_URL', '')
+# Where PayFast sends the buyer after paying / cancelling (Task 10.2 H). The opaque TX- reference is appended as ?ref=.
+PAYFAST_RETURN_URL = os.environ.get('PAYFAST_RETURN_URL') or f'{FRONTEND_BASE_URL}/student/checkout/return'
+PAYFAST_CANCEL_URL = os.environ.get('PAYFAST_CANCEL_URL') or f'{FRONTEND_BASE_URL}/student/checkout/cancel'
 # Extra source-IP ranges allowed for ITNs (comma-separated CIDRs). Copy PayFast's currently published ranges here;
 # DNS resolution of PayFast's hosts is used in addition.
 PAYFAST_EXTRA_ALLOWED_CIDRS = [c.strip() for c in os.environ.get('PAYFAST_EXTRA_ALLOWED_CIDRS', '').split(',') if c.strip()]
