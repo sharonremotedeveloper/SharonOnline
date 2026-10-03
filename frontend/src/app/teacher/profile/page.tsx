@@ -65,7 +65,7 @@ export default function TeacherProfilePage() {
         </div>
 
         {/* Profile Edit Form */}
-        <form aria-disabled="true" onSubmit={(e) => e.preventDefault()} className="bg-white rounded-3xl p-6 sm:p-10 border border-divider shadow-card space-y-6">
+        <form onSubmit={(e) => e.preventDefault()} className="bg-white rounded-3xl p-6 sm:p-10 border border-divider shadow-card space-y-6">
           <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 font-bold">
             Profile editing is coming soon. Your public listing can&apos;t be changed from here yet, so the fields below
             are not editable and nothing on this page is saved.

@@ -69,9 +69,7 @@ export default function StudentBookingPage() {
         setTutor(tutorRes);
         setAllSlots(slotsRes.slots || []);
 
-        if (calendarDays[0] && !selectedDate) {
-          setSelectedDate(calendarDays[0].date);
-        }
+        setSelectedDate((current) => current || new Date().toISOString().split("T")[0]);
       } catch (err) {
         console.error("Failed to load booking slots:", err);
         setTutor(null);
