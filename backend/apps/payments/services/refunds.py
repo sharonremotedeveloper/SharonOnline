@@ -452,6 +452,7 @@ def retry_failed(refund_id, *, actor, confirm_not_refunded: bool = False) -> Ref
             refund.gateway_request_id = ''
             refund.attempts = 0
             refund.first_attempt_at = None
+            refund.submitted_at = None                   # a new provider refund is coming: its 14-day staleness clock starts afresh
             if kind == FK.PROVIDER_FAILED:
                 refund.gateway_reference = ''
         elif kind in (FK.EXHAUSTED, FK.REPLAY_WINDOW):
@@ -461,7 +462,7 @@ def retry_failed(refund_id, *, actor, confirm_not_refunded: bool = False) -> Ref
         refund.failure_detail = ''
         refund.next_attempt_at = None
         _clear_claim(refund)
-        refund.save(update_fields=['request_epoch', 'gateway_request_id', 'attempts', 'first_attempt_at', 'gateway_reference',
+        refund.save(update_fields=['request_epoch', 'gateway_request_id', 'attempts', 'first_attempt_at', 'submitted_at', 'gateway_reference',
                                    'status', 'failure_kind', 'failure_detail', 'next_attempt_at', 'claim_token', 'claimed_until', 'updated_at'])
         _resolve_refund_alerts(refund)
         _write_attempt(refund, 'admin_retry', 'retry', actor=actor, request_id=refund.gateway_request_id or _derive_request_id(refund))
@@ -644,6 +645,8 @@ def apply_result(refund_id, token: str, result: RefundResult, *, kind: str) -> s
             state = 'transient'                              # a refund we cannot name can be neither polled nor matched to a webhook
         if state not in ('completed', 'submitted', 'rejected', 'manual'):
             state = 'transient'
+        if state == 'rejected' and result.provider_level:
+            state = 'transient'                              # a config/outage problem is never the refund's fault: never fail the row for it
 
         if state == 'completed':
             _complete_locked(tx, refund, result.reference or refund.gateway_reference or refund.gateway_request_id)

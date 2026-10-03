@@ -1003,11 +1003,27 @@ class TestCircuitBreaker:
         assert out['skipped_breaker'] == 0 and out['sent'] == 5
 
     def test_a_manual_result_neither_trips_nor_resets_the_breaker(self, teacher_user, student_user, gw):
-        [new_refund(teacher_user, student_user) for _ in range(4)]
+        [new_refund(teacher_user, student_user) for _ in range(5)]
         script = iter(['transient', 'manual', 'transient', 'transient'])
         gw.behavior = lambda order: RefundResult(next(script))
         out = refunds.process_pending_refunds()
-        assert out['skipped_breaker'] == 0 and out['sent'] == 4
+        # transient, (manual: neutral), transient, transient = three in a row: the fifth refund is left alone
+        assert out['skipped_breaker'] == 1 and out['sent'] == 4 and out['manual'] == 1
+
+    def test_a_provider_level_result_is_never_a_per_row_failure_and_counts_toward_the_breaker(self, teacher_user, student_user, gw):
+        rows = [new_refund(teacher_user, student_user) for _ in range(4)]
+        gw.behavior = lambda order: RefundResult('rejected', provider_level=True, http_status=403, code='NOT_AUTHORIZED')
+        out = refunds.process_pending_refunds()
+        assert out == result_dict(sent=3, transient=3, skipped_breaker=1)
+        assert all(fresh(r).status == RS.PENDING_GATEWAY for r in rows)
+
+    def test_a_gateway_that_does_not_return_a_refund_result_is_transient_and_gets_no_shim(self, teacher_user, student_user, gw, caplog):
+        gw.behavior = lambda order: f'FAKE-{order.refund_id}'                  # the old "returns a reference string" contract
+        r = new_refund(teacher_user, student_user)
+        with caplog.at_level(logging.DEBUG):
+            assert refunds.process_pending_refunds() == result_dict(sent=1, transient=1)
+        assert fresh(r).status == RS.PENDING_GATEWAY and journals(r) == 0
+        assert RefundAttempt.objects.get().result_state == 'transient' and 'TypeError' in caplog.text
 
     def test_the_alert_resolves_on_the_next_success_and_fires_again_on_a_new_trip(self, teacher_user, student_user, gw, clock):
         self._setup(teacher_user, student_user, gw, n_payfast=0)
@@ -1427,8 +1443,45 @@ class TestRetryFailed:
     def test_only_a_failed_refund_can_be_retried(self, teacher_user, student_user, admin_user, status):
         r = new_refund(teacher_user, student_user)
         set_row(r, status=status)
-        with pytest.raises(refunds.RefundStateError):
+        with pytest.raises(refunds.RefundStateError) as exc:
+            refunds.retry_failed(r.pk, actor=admin_user, confirm_not_refunded=True)          # the confirmation cannot mask the state check
+        assert not isinstance(exc.value, refunds.RefundConfirmationRequired)
+        assert fresh(r).status == status and RefundAttempt.objects.count() == 0
+
+    def test_a_failure_with_no_recorded_kind_needs_the_confirmation(self, teacher_user, student_user, admin_user):
+        r = self._failed(teacher_user, student_user, '')               # a refund that failed before failure kinds existed
+        with pytest.raises(refunds.RefundConfirmationRequired):
             refunds.retry_failed(r.pk, actor=admin_user)
+        refunds.retry_failed(r.pk, actor=admin_user, confirm_not_refunded=True)
+        assert fresh(r).status == RS.PENDING_GATEWAY
+
+    def test_a_retry_makes_the_refund_due_again_immediately(self, teacher_user, student_user, admin_user, clock):
+        r = self._failed(teacher_user, student_user, 'guard')
+        set_row(r, next_attempt_at=clock.now + 30 * DAY)
+        refunds.retry_failed(r.pk, actor=admin_user)
+        assert fresh(r).next_attempt_at is None
+        assert claim_one() is not None
+
+    def test_a_certain_failure_retry_starts_a_fresh_round_and_a_fresh_staleness_clock(self, teacher_user, student_user, admin_user, gw, clock):
+        gw.behavior = lambda order: RefundResult('submitted', reference='RF-1')
+        r = new_refund(teacher_user, student_user)
+        refunds.process_pending_refunds()
+        gw.lookup_behavior = lambda order: RefundResult('rejected', code='CANCELLED')
+        clock.advance(2 * HOUR)
+        refunds.process_pending_refunds()
+        failed = fresh(r)
+        assert failed.status == RS.FAILED and failed.submitted_at is not None and failed.attempts == 1
+        clock.advance(20 * DAY)
+        refunds.retry_failed(r.pk, actor=admin_user)
+        row = fresh(r)
+        assert (row.attempts, row.first_attempt_at, row.submitted_at) == (0, None, None)
+        gw.behavior = lambda order: RefundResult('submitted', reference='RF-2')
+        gw.lookup_behavior = lambda order: RefundResult('submitted', reference='RF-2')
+        refunds.process_pending_refunds()
+        assert fresh(r).submitted_at == clock.now and alerts('refund_submitted_stale').count() == 0
+        clock.advance(2 * HOUR)
+        refunds.process_pending_refunds()
+        assert alerts('refund_submitted_stale').count() == 0                # two hours after the NEW submission, not 20 days
 
     def test_a_retry_is_audited_and_resolves_the_alert(self, teacher_user, student_user, admin_user, gw):
         gw.behavior = lambda order: RefundResult('rejected', code='INSTRUMENT_DECLINED')
@@ -1646,3 +1699,81 @@ class TestEachClaimLayerStandsOnItsOwn:
         assert poll.kind == 'poll' and claim_one() is None            # leased: nobody else gets it
         clock.advance(11 * MIN)
         assert claim_one().kind == 'poll'
+
+    def test_a_row_that_became_submitted_after_the_candidate_list_is_not_sent_even_if_the_update_would_match(self, teacher_user, student_user, monkeypatch):
+        r = new_refund(teacher_user, student_user)
+        stale = list(refunds._due_candidates(refunds._now()))                      # seen as pending_gateway ...
+        set_row(r, status=RS.SUBMITTED, gateway_reference='RF-S', attempts=1)       # ... but a webhook-less poll already moved it on
+        monkeypatch.setattr(refunds, '_cas_claim', lambda *a, **k: True)
+        assert stale[0][1] == RS.PENDING_GATEWAY
+        assert refunds._try_claim(*stale[0][:2], refunds._now) is None
+
+    def test_a_guard_failure_never_reaches_the_claim_update(self, teacher_user, student_user, monkeypatch):
+        r = new_refund(teacher_user, student_user)
+        PaymentTransaction.objects.filter(pk=r.payment_transaction_id).update(status=PaymentTransaction.Status.FAILED)
+        calls = []
+        monkeypatch.setattr(refunds, '_cas_claim', lambda *a, **k: calls.append(1) or True)
+        assert refunds._try_claim(r.pk, RS.PENDING_GATEWAY, refunds._now) is None
+        assert calls == [] and fresh(r).status == RS.FAILED
+
+    def test_a_replay_window_failure_never_reaches_the_claim_update(self, teacher_user, student_user, monkeypatch, clock):
+        r = new_refund(teacher_user, student_user)
+        set_row(r, attempts=1, first_attempt_at=clock.now - 31 * DAY, last_attempt_at=clock.now - 31 * DAY, claimed_until=clock.now - DAY)
+        calls = []
+        monkeypatch.setattr(refunds, '_cas_claim', lambda *a, **k: calls.append(1) or True)
+        assert refunds._try_claim(r.pk, RS.PENDING_GATEWAY, lambda: clock.now) is None
+        assert calls == [] and fresh(r).failure_kind == 'replay_window'
+
+
+# ================================================================================================ boundaries found by mutation checks
+class TestBoundaries:
+    def test_exactly_at_the_replay_window_it_is_still_replayed(self, teacher_user, student_user, gw, clock):
+        r = new_refund(teacher_user, student_user)
+        set_row(r, attempts=1, first_attempt_at=clock.now - 30 * DAY, last_attempt_at=clock.now - 30 * DAY, claimed_until=clock.now - DAY)
+        assert refunds.process_pending_refunds()['sent'] == 1 and gw.calls
+
+    def test_a_never_attempted_row_is_not_a_replay_whatever_its_stamps_say(self, teacher_user, student_user, gw, clock):
+        r = new_refund(teacher_user, student_user)
+        set_row(r, attempts=0, first_attempt_at=clock.now - 90 * DAY)
+        assert refunds.process_pending_refunds()['sent'] == 1 and fresh(r).status == RS.PROCESSED
+
+    def test_a_row_with_a_known_provider_refund_id_is_replayed_not_refused(self, teacher_user, student_user, gw, clock):
+        r = new_refund(teacher_user, student_user)
+        set_row(r, attempts=1, first_attempt_at=clock.now - 90 * DAY, last_attempt_at=clock.now - 90 * DAY,
+                claimed_until=clock.now - DAY, gateway_reference='RF-KNOWN')
+        assert refunds.process_pending_refunds()['sent'] == 1 and gw.calls[0].provider_refund_id == 'RF-KNOWN'
+
+    def test_exactly_at_the_manual_alert_threshold_it_alerts(self, teacher_user, student_user, gw, clock):
+        gw.behavior = lambda order: RefundResult('manual')
+        r = new_refund(teacher_user, student_user)
+        set_row(r, created_at=clock.now - 72 * HOUR)
+        refunds.process_pending_refunds()
+        assert alerts('refund_manual_waiting', r.pk).count() == 1
+
+    def test_an_external_refund_request_does_not_email_the_student(self, teacher_user, student_user, sent_mail, django_capture_on_commit_callbacks):
+        r = new_refund(teacher_user, student_user)
+        set_row(r, reason='external_refund')
+        with django_capture_on_commit_callbacks(execute=True):
+            refunds.mark_processed(r.pk, 'DASH-1')
+        assert [m for m in sent_mail if m[0] == student_user.email] == []
+
+    def test_a_failed_refund_that_the_provider_later_reports_complete_is_finished_by_its_reference(self, teacher_user, student_user, gw, clock):
+        gw.behavior = lambda order: RefundResult('submitted', reference='RF-S')
+        gw.lookup_behavior = lambda order: RefundResult('rejected', code='CANCELLED')
+        r = new_refund(teacher_user, student_user)
+        refunds.process_pending_refunds()
+        clock.advance(2 * HOUR)
+        refunds.process_pending_refunds()
+        assert fresh(r).status == RS.FAILED and fresh(r).gateway_reference == 'RF-S'
+        assert paypal_events.apply_refund(r.payment_transaction_id, 'RF-S', Decimal('9.00'), 'USD', {}) == 'refund_completed'
+        assert fresh(r).status == RS.PROCESSED and journals(r) == 2
+
+    def test_the_poll_interval_setting_governs_a_poll_that_cannot_tell(self, teacher_user, student_user, gw, clock, settings):
+        settings.REFUND_POLL_INTERVAL_MINUTES = 5
+        gw.behavior = lambda order: RefundResult('submitted', reference='RF-S')
+        gw.lookup_behavior = lambda order: RefundResult('transient')
+        r = new_refund(teacher_user, student_user)
+        refunds.process_pending_refunds()
+        clock.advance(6 * MIN)
+        refunds.process_pending_refunds()
+        assert fresh(r).next_attempt_at == clock.now + 5 * MIN
