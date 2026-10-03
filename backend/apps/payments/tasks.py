@@ -10,7 +10,7 @@ from django.utils.html import escape
 from apps.bookings.models import Booking, AttendanceAudit
 from apps.bookings.services.state_machine import transition_booking
 from apps.payments.services.settlement import RELEASABLE_STATUSES, attendance_verified_for_release, settled_exists
-from apps.payments.models import BookingFunding, PaymentTransaction, SettlementAnomaly
+from apps.payments.models import BookingFunding, PaymentTransaction, RefundRequest, SettlementAnomaly
 from apps.payments.services.alerts import alert_admin
 from apps.payments.services.reconciliation import reconcile_initialized_transaction, reconcile_pending_capture
 from apps.payments.services.funding import funding_for_settlement
@@ -226,6 +226,35 @@ def expire_credits_task():
 @shared_task(name='apps.payments.tasks.process_pending_refunds_task')
 @distributed_task_lock('lock:beat:process_pending_refunds', timeout_seconds=800)
 def process_pending_refunds_task():
-    """Every 15 minutes: send queued refunds to the configured gateway (Task 10.7 plugs in PayPal / PayFast)."""
+    """
+    Every 15 minutes: claim due refunds and hand them to the configured gateway, poll the ones the gateway accepted but has not
+    finished (Task 10.7). Bounded by REFUND_SWEEP_LIMIT rows / REFUND_SWEEP_BUDGET_SECONDS (600 s, under this lock's 800 s TTL);
+    the lock is best-effort, the compare-and-swap claim in `refunds.claim_due_refunds` is what keeps two workers apart.
+    """
     from apps.payments.services.refunds import process_pending_refunds
     return process_pending_refunds()
+
+
+@shared_task(bind=True, autoretry_for=(EmailDeliveryError,), retry_backoff=30, retry_backoff_max=900, max_retries=5)
+def send_refund_processed_email_task(self, refund_id: str):
+    """
+    Tell the student, once, that their refund has been sent. Queued exactly when the refund becomes `processed` (that transition
+    happens once); the cache key makes a duplicate delivery of the task itself harmless. Plain words, no provider references.
+    """
+    from django.core.cache import cache
+    from apps.common.money import money_str
+    refund = RefundRequest.objects.select_related('user').filter(pk=refund_id).first()
+    if refund is None or refund.status != RefundRequest.Status.PROCESSED or not refund.user.email:
+        return
+    key = f'refund-processed-email:{refund.pk}'
+    if cache.get(key):
+        return
+    name = refund.user.first_name or refund.user.username
+    amount = f"{money_str(refund.amount, refund.currency)} {refund.currency}"
+    lines = [f"Your refund of {amount} has been sent back to the payment method you used.",
+             "It can take 3 to 5 business days to show up on your statement or in your PayPal account.",
+             "If you do not see it after that, reply to this e-mail and we will look into it."]
+    text = f"Hi {name},\n\n" + "\n\n".join(lines) + "\n\nSharon Online"
+    html = f"<p>Hi {escape(name)},</p>" + "".join(f"<p>{escape(line)}</p>" for line in lines) + "<p>Sharon Online</p>"
+    send_email(refund.user.email, "Your refund has been sent", html, text)
+    cache.set(key, 1, timeout=60 * 86400)

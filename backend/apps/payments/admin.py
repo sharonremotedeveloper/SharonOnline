@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     BookingFunding, CreditBundle, FxRate, CreditPack, CreditPurchase, CreditWalletEntry,
-    LedgerEntry, PaymentTransaction, RefundRequest, SettlementAnomaly,
+    LedgerEntry, PaymentTransaction, RefundAttempt, RefundRequest, SettlementAnomaly,
 )
 from .services import refunds
 
@@ -21,9 +21,9 @@ class CreditBundleAdmin(admin.ModelAdmin):
 
 @admin.register(RefundRequest)
 class RefundRequestAdmin(admin.ModelAdmin):
-    """Refunds owed to students. Until Task 10.7 plugs in PayPal / PayFast, a person pays them in the gateway's sandbox and marks them here."""
-    list_display = ('id', 'user', 'booking', 'amount', 'currency', 'reason', 'status', 'created_at', 'processed_at')
-    list_filter = ('status', 'reason', 'currency')
+    """Refunds owed to students. The sweeper sends them to the gateway; a person marks one paid here only after paying it in the gateway's console."""
+    list_display = ('id', 'user', 'booking', 'amount', 'currency', 'reason', 'status', 'failure_kind', 'attempts', 'created_at', 'processed_at')
+    list_filter = ('status', 'failure_kind', 'reason', 'currency')
     search_fields = ('id', 'booking__id', 'user__username', 'gateway_reference')
     readonly_fields = [f.name for f in RefundRequest._meta.fields]
     actions = ['mark_paid_in_gateway']
@@ -38,7 +38,7 @@ class RefundRequestAdmin(admin.ModelAdmin):
     def mark_paid_in_gateway(self, request, queryset):
         done = 0
         for refund in queryset.filter(status__in=[RefundRequest.Status.PENDING_GATEWAY, RefundRequest.Status.FAILED]):
-            refunds.mark_processed(refund.pk, f'MANUAL-{refund.pk}')
+            refunds.mark_paid_manually(refund.pk, actor=request.user, reference=f'MANUAL-{refund.pk}')    # audited (RefundAttempt)
             done += 1
         self.message_user(request, f'{done} refund(s) marked as paid.')
 
@@ -64,7 +64,7 @@ admin.site.register(CreditPurchase)
 admin.site.register(SettlementAnomaly)
 
 
-@admin.register(CreditWalletEntry, BookingFunding)
+@admin.register(CreditWalletEntry, BookingFunding, RefundAttempt)
 class ImmutableFinanceAdmin(admin.ModelAdmin):
     readonly_fields = ()
 

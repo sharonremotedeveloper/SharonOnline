@@ -1366,8 +1366,9 @@ paths:
   /api/v1/refunds/{refund_id}/convert-to-wallet/:
     post:
       operationId: v1_refunds_convert_to_wallet_create
-      description: Turn a still-pending gateway refund into 30-day wallet credit (instead
-        of waiting for the card/PayPal refund).
+      description: |-
+        Turn a still-pending gateway refund into 30-day wallet credit (instead of waiting for the card/PayPal refund). Only before the
+        gateway has been asked: afterwards the money may already be on its way, and the answer is 409 `refund_in_progress`.
       parameters:
       - in: path
         name: refund_id
@@ -2813,6 +2814,7 @@ components:
       - awaiting_clearance
       - void
       - pending_gateway
+      - submitted
       - processed
       - converted
       - failed
@@ -2821,6 +2823,7 @@ components:
         * `awaiting_clearance` - Waiting for the payment to clear
         * `void` - Not needed (the payment never cleared)
         * `pending_gateway` - Waiting for the gateway
+        * `submitted` - On its way
         * `processed` - Paid to the original payment method
         * `converted` - Converted to wallet credit
         * `failed` - Gateway refused (needs a human)

@@ -34,18 +34,39 @@ def throwaway_environment() -> dict:
         'THROTTLE_NUM_PROXIES': '1',
         'DATABASE_URL': 'postgresql://ci:ci@db.invalid:5432/ci',
         'REDIS_URL': 'rediss://cache.invalid:6379/0',
+        # Production must route refunds to the real gateways; the manual backend moves no money (Task 10.7).
+        'REFUND_GATEWAY_BACKEND': 'apps.payments.services.refund_gateways.RoutingRefundGateway',
     }
+
+
+def refund_backend_problems(backend: str) -> list:
+    """Reasons a production deployment must not start with this REFUND_GATEWAY_BACKEND (empty list = fine)."""
+    if not backend or backend.rsplit('.', 1)[-1] == 'ManualSandboxRefundGateway':
+        return ["REFUND_GATEWAY_BACKEND is the manual sandbox backend: refunds would never reach the students' payment methods. "
+                "Set it to apps.payments.services.refund_gateways.RoutingRefundGateway."]
+    return []
 
 
 def main() -> int:
     os.chdir(BACKEND_DIR)
     sys.path.insert(0, BACKEND_DIR)
-    os.environ.update(throwaway_environment())
+    environment = throwaway_environment()
+    for name in ('REFUND_GATEWAY_BACKEND',):               # the one throwaway value a caller may override, to prove the check bites
+        if name in os.environ:
+            environment[name] = os.environ[name]
+    os.environ.update(environment)
 
     import django
     from django.core.management import call_command
 
     django.setup()
+    from django.conf import settings
+
+    problems = refund_backend_problems(getattr(settings, 'REFUND_GATEWAY_BACKEND', ''))
+    for problem in problems:
+        print(f'check --deploy: {problem}', file=sys.stderr)
+    if problems:
+        return 1
     call_command('check', deploy=True, fail_level='WARNING')
     print('check --deploy: no issues against the production settings')
     return 0
