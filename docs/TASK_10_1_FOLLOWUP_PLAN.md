@@ -38,7 +38,10 @@ Risk: immutable-ledger path; the Postgres trigger test (never run yet) must pass
 5. Tutor pages show the platform price instead of `price_per_25min_usd`. Dropping that column is deferred to Phase 11; stop exposing it in the public serializer.
 Acceptance: no price literal in `frontend/src` outside tests; `npm test`, lint, build green.
 
-## Slice D - EUR / JPY lesson checkout (blocked)
+## Slice D - EUR / JPY lesson checkout (DONE 2026-10-03, option C: admin-maintained rate table first)
+Decision recorded by Anesu: option C (admin-maintained `FxRate` table now, provider feed later behind the same table), block EUR/JPY checkout on a missing or stale (>24 h) rate, the platform carries FX risk between payment and payout (tutor payable fixed in ZAR at capture). Open for the accountant: capture-day rate vs daily/monthly average for SARS.
+
+Original plan (kept for reference):
 Needs decision: FX source. Recommendation: an admin-maintained `FxRate` model (currency, rate_to_zar, source, valid_from, set_by) with a stale-after-24h warning; a provider feed later behind the same model.
 After the decision and 10.2: `gateway_fx_snapshot` uses `FxRate` for EUR/JPY; PayPal booking checkout accepts USD/EUR/JPY priced from `lesson_price()`; PayPal JPY amounts sent with 0 decimals; webhook amount checks use `quantize_money`; EUR/JPY rows added to the multi-currency trial-balance tests (also 10.10).
 
