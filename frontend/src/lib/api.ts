@@ -158,6 +158,7 @@ const FALLBACK_TUTORS: FeaturedTeacher[] = [
 import { MaterialDetail } from "@/types/material";
 import type { CreditPackPrice, LessonPrice } from "@/lib/prices";
 import type { FxCurrency, FxRateRow, FxRatesResponse } from "@/lib/fx";
+import type { CaptureResponse } from "@/lib/paypalOutcome";
 
 export const FALLBACK_MATERIALS: MaterialDetail[] = [
   {
@@ -575,6 +576,20 @@ export const api = {
       });
     if (live !== MOCK) return live;
     throw new Error("Checkout initialization is unavailable in mock mode.");
+  },
+
+  /**
+   * Ask the server to capture an approved PayPal order. The server re-reads the capture from PayPal and decides the
+   * outcome; the browser never marks anything paid. Real call only: there is no mock fallback for a payment.
+   * Hand-written response type (CaptureResponse) until api.generated.ts is regenerated from the backend OpenAPI.
+   */
+  async capturePayPalOrder(orderId: string): Promise<CaptureResponse> {
+    const live = await liveRequest(`${API_BASE}/payments/paypal/capture/`, {
+      method: "POST",
+      body: JSON.stringify({ order_id: orderId }),
+    });
+    if (live !== MOCK) return live as CaptureResponse;
+    throw new Error("PayPal capture is unavailable in mock mode.");
   },
 
   /** Platform lesson price per currency. Amounts are decimal strings; never fabricated client-side. */
