@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import {
   CheckCircle2,
   Calendar,
@@ -18,10 +18,13 @@ import { BookingDetail } from "@/types/booking";
 import { Avatar } from "@/components/ui/Avatar";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
+import { PENDING_NOTICE } from "@/lib/paypalOutcome";
 
 export default function BookingConfirmedPage() {
   const params = useParams();
   const bookingId = params?.bookingId as string;
+  // ?payment=pending is only a hint to show the notice; the booking status itself always comes from the server.
+  const paymentPending = useSearchParams()?.get("payment") === "pending";
   const { data: booking, error, loading, reload } = useApiData<BookingDetail>(() => api.getBooking(bookingId), [bookingId]);
 
   if (loading) {
@@ -113,6 +116,12 @@ export default function BookingConfirmedPage() {
           </p>
         </div>
       </div>
+
+      {paymentPending && (
+        <div role="status"className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+          {PENDING_NOTICE}
+        </div>
+      )}
 
       {/* Lesson Details Card */}
       <div className="bg-white rounded-3xl p-8 border border-divider shadow-card space-y-6">

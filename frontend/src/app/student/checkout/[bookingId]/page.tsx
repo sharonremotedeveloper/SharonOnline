@@ -28,6 +28,8 @@ import { useLessonPrices } from "@/hooks/useLessonPrices";
 import { ReservationTimer } from "@/components/booking/ReservationTimer";
 import { PayFastForm } from "@/components/booking/PayFastForm";
 import { PayPalButtonsWrapper } from "@/components/booking/PayPalButtonsWrapper";
+import type { OutcomeView } from "@/lib/paypalOutcome";
+import { rememberPendingPayFast } from "@/lib/pendingPayment";
 
 export default function StudentCheckoutPage() {
   const params = useParams();
@@ -44,7 +46,10 @@ export default function StudentCheckoutPage() {
   const [reloadTick, setReloadTick] = useState(0);
   // Seconds left on the server-side slot hold, computed once when the booking loads (source of truth: lock_expires_at).
   const [holdSeconds, setHoldSeconds] = useState<number | null>(null);
-  const [paymentPending, setPaymentPending] = useState(false);
+  // Set while PayPal has accepted the order but not finished verifying it ("Payment under review"): we poll the booking.
+  const [underReview, setUnderReview] = useState<string | null>(null);
+  // The hold expired or the slot was taken while the student was paying (capture answered 409).
+  const [slotLost, setSlotLost] = useState(false);
   // Server truth: the amount and currency checkout/init returned for this booking (null until the student starts paying).
   const [quote, setQuote] = useState<{ gateway: string; amount: string; currency: string } | null>(null);
   // Before checkout/init there is no quote yet, so show the platform lesson price for the chosen gateway's currency.
@@ -113,7 +118,7 @@ export default function StudentCheckoutPage() {
   };
 
   useEffect(() => {
-    if (!paymentPending || !bookingId) return;
+    if (!underReview || !bookingId) return;
     const timer = window.setInterval(async () => {
       try {
         const fresh = await api.getBooking(bookingId);
@@ -123,50 +128,68 @@ export default function StudentCheckoutPage() {
           router.push(`/student/confirmed/${bookingId}`);
         } else if (fresh.status !== "pending_payment") {
           window.clearInterval(timer);
-          setPaymentPending(false);
+          setUnderReview(null);
           setError(`Payment was not applied because the booking is now ${fresh.status}. Support has been notified.`);
         }
       } catch (err) {
         console.error("Payment status poll failed:", err);
       }
-    }, 2000);
+    }, 3000);
     return () => window.clearInterval(timer);
-  }, [paymentPending, bookingId, router]);
+  }, [underReview, bookingId, router]);
 
-  const handleGatewayStart = async (gatewayType: "paypal" | "payfast") => {
+  // PayFast is a signed server redirect. Whether it was paid is decided only by PayFast's verified ITN on the server.
+  const handlePayFastStart = async () => {
     setSubmitting(true);
     setError(null);
     try {
-      const checkout = await api.initializeCheckout({
-        booking_id: bookingId,
-        gateway: gatewayType,
-        // PayPal lessons can be charged in EUR/JPY; PayFast is always ZAR and USD is the server default.
-        ...(gatewayType === "paypal" && paypalCurrency ? { currency: paypalCurrency } : {}),
-      });
-      setQuote({ gateway: gatewayType, amount: String(checkout.amount), currency: String(checkout.currency) });
-      setPaymentPending(true);
-      if (gatewayType === "payfast" && checkout?.action_url && checkout?.fields) {
-        const form = document.createElement("form");
-        form.method = "POST";
-        form.action = checkout.action_url;
-        for (const [name, value] of Object.entries(checkout.fields)) {
-          const input = document.createElement("input");
-          input.type = "hidden";
-          input.name = name;
-          input.value = String(value);
-          form.appendChild(input);
-        }
-        document.body.appendChild(form);
-        form.submit();
-        return;
+      const checkout = await api.initializeCheckout({ booking_id: bookingId, gateway: "payfast" });
+      setQuote({ gateway: "payfast", amount: String(checkout.amount), currency: String(checkout.currency) });
+      if (!checkout?.action_url || !checkout?.fields) {
+        throw new Error("The server did not return a PayFast redirect.");
       }
-      setError("Checkout is initialized. This page will show success only after the payment gateway webhook confirms capture.");
+      rememberPendingPayFast({ kind: "booking", id: bookingId });
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = checkout.action_url;
+      for (const [name, value] of Object.entries(checkout.fields)) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = String(value);
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+      form.submit();
     } catch (err) {
       console.error("Failed to initialize payment:", err);
       setError(checkoutFailureMessage(err, `We could not start checkout. ${errorMessage(err)}`));
-      setPaymentPending(false);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // The PayPal component reports the server's verdict; this page only routes on it.
+  const handlePayPalOutcome = async (view: OutcomeView) => {
+    const action = view.nextAction;
+    if (action.type === "go_confirmed") {
+      router.push(`/student/confirmed/${action.bookingId}${action.pendingNotice ? "?payment=pending" : ""}`);
+    } else if (action.type === "poll") {
+      setUnderReview(action.id);
+    } else if (action.type === "back_to_tutor") {
+      setSlotLost(true);
+    } else if (action.type === "check_then_retry") {
+      // Only the response may have been lost: look once at the booking before the student retries.
+      try {
+        const fresh = await api.getBooking(bookingId);
+        if (fresh.status === "confirmed") {
+          router.push(`/student/confirmed/${bookingId}`);
+          return;
+        }
+      } catch (err) {
+        console.error("Post-capture booking check failed:", err);
+      }
+      setError("Your booking is not confirmed yet. If you were charged we will e-mail you; otherwise you can try the payment again.");
     }
   };
 
@@ -237,7 +260,7 @@ export default function StudentCheckoutPage() {
       </div>
 
       {/* 10-Minute Lock Timer Bar */}
-      {holdSeconds !== null && (
+      {holdSeconds !== null && !underReview && (
         <ReservationTimer
           initialSeconds={holdSeconds}
           onExpire={handleHoldExpired}
@@ -246,6 +269,18 @@ export default function StudentCheckoutPage() {
       )}
 
       <InlineError error={error} />
+
+      {slotLost && (
+        <div role="alert" className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-2">
+          <p>
+            This time slot is no longer available (the reservation expired or the slot was taken). If PayPal took a
+            payment we will refund it automatically and e-mail you.
+          </p>
+          <Link href={`/student/book/${booking.teacher.id}`} className="inline-flex items-center gap-1.5 font-bold text-teal">
+            Choose a new time <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      )}
 
       {/* Checkout Grid: Left = Payment Method / Right = Order Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
@@ -353,12 +388,26 @@ export default function StudentCheckoutPage() {
               </div>
             )}
 
+            {/* Payment under review: PayPal has not finished verifying; we poll the booking and e-mail the result. */}
+            {underReview && (
+              <div role="status" className="p-6 rounded-2xl bg-cream-surface border border-cream-deep space-y-2">
+                <h3 className="text-sm font-extrabold text-ink font-serif">Payment under review</h3>
+                <p className="text-xs text-ink-muted leading-relaxed">
+                  PayPal is still checking your payment. Please keep this page open: your lesson will be confirmed
+                  here as soon as PayPal finishes. We will also e-mail you the result, so you can safely leave.
+                </p>
+              </div>
+            )}
+
             {/* Path B1: PayPal International */}
-            {activeGateway === "paypal" && (
+            {activeGateway === "paypal" && !underReview && !slotLost && (
               <PayPalButtonsWrapper
-                amountLabel={activeGateway === "paypal" ? amountLabel : null}
-                bookingReference={booking.booking_reference}
-                onSuccess={() => handleGatewayStart("paypal")}
+                target={{ kind: "booking", bookingId }}
+                currency={paypalCurrency ?? "USD"}
+                amountLabel={amountLabel}
+                reference={booking.booking_reference}
+                onQuote={(q) => setQuote({ gateway: "paypal", amount: q.amount, currency: q.currency })}
+                onOutcome={handlePayPalOutcome}
                 disabled={submitting}
               />
             )}
@@ -369,7 +418,7 @@ export default function StudentCheckoutPage() {
                 amountLabel={activeGateway === "payfast" ? amountLabel : null}
                 bookingReference={booking.booking_reference}
                 itemDescription={`25-min lesson with ${booking.teacher.full_name}`}
-                onSuccess={() => handleGatewayStart("payfast")}
+                onSuccess={handlePayFastStart}
                 disabled={submitting}
               />
             )}

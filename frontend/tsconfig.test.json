@@ -22,6 +22,8 @@
     "src/lib/moneyString.ts",
     "src/lib/prices.ts",
     "src/lib/fx.ts",
+    "src/lib/paypalOutcome.ts",
+    "src/lib/pendingPayment.ts",
     "src/lib/server/upstream.ts",
     "src/lib/server/handlers.ts",
     "src/lib/server/config.ts",
