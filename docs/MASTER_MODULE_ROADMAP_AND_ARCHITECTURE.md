@@ -375,7 +375,7 @@ Decoupled multi-currency financial infrastructure supporting PayFast for South A
       - *Assets (1000s)*: `1010_asset_gateway_payfast` (ZAR), `1020_asset_gateway_paypal` (USD), `1030_asset_operating_bank` (ZAR).
       - *Liabilities (2000s)*: `2010_liability_student_escrow` (Unearned escrow hold), `2020_liability_tutor_payable` (Cleared 80% tutor share), `2030_liability_quarantine_deposit` (DEF-501 late deposits), `2040_liability_student_wallet` (Prepaid student lesson credits / restitution).
       - *Revenue (4000s)*: `4010_revenue_platform_commission` (20% take rate).
-      - *Expenses (5000s)*: `5010_expense_dispute_settlement`, `5020_expense_student_compensation`, `5030_expense_gateway_fees`.
+      - *Expenses (5000s)*: `5010_expense_dispute_settlement`, `5020_expense_student_compensation`, `5030_expense_gateway_fees`, `5040_expense_absorbed_payment_failure` (tutor share funded by the platform when a pending PayPal payment fails after the lesson; Task 10.2e).
     - **Strict Double-Entry Balancing & Immutability**:
       - Invariant: $\sum \text{Debit} == \sum \text{Credit}$ enforced atomically per journal batch with SARB ZAR statutory conversion.
       - Immutability: Enforced append-only model via `LedgerEntryQuerySet` and `LedgerEntry.save()` / `delete()` overrides raising `LedgerImmutabilityError`.
