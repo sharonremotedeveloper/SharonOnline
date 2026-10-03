@@ -86,7 +86,7 @@ Phases 11 (tutor lifecycle + payouts) and 12 (integrations + notifications) as t
 
 | Risk | Mitigation |
 | :--- | :--- |
-| CI jobs have never run (Postgres trigger, Redis races, Actions config) | First push opens a PR to `develop`; fix what the first run finds before building on it |
+| The Redis race job failed on its first run and exposed a real lock bug (fixed, ERR-030); it must go green on real Redis before Phase 10 builds on it | Push the fix and read the next run; the other three jobs passed first time |
 | Sandbox access slips | All new gateway code is built and tested against mocked HTTP; the live pass is a short final step |
 | EUR / JPY unsettleable without an FX source | Rejected loudly (not silently valued); decision item 6 |
 | Next.js 15/16 + React 19 breaks the BFF or middleware | Separate branch, full test + build gate, merge only when green |

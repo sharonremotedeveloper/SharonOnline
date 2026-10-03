@@ -51,3 +51,7 @@ After merging I audited the result for places where the two lines of work still 
 | Reschedule locked the new slot with the student id; Codex's rule is a unique ownership token (also stored on the booking) | Reschedule now uses `new_slot_lock_token()`; test asserts the token |
 
 Verified clean: no conflict markers or unmerged index entries; migrations apply on a **brand-new database** and on a database built at the **pre-merge schema with legacy rows** (booking, captured payment, partly spent credit pack): the booking funding and opening wallet entry are backfilled, the legacy credits get a 30-day expiry and stay spendable, nothing is lost. Attendance reads outside the Zoom service only use rows with an identified role, so unrecognised participants cannot affect anything.
+
+## First real CI run (2026-10-03)
+
+`backend`, `frontend` and `postgres-ledger` (the append-only ledger trigger on real PostgreSQL 16) **passed** on their first run. `redis-races` **failed**, and it found a genuine production bug rather than a test problem (ERR-030): the lock scripts compared the plain token against Django's pickled value, so on a real Redis the rightful owner could never extend or release a lock. That would have blocked checkout for every payment. Fixed in `common/cache_locks.py`, with a byte-exact Redis stand-in test that reproduces it and real-Redis positive controls; the next CI run is the final proof.
