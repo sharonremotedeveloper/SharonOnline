@@ -7,7 +7,8 @@ export interface Refund {
   amount: string;
   currency: string;
   reason: "student_cancel" | "teacher_cancel" | "teacher_no_show" | "outage" | "dispute";
-  status: "pending_gateway" | "processed" | "converted" | "failed";
+  /** `submitted` = the gateway accepted it and it is on its way (cannot be converted to credit any more). */
+  status: "pending_gateway" | "submitted" | "processed" | "converted" | "failed";
   created_at: string;
   processed_at: string | null;
 }
