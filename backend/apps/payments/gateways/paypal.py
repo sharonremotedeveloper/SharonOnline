@@ -153,6 +153,26 @@ def get_capture(capture_id: str) -> dict:
         raise PayPalError(f"PayPal capture lookup failed: {exc}") from exc
 
 
+def get_refund(refund_id: str) -> dict:
+    """GET /v2/payments/refunds/{id}: the authoritative state and amount of a refund (never trust the webhook body)."""
+    try:
+        resp = _call('GET', f"{_base_url()}/v2/payments/refunds/{quote(str(refund_id), safe='')}")
+        resp.raise_for_status()
+        return resp.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise PayPalError(f"PayPal refund lookup failed: {exc}") from exc
+
+
+def get_dispute(dispute_id: str) -> dict:
+    """GET /v1/customer/disputes/{id}: the authoritative dispute record (status, outcome, disputed transactions)."""
+    try:
+        resp = _call('GET', f"{_base_url()}/v1/customer/disputes/{quote(str(dispute_id), safe='')}")
+        resp.raise_for_status()
+        return resp.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise PayPalError(f"PayPal dispute lookup failed: {exc}") from exc
+
+
 # --- Orders v2 ---------------------------------------------------------------------------------------------------
 
 def _error_details(resp) -> tuple[str, str]:
@@ -263,7 +283,7 @@ def classify_capture(capture) -> CaptureOutcome:
     reason = str(details.get('reason', '')) if isinstance(details, dict) else ''
     if status == 'COMPLETED':
         return CaptureOutcome('completed')
-    if status == 'DECLINED':
+    if status in ('DECLINED', 'DENIED'):
         return CaptureOutcome('declined', reason)
     if status == 'FAILED':
         return CaptureOutcome('failed', reason)

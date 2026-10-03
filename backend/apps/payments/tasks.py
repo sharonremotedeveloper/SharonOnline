@@ -119,9 +119,16 @@ def reconcile_pending_transactions_task():
         status=PaymentTransaction.Status.INITIALIZED,
         created_at__lt=cutoff_2h
     ).select_related('booking', 'credit_purchase')[:100])
-    results = {'failed': 0, 'pending': 0, 'unresolved': 0, 'completed': 0}
+    results = {'failed': 0, 'pending': 0, 'unresolved': 0, 'completed': 0, 'errors': 0}
     for payment_transaction in abandoned_txs:
-        result = reconcile_initialized_transaction(payment_transaction)
+        try:
+            result = reconcile_initialized_transaction(payment_transaction)
+        except Exception:
+            # One poisoned row must not stop the rest of the batch from ever being reconciled; it is logged in full and
+            # retried next run (its state is untouched), so it stays visible rather than silently skipped.
+            logger.exception("Reconciliation of transaction %s raised; continuing with the batch", payment_transaction.pk)
+            results['errors'] += 1
+            continue
         results[result.state] = results.get(result.state, 0) + 1
 
     logger.info("Gateway reconciliation inspected %s transactions: %s", len(abandoned_txs), results)

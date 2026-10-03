@@ -33,6 +33,7 @@ from .services.anomalies import record_anomaly
 from .services.paypal_capture import (
     CaptureRejected, record_failed_capture, record_pending_capture, settle_completed_capture, verify_capture_amount,
 )
+from .services import paypal_events
 from .services.paypal_orders import create_checkout_order
 from .services.fx import FxRateStale, FxRateUnavailable, current_rate, fx_source_label
 from .services.pricing import CURRENCY_EXPONENT, PriceNotConfigured, lesson_price, quantize_money
@@ -241,6 +242,24 @@ class PayFastWebhookView(APIView):
         logger.warning("PayFast ITN rejected: %s %s", reason, context)
         return Response({"error": "invalid_notification"}, status=status.HTTP_400_BAD_REQUEST)
 
+    def _fail_initialized(self, tx, pairs, data):
+        """CANCELLED / FAILED: the buyer did not pay. Only a still-INITIALIZED transaction may be failed, never a settled one."""
+        if tx.status != PaymentTransaction.Status.INITIALIZED:
+            return Response("OK", status=status.HTTP_200_OK)
+        if not payfast.server_confirms(pairs):               # network call, outside any row lock
+            return self._reject("server postback not VALID", m_payment_id=tx.merchant_reference)
+        with transaction.atomic():
+            tx = PaymentTransaction.objects.select_for_update().get(pk=tx.pk)
+            if tx.status == PaymentTransaction.Status.INITIALIZED:
+                tx.status = PaymentTransaction.Status.FAILED
+                tx.raw_webhook_payload = data
+                tx.save(update_fields=['status', 'raw_webhook_payload', 'updated_at'])
+                if tx.credit_purchase_id:
+                    CreditPurchase.objects.filter(pk=tx.credit_purchase_id, status=CreditPurchase.Status.INITIALIZED).update(
+                        status=CreditPurchase.Status.FAILED)
+        logger.info("PayFast ITN %s status=%s: transaction marked failed", tx.merchant_reference, data.get('payment_status'))
+        return Response("OK", status=status.HTTP_200_OK)
+
     def post(self, request):
         pairs = payfast.parse_itn_body(request._request.body)
         data = dict(pairs)
@@ -257,13 +276,20 @@ class PayFastWebhookView(APIView):
         pf_payment_id = data.get('pf_payment_id')
         if not reference or not pf_payment_id:
             return self._reject("missing m_payment_id/pf_payment_id")
+        if len(reference) > 255 or len(pf_payment_id) > 255:
+            return self._reject("oversized m_payment_id/pf_payment_id")
+        payment_status = data.get('payment_status')
 
         # Phase 1 - read-only checks, no row lock held.
         tx = (PaymentTransaction.objects.select_related('booking', 'credit_purchase__pack')
               .filter(merchant_reference=reference, gateway=PaymentTransaction.Gateway.PAYFAST).first())
         if tx is None:
-            _anomaly('payfast', reference, 'unknown_reference', f"pf_payment_id={pf_payment_id}", payload=data)
-            return self._reject("unknown m_payment_id", m_payment_id=reference)
+            # Authenticated (signature + IP + merchant) but ours to nobody: quarantine for a human and acknowledge, so
+            # PayFast stops retrying a notification we can never apply.
+            if payment_status == 'COMPLETE':
+                _anomaly('payfast', reference, 'unknown_reference', f"pf_payment_id={pf_payment_id}", payload=data)
+            logger.error("PayFast ITN %s (%s) matches no transaction: quarantined", reference, payment_status)
+            return Response("OK", status=status.HTTP_200_OK)
         try:
             gross = Decimal(data.get('amount_gross', ''))
         except Exception:
@@ -273,8 +299,13 @@ class PayFastWebhookView(APIView):
                      f"expected {tx.amount} {tx.currency}, gateway says {gross}", tx=tx, payload=data)
             return self._reject("amount mismatch", expected=str(tx.amount), got=str(gross))
 
-        if data.get('payment_status') != 'COMPLETE':
-            logger.info("PayFast ITN %s status=%s acknowledged without action", reference, data.get('payment_status'))
+        if payment_status in ('CANCELLED', 'FAILED'):
+            return self._fail_initialized(tx, pairs, data)
+        if payment_status != 'COMPLETE':
+            known = payment_status == 'PENDING'
+            (logger.info if known else logger.warning)(
+                "PayFast ITN %s status=%s acknowledged without action%s", reference, payment_status,
+                '' if known else ' (UNKNOWN status)')
             return Response("OK", status=status.HTTP_200_OK)
 
         if tx.status in SETTLED_STATES and tx.gateway_reference == pf_payment_id:
@@ -344,36 +375,17 @@ class PayPalWebhookView(APIView):
             logger.error("%s", exc)
             return Response({"error": "verification_unavailable"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
-        if event.get('event_type') != 'PAYMENT.CAPTURE.COMPLETED':
+        handler = paypal_events.HANDLERS.get(event.get('event_type'))
+        if handler is None:
             return Response({"status": "ignored"}, status=status.HTTP_200_OK)
-
-        capture_id = (event.get('resource') or {}).get('id')
-        if not capture_id or not isinstance(capture_id, str):
-            return self._reject("missing capture id")
-
         try:
-            capture = paypal.get_capture(capture_id)
+            result = handler(event)
+        except CaptureRejected as exc:
+            return self._reject(exc.reason.replace('_', ' '), **exc.context)
         except paypal.PayPalError as exc:
             logger.error("%s", exc)
             return Response({"error": "lookup_unavailable"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-
-        capture = {**capture, 'id': capture_id}
-        reference = capture.get('custom_id')
-
-        tx = (PaymentTransaction.objects.select_related('booking', 'credit_purchase__pack')
-              .filter(merchant_reference=reference, gateway=PaymentTransaction.Gateway.PAYPAL).first()
-              if reference else None)
-        if tx is None:
-            _anomaly('paypal', capture_id, 'unknown_reference', f"custom_id={reference}", payload=event)
-            return self._reject("unknown custom_id", custom_id=reference)
-        if capture.get('status') != 'COMPLETED':
-            return self._reject("capture not COMPLETED", status=capture.get('status'))
-        try:
-            verify_capture_amount(tx, capture, payload=event)
-            settle_completed_capture(tx.pk, capture, payload=event)
-        except CaptureRejected as exc:
-            return self._reject(exc.reason.replace('_', ' '), **exc.context)
-        return Response({"status": "received"}, status=status.HTTP_200_OK)
+        return Response({"status": result if result in ('ignored', 'quarantined') else 'received'}, status=status.HTTP_200_OK)
 
 
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
