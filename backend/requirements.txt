@@ -12,7 +12,7 @@ dj-database-url>=2.2.0
 redis>=5.0.8
 
 # Asynchronous Tasks
-celery>=5.4.0
+celery>=5.6.3
 
 # Security & Utilities
 gunicorn>=22.0.0
