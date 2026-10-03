@@ -24,10 +24,11 @@ from apps.users.permissions import IsTeacher
 from apps.bookings.services.holds import SLOT_OWNING_STATUSES, hold_expires_at, hold_is_live, inflight_grace, max_hold
 from apps.bookings.services.lock_service import extend_slot_lock
 from .gateways import payfast, paypal
-from .models import LessonPrice, CreditBundle, CreditPack, CreditPurchase, CreditWalletEntry, GatewayAnomaly, PaymentTransaction, TutorPayoutAccount
+from .models import FxRate, LessonPrice, CreditBundle, CreditPack, CreditPurchase, CreditWalletEntry, GatewayAnomaly, PaymentTransaction, TutorPayoutAccount
 from .serializers import (
     PayoutAccountMaskedSerializer, PayoutAccountWriteSerializer, TutorWalletSerializer, masked_payout_account,
 )
+from .services.fx import FxRateStale, FxRateUnavailable, current_rate, fx_source_label
 from .services.pricing import CURRENCY_EXPONENT, PriceNotConfigured, lesson_price, quantize_money
 from .services.payout_crypto import PayoutDataError
 from .throttles import WritesOnlyScopedThrottle
@@ -89,6 +90,7 @@ class CheckoutInitializeView(APIView):
 
         booking = None
         purchase = None
+        tx_fx = {}
         if booking_raw:
             try:
                 booking_id = uuid.UUID(str(booking_raw))
@@ -99,11 +101,24 @@ class CheckoutInitializeView(APIView):
             invalid = self._validate_booking(booking)
             if invalid:
                 return invalid
-            currency = 'ZAR' if gateway == 'payfast' else 'USD'
+            if gateway == 'payfast':
+                currency = 'ZAR'
+            else:
+                currency = str(request.data.get('currency') or 'USD').upper()
+                if currency not in {'USD', 'EUR', 'JPY'}:
+                    return Response({"error": "PayPal lesson currency must be USD, EUR, or JPY."},
+                                    status=status.HTTP_400_BAD_REQUEST)
             try:
                 amount = lesson_price(currency)
             except PriceNotConfigured:
                 return Response({"error": "Lesson price is not configured."}, status=status.HTTP_409_CONFLICT)
+            if currency in FxRate.SUPPORTED:
+                try:
+                    fx_row = current_rate(currency)
+                except (FxRateUnavailable, FxRateStale) as exc:
+                    return Response({"error": f"{currency} payments are temporarily unavailable: {exc}"},
+                                    status=status.HTTP_503_SERVICE_UNAVAILABLE)
+                tx_fx = {'fx_rate_to_zar': fx_row.rate_to_zar, 'fx_source': fx_source_label(fx_row)}
             item_name = f"25-Min Lesson with {booking.teacher.user.first_name or booking.teacher.user.username}"
             target_id = str(booking.id)
         else:
@@ -132,7 +147,7 @@ class CheckoutInitializeView(APIView):
 
         tx = PaymentTransaction.objects.create(
             booking=booking, credit_purchase=purchase, gateway=gateway, gateway_reference=f"INIT-{reference}",
-            merchant_reference=reference, amount=amount, currency=currency,
+            merchant_reference=reference, amount=amount, currency=currency, **tx_fx,
             status=PaymentTransaction.Status.INITIALIZED,
         )
         hold_until = hold_expires_at(booking).isoformat() if booking else None
@@ -333,7 +348,7 @@ class PayPalWebhookView(APIView):
             paid = Decimal(str(amount_info.get('value', '')))
         except Exception:
             return self._reject("unparseable amount")
-        if amount_info.get('currency_code') != tx.currency or paid.quantize(CENT) != tx.amount.quantize(CENT):
+        if amount_info.get('currency_code') != tx.currency or quantize_money(paid, tx.currency) != quantize_money(tx.amount, tx.currency):
             _anomaly('paypal', capture_id, 'amount_mismatch',
                      f"expected {tx.amount} {tx.currency}, PayPal says {paid} {amount_info.get('currency_code')}",
                      tx=tx, payload=event)

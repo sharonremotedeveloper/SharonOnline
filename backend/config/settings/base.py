@@ -299,6 +299,8 @@ PAYFAST_NOTIFY_URL = os.environ.get('PAYFAST_NOTIFY_URL', '')
 # Extra source-IP ranges allowed for ITNs (comma-separated CIDRs). Copy PayFast's currently published ranges here;
 # DNS resolution of PayFast's hosts is used in addition.
 PAYFAST_EXTRA_ALLOWED_CIDRS = [c.strip() for c in os.environ.get('PAYFAST_EXTRA_ALLOWED_CIDRS', '').split(',') if c.strip()]
+# EUR/JPY lesson checkout is blocked when the newest admin-entered FX rate is older than this (Task 10.1d).
+FX_RATE_MAX_AGE_HOURS = int(os.environ.get('FX_RATE_MAX_AGE_HOURS', '24'))
 # D-1: retail lesson prices are platform-set per currency in payments.LessonPrice (Task 10.1); no FX setting here.
 
 PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', '')
