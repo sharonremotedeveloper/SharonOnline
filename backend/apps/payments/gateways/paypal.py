@@ -1,8 +1,10 @@
 """PayPal webhook verification and server-side capture lookup."""
 import json
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone as dt_timezone
+from decimal import Decimal
 from urllib.parse import quote, urlparse
 
 import requests
@@ -251,6 +253,105 @@ def capture_order(order_id: str, *, request_id: str) -> dict:
         if exc.issue == 'INSTRUMENT_DECLINED':
             raise PayPalDeclined(str(exc), name=exc.name, issue=exc.issue, status_code=exc.status_code) from exc
         raise
+
+
+# --- Refunds -----------------------------------------------------------------------------------------------------
+
+_PAYPAL_ID_RE = re.compile(r'[A-Za-z0-9_-]{5,64}')
+MAX_RETRY_AFTER_SECONDS = 86400
+REFUND_NOTE_MAX = 255
+REFUND_INVOICE_ID_MAX = 127
+
+
+class PayPalUnavailable(PayPalError):
+    """A retryable/ambiguous answer (401 after the single refresh, 403, 408, 409, 429, 5xx, ...): carries what the caller needs to decide."""
+
+    def __init__(self, message: str, *, status_code: int = 0, retry_after_s: int | None = None):
+        super().__init__(message)
+        self.status_code = status_code
+        self.retry_after_s = retry_after_s
+
+
+@dataclass(frozen=True)
+class RefundOutcome:
+    state: str  # 'completed' | 'pending' | 'rejected' | 'unknown'
+    reason: str = ''
+
+
+def classify_refund(refund) -> RefundOutcome:
+    """Map a PayPal refund resource to an outcome. Anything unrecognised is 'unknown' (never 'completed')."""
+    refund = refund if isinstance(refund, dict) else {}
+    status = refund.get('status')
+    details = refund.get('status_details')
+    reason = str(details.get('reason', '')) if isinstance(details, dict) else ''
+    if status == 'COMPLETED':
+        return RefundOutcome('completed')
+    if status == 'PENDING':
+        return RefundOutcome('pending', reason)
+    if status in ('FAILED', 'CANCELLED', 'DENIED'):
+        return RefundOutcome('rejected', reason)
+    return RefundOutcome('unknown', reason)
+
+
+def _valid_paypal_id(value) -> bool:
+    return isinstance(value, str) and _PAYPAL_ID_RE.fullmatch(value) is not None and not value.startswith('INIT-')
+
+
+def _retry_after(resp) -> int | None:
+    headers = getattr(resp, 'headers', None) or {}
+    raw = headers.get('Retry-After') if hasattr(headers, 'get') else None
+    try:
+        seconds = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return None
+    return min(seconds, MAX_RETRY_AFTER_SECONDS) if seconds >= 0 else None
+
+
+def _refund_json(resp, what: str) -> dict:
+    """JSON of a 2xx answer. 400/404/409/422 and other 4xx -> PayPalRejected (status_code set); 401/403/408/429/5xx -> PayPalUnavailable."""
+    status = getattr(resp, 'status_code', 200)
+    if status in (401, 403, 408, 429) or status >= 500:
+        raise PayPalUnavailable(f"PayPal {what} unavailable ({status})", status_code=status, retry_after_s=_retry_after(resp))
+    if 400 <= status < 500:
+        name, issue = _error_details(resp)
+        raise PayPalRejected(f"PayPal {what} rejected ({status} {name} {issue})".strip(), name=name, issue=issue, status_code=status)
+    try:
+        resp.raise_for_status()
+        body = resp.json()
+    except (requests.RequestException, ValueError) as exc:
+        raise PayPalError(f"PayPal {what} failed: {exc}") from exc
+    return body
+
+
+def create_refund(*, capture_id: str, amount, currency: str, note: str, invoice_id: str, request_id: str) -> dict:
+    """
+    POST /v2/payments/captures/{capture_id}/refund. `request_id` (PayPal-Request-Id) makes a retried call return the same refund.
+    Raises ValueError, before any HTTP, for a malformed/'INIT-' capture id or an amount that is not a positive exact amount
+    in the currency's minor unit; PayPalRejected (status_code/name/issue) for 4xx business answers; PayPalUnavailable for
+    401/403/408/429/5xx; PayPalError for transport failures. Never logs headers, bodies or tokens.
+    """
+    if not _valid_paypal_id(capture_id):
+        raise ValueError('malformed capture id')
+    currency = str(currency).upper()
+    exact = quantize_money(amount, currency)  # ValueError for an unsupported currency
+    if exact != Decimal(str(amount)) or exact <= 0:
+        raise ValueError('refund amount must be positive and exact in the currency minor unit')
+    body = {'amount': {'value': format(exact, 'f'), 'currency_code': currency}}
+    if note:
+        body['note_to_payer'] = str(note)[:REFUND_NOTE_MAX]
+    if invoice_id:
+        body['invoice_id'] = str(invoice_id)[:REFUND_INVOICE_ID_MAX]
+    url = f"{_base_url()}/v2/payments/captures/{quote(capture_id, safe='')}/refund"
+    resp = _send('POST', url, 'refund', json=body, headers={'PayPal-Request-Id': request_id})
+    return _refund_json(resp, 'refund')
+
+
+def lookup_refund(refund_id: str) -> dict:
+    """GET /v2/payments/refunds/{id} with the same status/Retry-After detail as create_refund (get_refund stays as it was)."""
+    if not _valid_paypal_id(refund_id):
+        raise ValueError('malformed refund id')
+    resp = _send('GET', f"{_base_url()}/v2/payments/refunds/{quote(refund_id, safe='')}", 'refund lookup')
+    return _refund_json(resp, 'refund lookup')
 
 
 # Our own PayPal Business account settings hold the payment (receiving preferences / currency handling): not the buyer.

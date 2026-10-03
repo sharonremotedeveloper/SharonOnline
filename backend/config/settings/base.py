@@ -320,3 +320,6 @@ PAYPAL_MODE = os.environ.get('PAYPAL_MODE', 'sandbox')
 PAYPAL_WEBHOOK_ID = os.environ.get('PAYPAL_WEBHOOK_ID', '')
 # Task 10.2 (P-9): ask PayPal to refuse eCheck-style funding. Off until the sandbox shows eCheck pendings.
 PAYPAL_REQUIRE_IMMEDIATE_PAYMENT = os.environ.get('PAYPAL_REQUIRE_IMMEDIATE_PAYMENT', 'False').strip().lower() in ('1', 'true', 'yes')
+# Task 10.7: refund gateway switches. PayFast refunds stay off until docs/PAYFAST_REFUNDS_UNVERIFIED.md is cleared.
+PAYFAST_REFUNDS_ENABLED = _env_bool('PAYFAST_REFUNDS_ENABLED', False)
+PAYPAL_REFUND_NOTE = os.environ.get('PAYPAL_REFUND_NOTE', 'Refund from Sharon Online')  # shown to the payer
