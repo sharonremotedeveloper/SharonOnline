@@ -1585,3 +1585,64 @@ class TestRewrittenLegacyContracts:
         set_row(r, next_attempt_at=None)
         assert refunds.process_pending_refunds() == result_dict(sent=1, completed=1)
         assert fresh(r).status == RS.PROCESSED
+
+
+# ================================================================================================ defence in depth
+class TestEachClaimLayerStandsOnItsOwn:
+    """The python-side checks (under the row lock) and the claim UPDATE both guard the same conditions; each is pinned alone."""
+
+    def _broken(self, refund):
+        PaymentTransaction.objects.filter(pk=refund.payment_transaction_id).update(status=PaymentTransaction.Status.FAILED)
+
+    @pytest.mark.parametrize('field', ['next_attempt_at', 'claimed_until'])
+    def test_a_row_that_is_not_due_is_neither_guarded_nor_claimed(self, teacher_user, student_user, clock, field):
+        r = new_refund(teacher_user, student_user)
+        self._broken(r)                                         # a guard WOULD fail if the row were looked at
+        set_row(r, **{field: clock.now + HOUR})
+        assert refunds._try_claim(r.pk, RS.PENDING_GATEWAY, lambda: clock.now) is None
+        r = fresh(r)
+        assert r.status == RS.PENDING_GATEWAY and r.attempts == 0 and alerts('refund_failed_guard').count() == 0
+
+    def test_a_row_inside_the_first_attempt_delay_is_neither_guarded_nor_claimed(self, teacher_user, student_user, settings):
+        settings.REFUND_FIRST_ATTEMPT_DELAY_MINUTES = 60
+        r = new_refund(teacher_user, student_user)
+        self._broken(r)
+        assert refunds._try_claim(r.pk, RS.PENDING_GATEWAY, lambda: r.created_at + 10 * MIN) is None
+        assert fresh(r).status == RS.PENDING_GATEWAY and alerts('refund_failed_guard').count() == 0
+        assert refunds._try_claim(r.pk, RS.PENDING_GATEWAY, lambda: r.created_at + 61 * MIN) is None      # due now: guarded, so failed
+        assert fresh(r).status == RS.FAILED
+
+    def test_a_status_change_after_the_candidate_list_is_seen_even_if_the_update_would_match(self, teacher_user, student_user, monkeypatch):
+        r = new_refund(teacher_user, student_user)
+        stale = list(refunds._due_candidates(refunds._now()))
+        refunds.convert_to_wallet(r.pk)
+        monkeypatch.setattr(refunds, '_cas_claim', lambda *a, **k: True)
+        assert refunds._try_claim(*stale[0][:2], refunds._now) is None
+
+    def test_candidates_hide_rows_inside_the_first_attempt_delay(self, teacher_user, student_user, settings):
+        settings.REFUND_FIRST_ATTEMPT_DELAY_MINUTES = 60
+        r = new_refund(teacher_user, student_user)
+        assert refunds._due_candidates(r.created_at + 10 * MIN) == []
+        assert [c[0] for c in refunds._due_candidates(r.created_at + 61 * MIN)] == [r.pk]
+
+    def test_candidates_are_oldest_first_and_carry_the_gateway(self, teacher_user, student_user):
+        a = new_refund(teacher_user, student_user)
+        b = new_refund(teacher_user, student_user, gateway='payfast', amount='168.75', currency='ZAR')
+        set_row(a, created_at=timezone.now() - 3 * DAY)
+        set_row(b, created_at=timezone.now() - 5 * DAY)
+        assert [(c[0], c[2]) for c in refunds._due_candidates(timezone.now())] == [(b.pk, 'payfast'), (a.pk, 'paypal')]
+
+    def test_the_candidates_skip_awaiting_clearance_rows(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        set_row(r, status=RS.AWAITING_CLEARANCE)
+        assert refunds._due_candidates(timezone.now() + DAY) == []
+
+    def test_an_expired_lease_makes_a_submitted_row_pollable_again(self, teacher_user, student_user, clock, gw):
+        gw.behavior = lambda order: RefundResult('submitted', reference='RF-S')
+        new_refund(teacher_user, student_user)
+        refunds.process_pending_refunds()
+        clock.advance(2 * HOUR)
+        poll = claim_one()
+        assert poll.kind == 'poll' and claim_one() is None            # leased: nobody else gets it
+        clock.advance(11 * MIN)
+        assert claim_one().kind == 'poll'
