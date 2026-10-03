@@ -299,9 +299,7 @@ PAYFAST_NOTIFY_URL = os.environ.get('PAYFAST_NOTIFY_URL', '')
 # Extra source-IP ranges allowed for ITNs (comma-separated CIDRs). Copy PayFast's currently published ranges here;
 # DNS resolution of PayFast's hosts is used in addition.
 PAYFAST_EXTRA_ALLOWED_CIDRS = [c.strip() for c in os.environ.get('PAYFAST_EXTRA_ALLOWED_CIDRS', '').split(',') if c.strip()]
-# D-1: retail price is platform-set per currency. Until the price table exists (Phase 10),
-# ZAR = USD price x this configurable rate.
-ZAR_PER_USD = float(os.environ.get('ZAR_PER_USD', '18.0'))
+# D-1: retail lesson prices are platform-set per currency in payments.LessonPrice (Task 10.1); no FX setting here.
 
 PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', '')
 PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', '')

@@ -7,10 +7,10 @@ from apps.materials.models import Material
 from apps.teachers.serializers import TeacherListSerializer
 from apps.users.serializers import UserSerializer
 from datetime import timedelta
-from decimal import Decimal, ROUND_HALF_UP
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.conf import settings
 from .services.holds import hold_expires_at
+from apps.payments.services.pricing import lesson_price
 from django.utils.dateparse import parse_datetime
 
 class LessonMemoSerializer(serializers.ModelSerializer):
@@ -165,14 +165,12 @@ class BookingDetailSerializer(serializers.ModelSerializer):
     def get_booking_reference(self, obj) -> str:
         return f"BK-{str(obj.id).split('-')[0].upper()}"
 
-    def _price_usd(self, obj):
-        return Decimal(str(obj.teacher.price_per_25min_usd)).quantize(Decimal('0.01'), ROUND_HALF_UP)
-
+    # D-1: the platform's flat catalog price, not the tutor's. Exact Decimals; floats only at the JSON boundary.
     def get_price_usd(self, obj) -> float:
-        return float(self._price_usd(obj))
+        return float(lesson_price('USD'))
 
     def get_price_zar(self, obj) -> float:
-        return float((self._price_usd(obj) * Decimal(str(settings.ZAR_PER_USD))).quantize(Decimal('0.01'), ROUND_HALF_UP))
+        return float(lesson_price('ZAR'))
 
     def get_lock_expires_at(self, obj) -> Optional[str]:
         if obj.status != Booking.Status.PENDING_PAYMENT:

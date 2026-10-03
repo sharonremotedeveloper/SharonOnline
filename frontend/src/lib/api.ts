@@ -581,6 +581,13 @@ export const api = {
     throw new Error("Checkout initialization is unavailable in mock mode.");
   },
 
+  /** Platform flat lesson price per currency (D-1); amounts are exact strings, `decimals` is 0 for JPY. */
+  async getLessonPrices() {
+    const live = await liveRequest(`${API_BASE}/payments/lesson-prices/`, { skipAuth: true });
+    if (live !== MOCK) return live;
+    return [];
+  },
+
   async getCreditPacks() {
     const live = await liveRequest(`${API_BASE}/payments/credit-packs/`, { skipAuth: true });
     if (live !== MOCK) return live;

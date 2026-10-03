@@ -19,6 +19,7 @@ from apps.payments.models import CreditBundle, CreditWalletEntry, LedgerEntry, P
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.settlement import is_settled, successful_transaction
 from apps.payments.services.funding import funding_for_settlement
+from apps.payments.services.pricing import usd_to_zar_rate
 from apps.admin_api.models import DisputeCase
 from apps.users.models import User
 from apps.admin_api.serializers import (
@@ -79,7 +80,7 @@ class AdminTelemetryView(APIView):
         actual_escrow_zar = float(max(cr_zar - dr_zar, Decimal('0.00')))
         if actual_escrow_zar > 0:
             escrow_zar = round(actual_escrow_zar, 2)
-            escrow_usd = round(actual_escrow_zar / Decimal(str(settings.ZAR_PER_USD)), 2)
+            escrow_usd = round(actual_escrow_zar / float(usd_to_zar_rate()), 2)
         else:
             escrow_usd = 0.0
             escrow_zar = 0.0
@@ -285,7 +286,7 @@ class EscrowLedgerView(APIView):
                 funding_for_settlement(b, context='admin_escrow_view')
                 continue
             gross_zar = Decimal(funding.captured_amount) * Decimal(funding.fx_rate_to_zar)
-            gross_usd = float(gross_zar / Decimal(str(settings.ZAR_PER_USD)))
+            gross_usd = float(gross_zar / usd_to_zar_rate())
             platform_fee = round(gross_usd * 0.20, 2)
             net_tutor_zar = round(float(gross_zar * Decimal('0.80')), 2)
 
@@ -321,7 +322,7 @@ class EscrowLedgerView(APIView):
                 'teacher_name': b.teacher.user.get_full_name() or b.teacher.user.username,
                 'lesson_date': b.start_time_utc.strftime('%Y-%m-%d %H:%M'),
                 'amount_usd': gross_usd,
-                'amount_zar': round(gross_usd * 18.75, 2),
+                'amount_zar': float(gross_zar.quantize(Decimal('0.01'))),
                 'platform_fee_usd': platform_fee,
                 'teacher_net_zar': net_tutor_zar,
                 'escrow_status': escrow_status,

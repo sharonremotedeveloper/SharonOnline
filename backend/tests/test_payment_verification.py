@@ -56,7 +56,7 @@ class TestCheckout:
         data = _checkout(student_user, pending_booking, 'payfast')
         tx = PaymentTransaction.objects.get(merchant_reference=data['transaction_reference'])
         assert tx.status == 'initialized' and tx.currency == 'ZAR'
-        assert tx.amount == Decimal('162.00')  # 9.00 USD x 18.0
+        assert tx.amount == Decimal('162.00')  # flat catalog price (D-1)
         assert data['fields']['signature']
 
     def test_checkout_rejects_non_pending_booking(self, student_user, pending_booking):

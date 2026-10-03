@@ -713,6 +713,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payments/lesson-prices/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Public: the platform's flat price for one 25-minute lesson per currency (D-1), amounts as exact strings. */
+        get: operations["v1_payments_lesson_prices_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payments/payout-settings/": {
         parameters: {
             query?: never;
@@ -2881,6 +2898,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Wallet"];
+                };
+            };
+        };
+    };
+    v1_payments_lesson_prices_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

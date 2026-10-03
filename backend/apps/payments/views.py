@@ -24,10 +24,11 @@ from apps.users.permissions import IsTeacher
 from apps.bookings.services.holds import SLOT_OWNING_STATUSES, hold_expires_at, hold_is_live, inflight_grace, max_hold
 from apps.bookings.services.lock_service import extend_slot_lock
 from .gateways import payfast, paypal
-from .models import CreditBundle, CreditPack, CreditPurchase, CreditWalletEntry, GatewayAnomaly, PaymentTransaction, TutorPayoutAccount
+from .models import LessonPrice, CreditBundle, CreditPack, CreditPurchase, CreditWalletEntry, GatewayAnomaly, PaymentTransaction, TutorPayoutAccount
 from .serializers import (
     PayoutAccountMaskedSerializer, PayoutAccountWriteSerializer, TutorWalletSerializer, masked_payout_account,
 )
+from .services.pricing import CURRENCY_EXPONENT, PriceNotConfigured, lesson_price, quantize_money
 from .services.payout_crypto import PayoutDataError
 from .throttles import WritesOnlyScopedThrottle
 from .services.tutor_wallet import tutor_wallet_payload
@@ -98,14 +99,11 @@ class CheckoutInitializeView(APIView):
             invalid = self._validate_booking(booking)
             if invalid:
                 return invalid
-            amount_usd = Decimal(str(booking.teacher.price_per_25min_usd)).quantize(CENT, ROUND_HALF_UP)
-            if amount_usd <= 0:
+            currency = 'ZAR' if gateway == 'payfast' else 'USD'
+            try:
+                amount = lesson_price(currency)
+            except PriceNotConfigured:
                 return Response({"error": "Lesson price is not configured."}, status=status.HTTP_409_CONFLICT)
-            if gateway == 'payfast':
-                amount = (amount_usd * Decimal(str(settings.ZAR_PER_USD))).quantize(CENT, ROUND_HALF_UP)
-                currency = 'ZAR'
-            else:
-                amount, currency = amount_usd, 'USD'
             item_name = f"25-Min Lesson with {booking.teacher.user.first_name or booking.teacher.user.username}"
             target_id = str(booking.id)
         else:
@@ -416,6 +414,19 @@ class CreditBalanceView(APIView):
                 for b in bundles.active().filter(remaining_credits__gt=0)
             ]
         })
+
+
+@extend_schema(responses=OpenApiTypes.OBJECT)
+class LessonPriceListView(APIView):
+    """Public: the platform's flat price for one 25-minute lesson per currency (D-1), amounts as exact strings."""
+    permission_classes = (permissions.AllowAny,)
+
+    def get(self, request):
+        return Response([
+            {'currency': row.currency, 'amount': str(quantize_money(row.amount, row.currency)),
+             'decimals': CURRENCY_EXPONENT[row.currency]}
+            for row in LessonPrice.objects.filter(is_active=True)
+        ])
 
 
 @extend_schema(responses=OpenApiTypes.OBJECT)

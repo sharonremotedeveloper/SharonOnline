@@ -49,7 +49,7 @@ New or changed environment variables (see `.env.example`):
 | `PAYFAST_MERCHANT_ID/KEY/PASSPHRASE`, `PAYFAST_SANDBOX`, `PAYFAST_NOTIFY_URL` | PayFast | If `PAYFAST_SANDBOX=False`: all required, sandbox id `10000100` forbidden |
 | `PAYFAST_SKIP_IP_CHECK` | Dev-only IP-check bypass | Must be false |
 | `PAYFAST_TRUSTED_PROXY_COUNT` | Read client IP from `X-Forwarded-For` | Set to the number of proxies |
-| `ZAR_PER_USD` | Interim ZAR rate until the D-1 price table exists | Default 18.0 |
+| `ZAR_PER_USD` | **Removed in Task 10.1**; prices live in `payments.LessonPrice` | - |
 | `PAYPAL_CLIENT_ID/SECRET`, `PAYPAL_MODE`, `PAYPAL_WEBHOOK_ID` | PayPal | `PAYPAL_WEBHOOK_ID` required when PayPal is configured |
 | `THROTTLE_NUM_PROXIES` | Proxy count for rate limiting | Set behind a load balancer |
 | `CLOUDFLARE_R2_*` | R2 storage | Local `.env` configured and live-tested |

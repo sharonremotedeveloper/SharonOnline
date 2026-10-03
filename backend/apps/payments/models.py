@@ -127,6 +127,40 @@ class CreditPack(models.Model):
         return f"{self.name} ({self.credits} credits)"
 
 
+class LessonPrice(models.Model):
+    """
+    D-1: the platform-set flat retail price of one 25-minute lesson, one row per currency. The single source of truth
+    for lesson amounts; tutors do not set prices. JPY has no minor unit, so its amount must be a whole number.
+    """
+    SUPPORTED = ('USD', 'EUR', 'JPY', 'ZAR')
+
+    currency = models.CharField(max_length=3, primary_key=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    is_active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['currency']
+        constraints = [
+            models.CheckConstraint(condition=models.Q(amount__gt=0), name='lessonprice_amount_positive'),
+        ]
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        from .services.pricing import CURRENCY_EXPONENT
+        if self.currency not in self.SUPPORTED:
+            raise ValidationError({'currency': f'Unsupported currency {self.currency!r}.'})
+        if self.amount is not None and self.amount != self.amount.quantize(Decimal(1).scaleb(-CURRENCY_EXPONENT[self.currency])):
+            raise ValidationError({'amount': f'{self.currency} amounts use {CURRENCY_EXPONENT[self.currency]} decimals.'})
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.currency} {self.amount}'
+
+
 class CreditPurchase(models.Model):
     class Status(models.TextChoices):
         INITIALIZED = 'initialized', 'Initialized'
