@@ -10,6 +10,7 @@ from django.db.models import Exists, OuterRef
 
 from apps.bookings.models import AttendanceAudit, Booking
 from apps.payments.models import LedgerEntry, PaymentTransaction
+from apps.integrations.services.attendance import TEACHER, classified_rows
 
 SETTLEMENT_EVENT_TYPES = (
     LedgerEntry.EventType.ESCROW_CLEARED,      # 24h release to the tutor (80/20)
@@ -45,7 +46,7 @@ def attendance_verified_for_release(booking, teacher_minutes: int) -> bool:
     if booking.status == Booking.Status.STUDENT_LATE_CANCELLED:
         return True                              # nothing to attend: the student gave the slot up
     if booking.status == Booking.Status.STUDENT_NO_SHOW:
-        return AttendanceAudit.objects.filter(booking=booking, participant_email=booking.teacher.user.email).exists()
+        return classified_rows(booking, TEACHER).exists()
     return teacher_minutes >= settings.LESSON_DELIVERED_MIN_TEACHER_MINUTES
 
 

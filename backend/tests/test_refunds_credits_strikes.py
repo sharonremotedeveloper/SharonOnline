@@ -32,13 +32,13 @@ def balance(account, **filters):
 @pytest.mark.django_db
 class TestCreditLots:
     def test_every_grant_is_its_own_lot_with_a_30_day_expiry(self, student_user):
-        a = grant_credit(student_user, source=CreditBundle.Source.REFUND, unit_value=Decimal('9.00'))
+        a = grant_credit(student_user, source=CreditBundle.Source.REFUND, unit_amount=Decimal('9.00'))
         b = grant_credit(student_user, credits=2, source=CreditBundle.Source.BONUS)
         assert a.pk != b.pk and CreditBundle.objects.filter(user=student_user).count() == 2
         assert (b.total_credits, b.remaining_credits) == (2, 2)
         for lot in (a, b):
             assert abs((lot.expires_at - (timezone.now() + 30 * DAY)).total_seconds()) < 5
-        assert a.unit_value == Decimal('9.00')
+        assert a.unit_amount == Decimal('9.00')
 
     def test_expiry_days_can_be_overridden_per_grant(self, student_user):
         lot = grant_credit(student_user, expires_in_days=7)
@@ -76,7 +76,7 @@ class TestCreditLots:
         assert available_credits(student_user) == 1                 # nothing was half-spent
 
     def test_the_expiry_job_posts_breakage_exactly_once(self, student_user):
-        lot = grant_credit(student_user, credits=3, source=CreditBundle.Source.REFUND, unit_value=Decimal('9.00'))
+        lot = grant_credit(student_user, credits=3, source=CreditBundle.Source.REFUND, unit_amount=Decimal('9.00'))
         # the 2040 liability was credited when the lot was granted (as the callers do)
         LedgerEntry.objects.create(journal_batch_id='00000000-0000-0000-0000-000000000001', account=ACC.EXPENSE_STUDENT_COMPENSATION,
                                    entry_type='debit', amount=Decimal('27.00'), amount_zar=Decimal('506.25'), event_type=EV.COMPENSATION_AWARDED, description='seed')
@@ -94,8 +94,8 @@ class TestCreditLots:
         assert LedgerEntry.objects.filter(event_type=EV.CREDIT_EXPIRED).count() == 2
 
     def test_unexpired_and_valueless_lots_are_handled(self, student_user):
-        fresh = grant_credit(student_user, unit_value=Decimal('5.00'))
-        free = grant_credit(student_user, credits=2)                                       # unit_value 0: nothing on the ledger
+        fresh = grant_credit(student_user, unit_amount=Decimal('5.00'))
+        free = grant_credit(student_user, credits=2)                                       # unit_amount 0: nothing on the ledger
         CreditBundle.objects.filter(pk=free.pk).update(expires_at=timezone.now() - timedelta(hours=1))
         assert expire_credits()['lots'] == 1
         free.refresh_from_db(); fresh.refresh_from_db()
@@ -151,7 +151,7 @@ class TestRefundService:
         lot = refunds.convert_to_wallet(r.pk)
         r.refresh_from_db()
         assert r.status == 'converted'
-        assert (lot.source, lot.unit_value, lot.currency, lot.remaining_credits) == ('refund', Decimal('168.75'), 'ZAR', 1)
+        assert (lot.source, lot.unit_amount, lot.currency, lot.remaining_credits) == ('refund', Decimal('168.75'), 'ZAR', 1)
         assert abs((lot.expires_at - (timezone.now() + 30 * DAY)).total_seconds()) < 5
         assert net(b, ACC.LIABILITY_REFUNDS_PAYABLE) == 0 and net(b, ACC.LIABILITY_STUDENT_WALLET) == Decimal('168.75')
 
@@ -167,12 +167,26 @@ class TestRefundService:
         with pytest.raises(refunds.RefundStateError):
             refunds.mark_processed(r2.pk, 'Y')
 
-    def test_with_nothing_captured_the_student_gets_a_wallet_lot_instead(self, teacher_user, student_user):
-        b = lesson(teacher_user, student_user, 600, status=S.CONFIRMED)         # no payment on record (legacy / credit-funded)
+    def test_a_booking_with_no_funding_record_is_never_refunded_from_the_list_price(self, teacher_user, student_user):
+        from apps.payments.models import SettlementAnomaly
+        b = lesson(teacher_user, student_user, 600)                              # nothing was paid and no credit was spent
+        with pytest.raises(refunds.MissingFunding):
+            refunds.request_refund(b, RefundRequest.Reason.TEACHER_CANCEL)
+        assert not RefundRequest.objects.exists() and not CreditBundle.objects.exists() and not LedgerEntry.objects.exists()
+        assert SettlementAnomaly.objects.filter(booking=b, code='missing_booking_funding', resolved=False).exists()
+
+    def test_a_credit_funded_lesson_gets_its_credit_back_not_a_gateway_refund(self, teacher_user, student_user):
+        from apps.payments.services.credits import redeem_booking_credit
+        grant_credit(student_user, source=CreditBundle.Source.PURCHASE, unit_amount=Decimal('9.00'), currency='USD', pack_name='Pack')
+        b = lesson(teacher_user, student_user, 600)                              # unpaid hold, still live
+        redeem_booking_credit(booking=b, student=student_user)
+        assert available_credits(student_user) == 0
+        assert net(b, ACC.LIABILITY_STUDENT_ESCROW) == Decimal('9.00')           # the credit funded the escrow
         out = refunds.request_refund(b, RefundRequest.Reason.TEACHER_CANCEL)
         assert out.refund is None and out.credit_lot.remaining_credits == 1
-        assert not RefundRequest.objects.exists()
-        assert net(b, ACC.LIABILITY_STUDENT_WALLET) > 0
+        assert (out.credit_lot.unit_amount, out.credit_lot.currency, out.credit_lot.source) == (Decimal('9.00'), 'USD', 'refund')
+        assert available_credits(student_user) == 1 and not RefundRequest.objects.exists()
+        assert net(b, ACC.LIABILITY_STUDENT_ESCROW) == 0                          # escrow drained again
 
     def test_the_default_gateway_leaves_requests_pending_and_a_real_one_settles_them(self, teacher_user, student_user, settings):
         b = captured(teacher_user, student_user, 600)

@@ -1,20 +1,6 @@
-import { PublicTutor } from "./tutor";
+import type { components } from "./api.generated";
 
-export type BookingStatus =
-  | "pending_payment"
-  | "confirmed"
-  | "in_progress"
-  | "completed"
-  | "completed_pending_memo"
-  | "completed_memo_forfeited"
-  | "cancelled"
-  | "cancelled_by_student"
-  | "student_late_cancelled"
-  | "cancelled_by_teacher"
-  | "disputed"
-  | "interrupted_power"
-  | "student_no_show"
-  | "teacher_no_show";
+export type BookingStatus = components["schemas"]["BookingStatusEnum"];
 
 export interface BookingSlot {
   id: string;
@@ -43,47 +29,16 @@ export interface ReservationResponse {
   expires_at?: string;
 }
 
-export interface BookingDetail {
-  id: string;
-  booking_reference: string;
-  teacher: {
-    id: string;
-    full_name: string;
-    first_name: string;
-    avatar_url?: string;
-    accent: string;
-    price_per_25min_usd: number;
-    headline?: string;
+type GeneratedBookingDetail = components["schemas"]["BookingDetail"];
+type GeneratedTeacher = GeneratedBookingDetail["teacher"];
+
+/** API-generated booking contract with the one intentional runtime normalization: Decimal -> number. */
+export type BookingDetail = Omit<GeneratedBookingDetail, "teacher"> & {
+  teacher: Omit<GeneratedTeacher, "price_per_25min_usd" | "rating_avg"> & {
+    price_per_25min_usd?: number;
+    rating_avg?: number;
   };
-  student: {
-    id: string;
-    full_name: string;
-    email: string;
-    target_level?: string;
-    learning_goals?: string;
-  };
-  start_time_utc: string;
-  end_time_utc: string;
-  local_date: string;
-  local_start_time: string;
-  local_end_time: string;
-  viewer_timezone: string;
-  status: BookingStatus;
-  price_usd: number;
-  price_zar: number;
-  lock_expires_at: string;
-  zoom_url?: string;
-  zoom_password?: string;
-  zoom_meeting_id?: string;
-  zoom_start_url?: string;
-  zoom_join_url?: string;
-  material_slug?: string;
-  material_title?: string;
-  created_at: string;
-  cancelled_at?: string | null;
-  reschedule_count?: number;
-  original_start_time_utc?: string | null;
-}
+};
 
 export type PaymentGatewayType = "credit" | "payfast" | "paypal";
 
@@ -99,10 +54,4 @@ export interface PayFastInitResponse {
   action_url: string;
 }
 
-export interface CreditLedgerEntry {
-  id: string;
-  description: string;
-  credits_delta: number;
-  date: string;
-  type: "purchase" | "redemption" | "refund" | "bonus";
-}
+export type CreditLedgerEntry = components["schemas"]["CreditLedgerEntry"];

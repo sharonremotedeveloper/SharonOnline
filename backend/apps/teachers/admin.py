@@ -19,7 +19,7 @@ class TeacherProfileAdmin(admin.ModelAdmin):
             'fields': ('is_verified', 'is_active', 'rating_avg', 'rating_count', 'sla_strikes')
         }),
         ('Eskom Grid Resilience', {
-            'fields': ('eskom_area_id', 'has_inverter_backup')
+            'fields': ('eskom_area_id', 'has_inverter_backup', 'has_lte_failover')
         }),
         ('Cloudflare Media Assets ($0 Egress)', {
             'fields': (

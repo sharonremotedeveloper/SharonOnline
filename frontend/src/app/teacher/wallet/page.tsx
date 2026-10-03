@@ -118,7 +118,7 @@ export default function TeacherWalletPage() {
             <div className="flex items-center gap-3">
               <span className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Bi-Weekly Payouts</span>
+                <span>Account Configured</span>
               </span>
             </div>
           )}
@@ -144,7 +144,7 @@ export default function TeacherWalletPage() {
                   <th className="py-3 px-4">Date</th>
                   <th className="py-3 px-4">Booking Ref</th>
                   <th className="py-3 px-4">Session / Event</th>
-                  <th className="py-3 px-4">Gross USD</th>
+                  <th className="py-3 px-4">Captured</th>
                   <th className="py-3 px-4">Net ZAR (80%)</th>
                   <th className="py-3 px-4">Clearing Status</th>
                 </tr>
@@ -155,7 +155,7 @@ export default function TeacherWalletPage() {
                     <td className="py-3 px-4 font-medium text-ink-muted">{tx.date}</td>
                     <td className="py-3 px-4 font-mono font-bold text-teal">{tx.booking_ref}</td>
                     <td className="py-3 px-4 font-bold text-ink">{tx.student_name}</td>
-                    <td className="py-3 px-4 font-medium text-ink-muted">${tx.gross_usd.toFixed(2)}</td>
+                    <td className="py-3 px-4 font-medium text-ink-muted">{tx.gross_amount.toFixed(2)} {tx.currency}</td>
                     <td className="py-3 px-4 font-extrabold text-ink font-serif text-sm">
                       R{tx.net_zar.toFixed(2)}
                     </td>

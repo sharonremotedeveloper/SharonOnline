@@ -1,6 +1,14 @@
 import { API_BASE, MOCK, USE_MOCKS, liveRequest, request } from "./http";
+import type { components } from "@/types/api.generated";
 import { BookingDetail, BookingSlot, CreditLedgerEntry } from "@/types/booking";
-import { EskomStatus, PostLessonMemoInput, TeacherWalletData, TeacherPayoutBankAccount } from "@/types/teacher";
+import {
+  EskomStatus,
+  PowerBackupInput,
+  PostLessonMemoInput,
+  TeacherPayoutBankAccount,
+  TeacherWalletData,
+  TeacherPayoutBankAccountInput,
+} from "@/types/teacher";
 import {
   AdminTelemetry,
   PendingTeacherApplication,
@@ -86,6 +94,20 @@ function normalizeTutor<T>(t: T): T {
     ...(raw.rating_count !== undefined && { rating_count: Number(raw.rating_count) || 0 }),
     ...(raw.price_per_25min_usd !== undefined && { price_per_25min_usd: Number(raw.price_per_25min_usd) || 0 }),
   } as T;
+}
+
+function normalizeBooking(raw: components["schemas"]["BookingDetail"]): BookingDetail {
+  const { rating_avg, price_per_25min_usd, ...teacher } = raw.teacher;
+  return {
+    ...raw,
+    teacher: {
+      ...teacher,
+      ...(rating_avg !== undefined && { rating_avg: Number(rating_avg) || 0 }),
+      ...(price_per_25min_usd !== undefined && {
+        price_per_25min_usd: Number(price_per_25min_usd) || 0,
+      }),
+    },
+  };
 }
 
 function normalizeTutorList(data: any) {
@@ -459,7 +481,7 @@ export const api = {
 
   async getBooking(bookingId: string): Promise<BookingDetail> {
     const live = await liveRequest(`${API_BASE}/bookings/${bookingId}/`, {});
-    if (live !== MOCK) return live;
+    if (live !== MOCK) return normalizeBooking(live as components["schemas"]["BookingDetail"]);
 
     // Fallback booking object for seamless testing
     const today = new Date();
@@ -468,17 +490,27 @@ export const api = {
       booking_reference: bookingId.startsWith("BK-") ? bookingId : `BK-${bookingId.slice(0, 6)}`,
       teacher: {
         id: "tut-1",
+        user_id: "usr-teacher-01",
         full_name: "Sharon M.",
         first_name: "Sharon",
+        last_name: "M.",
         avatar_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
-        accent: "South African (Neutral RP)",
+        intro_audio_url: "",
+        country: "ZA",
+        accent: "ZA",
         price_per_25min_usd: 8.0,
       },
       student: {
         id: "usr-student-01",
         full_name: "Aiko Tanaka",
+        first_name: "Aiko",
         email: "aiko@example.com",
+        country: "JP",
+        timezone: "Asia/Tokyo",
+        target_level: "",
+        learning_goals: "",
       },
+      material: null,
       start_time_utc: today.toISOString(),
       end_time_utc: new Date(today.getTime() + 25 * 60000).toISOString(),
       local_date: today.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }),
@@ -496,7 +528,12 @@ export const api = {
       zoom_start_url: "https://zoom.us/s/9876543210?zak=ESL_TEACHER_HOST_TOKEN",
       material_slug: "remote-work-trends",
       material_title: "Global Remote Work & Digital Nomads",
+      student_rating: null,
+      memo: null,
       created_at: new Date().toISOString(),
+      cancelled_at: null,
+      reschedule_count: 0,
+      original_start_time_utc: null,
     };
   },
 
@@ -530,18 +567,30 @@ export const api = {
     };
   },
 
-  async confirmPayment(bookingId: string, paymentData: any) {
-    const live = await liveRequest(`${API_BASE}/payments/checkout/confirm/`, {
+  async initializeCheckout(payload: {
+    gateway: "payfast" | "paypal";
+    booking_id?: string;
+    credit_pack_id?: number;
+    currency?: "USD" | "ZAR" | "EUR" | "JPY";
+  }) {
+    const live = await liveRequest(`${API_BASE}/payments/checkout/init/`, {
         method: "POST",
-        body: JSON.stringify({ booking_id: bookingId, ...paymentData }),
+        body: JSON.stringify(payload),
       });
     if (live !== MOCK) return live;
+    throw new Error("Checkout initialization is unavailable in mock mode.");
+  },
 
-    return {
-      success: true,
-      booking_id: bookingId,
-      status: "confirmed",
-    };
+  async getCreditPacks() {
+    const live = await liveRequest(`${API_BASE}/payments/credit-packs/`, { skipAuth: true });
+    if (live !== MOCK) return live;
+    return [];
+  },
+
+  async getCreditPurchase(purchaseId: string) {
+    const live = await liveRequest(`${API_BASE}/payments/credit-purchases/${purchaseId}/`, {});
+    if (live !== MOCK) return live;
+    throw new Error("Credit purchase status is unavailable in mock mode.");
   },
 
   async getStudentWallet() {
@@ -622,18 +671,10 @@ export const api = {
     const live = await liveRequest(`${API_BASE}/integrations/eskom/status/`, {});
     if (live !== MOCK) return live;
 
-    return {
-      stage: 2,
-      area_name: "City of Johannesburg Block 3 - Rosebank/Sandton",
-      next_outage_start: "18:00",
-      next_outage_end: "20:30",
-      has_inverter_backup: true,
-      has_lte_failover: true,
-      last_updated: new Date().toISOString(),
-    };
+    throw new Error("Power Guard provider data is unavailable in mock mode.");
   },
 
-  async updatePowerBackup(data: Partial<EskomStatus>) {
+  async updatePowerBackup(data: PowerBackupInput) {
     const live = await liveRequest(`${API_BASE}/teachers/profile/power-backup/`, {
         method: "PATCH",
         body: JSON.stringify(data),
@@ -667,79 +708,28 @@ export const api = {
     if (live !== MOCK) return live;
 
     return {
-      pending_escrow_usd: 64.0,
-      cleared_balance_usd: 128.0,
-      cleared_balance_zar: 2400.0,
-      fx_rate_usd_to_zar: 18.75,
-      payout_bank_account: {
-        bank_name: "Capitec Bank",
-        account_holder_name: "Sharon M.",
-        account_number: "1234567890",
-        account_number_masked: "•••• •••• 7890",
-        branch_code: "470010",
-        account_type: "savings",
-      },
-      transactions: [
-        {
-          id: "tx-1",
-          date: "2026-09-28",
-          booking_ref: "BK-884192",
-          student_name: "Aiko Tanaka",
-          gross_usd: 8.0,
-          net_zar: 120.0,
-          status: "cleared",
-        },
-        {
-          id: "tx-2",
-          date: "2026-09-28",
-          booking_ref: "BK-884185",
-          student_name: "Marco Rossi",
-          gross_usd: 8.0,
-          net_zar: 120.0,
-          status: "cleared",
-        },
-        {
-          id: "tx-3",
-          date: "2026-09-29",
-          booking_ref: "BK-884210",
-          student_name: "Kenji Sato",
-          gross_usd: 8.0,
-          net_zar: 120.0,
-          status: "pending",
-        },
-        {
-          id: "tx-4",
-          date: "2026-09-29",
-          booking_ref: "BK-884225",
-          student_name: "Elena Rostova",
-          gross_usd: 8.0,
-          net_zar: 120.0,
-          status: "pending",
-        },
-        {
-          id: "tx-5",
-          date: "2026-09-25",
-          booking_ref: "BATCH-SEP25",
-          student_name: "Bi-Weekly EFT Payout",
-          gross_usd: 160.0,
-          net_zar: 2400.0,
-          status: "paid_out",
-        },
-      ],
+      pending_escrow_zar: 0,
+      cleared_balance_zar: 0,
+      fx_context: [],
+      payout_bank_account: null,
+      transactions: [],
     };
   },
 
-  async updatePayoutSettings(data: TeacherPayoutBankAccount) {
+  async getPayoutSettings(): Promise<TeacherPayoutBankAccount> {
+    const live = await liveRequest(`${API_BASE}/payments/payout-settings/`, {});
+    if (live !== MOCK) return live;
+    return { configured: false };
+  },
+
+  async updatePayoutSettings(data: TeacherPayoutBankAccountInput): Promise<TeacherPayoutBankAccount> {
     const live = await liveRequest(`${API_BASE}/payments/payout-settings/`, {
         method: "POST",
         body: JSON.stringify(data),
       });
     if (live !== MOCK) return live;
 
-    return {
-      success: true,
-      message: "South African EFT payout account updated and encrypted.",
-    };
+    return { configured: false };
   },
 
   async saveTeacherAvailability(availability: any) {
@@ -955,118 +945,16 @@ export const api = {
       return Array.isArray(live) ? live : (live?.items || []);
     }
 
-    return [
-      {
-        id: "esc-1",
-        booking_ref: "BK-884192",
-        student_name: "Aiko Tanaka",
-        teacher_name: "Sharon M.",
-        lesson_date: "2026-09-30 15:00",
-        amount_usd: 8.0,
-        amount_zar: 150.0,
-        platform_fee_usd: 1.6,
-        teacher_net_zar: 120.0,
-        escrow_status: "holding",
-        release_date: "2026-10-01 15:00",
-      },
-      {
-        id: "esc-2",
-        booking_ref: "BK-884185",
-        student_name: "Marco Rossi",
-        teacher_name: "Sharon M.",
-        lesson_date: "2026-09-30 14:00",
-        amount_usd: 8.0,
-        amount_zar: 150.0,
-        platform_fee_usd: 1.6,
-        teacher_net_zar: 120.0,
-        escrow_status: "holding",
-        release_date: "2026-10-01 14:00",
-      },
-      {
-        id: "esc-3",
-        booking_ref: "BK-884110",
-        student_name: "Kenji Sato",
-        teacher_name: "Liam O.",
-        lesson_date: "2026-09-29 11:00",
-        amount_usd: 8.0,
-        amount_zar: 150.0,
-        platform_fee_usd: 1.6,
-        teacher_net_zar: 120.0,
-        escrow_status: "cleared",
-        release_date: "2026-09-30 11:00",
-      },
-      {
-        id: "esc-4",
-        booking_ref: "BK-884090",
-        student_name: "Elena Rostova",
-        teacher_name: "Elena V.",
-        lesson_date: "2026-09-28 17:00",
-        amount_usd: 8.0,
-        amount_zar: 150.0,
-        platform_fee_usd: 1.6,
-        teacher_net_zar: 120.0,
-        escrow_status: "cleared",
-        release_date: "2026-09-29 17:00",
-      },
-    ];
+    return [];
   },
 
   async getPayoutBatch(): Promise<PayoutBatchItem[]> {
     const live = await liveRequest(`${API_BASE}/admin/payouts/batch/`, {});
     if (live !== MOCK) return live;
 
-    return [
-      {
-        id: "pay-1",
-        teacher_id: "tut-1",
-        teacher_name: "Sharon M.",
-        bank_name: "Capitec Bank",
-        account_number_masked: "•••• •••• 7890",
-        branch_code: "470010",
-        cleared_lessons_count: 20,
-        payout_amount_zar: 2400.0,
-        status: "pending",
-      },
-      {
-        id: "pay-2",
-        teacher_id: "tut-2",
-        teacher_name: "Liam O.",
-        bank_name: "First National Bank (FNB)",
-        account_number_masked: "•••• •••• 1142",
-        branch_code: "250655",
-        cleared_lessons_count: 14,
-        payout_amount_zar: 1680.0,
-        status: "pending",
-      },
-      {
-        id: "pay-3",
-        teacher_id: "tut-3",
-        teacher_name: "Elena V.",
-        bank_name: "Standard Bank",
-        account_number_masked: "•••• •••• 9923",
-        branch_code: "051001",
-        cleared_lessons_count: 12,
-        payout_amount_zar: 1440.0,
-        status: "pending",
-      },
-    ];
+    return [];
   },
 
-  async executePayoutBatch() {
-    const live = await liveRequest(`${API_BASE}/admin/payouts/execute-batch/`, {
-        method: "POST",
-      });
-    if (live !== MOCK) return live;
-
-    return {
-      success: true,
-      batch_id: `ACB-BATCH-${Date.now().toString().slice(-6)}`,
-      total_payout_zar: 5520.0,
-      recipients_count: 3,
-      status: "processed" as const,
-      message: "South African ACB EFT batch executed. Bank transaction files generated.",
-    };
-  },
 };
 
 export const bookingApi = api;

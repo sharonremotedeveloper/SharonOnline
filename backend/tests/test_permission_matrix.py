@@ -6,7 +6,8 @@ from rest_framework.test import APIClient
 
 from apps.bookings.models import Booking
 from apps.crm.models import StudentTutorDossier
-from apps.payments.models import CreditBundle
+from apps.payments.models import CreditBundle, RefundRequest, PaymentTransaction
+from apps.payments.services.funding import ensure_gateway_funding
 from apps.teachers.models import TeacherProfile
 from apps.users.models import User
 
@@ -51,11 +52,21 @@ class TestBookingIDOR:
         booking.start_time_utc = timezone.now() + timedelta(minutes=5)  # inside the reporting window
         booking.end_time_utc = booking.start_time_utc + timedelta(minutes=25)
         booking.save()
+        tx = PaymentTransaction.objects.create(
+            booking=booking,
+            gateway=PaymentTransaction.Gateway.PAYFAST,
+            gateway_reference="tx-outage-idempotency",
+            amount=9.00,
+            currency="USD",
+            status=PaymentTransaction.Status.SUCCESS,
+        )
+        ensure_gateway_funding(tx, booking)
         c = _client(booking.teacher.user)
-        assert _client(student_user).post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 403   # D-6: tutor only
+        assert _client(student_user).post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 409   # a student needs provider evidence
         assert c.post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 200
         assert c.post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 409
-        assert sum(b.remaining_credits for b in CreditBundle.objects.filter(user=student_user)) == 1
+        assert RefundRequest.objects.filter(booking=booking, reason='outage').count() == 1      # refunded once
+        assert not CreditBundle.objects.filter(user=student_user).exists()
 
     def test_outage_rejected_on_completed_booking(self, booking, student_user):
         booking.status = Booking.Status.COMPLETED

@@ -75,7 +75,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["v1_admin_payouts_batch_retrieve"];
+        get: operations["v1_admin_payouts_batch_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -142,6 +142,23 @@ export interface paths {
         get: operations["v1_admin_telemetry_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/inquiries/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Persist the request before queueing its notification, so provider failure cannot lose it. */
+        post: operations["v1_auth_inquiries_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -401,6 +418,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bookings/{booking_id}/redeem-credit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_bookings_redeem_credit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/bookings/{booking_id}/report-outage/": {
         parameters: {
             query?: never;
@@ -411,11 +444,12 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * @description The lesson's tutor (or staff) reports an Eskom load-shedding / grid outage around the lesson (D-6):
-         *     1. Marks the booking INTERRUPTED_POWER.
-         *     2. Queues a full gateway refund for the student (they may convert it to wallet credit). The tutor is not paid and gets no strike.
-         *     A student cannot file this report (it would refund them while the tutor goes unpaid): a student problem goes through a dispute.
-         *     A lesson the tutor taught for the minimum lesson time is a delivered lesson, not an outage.
+         * @description An Eskom load-shedding / grid outage around the lesson (D-6):
+         *     1. The lesson's tutor or staff can report it; a student only when the provider confirms an active outage in the tutor's area
+         *        (a student's own power or internet problem is a dispute, since it would refund them while the tutor goes unpaid).
+         *     2. The booking becomes INTERRUPTED_POWER and a full gateway refund is queued (the student may convert it to wallet credit).
+         *        The tutor is not paid and gets no strike.
+         *     3. A lesson the tutor already taught for the minimum lesson time is a delivered lesson, not an outage.
          */
         post: operations["v1_bookings_report_outage_create"];
         delete?: never;
@@ -509,6 +543,22 @@ export interface paths {
         };
         /** @description Returns concrete 25-minute slots for a given teacher projected into the requested timezone. */
         get: operations["v1_bookings_slots_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/eskom/status/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_integrations_eskom_status_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -615,6 +665,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payments/credit-packs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_payments_credit_packs_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/credit-purchases/{purchase_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_payments_credit_purchases_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payments/credits/": {
         parameters: {
             query?: never;
@@ -623,6 +705,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["v1_payments_credits_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/payout-settings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_payments_payout_settings_retrieve"];
+        put?: never;
+        post: operations["v1_payments_payout_settings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["v1_payments_payout_settings_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/payments/wallet/tutor/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_payments_wallet_tutor_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -828,6 +942,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teachers/profile/power-backup/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["v1_teachers_profile_power_backup_partial_update"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -840,6 +970,24 @@ export interface components {
          * @enum {string}
          */
         AccentEnum: "ZA" | "UK" | "US" | "OTHER";
+        /**
+         * @description * `cheque` - cheque
+         *     * `savings` - savings
+         * @enum {string}
+         */
+        AccountTypeEnum: "cheque" | "savings";
+        /**
+         * @description * `Capitec Bank` - Capitec Bank
+         *     * `First National Bank (FNB)` - First National Bank (FNB)
+         *     * `Standard Bank` - Standard Bank
+         *     * `Nedbank` - Nedbank
+         *     * `Absa Bank` - Absa Bank
+         *     * `Discovery Bank` - Discovery Bank
+         *     * `TymeBank` - TymeBank
+         *     * `Investec Bank` - Investec Bank
+         * @enum {string}
+         */
+        BankNameEnum: "Capitec Bank" | "First National Bank (FNB)" | "Standard Bank" | "Nedbank" | "Absa Bank" | "Discovery Bank" | "TymeBank" | "Investec Bank";
         BookingCreate: {
             /** Format: uuid */
             readonly id: string;
@@ -887,9 +1035,8 @@ export interface components {
             readonly zoom_password: string;
             /** @description 1 to 5 star rating */
             readonly student_rating: number | null;
-            /** @description PRIVATE written review: staff only. Never shown to the tutor or other students. */
-            readonly student_review: string;
-            readonly memo: components["schemas"]["LessonMemo"];
+            student_review?: string;
+            readonly memo: components["schemas"]["LessonMemo"] | null;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -927,6 +1074,10 @@ export interface components {
             first_name: string;
             timezone: string;
             country: string;
+            /** Format: email */
+            email?: string;
+            readonly target_level: string;
+            readonly learning_goals: string;
         };
         CancelPreview: {
             can_cancel: boolean;
@@ -999,6 +1150,29 @@ export interface components {
         ErrorCode: {
             error: string;
             code: string;
+        };
+        EskomOutage: {
+            /** Format: date-time */
+            start: string;
+            /** Format: date-time */
+            end: string;
+            note: string;
+        };
+        EskomStatus: {
+            area_id: string;
+            area_name: string;
+            stage: number;
+            outages: components["schemas"]["EskomOutage"][];
+            /** Format: date-time */
+            next_outage_start: string | null;
+            /** Format: date-time */
+            next_outage_end: string | null;
+            has_inverter_backup: boolean;
+            has_lte_failover: boolean;
+            stale: boolean;
+            provider_status: string;
+            /** Format: date-time */
+            retrieved_at: string;
         };
         LessonMemo: {
             /** Format: uuid */
@@ -1159,6 +1333,26 @@ export interface components {
             /** Format: email */
             email: string;
         };
+        PatchedPayoutAccountWriteRequest: {
+            current_password?: string;
+            account_holder_name?: string;
+            account_number?: string;
+            bank_name?: components["schemas"]["BankNameEnum"];
+            branch_code?: string;
+            account_type?: components["schemas"]["AccountTypeEnum"];
+            identification_number?: string;
+        };
+        PatchedPowerBackupRequest: {
+            has_inverter_backup?: boolean;
+            has_lte_failover?: boolean;
+        };
+        PatchedStudentProfileRequest: {
+            full_name?: string;
+            country?: string;
+            timezone?: string;
+            target_level?: string;
+            learning_goals?: string;
+        };
         PatchedUserRequest: {
             /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
             username?: string;
@@ -1171,6 +1365,42 @@ export interface components {
             /** @description IANA Timezone, e.g. Asia/Tokyo */
             timezone?: string;
             phone_number?: string;
+        };
+        PayoutAccountMasked: {
+            configured: boolean;
+            bank_name?: components["schemas"]["BankNameEnum"];
+            account_holder_name?: string;
+            account_number_masked?: string;
+            branch_code?: string;
+            account_type?: components["schemas"]["AccountTypeEnum"];
+            identification_masked?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        PayoutAccountWriteRequest: {
+            current_password: string;
+            account_holder_name: string;
+            account_number: string;
+            bank_name: components["schemas"]["BankNameEnum"];
+            branch_code: string;
+            account_type: components["schemas"]["AccountTypeEnum"];
+            identification_number?: string;
+        };
+        PayoutBatchItem: {
+            id: string;
+            teacher_id: string;
+            teacher_name: string;
+            bank_name: string;
+            account_number_masked: string;
+            branch_code: string;
+            cleared_lessons_count: number;
+            /** Format: double */
+            payout_amount_zar: number;
+            status: string;
+        };
+        PowerBackup: {
+            has_inverter_backup?: boolean;
+            has_lte_failover?: boolean;
         };
         Refund: {
             /** Format: uuid */
@@ -1279,6 +1509,31 @@ export interface components {
         ReviewResult: {
             success: boolean;
             status: string;
+            message: string;
+        };
+        StudentProfile: {
+            /** Format: uuid */
+            readonly id: string;
+            full_name: string;
+            /** Format: email */
+            readonly email: string;
+            country: string;
+            timezone: string;
+            target_level: string;
+            learning_goals: string;
+        };
+        SupportInquiryAccepted: {
+            detail: string;
+            /** Format: uuid */
+            inquiry_id: string;
+        };
+        SupportInquiryRequest: {
+            name: string;
+            /** Format: email */
+            email: string;
+            /** @default other */
+            user_type: components["schemas"]["UserTypeEnum"];
+            subject: string;
             message: string;
         };
         /**
@@ -1393,14 +1648,50 @@ export interface components {
         TokenRefreshRequest: {
             refresh: string;
         };
+        TutorWallet: {
+            /** Format: double */
+            pending_escrow_zar: number;
+            /** Format: double */
+            cleared_balance_zar: number;
+            fx_context: components["schemas"]["TutorWalletFx"][];
+            payout_bank_account: components["schemas"]["PayoutAccountMasked"] | null;
+            transactions: components["schemas"]["TutorWalletTransaction"][];
+        };
+        TutorWalletFx: {
+            currency: string;
+            /** Format: double */
+            fx_rate_to_zar: number;
+            fx_source: string;
+        };
+        TutorWalletTransaction: {
+            id: string;
+            /** Format: date-time */
+            date: string;
+            booking_ref: string;
+            student_name: string;
+            /** Format: double */
+            gross_amount: number;
+            currency: string;
+            /** Format: double */
+            gross_zar: number;
+            /** Format: double */
+            net_amount: number;
+            /** Format: double */
+            net_zar: number;
+            /** Format: double */
+            fx_rate_to_zar: number;
+            fx_source: string;
+            status: string;
+        };
         /**
-         * @description * `purchase` - purchase
+         * @description * `opening` - opening
+         *     * `purchase` - purchase
          *     * `redemption` - redemption
          *     * `refund` - refund
          *     * `bonus` - bonus
          * @enum {string}
          */
-        TypeEnum: "purchase" | "redemption" | "refund" | "bonus";
+        TypeEnum: "opening" | "purchase" | "redemption" | "refund" | "bonus";
         User: {
             /** Format: uuid */
             readonly id: string;
@@ -1447,6 +1738,13 @@ export interface components {
          * @enum {string}
          */
         UserRoleEnum: "student" | "teacher" | "admin";
+        /**
+         * @description * `student` - Student
+         *     * `teacher` - Teacher
+         *     * `other` - Other
+         * @enum {string}
+         */
+        UserTypeEnum: "student" | "teacher" | "other";
         Wallet: {
             total_credits: number;
             ledger: components["schemas"]["CreditLedgerEntry"][];
@@ -1559,7 +1857,7 @@ export interface operations {
             };
         };
     };
-    v1_admin_payouts_batch_retrieve: {
+    v1_admin_payouts_batch_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -1573,9 +1871,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PayoutBatchItem"][];
                 };
             };
         };
@@ -1601,7 +1897,7 @@ export interface operations {
             };
         };
         responses: {
-            200: {
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1686,6 +1982,31 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    v1_auth_inquiries_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportInquiryRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["SupportInquiryRequest"];
+                "multipart/form-data": components["schemas"]["SupportInquiryRequest"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportInquiryAccepted"];
                 };
             };
         };
@@ -2134,6 +2455,29 @@ export interface operations {
             };
         };
     };
+    v1_bookings_redeem_credit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     v1_bookings_report_outage_create: {
         parameters: {
             query?: never;
@@ -2316,6 +2660,25 @@ export interface operations {
             };
         };
     };
+    v1_integrations_eskom_status_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EskomStatus"];
+                };
+            };
+        };
+    };
     v1_integrations_r2_presigned_url_create: {
         parameters: {
             query?: never;
@@ -2458,6 +2821,50 @@ export interface operations {
             };
         };
     };
+    v1_payments_credit_packs_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    v1_payments_credit_purchases_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchase_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     v1_payments_credits_retrieve: {
         parameters: {
             query?: never;
@@ -2473,6 +2880,118 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Wallet"];
+                };
+            };
+        };
+    };
+    v1_payments_payout_settings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutAccountMasked"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutAccountMasked"];
+                };
+            };
+        };
+    };
+    v1_payments_payout_settings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayoutAccountWriteRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PayoutAccountWriteRequest"];
+                "multipart/form-data": components["schemas"]["PayoutAccountWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutAccountMasked"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutAccountMasked"];
+                };
+            };
+        };
+    };
+    v1_payments_payout_settings_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPayoutAccountWriteRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedPayoutAccountWriteRequest"];
+                "multipart/form-data": components["schemas"]["PatchedPayoutAccountWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutAccountMasked"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutAccountMasked"];
+                };
+            };
+        };
+    };
+    v1_payments_wallet_tutor_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TutorWallet"];
                 };
             };
         };
@@ -2638,9 +3157,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["StudentProfile"];
                 };
             };
         };
@@ -2654,15 +3171,9 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-                "application/x-www-form-urlencoded": {
-                    [key: string]: unknown;
-                };
-                "multipart/form-data": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["PatchedStudentProfileRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedStudentProfileRequest"];
+                "multipart/form-data": components["schemas"]["PatchedStudentProfileRequest"];
             };
         };
         responses: {
@@ -2671,9 +3182,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["StudentProfile"];
                 };
             };
         };
@@ -2820,6 +3329,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeacherAvailability"];
+                };
+            };
+        };
+    };
+    v1_teachers_profile_power_backup_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPowerBackupRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedPowerBackupRequest"];
+                "multipart/form-data": components["schemas"]["PatchedPowerBackupRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PowerBackup"];
                 };
             };
         };

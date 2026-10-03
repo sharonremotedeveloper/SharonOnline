@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -8,13 +8,14 @@ import {
   Lock,
   Check,
   ShieldCheck,
-  HelpCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { InlineError } from "@/components/ui/ErrorState";
-import { TeacherPayoutBankAccount } from "@/types/teacher";
+import { TeacherPayoutBankAccountInput } from "@/types/teacher";
 
-const SA_BANKS = [
+type BankName = TeacherPayoutBankAccountInput["bank_name"];
+
+const SA_BANKS: ReadonlyArray<{ name: BankName; branchCode: string }> = [
   { name: "Capitec Bank", branchCode: "470010" },
   { name: "First National Bank (FNB)", branchCode: "250655" },
   { name: "Standard Bank", branchCode: "051001" },
@@ -26,18 +27,29 @@ const SA_BANKS = [
 ];
 
 export default function TeacherPayoutSettingsPage() {
-  const [bankName, setBankName] = useState(SA_BANKS[0].name);
+  const [bankName, setBankName] = useState<BankName>(SA_BANKS[0].name);
   const [branchCode, setBranchCode] = useState(SA_BANKS[0].branchCode);
   const [accountHolder, setAccountHolder] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountType, setAccountType] = useState<"cheque" | "savings">("savings");
   const [idNumber, setIdNumber] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
-  const handleBankChange = (selectedName: string) => {
+  useEffect(() => {
+    api.getPayoutSettings().then((account) => {
+      if (!account.configured) return;
+      if (account.bank_name) setBankName(account.bank_name);
+      if (account.branch_code) setBranchCode(account.branch_code);
+      if (account.account_holder_name) setAccountHolder(account.account_holder_name);
+      if (account.account_type) setAccountType(account.account_type);
+    }).catch(setError);
+  }, []);
+
+  const handleBankChange = (selectedName: BankName) => {
     setBankName(selectedName);
     const found = SA_BANKS.find((b) => b.name === selectedName);
     if (found) {
@@ -62,16 +74,20 @@ export default function TeacherPayoutSettingsPage() {
 
     setSaving(true);
     try {
-      const payload: TeacherPayoutBankAccount = {
+      const payload: TeacherPayoutBankAccountInput = {
+        current_password: currentPassword,
         bank_name: bankName,
         account_holder_name: accountHolder,
         account_number: accountNumber,
         branch_code: branchCode.trim(),
         account_type: accountType,
-        id_number: idNumber,
+        identification_number: idNumber,
       };
 
       await api.updatePayoutSettings(payload);
+      setAccountNumber("");
+      setIdNumber("");
+      setCurrentPassword("");
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
@@ -95,7 +111,7 @@ export default function TeacherPayoutSettingsPage() {
             <span>Return to Earnings Wallet</span>
           </Link>
           <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-            SARB EFT Gateway
+            Payout Setup Only
           </span>
         </div>
 
@@ -108,7 +124,7 @@ export default function TeacherPayoutSettingsPage() {
             <div>
               <h1 className="text-2xl font-black text-ink font-serif">South African EFT Payout Settings</h1>
               <p className="text-xs text-ink-muted">
-                Configure your South African bank account for bi-weekly direct EFT settlements in ZAR.
+                Store a South African bank account for a future approved payout process in ZAR.
               </p>
             </div>
           </div>
@@ -118,10 +134,10 @@ export default function TeacherPayoutSettingsPage() {
         <div className="p-4 rounded-2xl bg-cream-surface border border-divider flex items-start gap-3 text-xs">
           <Lock className="w-4 h-4 text-teal shrink-0 mt-0.5" />
           <div className="space-y-0.5">
-            <span className="font-bold text-ink">Bank-Grade Encryption</span>
+            <span className="font-bold text-ink">Encrypted payout details</span>
             <p className="text-[11px] text-ink-muted leading-relaxed">
-              Your banking details are AES-256 encrypted at rest and transmitted securely via South African Reserve
-              Bank (SARB) automated clearing bureau channels. Settlements execute on the 1st and 15th of each month.
+              Your banking details are encrypted at rest with a versioned application key. Payout execution remains
+              disabled until an approved banking rail and maker-checker process are in place.
             </p>
           </div>
         </div>
@@ -143,7 +159,7 @@ export default function TeacherPayoutSettingsPage() {
               <label className="text-xs font-bold uppercase tracking-wider text-ink block">Bank Institution</label>
               <select
                 value={bankName}
-                onChange={(e) => handleBankChange(e.target.value)}
+                onChange={(e) => handleBankChange(e.target.value as BankName)}
                 className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-bold text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
               >
                 {SA_BANKS.map((b) => (
@@ -169,6 +185,19 @@ export default function TeacherPayoutSettingsPage() {
                 required
               />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-ink block">Current Password</label>
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+              required
+            />
+            <p className="text-[11px] text-ink-muted">Required every time banking details are created or changed.</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

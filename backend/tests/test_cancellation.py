@@ -10,6 +10,7 @@ from rest_framework.test import APIClient
 from apps.bookings.models import Booking, BookingStatusChange
 from apps.bookings.services.slot_generator import generate_teacher_slots
 from apps.payments.models import CreditBundle, LedgerAccount, LedgerEntry, PaymentTransaction, RefundRequest
+from apps.payments.services.funding import ensure_gateway_funding
 from apps.payments.tasks import release_cleared_escrow_task
 from apps.teachers.models import TeacherAvailability, TeacherProfile, TeacherStrike
 from test_settlement_paths import captured, force, lesson, net
@@ -70,6 +71,9 @@ class TestStudentFreeCancel:
                     if s['is_bookable'] and datetime.fromisoformat(s['start_time_utc']) > far)
         start = datetime.fromisoformat(slot['start_time_utc'])
         b = Booking.objects.create(teacher=tutor, student=student_user, start_time_utc=start, end_time_utc=start + timedelta(minutes=25), status=S.CONFIRMED)
+        tx = PaymentTransaction.objects.create(booking=b, gateway='payfast', gateway_reference='SLOT-TX', merchant_reference='SLOT',
+                                               amount='168.75', currency='ZAR', status=PaymentTransaction.Status.SUCCESS)
+        ensure_gateway_funding(tx, b)
         assert next(s for s in generate_teacher_slots(teacher=tutor, days_ahead=5) if s['start_time_utc'] == slot['start_time_utc'])['is_bookable'] is False
         assert cancel(student_user, b).status_code == 200
         assert next(s for s in generate_teacher_slots(teacher=tutor, days_ahead=5) if s['start_time_utc'] == slot['start_time_utc'])['is_bookable'] is True
@@ -195,7 +199,7 @@ class TestTutorCancel:
         teacher_user.refresh_from_db()
         assert TeacherStrike.objects.get(booking=b).kind == 'late_cancel' and teacher_user.sla_strikes == 1
         bonus = CreditBundle.objects.get(user=student_user)
-        assert (bonus.source, bonus.total_credits, bonus.currency, bonus.unit_value) == ('bonus', 1, 'ZAR', Decimal('168.75'))
+        assert (bonus.source, bonus.total_credits, bonus.currency, bonus.unit_amount) == ('bonus', 1, 'ZAR', Decimal('168.75'))
         assert abs((bonus.expires_at - (timezone.now() + timedelta(days=30))).total_seconds()) < 5
         assert net(b, ACC.LIABILITY_STUDENT_WALLET) == Decimal('168.75')            # the bonus, funded by...
         assert net(b, ACC.EXPENSE_STUDENT_COMPENSATION) == Decimal('-168.75')       # ...a platform expense
@@ -260,3 +264,34 @@ class TestPreview:
         b = captured(teacher_user, student_user, 5 * H)
         assert call(stranger, 'get', b, 'cancel-preview').status_code == 404
         assert call(None, 'get', b, 'cancel-preview').status_code == 401
+
+
+@pytest.mark.django_db
+class TestNoFundingRecord:
+    """A confirmed lesson with no payment and no credit behind it (a data fault) must not be refunded from the list price."""
+
+    def unfunded(self, teacher_user, student_user):
+        start = timezone.now() + timedelta(hours=5)
+        return Booking.objects.create(teacher=teacher_user, student=student_user, start_time_utc=start,
+                                      end_time_utc=start + timedelta(minutes=25), status=S.CONFIRMED)
+
+    def test_cancelling_is_refused_changes_nothing_and_alerts_finance(self, teacher_user, student_user):
+        from apps.payments.models import SettlementAnomaly
+        b = self.unfunded(teacher_user, student_user)
+        res = cancel(student_user, b)
+        assert res.status_code == 409 and res.json()['code'] == 'funding_unavailable'
+        assert reload(b).status == S.CONFIRMED and b.cancelled_at is None
+        assert not RefundRequest.objects.exists() and not CreditBundle.objects.exists() and not LedgerEntry.objects.exists()
+        assert SettlementAnomaly.objects.filter(booking=b, code='missing_booking_funding', resolved=False).exists()
+
+    def test_a_tutor_cannot_cancel_it_either_and_gets_no_strike(self, teacher_user, student_user):
+        b = self.unfunded(teacher_user, student_user)
+        assert cancel(teacher_user.user, b).status_code == 409
+        assert reload(b).status == S.CONFIRMED and not TeacherStrike.objects.exists()
+
+    def test_a_late_student_cancel_needs_no_refund_so_it_still_works(self, teacher_user, student_user):
+        start = timezone.now() + timedelta(minutes=45)
+        b = Booking.objects.create(teacher=teacher_user, student=student_user, start_time_utc=start,
+                                   end_time_utc=start + timedelta(minutes=25), status=S.CONFIRMED)
+        assert cancel(student_user, b, acknowledge_forfeit=True).status_code == 200
+        assert reload(b).status == S.STUDENT_LATE_CANCELLED

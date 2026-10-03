@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('bookings', '0009_lesson_review_tags'),
+        ('bookings', '0010_booking_slot_lock_token'),
     ]
 
     operations = [

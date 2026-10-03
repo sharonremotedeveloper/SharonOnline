@@ -107,7 +107,7 @@ export default function TeachPage() {
           <Zap className="w-8 h-8 text-primary" />
           <h4 className="text-base font-bold text-ink font-serif">Power Guard Support</h4>
           <p className="text-xs text-ink-muted leading-relaxed">
-            Connect your suburb to EskomSePush API. Your schedule automatically hides vulnerable slots during loadshedding stages.
+            Connect your provider area to Power Guard. Cached outage windows identify vulnerable upcoming lessons and trigger proactive warnings.
           </p>
         </div>
 

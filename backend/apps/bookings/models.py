@@ -26,6 +26,8 @@ class Booking(models.Model):
     material = models.ForeignKey('materials.Material', on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings')
 
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.PENDING_PAYMENT, db_index=True)
+    # Unique ownership token for atomic Redis compare-and-release/renew operations.
+    slot_lock_token = models.CharField(max_length=64, blank=True, editable=False)
 
     # All booking times are stored strictly in UTC
     start_time_utc = models.DateTimeField(db_index=True)
@@ -119,10 +121,21 @@ class LessonMemo(models.Model):
 
 
 class AttendanceAudit(models.Model):
+    class Classification(models.TextChoices):
+        TEACHER = 'teacher', 'Teacher'
+        STUDENT = 'student', 'Student'
+        UNKNOWN = 'unknown', 'Unknown'
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='attendance_audits')
     participant_email = models.EmailField()
     zoom_user_id = models.CharField(max_length=64, blank=True, db_index=True)
+    participant_id = models.CharField(max_length=128, blank=True, db_index=True)
+    registrant_id = models.CharField(max_length=128, blank=True, db_index=True)
+    host_id = models.CharField(max_length=128, blank=True, db_index=True)
+    event_ids = models.JSONField(default=list, blank=True)
+    classification = models.CharField(
+        max_length=16, choices=Classification.choices, default=Classification.UNKNOWN, db_index=True)
     join_time_utc = models.DateTimeField(null=True, blank=True)
     leave_time_utc = models.DateTimeField(null=True, blank=True)
     total_minutes = models.PositiveIntegerField(default=0)

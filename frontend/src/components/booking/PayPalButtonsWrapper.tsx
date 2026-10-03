@@ -7,7 +7,7 @@ interface PayPalButtonsWrapperProps {
   amountUsd: number;
   currency?: string;
   bookingReference: string;
-  /** Asks the parent to confirm payment with the server. Must reject on failure. */
+  /** Initializes a server-authoritative checkout. Booking success still comes only from the webhook. */
   onSuccess: () => void | Promise<void>;
   disabled?: boolean;
 }
@@ -21,8 +21,7 @@ export function PayPalButtonsWrapper({
 }: PayPalButtonsWrapperProps) {
   const [processing, setProcessing] = useState(false);
 
-  // NOTE: the live PayPal SDK is not integrated yet. No payment is taken here; this only asks the server to confirm,
-  // and the parent shows the server's real answer (it will fail until live payments exist).
+  // Provider capture is confirmed asynchronously by the PayPal webhook; this action cannot confirm a booking itself.
   const handlePayPal = async (e: React.FormEvent) => {
     e.preventDefault();
     setProcessing(true);
@@ -63,7 +62,7 @@ export function PayPalButtonsWrapper({
       </div>
 
       <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900">
-        Online card and PayPal payments are not switched on yet. Trying to pay will ask the server to confirm and may be declined.
+        Your booking is confirmed only after PayPal reports a verified capture. This page never marks its own payment successful.
       </div>
 
       <form onSubmit={handlePayPal} className="space-y-3">
@@ -73,7 +72,7 @@ export function PayPalButtonsWrapper({
           className="w-full py-3.5 bg-accent hover:bg-gold-bright text-ink rounded-xl text-xs font-extrabold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {processing ? (
-            "Confirming with server..."
+            "Starting checkout..."
           ) : (
             <>
               <Lock className="w-3.5 h-3.5" />

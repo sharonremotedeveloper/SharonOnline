@@ -1,3 +1,5 @@
+import type { components } from "./api.generated";
+
 export interface StudentLessonItem {
   id: string;
   booking_reference: string;
@@ -47,15 +49,7 @@ export interface StudentFlashcard {
   next_review_due: string;
 }
 
-export interface StudentProfileData {
-  id: string;
-  full_name: string;
-  email: string;
-  country: string;
-  timezone: string;
-  target_level: string;
-  learning_goals: string;
-}
+export type StudentProfileData = components["schemas"]["StudentProfile"];
 
 export interface TeacherStudentDossierItem {
   id: string;

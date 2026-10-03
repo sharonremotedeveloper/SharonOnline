@@ -7,6 +7,12 @@ class TeacherAvailabilitySerializer(serializers.ModelSerializer):
         model = TeacherAvailability
         fields = ('id', 'day_of_week', 'start_time', 'end_time', 'is_active')
 
+
+class PowerBackupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TeacherProfile
+        fields = ('has_inverter_backup', 'has_lte_failover')
+
 class TeacherListSerializer(serializers.ModelSerializer):
     user_id = serializers.UUIDField(source='user.id', read_only=True)
     full_name = serializers.SerializerMethodField()

@@ -1,4 +1,6 @@
+import json
 import pytest
+from cryptography.fernet import Fernet
 from django.core.exceptions import ImproperlyConfigured
 
 from config.settings.guard import validate_production_settings
@@ -9,9 +11,12 @@ GOOD = {
     'CORS_ALLOWED_ORIGINS': 'https://sharonesl.com',
     'CSRF_TRUSTED_ORIGINS': 'https://sharonesl.com,https://api.sharonesl.com',
     'ZOOM_WEBHOOK_SECRET_TOKEN': 'zoom-secret',
+    'ESKOMSEPUSH_API_KEY': 'eskom-provider-key',
     'THROTTLE_NUM_PROXIES': '1',
     'FRONTEND_BASE_URL': 'https://sharonesl.com',
     'RESEND_API_KEY': 're_live_abcdefghijklmnop',
+    'PAYOUT_DATA_KEYS': json.dumps({'v1': Fernet.generate_key().decode()}),
+    'PAYOUT_DATA_ACTIVE_KEY': 'v1',
 }
 
 
@@ -37,6 +42,9 @@ def test_valid_env_passes():
     ('CSRF_TRUSTED_ORIGINS', ''),
     ('CSRF_TRUSTED_ORIGINS', 'https://127.0.0.1:3000'),
     ('ZOOM_WEBHOOK_SECRET_TOKEN', ''),
+    ('ESKOMSEPUSH_API_KEY', ''),
+    ('PAYOUT_DATA_KEYS', '{}'),
+    ('PAYOUT_DATA_ACTIVE_KEY', ''),
 ])
 def test_unsafe_env_rejected(key, value):
     env = dict(GOOD)

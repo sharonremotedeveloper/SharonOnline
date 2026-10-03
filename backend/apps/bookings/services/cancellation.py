@@ -13,7 +13,6 @@ The booking is locked while it is decided, so two cancels (or a cancel racing th
 """
 from dataclasses import dataclass
 from datetime import timedelta
-from decimal import Decimal
 from typing import Optional
 
 from django.conf import settings
@@ -26,6 +25,8 @@ from apps.payments.models import CreditBundle, RefundRequest
 from apps.payments.services import refunds
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.ledger_service import record_compensation_entry
+from apps.payments.models import BookingFunding
+from apps.payments.services.funding import funding_for_settlement
 from apps.payments.services.settlement import successful_transaction
 from apps.teachers.models import TeacherStrike
 from apps.teachers.strikes import add_strike
@@ -97,18 +98,27 @@ def plan_cancellation(booking, party: str, now) -> Plan:
                         f'(cancelling less than {settings.TUTOR_CANCEL_NO_PENALTY_HOURS} hours before a lesson).')
 
 
+def _known_funding(booking):
+    """(amount, currency) the lesson was paid with, read-only (a preview must never write)."""
+    funding = BookingFunding.objects.filter(booking=booking).first()
+    if funding:
+        return funding.captured_amount, funding.currency
+    paid = successful_transaction(booking)
+    return (paid.amount, paid.currency) if paid else None
+
+
 def preview(booking, user, now=None) -> dict:
     now = now or timezone.now()
     party = party_of(booking, user)
     plan = plan_cancellation(booking, party, now)
-    paid = successful_transaction(booking)
+    known = _known_funding(booking)
     body = {
         'can_cancel': plan.error is None,
         'outcome': plan.outcome,
         'message': plan.message,
         'seconds_until_start': max(int((booking.start_time_utc - now).total_seconds()), 0),
-        'refund_amount': str(paid.amount) if plan.refund and paid else None,
-        'refund_currency': paid.currency if plan.refund and paid else None,
+        'refund_amount': str(known[0]) if plan.refund and known else None,
+        'refund_currency': known[1] if plan.refund and known else None,
         'bonus_credits': settings.TUTOR_CANCEL_BONUS_CREDITS if plan.bonus else 0,
         'strike': bool(plan.strike),
     }
@@ -121,6 +131,7 @@ def cancel_booking(booking_id, user, *, reason: str = '', acknowledge_forfeit: b
     """Cancel on behalf of one of the two parties. Raises CancelError with the HTTP status to answer with."""
     now = now or timezone.now()
     reason = (reason if isinstance(reason, str) else '').strip()[:255]
+    missing_funding = False
     with transaction.atomic():
         booking = (Booking.objects.select_for_update(of=('self',)).select_related('teacher__user', 'student').get(pk=booking_id))
         party = party_of(booking, user)
@@ -133,30 +144,38 @@ def cancel_booking(booking_id, user, *, reason: str = '', acknowledge_forfeit: b
             raise CancelError(400, 'acknowledgement_required',
                               f'{plan.message} Send acknowledge_forfeit=true to cancel anyway.')
 
-        booking.cancelled_at, booking.cancelled_by, booking.cancel_reason = now, user, reason
-        result = transition_booking(booking, plan.to_status, actor=user, reason=reason or f'cancelled by {party}',
-                                    update_fields=('cancelled_at', 'cancelled_by', 'cancel_reason'))
-        if not result.changed:
-            raise CancelError(409, 'not_cancellable', 'This lesson was already cancelled.')
+        # Money is only ever returned against the booking's recorded funding, never a guess from the list price. Without it we
+        # change nothing (the anomaly is recorded for finance) and say so after this block, so the record is not rolled back.
+        funding = funding_for_settlement(booking, context='cancellation') if (plan.refund or plan.bonus) else None
+        missing_funding = (plan.refund or plan.bonus) and funding is None
+        if not missing_funding:
+            booking.cancelled_at, booking.cancelled_by, booking.cancel_reason = now, user, reason
+            result = transition_booking(booking, plan.to_status, actor=user, reason=reason or f'cancelled by {party}',
+                                        update_fields=('cancelled_at', 'cancelled_by', 'cancel_reason'))
+            if not result.changed:
+                raise CancelError(409, 'not_cancellable', 'This lesson was already cancelled.')
 
-        paid = successful_transaction(booking)
-        if plan.refund:
-            refunds.request_refund(booking, RefundRequest.Reason.STUDENT_CANCEL if party == STUDENT else RefundRequest.Reason.TEACHER_CANCEL)
-        if plan.bonus:
-            value = Decimal(str(paid.amount if paid else booking.teacher.price_per_25min_usd))
-            currency = paid.currency if paid else 'USD'
-            credits = settings.TUTOR_CANCEL_BONUS_CREDITS
-            grant_credit(booking.student, credits=credits, source=CreditBundle.Source.BONUS, pack_name='Tutor cancellation bonus',
-                         unit_value=value, currency=currency)
-            record_compensation_entry(user=booking.student, booking=booking, amount_usd=value * credits, currency=currency,
-                                      reason='Tutor cancelled less than 24h before the lesson')
-        if plan.strike:
-            add_strike(booking.teacher, plan.strike, booking=booking)
+            if plan.refund:
+                refunds.request_refund(booking, RefundRequest.Reason.STUDENT_CANCEL if party == STUDENT else RefundRequest.Reason.TEACHER_CANCEL)
+            if plan.bonus:
+                credits = settings.TUTOR_CANCEL_BONUS_CREDITS
+                grant_credit(booking.student, credits=credits, source=CreditBundle.Source.BONUS, pack_name='Tutor cancellation bonus',
+                             unit_amount=funding.captured_amount, currency=funding.currency,
+                             fx_rate_to_zar=funding.fx_rate_to_zar, fx_source=funding.fx_source, booking=booking,
+                             idempotency_key=f'tutor-cancel-bonus:{booking.id}')
+                record_compensation_entry(user=booking.student, booking=booking, amount_usd=funding.captured_amount * credits,
+                                          currency=funding.currency, fx_rate_to_zar=funding.fx_rate_to_zar,
+                                          fx_source=funding.fx_source, reason='Tutor cancelled less than 24h before the lesson')
+            if plan.strike:
+                add_strike(booking.teacher, plan.strike, booking=booking)
 
-        meeting_id, booking_pk = booking.zoom_meeting_id, str(booking.id)
-        gcal = (str(booking.teacher.user_id), booking.teacher_gcal_event_id)
-        transaction.on_commit(lambda: _after_cancel(booking_pk, meeting_id, party, gcal))
+            meeting_id, booking_pk = booking.zoom_meeting_id, str(booking.id)
+            gcal = (str(booking.teacher.user_id), booking.teacher_gcal_event_id)
+            transaction.on_commit(lambda: _after_cancel(booking_pk, meeting_id, party, gcal))
 
+    if missing_funding:
+        raise CancelError(409, 'funding_unavailable', 'We could not find the payment for this lesson, so it cannot be cancelled '
+                          'automatically. Our team has been notified and will sort it out.')
     return {'outcome': plan.outcome, 'status': booking.status, 'message': plan.message}
 
 

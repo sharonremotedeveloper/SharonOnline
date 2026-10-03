@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import PaymentTransaction, CreditBundle, LedgerEntry, RefundRequest
+from .models import (
+    BookingFunding, CreditBundle, CreditPack, CreditPurchase, CreditWalletEntry,
+    LedgerEntry, PaymentTransaction, RefundRequest, SettlementAnomaly,
+)
 from .services import refunds
 
 @admin.register(PaymentTransaction)
@@ -11,7 +14,7 @@ class PaymentTransactionAdmin(admin.ModelAdmin):
 
 @admin.register(CreditBundle)
 class CreditBundleAdmin(admin.ModelAdmin):
-    list_display = ('user', 'pack_name', 'source', 'remaining_credits', 'total_credits', 'unit_value', 'currency', 'expires_at', 'created_at')
+    list_display = ('user', 'pack_name', 'source', 'remaining_credits', 'total_credits', 'unit_amount', 'currency', 'expires_at', 'created_at')
     list_filter = ('source',)
     search_fields = ('user__username', 'pack_name')
 
@@ -45,6 +48,28 @@ class LedgerEntryAdmin(admin.ModelAdmin):
     list_filter = ('entry_type', 'account', 'event_type', 'currency')
     search_fields = ('journal_batch_id', 'description', 'booking__id', 'user__username', 'payment_transaction__gateway_reference')
     readonly_fields = [f.name for f in LedgerEntry._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+admin.site.register(CreditPack)
+admin.site.register(CreditPurchase)
+admin.site.register(SettlementAnomaly)
+
+
+@admin.register(CreditWalletEntry, BookingFunding)
+class ImmutableFinanceAdmin(admin.ModelAdmin):
+    readonly_fields = ()
+
+    def get_readonly_fields(self, request, obj=None):
+        return [field.name for field in self.model._meta.fields]
 
     def has_add_permission(self, request):
         return False

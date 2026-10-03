@@ -10,6 +10,7 @@ from .views import (
     CancelBookingView,
     CancelPreviewView,
     RescheduleBookingView,
+    RedeemCreditView,
 )
 
 urlpatterns = [
@@ -23,4 +24,5 @@ urlpatterns = [
     path('<uuid:booking_id>/cancel/', CancelBookingView.as_view(), name='booking-cancel'),
     path('<uuid:booking_id>/cancel-preview/', CancelPreviewView.as_view(), name='booking-cancel-preview'),
     path('<uuid:booking_id>/reschedule/', RescheduleBookingView.as_view(), name='booking-reschedule'),
+    path('<uuid:booking_id>/redeem-credit/', RedeemCreditView.as_view(), name='booking-redeem-credit'),
 ]

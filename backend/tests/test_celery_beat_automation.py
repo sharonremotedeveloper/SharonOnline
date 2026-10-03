@@ -6,7 +6,8 @@ from django.core.cache import cache
 
 from apps.bookings.models import Booking, AttendanceAudit
 from apps.bookings.services.lock_service import acquire_slot_lock, is_slot_locked
-from apps.payments.models import PaymentTransaction, CreditBundle
+from apps.payments.models import PaymentTransaction, CreditBundle, GatewayAnomaly, RefundRequest
+from apps.payments.services.funding import ensure_gateway_funding
 from apps.admin_api.models import DisputeCase
 from apps.teachers.models import TeacherProfile
 
@@ -21,6 +22,7 @@ from apps.payments.tasks import (
     reconcile_pending_transactions_task,
 )
 from apps.integrations.tasks import sync_eskom_stages_task
+from apps.common.locks import distributed_task_lock
 
 
 @pytest.mark.django_db
@@ -89,7 +91,6 @@ class TestCeleryBeatAutomation:
             end_time_utc=lesson_end,
             status=Booking.Status.COMPLETED_PENDING_MEMO,
         )
-
         # Successful payment transaction
         tx = PaymentTransaction.objects.create(
             booking=booking,
@@ -252,6 +253,15 @@ class TestCeleryBeatAutomation:
             end_time_utc=lesson_end,
             status=Booking.Status.COMPLETED_PENDING_MEMO,
         )
+        tx = PaymentTransaction.objects.create(
+            booking=booking,
+            gateway=PaymentTransaction.Gateway.PAYFAST,
+            gateway_reference="tx-memo-sla-compensation",
+            amount=Decimal("9.00"),
+            currency="USD",
+            status=PaymentTransaction.Status.SUCCESS,
+        )
+        ensure_gateway_funding(tx, booking)
 
         teacher_user.sla_strikes = 0
         teacher_user.save()
@@ -310,6 +320,15 @@ class TestCeleryBeatAutomation:
             end_time_utc=end_time,
             status=Booking.Status.CONFIRMED,
         )
+        tx = PaymentTransaction.objects.create(
+            booking=booking,
+            gateway=PaymentTransaction.Gateway.PAYFAST,
+            gateway_reference="tx-teacher-no-show-compensation",
+            amount=Decimal("9.00"),
+            currency="USD",
+            status=PaymentTransaction.Status.SUCCESS,
+        )
+        ensure_gateway_funding(tx, booking)
 
         teacher_user.sla_strikes = 0
         teacher_user.save()
@@ -323,9 +342,10 @@ class TestCeleryBeatAutomation:
         assert booking.status == Booking.Status.TEACHER_NO_SHOW
         assert teacher_user.sla_strikes == 1
 
-        # D-6: nothing was captured here, so the refund is a wallet lot (1 credit) and the apology is a 2nd, bonus lot
+        # D-6: the captured payment goes back through the gateway; the apology is 1 bonus credit (not a second refund)
+        assert RefundRequest.objects.get(booking=booking).reason == 'teacher_no_show'
         lots = CreditBundle.objects.filter(user=student_user)
-        assert sum(l.remaining_credits for l in lots) == 2 and {l.source for l in lots} == {'refund', 'bonus'}
+        assert [(l.source, l.remaining_credits, l.unit_amount) for l in lots] == [('bonus', 1, Decimal('9.00'))]
 
     def test_audit_attendance_t10_student_no_show(self, teacher_user, student_user):
         """
@@ -400,7 +420,7 @@ class TestCeleryBeatAutomation:
         assert b_1h.reminder_1h_sent is True
         assert b_10m.reminder_10m_sent is True
 
-    def test_sync_eskom_stages_and_proactive_shield(self, teacher_user, student_user):
+    def test_sync_eskom_stages_and_proactive_shield(self, teacher_user, student_user, monkeypatch):
         """
         Verifies Eskom stage caching in Redis and scanning of vulnerable confirmed lessons.
         """
@@ -418,6 +438,22 @@ class TestCeleryBeatAutomation:
             status=Booking.Status.CONFIRMED,
         )
 
+        class Provider:
+            def fetch_area_status(self, area_id):
+                return {
+                    'area_id': area_id,
+                    'area_name': 'Provider test area',
+                    'stage': 2,
+                    'outages': [{
+                        'start': (vulnerable_booking.start_time_utc - timedelta(minutes=5)).isoformat(),
+                        'end': (vulnerable_booking.end_time_utc + timedelta(minutes=5)).isoformat(),
+                        'note': 'provider fixture',
+                    }],
+                    'retrieved_at': now,
+                }
+
+        monkeypatch.setattr('apps.integrations.tasks.eskom_client', Provider())
+
         res = sync_eskom_stages_task()
         assert res["synced_areas"] >= 1
         assert res["vulnerable_bookings_flagged"] >= 1
@@ -425,11 +461,11 @@ class TestCeleryBeatAutomation:
         # Verify Redis cache contains stage info
         cached_stage = cache.get("eskom:stage:jhb-block-3")
         assert cached_stage is not None
-        assert cached_stage["stage"] >= 2
+        assert cached_stage["stage"] == 2
 
     def test_reconcile_pending_transactions(self, teacher_user, student_user):
         """
-        Verifies that orphaned payment sessions older than 2 hours are marked FAILED.
+        Verifies that an old checkout is not guessed failed when the gateway has no status lookup.
         """
         now = timezone.now()
         booking = Booking.objects.create(
@@ -451,9 +487,13 @@ class TestCeleryBeatAutomation:
 
         res = reconcile_pending_transactions_task()
         assert res["reconciled_count"] >= 1
+        assert res["unresolved"] >= 1
 
         abandoned_tx.refresh_from_db()
-        assert abandoned_tx.status == PaymentTransaction.Status.FAILED
+        assert abandoned_tx.status == PaymentTransaction.Status.INITIALIZED
+        assert abandoned_tx.reconciliation_attempts == 1
+        assert GatewayAnomaly.objects.filter(
+            payment_transaction=abandoned_tx, reason='reconciliation_unresolved', resolved=False).exists()
 
     def test_distributed_task_lock_concurrency(self):
         """
@@ -467,4 +507,18 @@ class TestCeleryBeatAutomation:
         assert res == {"status": "skipped", "reason": "lock_active"}
 
         # Cleanup lock
+        cache.delete(lock_key)
+
+    def test_distributed_task_lock_does_not_release_successor(self):
+        """An expired task must not delete a lock acquired by its successor."""
+        lock_key = 'lock:test:ownership-rollover'
+
+        @distributed_task_lock(lock_key, timeout_seconds=60)
+        def replace_own_lock():
+            cache.delete(lock_key)
+            cache.add(lock_key, 'successor-token', timeout=60)
+            return {'status': 'complete'}
+
+        assert replace_own_lock() == {'status': 'complete'}
+        assert cache.get(lock_key) == 'successor-token'
         cache.delete(lock_key)

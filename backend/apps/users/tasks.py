@@ -3,10 +3,12 @@ from urllib.parse import urlencode
 
 from celery import shared_task
 from django.conf import settings
+from django.db.models import F
+from django.utils import timezone
 from django.utils.html import escape
 
 from apps.integrations.email import EmailDeliveryError, send_email
-from .models import User
+from .models import SupportInquiry, User
 from .tokens import encode_uid, make_reset_token, make_verify_token
 
 logger = logging.getLogger(__name__)
@@ -58,3 +60,37 @@ def send_account_email_task(self, user_id: str, kind: str):
         return
     subject, html, text = build_message(user, kind)
     send_email(user.email, subject, html, text)
+
+
+@shared_task(bind=True, max_retries=8)
+def send_support_inquiry_notification(self, inquiry_id: str):
+    inquiry = SupportInquiry.objects.filter(pk=inquiry_id).first()
+    if inquiry is None or inquiry.delivery_state == SupportInquiry.DeliveryState.SENT:
+        return
+
+    SupportInquiry.objects.filter(pk=inquiry.pk).update(delivery_attempts=F('delivery_attempts') + 1)
+    subject = f"[Support #{str(inquiry.id)[:8]}] {inquiry.subject}"
+    html = (
+        f'<h2>New support inquiry</h2><p><strong>From:</strong> {escape(inquiry.sender_name)} '
+        f'&lt;{escape(inquiry.sender_email)}&gt;</p><p><strong>Type:</strong> '
+        f'{escape(inquiry.get_sender_type_display())}</p><p><strong>Subject:</strong> '
+        f'{escape(inquiry.subject)}</p><p>{escape(inquiry.message).replace(chr(10), "<br>")}</p>'
+    )
+    text = (
+        f'From: {inquiry.sender_name} <{inquiry.sender_email}>\nType: {inquiry.get_sender_type_display()}\n'
+        f'Subject: {inquiry.subject}\n\n{inquiry.message}'
+    )
+    try:
+        send_email(settings.SUPPORT_TO_EMAIL, subject, html, text)
+    except EmailDeliveryError as exc:
+        SupportInquiry.objects.filter(pk=inquiry.pk).update(
+            delivery_state=SupportInquiry.DeliveryState.RETRYABLE,
+            last_delivery_error=str(exc)[:500],
+        )
+        raise self.retry(exc=exc, countdown=min(30 * (2 ** self.request.retries), 1800))
+
+    SupportInquiry.objects.filter(pk=inquiry.pk).update(
+        delivery_state=SupportInquiry.DeliveryState.SENT,
+        last_delivery_error='',
+        delivered_at=timezone.now(),
+    )

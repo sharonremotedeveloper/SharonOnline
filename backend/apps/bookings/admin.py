@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Booking, BookingStatusChange, LessonMemo
+from .models import AttendanceAudit, Booking, BookingStatusChange, LessonMemo
 
 class LessonMemoInline(admin.StackedInline):
     model = LessonMemo
@@ -30,3 +30,18 @@ class BookingAdmin(admin.ModelAdmin):
 class LessonMemoAdmin(admin.ModelAdmin):
     list_display = ('booking', 'teacher', 'student', 'submitted_at')
     search_fields = ('teacher__user__username', 'student__username', 'feedback_text')
+
+
+@admin.register(AttendanceAudit)
+class AttendanceAuditAdmin(admin.ModelAdmin):
+    list_display = ('booking', 'classification', 'participant_email', 'participant_id', 'registrant_id',
+                    'join_time_utc', 'leave_time_utc', 'total_minutes')
+    list_filter = ('classification', 'identity')
+    search_fields = ('booking__id', 'participant_email', 'participant_id', 'registrant_id', 'host_id')
+    readonly_fields = tuple(field.name for field in AttendanceAudit._meta.fields)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

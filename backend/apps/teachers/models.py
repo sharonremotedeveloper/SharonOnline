@@ -31,8 +31,9 @@ class TeacherProfile(models.Model):
     # Strikes counted inside the rolling STRIKE_WINDOW_DAYS window; kept in step by services/strikes.py (never edit by hand)
     # Strikes inside the rolling STRIKE_WINDOW_DAYS window, kept in step by services/strikes.py (do not edit by hand)
     sla_strikes = models.PositiveSmallIntegerField(default=0)
-    eskom_area_id = models.CharField(max_length=64, blank=True, default="jhb-block-3")
+    eskom_area_id = models.CharField(max_length=128, blank=True, default='')
     has_inverter_backup = models.BooleanField(default=False)
+    has_lte_failover = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
