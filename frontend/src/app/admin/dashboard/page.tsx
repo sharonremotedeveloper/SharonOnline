@@ -18,10 +18,13 @@ import {
 import { api } from "@/lib/api";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
+import { blockedCurrencies } from "@/lib/fx";
 
 import { groupMoney } from "@/lib/moneyString";
 export default function AdminDashboardPage() {
   const { data: telemetry, error, loading, reload } = useApiData(() => api.getAdminTelemetry(), []);
+  const { data: fx } = useApiData(() => api.getFxRates(), []);
+  const blockedFx = blockedCurrencies(fx?.current);
 
   if (error || (!loading && !telemetry)) {
     return (
@@ -63,6 +66,23 @@ export default function AdminDashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* FX staleness warning: EUR/JPY lesson checkout is blocked while a rate is stale or missing.
+          If the rate table cannot be loaded, show nothing (the dashboard must not depend on it). */}
+      {blockedFx.length > 0 && (
+        <Link
+          href="/admin/finance/fx-rates"
+          role="alert"
+          className="flex items-center gap-3 rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800 hover:bg-rose-100 transition-colors"
+        >
+          <AlertTriangle className="w-5 h-5 shrink-0" aria-hidden="true" />
+          <span className="flex-1">
+            <strong>{blockedFx.join(" and ")} FX rate is stale or missing.</strong> {blockedFx.join("/")} checkout is
+            blocked until you add a fresh rate.
+          </span>
+          <ArrowRight className="w-4 h-4 shrink-0" aria-hidden="true" />
+        </Link>
+      )}
 
       {/* Primary KPI Grid (4 Metrics) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -22,6 +22,8 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 import { errorMessage } from "@/lib/http";
 import { currencyDecimals, formatLessonPrice, formatMoney, lessonPriceFor } from "@/lib/prices";
+import { detectDefaultCurrency, type CurrencyCode } from "@/lib/currency";
+import { checkoutFailureMessage, paypalCheckoutCurrency } from "@/lib/fx";
 import { useLessonPrices } from "@/hooks/useLessonPrices";
 import { ReservationTimer } from "@/components/booking/ReservationTimer";
 import { PayFastForm } from "@/components/booking/PayFastForm";
@@ -47,6 +49,14 @@ export default function StudentCheckoutPage() {
   const [quote, setQuote] = useState<{ gateway: string; amount: string; currency: string } | null>(null);
   // Before checkout/init there is no quote yet, so show the platform lesson price for the chosen gateway's currency.
   const { data: lessonPrices } = useLessonPrices();
+
+  // The student's chosen display currency (localStorage 'sharon_currency' / timezone). Read after mount to avoid a
+  // server/client hydration mismatch. Only EUR and JPY change what PayPal is asked to charge.
+  const [displayCurrency, setDisplayCurrency] = useState<CurrencyCode>("USD");
+  useEffect(() => {
+    setDisplayCurrency(detectDefaultCurrency());
+  }, []);
+  const paypalCurrency = paypalCheckoutCurrency(displayCurrency);
 
   // Real credit balance only; never assume a default. `/auth/me/` may not provide it yet.
   const userCredits = user?.credits ?? 0;
@@ -127,7 +137,12 @@ export default function StudentCheckoutPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const checkout = await api.initializeCheckout({ booking_id: bookingId, gateway: gatewayType });
+      const checkout = await api.initializeCheckout({
+        booking_id: bookingId,
+        gateway: gatewayType,
+        // PayPal lessons can be charged in EUR/JPY; PayFast is always ZAR and USD is the server default.
+        ...(gatewayType === "paypal" && paypalCurrency ? { currency: paypalCurrency } : {}),
+      });
       setQuote({ gateway: gatewayType, amount: String(checkout.amount), currency: String(checkout.currency) });
       setPaymentPending(true);
       if (gatewayType === "payfast" && checkout?.action_url && checkout?.fields) {
@@ -148,16 +163,18 @@ export default function StudentCheckoutPage() {
       setError("Checkout is initialized. This page will show success only after the payment gateway webhook confirms capture.");
     } catch (err) {
       console.error("Failed to initialize payment:", err);
-      setError(`We could not start checkout. ${errorMessage(err)}`);
+      setError(checkoutFailureMessage(err, `We could not start checkout. ${errorMessage(err)}`));
       setPaymentPending(false);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const gatewayCurrency = activeGateway === "payfast" ? "ZAR" : "USD";
+  const gatewayCurrency: CurrencyCode = activeGateway === "payfast" ? "ZAR" : (paypalCurrency ?? "USD");
   const listPrice = lessonPriceFor(lessonPrices, gatewayCurrency);
-  const activeQuote = quote && quote.gateway === activeGateway ? quote : null;
+  // The server's quote is only shown while it matches the gateway and currency currently selected.
+  const activeQuote =
+    quote && quote.gateway === activeGateway && quote.currency === gatewayCurrency ? quote : null;
   const amountLabel = activeQuote
     ? formatMoney(activeQuote.amount, activeQuote.currency, currencyDecimals(activeQuote.currency))
     : listPrice

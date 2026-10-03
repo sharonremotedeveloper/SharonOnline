@@ -10,6 +10,7 @@ import {
   Scale,
   FileSpreadsheet,
   CreditCard,
+  Coins,
   Shield,
   ExternalLink,
   ChevronRight,
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { href: "/admin/disputes", label: "Dispute Tribunal", icon: Scale, badge: "2", badgeColor: "bg-rose-500" },
   { href: "/admin/finance/ledger", label: "Escrow Ledger Audit", icon: FileSpreadsheet },
   { href: "/admin/finance/payouts", label: "Batch Bank Payouts", icon: CreditCard },
+  { href: "/admin/finance/fx-rates", label: "FX Rates (EUR/JPY)", icon: Coins },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

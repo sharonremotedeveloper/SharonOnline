@@ -157,6 +157,7 @@ const FALLBACK_TUTORS: FeaturedTeacher[] = [
 
 import { MaterialDetail } from "@/types/material";
 import type { CreditPackPrice, LessonPrice } from "@/lib/prices";
+import type { FxCurrency, FxRateRow, FxRatesResponse } from "@/lib/fx";
 
 export const FALLBACK_MATERIALS: MaterialDetail[] = [
   {
@@ -955,6 +956,23 @@ export const api = {
     if (live !== MOCK) return live;
 
     return [];
+  },
+
+  /** Admin FX rate table (EUR/JPY): current rates with staleness, plus the last 20 rows. Rates are decimal strings. */
+  async getFxRates(): Promise<FxRatesResponse> {
+    const live = await liveRequest(`${API_BASE}/admin/fx-rates/`);
+    if (live !== MOCK) return live as FxRatesResponse;
+    return { max_age_hours: 24, current: [], history: [] };
+  },
+
+  /** Add a rate. Rejects with ApiError: 400 {error}, or 409 {error, code:'confirmation_required'} for a >10% move. */
+  async addFxRate(currency: FxCurrency, rate: string, confirm = false): Promise<FxRateRow> {
+    const live = await liveRequest(`${API_BASE}/admin/fx-rates/`, {
+      method: "POST",
+      body: JSON.stringify(confirm ? { currency, rate, confirm: true } : { currency, rate }),
+    });
+    if (live !== MOCK) return live as FxRateRow;
+    throw new Error("Saving FX rates is unavailable in mock mode.");
   },
 
 };
