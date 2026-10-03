@@ -307,3 +307,5 @@ PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', '')
 PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', '')
 PAYPAL_MODE = os.environ.get('PAYPAL_MODE', 'sandbox')
 PAYPAL_WEBHOOK_ID = os.environ.get('PAYPAL_WEBHOOK_ID', '')
+# Task 10.2 (P-9): ask PayPal to refuse eCheck-style funding. Off until the sandbox shows eCheck pendings.
+PAYPAL_REQUIRE_IMMEDIATE_PAYMENT = os.environ.get('PAYPAL_REQUIRE_IMMEDIATE_PAYMENT', 'False').strip().lower() in ('1', 'true', 'yes')
