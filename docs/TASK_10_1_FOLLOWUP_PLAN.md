@@ -20,7 +20,7 @@ Scope (about 33 sites): `admin_api/views.py` (gmv, escrow, payout amounts, `roun
 5. Guard test: fails the build on `float(` in money modules, with an explicit allow-list for non-money use (ratings).
 Acceptance: no `float(` in `payments/`, `admin_api/`, `bookings/serializers.py` outside the allow-list; suites green.
 
-## Slice B - remove the ledger's 18.75 default
+## Slice B - remove the ledger's 18.75 default  (DONE 2026-10-03 on `feature/10-1b-ledger-required-fx`; still needs the CI Postgres run before merge)
 Current: `DEFAULT_FX_USD_TO_ZAR` is a default on `record_journal_entries` and 5 wrappers, a model default on `LedgerEntry.fx_rate_to_zar`, and a `legacy_default` fx_source fallback.
 1. Inventory callers (`ledger_service`, `credits.py`, `refunds.py`, `settlement.py`, `webhook_handler.py`, `tasks.py`); those omitting FX are the real exposure.
 2. `fx_rate_to_zar` / `fx_source` become required; absence raises `MissingLedgerFx` rather than valuing at an invented rate. ZAR journals pass `1` / `transaction_currency`.

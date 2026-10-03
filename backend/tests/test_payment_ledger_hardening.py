@@ -72,6 +72,7 @@ def test_journal_cannot_hide_imbalance_across_currencies():
             ],
             event_type=LedgerEntry.EventType.PAYMENT_CAPTURED,
             description='mixed-currency imbalance',
+            fx_rate_to_zar=Decimal('18'), fx_source='test_capture',
         )
 
 
@@ -141,6 +142,7 @@ def test_postgres_rejects_direct_ledger_update_and_delete():
         ],
         event_type=LedgerEntry.EventType.PAYMENT_CAPTURED,
         description='database immutability trigger',
+        fx_rate_to_zar=Decimal('18'), fx_source='test_capture',
     )
     with pytest.raises(DatabaseError), transaction.atomic():
         with connection.cursor() as cursor:

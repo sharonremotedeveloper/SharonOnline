@@ -7,11 +7,20 @@ from django.db.models import Sum, Q
 from django.utils import timezone
 
 from apps.common.money import money_str
-from apps.payments.models import LedgerEntry, LedgerAccount, PaymentTransaction
+from apps.payments.models import LEGACY_FX_SOURCE, LedgerEntry, LedgerAccount, MissingLedgerFx, PaymentTransaction
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_FX_USD_TO_ZAR = Decimal('18.7500')
+__all__ = ['MissingLedgerFx']
+
+
+def _snapshot(payment_transaction, fx_rate_to_zar, fx_source):
+    """An explicit valuation wins; otherwise the transaction's own captured snapshot. Never a constant."""
+    if fx_rate_to_zar is None:
+        fx_rate_to_zar = payment_transaction.fx_rate_to_zar
+    if not fx_source:
+        fx_source = payment_transaction.fx_source
+    return fx_rate_to_zar, fx_source
 
 
 class UnbalancedJournalEntryError(ValueError):
@@ -30,8 +39,8 @@ def record_journal_entries(
     payout_batch=None,
     user=None,
     currency: str = 'USD',
-    fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR,
-    fx_source: str = 'legacy_default',
+    fx_rate_to_zar: Optional[Decimal] = None,
+    fx_source: Optional[str] = None,
     journal_batch_id: Optional[uuid.UUID] = None,
 ) -> List[LedgerEntry]:
     """
@@ -41,6 +50,16 @@ def record_journal_entries(
     """
     if not entries:
         raise ValueError("Cannot record empty journal entries list.")
+    # The ledger never invents a valuation: the caller must supply the rate the money was captured at, and where it came from.
+    if fx_rate_to_zar is None or not fx_source:
+        raise MissingLedgerFx(
+            f"Journal '{event_type}' has no FX snapshot (rate={fx_rate_to_zar!r}, source={fx_source!r}); "
+            "pass the captured rate and its source (ZAR journals: 1 / 'transaction_currency').")
+    fx_rate_to_zar = Decimal(str(fx_rate_to_zar))
+    if fx_rate_to_zar <= 0:
+        raise MissingLedgerFx(f"Journal '{event_type}' has a non-positive FX rate ({fx_rate_to_zar}).")
+    if fx_source == LEGACY_FX_SOURCE:
+        raise MissingLedgerFx("fx_source 'legacy_default' is reserved for historical rows and may not be posted again.")
 
     batch_id = journal_batch_id or uuid.uuid4()
     
@@ -119,9 +138,6 @@ def record_journal_entries(
             f"Journal {batch_id} must use exactly one transaction currency; got {sorted(journal_currencies)}."
         )
     journal_currency = next(iter(journal_currencies))
-    if journal_currency not in {'USD', 'ZAR'} and fx_source == 'legacy_default':
-        raise ValueError(f'An explicit FX snapshot is required for {journal_currency}.')
-
 
     with transaction.atomic():
         created_entries = [
@@ -153,8 +169,7 @@ def record_payment_capture_entry(
     """
     amount = Decimal(str(payment_transaction.amount)).quantize(Decimal('0.01'))
     currency = payment_transaction.currency.upper()
-    fx_rate_to_zar = fx_rate_to_zar or payment_transaction.fx_rate_to_zar or DEFAULT_FX_USD_TO_ZAR
-    fx_source = fx_source or payment_transaction.fx_source or 'legacy_default'
+    fx_rate_to_zar, fx_source = _snapshot(payment_transaction, fx_rate_to_zar, fx_source)
     
     if payment_transaction.gateway == PaymentTransaction.Gateway.PAYFAST or currency == 'ZAR':
         asset_account = LedgerAccount.ASSET_GATEWAY_PAYFAST
@@ -283,7 +298,6 @@ def record_escrow_clearance_entry(
     booking,
     payment_transaction: Optional[PaymentTransaction] = None,
     amount_usd: Optional[Decimal] = None,
-    fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR,
     funding=None,
 ) -> List[LedgerEntry]:
     """
@@ -390,7 +404,6 @@ def record_payout_batch_entry(
 def record_dispute_settlement_entry(
     dispute_case,
     resolution: str,
-    fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR,
     payment_transaction: Optional[PaymentTransaction] = None,
 ) -> List[LedgerEntry]:
     """
@@ -504,7 +517,7 @@ def record_compensation_entry(
     booking=None,
     amount_usd: Optional[Decimal] = None,
     reason: str = "Tutor no-show apology credit",
-    fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR,
+    fx_rate_to_zar: Optional[Decimal] = None,
     currency: str = 'USD',
     fx_source: Optional[str] = None,
 ) -> List[LedgerEntry]:
@@ -514,7 +527,6 @@ def record_compensation_entry(
     CR Liability: Student Wallet Credits (Customer Credit Wallet)
     """
     currency = (currency or 'USD').upper()          # an explicit currency is honoured (bonus credits are valued in the captured currency)
-    fx_source = fx_source or 'explicit_compensation_rate'
     if amount_usd is None:
         if booking is None:
             raise ValueError('Compensation requires an explicit amount or funded booking.')
@@ -561,7 +573,8 @@ def record_def501_quarantine_entry(
     payment_transaction: PaymentTransaction,
     booking=None,
     user=None,
-    fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR
+    fx_rate_to_zar: Optional[Decimal] = None,
+    fx_source: Optional[str] = None,
 ) -> List[LedgerEntry]:
     """
     Triggered when a late payment arrives for an expired/re-booked slot (DEF-501).
@@ -571,8 +584,7 @@ def record_def501_quarantine_entry(
     """
     amount = Decimal(str(payment_transaction.amount)).quantize(Decimal('0.01'))
     currency = payment_transaction.currency.upper()
-    fx_rate_to_zar = payment_transaction.fx_rate_to_zar or fx_rate_to_zar
-    fx_source = payment_transaction.fx_source or 'legacy_default'
+    fx_rate_to_zar, fx_source = _snapshot(payment_transaction, fx_rate_to_zar, fx_source)
     asset_account = LedgerAccount.ASSET_GATEWAY_PAYFAST if (payment_transaction.gateway == PaymentTransaction.Gateway.PAYFAST or currency == 'ZAR') else LedgerAccount.ASSET_GATEWAY_PAYPAL
 
     entries = [
@@ -625,7 +637,8 @@ def record_unallocated_payment_entry(
     payment_transaction: PaymentTransaction,
     booking=None,
     user=None,
-    fx_rate_to_zar: Decimal = DEFAULT_FX_USD_TO_ZAR
+    fx_rate_to_zar: Optional[Decimal] = None,
+    fx_source: Optional[str] = None,
 ) -> List[LedgerEntry]:
     """
     Money captured by a gateway that cannot be applied to its booking (duplicate payment, booking already
@@ -635,8 +648,7 @@ def record_unallocated_payment_entry(
     """
     amount = Decimal(str(payment_transaction.amount)).quantize(Decimal('0.01'))
     currency = payment_transaction.currency.upper()
-    fx_rate_to_zar = payment_transaction.fx_rate_to_zar or fx_rate_to_zar
-    fx_source = payment_transaction.fx_source or 'legacy_default'
+    fx_rate_to_zar, fx_source = _snapshot(payment_transaction, fx_rate_to_zar, fx_source)
     asset_account = LedgerAccount.ASSET_GATEWAY_PAYFAST if (payment_transaction.gateway == PaymentTransaction.Gateway.PAYFAST or currency == 'ZAR') else LedgerAccount.ASSET_GATEWAY_PAYPAL
     ref = payment_transaction.gateway_reference
     entries = [

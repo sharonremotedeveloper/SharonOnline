@@ -10,6 +10,14 @@ class LedgerImmutabilityError(ValidationError):
     pass
 
 
+LEGACY_FX_SOURCE = 'legacy_default'     # historical value on rows that predate Task 10.1; never written again
+
+
+class MissingLedgerFx(ValueError):
+    """A journal line was about to be posted without the exchange rate and source it was captured at.
+    The ledger never values money at an invented rate."""
+
+
 class ImmutableFinancialQuerySet(models.QuerySet):
     def update(self, **kwargs):
         raise LedgerImmutabilityError('Immutable financial records cannot be updated.')
@@ -449,8 +457,10 @@ class LedgerEntry(models.Model):
     currency = models.CharField(max_length=3, default='USD')
 
     # SARB / SARS Statutory Valuation
-    fx_rate_to_zar = models.DecimalField(max_digits=12, decimal_places=6, default=Decimal('18.750000'))
-    fx_source = models.CharField(max_length=64, default='legacy_default')
+    # No defaults: every row records the rate it was captured at. 'legacy_default' exists only on rows posted before
+    # Task 10.1 and may not be written again (see save()).
+    fx_rate_to_zar = models.DecimalField(max_digits=12, decimal_places=6)
+    fx_source = models.CharField(max_length=64)
     amount_zar = models.DecimalField(max_digits=12, decimal_places=2)
 
     event_type = models.CharField(max_length=40, choices=EventType.choices, db_index=True)
@@ -481,6 +491,8 @@ class LedgerEntry(models.Model):
                 f"LedgerEntry {self.pk} is strictly immutable and cannot be updated. "
                 "Any financial adjustments must be executed via compensatory journal entries."
             )
+        if self._state.adding and self.fx_source == LEGACY_FX_SOURCE:
+            raise MissingLedgerFx("fx_source 'legacy_default' belongs to rows posted before Task 10.1; new rows need a captured rate.")
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):

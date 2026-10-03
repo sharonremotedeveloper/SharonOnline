@@ -21,14 +21,17 @@ from apps.payments.services.ledger_service import (
     get_general_ledger_trial_balance,
     get_ledger_telemetry,
     UnbalancedJournalEntryError,
-    DEFAULT_FX_USD_TO_ZAR,
 )
 from apps.payments.services.webhook_handler import process_payment_webhook
-from apps.payments.services.funding import ensure_gateway_funding
+from apps.payments.services.funding import ensure_gateway_funding, persist_capture_snapshot
+from apps.payments.services.pricing import usd_to_zar_rate
 from apps.payments.services import refunds
 from apps.payments.models import RefundRequest
 from apps.payments.tasks import release_cleared_escrow_task
 from apps.admin_api.models import DisputeCase, PayoutBatch
+
+
+FX = {'fx_rate_to_zar': Decimal('18.000000'), 'fx_source': 'test_capture'}   # the ledger has no default rate: every journal says what it was valued at
 
 
 def fund_booking(booking, amount=Decimal('9.00'), *, currency='USD', status=PaymentTransaction.Status.SUCCESS):
@@ -113,6 +116,7 @@ def test_zero_sum_invariant_enforcement():
             entries=unbalanced_entries,
             event_type=LedgerEntry.EventType.PAYMENT_CAPTURED,
             description="Test unbalanced batch",
+            **FX,
             journal_batch_id=batch_id
         )
 
@@ -142,19 +146,23 @@ def test_payment_capture_ledger_journal(student_user, teacher_user):
         status=PaymentTransaction.Status.SUCCESS
     )
 
+    rate, source = persist_capture_snapshot(tx)          # the rate captured with the payment (catalog: R162 / $9 = 18)
+    assert (rate, source) == (usd_to_zar_rate(), 'price_catalog')
     entries = record_payment_capture_entry(payment_transaction=tx, booking=booking, user=student_user)
     assert len(entries) == 2
+    assert {e.fx_rate_to_zar for e in entries} == {rate} and {e.fx_source for e in entries} == {source}
+    expected_zar = (Decimal('9.00') * rate).quantize(Decimal('0.01'))
 
     debit_entry = [e for e in entries if e.entry_type == LedgerEntry.EntryType.DEBIT][0]
     credit_entry = [e for e in entries if e.entry_type == LedgerEntry.EntryType.CREDIT][0]
 
     assert debit_entry.account == LedgerAccount.ASSET_GATEWAY_PAYPAL
     assert debit_entry.amount == Decimal('9.00')
-    assert debit_entry.amount_zar == Decimal('168.75')  # 9.00 * 18.75
+    assert debit_entry.amount_zar == expected_zar == Decimal('162.00')  # 9.00 * the captured rate, not a constant
 
     assert credit_entry.account == LedgerAccount.LIABILITY_STUDENT_ESCROW
     assert credit_entry.amount == Decimal('9.00')
-    assert credit_entry.amount_zar == Decimal('168.75')
+    assert credit_entry.amount_zar == expected_zar
 
 
 @pytest.mark.django_db
@@ -292,6 +300,7 @@ def test_def501_late_payment_quarantine_journal(student_user, teacher_user):
         status=PaymentTransaction.Status.SUCCESS
     )
 
+    persist_capture_snapshot(tx)
     entries = record_def501_quarantine_entry(payment_transaction=tx, booking=booking, user=student_user)
     assert len(entries) == 4
 
@@ -330,6 +339,7 @@ def test_trial_balance_zero_sum_audit(student_user, teacher_user, admin_user):
             currency='USD',
             status=PaymentTransaction.Status.SUCCESS
         )
+        persist_capture_snapshot(tx)
         record_payment_capture_entry(payment_transaction=tx, booking=b, user=student_user)
 
     # 2. 3 Escrow clearances
@@ -366,7 +376,8 @@ def test_trial_balance_zero_sum_audit(student_user, teacher_user, admin_user):
     refunds.request_refund(b_outage, RefundRequest.Reason.OUTAGE, event_type=LedgerEntry.EventType.OUTAGE_REFUND)
 
     # 5. 1 Tutor No-Show compensation
-    record_compensation_entry(user=student_user, booking=b_outage, amount_usd=Decimal('9.00'), reason="No show audit test")
+    record_compensation_entry(user=student_user, booking=b_outage, amount_usd=Decimal('9.00'), reason="No show audit test",
+                              fx_rate_to_zar=usd_to_zar_rate(), fx_source='price_catalog')
 
     # Run Trial Balance Audit
     trial_balance = get_general_ledger_trial_balance()
@@ -464,7 +475,8 @@ def test_ledger_entry_immutability_enforcement():
             }
         ],
         event_type=LedgerEntry.EventType.PAYMENT_CAPTURED,
-        description="Immutability audit batch"
+        description="Immutability audit batch",
+        **FX
     )
     entry = entries[0]
     entry_id = entry.id
@@ -504,7 +516,8 @@ def test_ledger_edge_cases_negative_and_zero_amounts():
         record_journal_entries(
             entries=[],
             event_type=LedgerEntry.EventType.PAYMENT_CAPTURED,
-            description="Empty batch"
+            description="Empty batch",
+            **FX
         )
 
     # Zero amount
@@ -525,7 +538,8 @@ def test_ledger_edge_cases_negative_and_zero_amounts():
                 }
             ],
             event_type=LedgerEntry.EventType.PAYMENT_CAPTURED,
-            description="Zero amount batch"
+            description="Zero amount batch",
+            **FX
         )
 
     # Negative amount
@@ -546,7 +560,8 @@ def test_ledger_edge_cases_negative_and_zero_amounts():
                 }
             ],
             event_type=LedgerEntry.EventType.PAYMENT_CAPTURED,
-            description="Negative amount batch"
+            description="Negative amount batch",
+            **FX
         )
 
 
@@ -626,7 +641,8 @@ def test_ledger_sarb_zar_rounding_balancing_guarantee():
         ],
         event_type=LedgerEntry.EventType.ESCROW_CLEARED,
         description="Fractional rate rounding test",
-        fx_rate_to_zar=custom_fx
+        fx_rate_to_zar=custom_fx,
+        fx_source='test_fractional_rate',
     )
 
     zar_debits = sum(e.amount_zar for e in entries if e.entry_type == LedgerEntry.EntryType.DEBIT)
@@ -700,7 +716,8 @@ def test_ledger_immutability_custom_exception():
             }
         ],
         event_type=LedgerEntry.EventType.PAYMENT_CAPTURED,
-        description="Immutability check"
+        description="Immutability check",
+        **FX
     )
     entry = entries[0]
     entry_id = entry.id
@@ -748,6 +765,7 @@ def test_ledger_telemetry_live_balance_calculation(student_user, teacher_user):
     ensure_gateway_funding(tx, booking)
 
     # 1. Capture payment ($9)
+    persist_capture_snapshot(tx)
     record_payment_capture_entry(payment_transaction=tx, booking=booking, user=student_user)
 
     # 2. Clear escrow ($7.20 tutor / $1.80 platform)
@@ -788,6 +806,7 @@ def test_admin_finance_ledger_api_endpoint(admin_user, student_user, teacher_use
         currency='USD',
         status=PaymentTransaction.Status.SUCCESS
     )
+    persist_capture_snapshot(tx)
     record_payment_capture_entry(payment_transaction=tx, booking=booking, user=student_user)
 
     client = APIClient()

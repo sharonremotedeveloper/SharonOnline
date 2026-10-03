@@ -25,6 +25,7 @@ def _hold_unallocated(tx, booking, reason: str, detail: str = '') -> None:
     """Park captured-but-unappliable money in ledger acct 2030 and raise a durable anomaly for follow-up/refund."""
     tx.status = PaymentTransaction.Status.UNALLOCATED
     tx.save(update_fields=['status', 'updated_at'])
+    persist_capture_snapshot(tx)       # the ledger values the journal at the rate stored on the transaction
     record_unallocated_payment_entry(payment_transaction=tx, booking=booking, user=booking.student)
     GatewayAnomaly.objects.create(
         gateway=tx.gateway, reference=tx.gateway_reference, reason=reason, detail=detail,
@@ -44,6 +45,7 @@ def record_unallocated_payment(*, booking, gateway: str, transaction_id: str, am
     if not created:
         return {"status": "already_processed"}
     # The row was created UNALLOCATED; post the ledger legs + anomaly (without re-saving status).
+    persist_capture_snapshot(tx)       # the ledger values the journal at the rate stored on the transaction
     record_unallocated_payment_entry(payment_transaction=tx, booking=booking, user=booking.student)
     GatewayAnomaly.objects.create(
         gateway=gateway, reference=transaction_id, reason=reason, detail=detail,
@@ -193,6 +195,7 @@ def process_payment_webhook(*, booking_id=None, credit_purchase_id=None, gateway
             )
 
             # Record DEF-501 double-entry journal entries
+            persist_capture_snapshot(tx)
             record_def501_quarantine_entry(payment_transaction=tx, booking=booking, user=booking.student)
 
             start_iso = booking.start_time_utc.isoformat()
@@ -238,6 +241,7 @@ def process_payment_webhook(*, booking_id=None, credit_purchase_id=None, gateway
                     "admin_notes": f"Payment {transaction_id} caught race condition. Quarantined."
                 }
             )
+            persist_capture_snapshot(tx)
             record_def501_quarantine_entry(payment_transaction=tx, booking=booking, user=booking.student)
             return {
                 "status": "collision_quarantined",
@@ -250,7 +254,7 @@ def process_payment_webhook(*, booking_id=None, credit_purchase_id=None, gateway
         funding = ensure_gateway_funding(tx, booking)
         record_payment_capture_entry(
             payment_transaction=tx, booking=booking, user=booking.student,
-            fx_rate_to_zar=funding.fx_rate_to_zar,
+            fx_rate_to_zar=funding.fx_rate_to_zar, fx_source=funding.fx_source,
         )
 
         # Release the temporary Redis lock now that it's permanently confirmed in PostgreSQL
