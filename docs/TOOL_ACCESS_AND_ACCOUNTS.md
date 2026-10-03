@@ -119,6 +119,7 @@ One line per confirmation or change. Newest last. Do not delete entries.
 | 2026-10-03 | Codex | Batch 3 local implementation | — | dev | Provider reconciliation was tested only through injected local results. No PayFast, PayPal, cloud PostgreSQL, remote Git, or other external-provider action performed. |
 | 2026-10-03 | Codex | Batch 4 local implementation | — | dev | Zoom attendance was verified using local signed webhook fixtures and injected client responses only. No Zoom account, API, sandbox, remote Git, or cloud action performed. |
 | 2026-10-03 | Codex | Batch 5 local implementation | — | dev | Profile, support-notification, OpenAPI, and timezone behavior was verified locally; Resend was injected in tests. No email provider, remote Git, or cloud action performed. |
+| 2026-10-03 | Codex | Batch 6 local implementation | — | dev | Tutor wallet, encrypted payout settings, key rotation, masking, and reauthentication were verified locally. No banking rail, provider API, remote Git, cloud database, or payout action performed. Payout execution remains disabled. |
 
 ---
 

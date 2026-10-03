@@ -127,11 +127,11 @@ Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done.
 - [ ] **Task 11.4 (M, ARCH)** Vetting workflow: rubric scoring, "request re-recording", stored `rejection_reason`, notification email to tutor, audit trail, suspend/reactivate; tutors can't take bookings until verified **and** training gate passed.
 - [ ] **Task 11.5 (L, CODEX)** Teacher Training Hub (SOW 2.4 deliverable): modules, completion tracking, gate before slots open.
 - [ ] **Task 11.6 (M, ARCH)** Availability CRUD: update/delete, validate `end > start`, `day_of_week` 0-6, no overlaps, time-off/vacation, minimum notice, booking horizon setting.
-- [ ] **Task 11.7 (L, ARCH)** Per-tutor payable balance derived from ledger acct 2020; `GET /payments/wallet/tutor/`; tutor bank details model (encrypted at rest) + `payout-settings` endpoints with re-auth/OTP on change.
+- [x] **Task 11.7 (L, ARCH)** Per-tutor payable balance derived from ledger acct 2020; `GET /payments/wallet/tutor/`; tutor bank details model encrypted with a versioned keyring; masked `payout-settings` endpoints with current-password reauthentication. OTP remains separate hardening under Task 15.3. *(Batch 6)*
 - [ ] **Task 11.8 (L, ARCH)** Real payout batch: build from cleared balances per tutor (per-line records), idempotent execution, `EXPORTED → PROCESSED` states, EFT/ACB CSV export (or API per D-3), maker-checker if D-3 says so; remove hardcoded fake banks/totals/`5520.0`.
 - [ ] **Task 11.9 (M, ARCH)** Tutor payslips + SARS-friendly statements (CSV/PDF) and admin audit export.
 - [ ] **Task 11.10 (S, ARCH)** Memo SLA behaviour per D-4: penalty/forfeiture/payment gating implemented consistently in tasks and ledger.
-- [ ] **Task 11.11 (M, CODEX)** Wire tutor pages to real data: `/teacher/profile`, `/teacher/wallet`, `/teacher/wallet/payout-settings`, `/teacher/dashboard`; remove demo data.
+- [ ] **Task 11.11 (M, CODEX)** Tutor wallet, payout settings, and dashboard wallet summaries use real APIs as of Batch 6; teacher profile and remaining dashboard/availability surfaces still need full real-data completion.
 
 ## Phase 12 - Integrations + notifications
 

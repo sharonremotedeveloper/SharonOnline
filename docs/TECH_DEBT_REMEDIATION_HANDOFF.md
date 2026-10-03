@@ -5,7 +5,7 @@ This is the cross-agent handoff for the eight approved Sharon Online remediation
 ## Current state
 
 - Integration branch: `remediation/tech-debt`
-- Active branch: `feature/batch-5-profiles-support-contracts`
+- Active branch: `feature/batch-6-tutor-wallet-payout-settings`
 - Isolated worktree: `C:\Dev\Active Projects\Notion\sharon-remediation`
 - Shared checkout was deliberately left unchanged. Claude's Zoom attendance work was imported from commit `2181dbd` and augmented on this isolated branch.
 
@@ -135,3 +135,26 @@ Verification:
 External-action boundary:
 
 - Resend behavior was verified with an injected local sender only. No Resend account, provider API, remote Git, or cloud service was accessed.
+
+## Batch 6 - tutor wallet and protected payout settings
+
+Implemented:
+
+- Added a ledger-derived tutor wallet from account 2020, including pending funded escrow, cleared payable balance, capture-time FX context, and real transaction history.
+- Added one payout account per tutor with a versioned Fernet keyring. Full account-holder, account-number, bank, branch, account-type, and optional identification data remain encrypted; only account-number last-four metadata is plaintext.
+- Added masked payout-settings GET and password-reauthenticated create/update. Responses and logs never include full account or identification numbers.
+- Validated the supported South African bank catalog, exact universal branch codes, account-number format, and account type; tutor permissions prevent cross-account access.
+- Restricted admin payout previews to ledger-derived positive balances for verified tutors with configured payout accounts. Payout execution remains disabled and non-mutating.
+- Regenerated OpenAPI/frontend types and made the tutor wallet and payout UI consume those generated contracts. Removed remaining fabricated financial fallback rows and the fake successful payout execution result.
+
+Verification:
+
+- Focused payout/wallet/admin/settings/contract suite: 67 passed.
+- Complete backend regression: 764 passed, 3 infrastructure-specific tests skipped.
+- Frontend tests: 90 passed; generated-contract check and Next.js production build passed.
+- `manage.py check`: no issues.
+- `manage.py makemigrations --check --dry-run`: no changes.
+
+External-action boundary:
+
+- Encryption, password reauthentication, masking, rotation, and wallet behavior were verified locally only. No banking rail, provider, remote Git, cloud database, or other external service was accessed. Payout execution remains disabled.

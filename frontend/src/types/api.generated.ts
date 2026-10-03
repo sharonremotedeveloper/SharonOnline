@@ -75,7 +75,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["v1_admin_payouts_batch_retrieve"];
+        get: operations["v1_admin_payouts_batch_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -638,6 +638,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payments/payout-settings/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_payments_payout_settings_retrieve"];
+        put?: never;
+        post: operations["v1_payments_payout_settings_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["v1_payments_payout_settings_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/payments/wallet/tutor/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_payments_wallet_tutor_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/student/bookings/{id}/review/": {
         parameters: {
             query?: never;
@@ -814,6 +846,24 @@ export interface components {
          * @enum {string}
          */
         AccentEnum: "ZA" | "UK" | "US" | "OTHER";
+        /**
+         * @description * `cheque` - cheque
+         *     * `savings` - savings
+         * @enum {string}
+         */
+        AccountTypeEnum: "cheque" | "savings";
+        /**
+         * @description * `Capitec Bank` - Capitec Bank
+         *     * `First National Bank (FNB)` - First National Bank (FNB)
+         *     * `Standard Bank` - Standard Bank
+         *     * `Nedbank` - Nedbank
+         *     * `Absa Bank` - Absa Bank
+         *     * `Discovery Bank` - Discovery Bank
+         *     * `TymeBank` - TymeBank
+         *     * `Investec Bank` - Investec Bank
+         * @enum {string}
+         */
+        BankNameEnum: "Capitec Bank" | "First National Bank (FNB)" | "Standard Bank" | "Nedbank" | "Absa Bank" | "Discovery Bank" | "TymeBank" | "Investec Bank";
         BookingCreate: {
             /** Format: uuid */
             readonly id: string;
@@ -1066,6 +1116,15 @@ export interface components {
             /** Format: email */
             email: string;
         };
+        PatchedPayoutAccountWriteRequest: {
+            current_password?: string;
+            account_holder_name?: string;
+            account_number?: string;
+            bank_name?: components["schemas"]["BankNameEnum"];
+            branch_code?: string;
+            account_type?: components["schemas"]["AccountTypeEnum"];
+            identification_number?: string;
+        };
         PatchedStudentProfileRequest: {
             full_name?: string;
             country?: string;
@@ -1085,6 +1144,38 @@ export interface components {
             /** @description IANA Timezone, e.g. Asia/Tokyo */
             timezone?: string;
             phone_number?: string;
+        };
+        PayoutAccountMasked: {
+            configured: boolean;
+            bank_name?: components["schemas"]["BankNameEnum"];
+            account_holder_name?: string;
+            account_number_masked?: string;
+            branch_code?: string;
+            account_type?: components["schemas"]["AccountTypeEnum"];
+            identification_masked?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        PayoutAccountWriteRequest: {
+            current_password: string;
+            account_holder_name: string;
+            account_number: string;
+            bank_name: components["schemas"]["BankNameEnum"];
+            branch_code: string;
+            account_type: components["schemas"]["AccountTypeEnum"];
+            identification_number?: string;
+        };
+        PayoutBatchItem: {
+            id: string;
+            teacher_id: string;
+            teacher_name: string;
+            bank_name: string;
+            account_number_masked: string;
+            branch_code: string;
+            cleared_lessons_count: number;
+            /** Format: double */
+            payout_amount_zar: number;
+            status: string;
         };
         Register: {
             /** Format: uuid */
@@ -1311,6 +1402,41 @@ export interface components {
         TokenRefreshRequest: {
             refresh: string;
         };
+        TutorWallet: {
+            /** Format: double */
+            pending_escrow_zar: number;
+            /** Format: double */
+            cleared_balance_zar: number;
+            fx_context: components["schemas"]["TutorWalletFx"][];
+            payout_bank_account: components["schemas"]["PayoutAccountMasked"] | null;
+            transactions: components["schemas"]["TutorWalletTransaction"][];
+        };
+        TutorWalletFx: {
+            currency: string;
+            /** Format: double */
+            fx_rate_to_zar: number;
+            fx_source: string;
+        };
+        TutorWalletTransaction: {
+            id: string;
+            /** Format: date-time */
+            date: string;
+            booking_ref: string;
+            student_name: string;
+            /** Format: double */
+            gross_amount: number;
+            currency: string;
+            /** Format: double */
+            gross_zar: number;
+            /** Format: double */
+            net_amount: number;
+            /** Format: double */
+            net_zar: number;
+            /** Format: double */
+            fx_rate_to_zar: number;
+            fx_source: string;
+            status: string;
+        };
         /**
          * @description * `opening` - opening
          *     * `purchase` - purchase
@@ -1485,7 +1611,7 @@ export interface operations {
             };
         };
     };
-    v1_admin_payouts_batch_retrieve: {
+    v1_admin_payouts_batch_list: {
         parameters: {
             query?: never;
             header?: never;
@@ -1499,9 +1625,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PayoutBatchItem"][];
                 };
             };
         };
@@ -2384,6 +2508,118 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Wallet"];
+                };
+            };
+        };
+    };
+    v1_payments_payout_settings_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutAccountMasked"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutAccountMasked"];
+                };
+            };
+        };
+    };
+    v1_payments_payout_settings_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayoutAccountWriteRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PayoutAccountWriteRequest"];
+                "multipart/form-data": components["schemas"]["PayoutAccountWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutAccountMasked"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutAccountMasked"];
+                };
+            };
+        };
+    };
+    v1_payments_payout_settings_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedPayoutAccountWriteRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedPayoutAccountWriteRequest"];
+                "multipart/form-data": components["schemas"]["PatchedPayoutAccountWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutAccountMasked"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutAccountMasked"];
+                };
+            };
+        };
+    };
+    v1_payments_wallet_tutor_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TutorWallet"];
                 };
             };
         };

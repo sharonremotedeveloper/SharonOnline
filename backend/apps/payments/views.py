@@ -7,6 +7,7 @@ import uuid
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
@@ -19,10 +20,16 @@ from rest_framework.views import APIView
 from django.utils import timezone
 
 from apps.bookings.models import Booking
+from apps.users.permissions import IsTeacher
 from apps.bookings.services.holds import SLOT_OWNING_STATUSES, hold_expires_at, hold_is_live, inflight_grace, max_hold
 from apps.bookings.services.lock_service import extend_slot_lock
 from .gateways import payfast, paypal
-from .models import CreditBundle, CreditPack, CreditPurchase, CreditWalletEntry, GatewayAnomaly, PaymentTransaction
+from .models import CreditBundle, CreditPack, CreditPurchase, CreditWalletEntry, GatewayAnomaly, PaymentTransaction, TutorPayoutAccount
+from .serializers import (
+    PayoutAccountMaskedSerializer, PayoutAccountWriteSerializer, TutorWalletSerializer, masked_payout_account,
+)
+from .services.payout_crypto import PayoutDataError
+from .services.tutor_wallet import tutor_wallet_payload
 from .services.webhook_handler import process_payment_webhook, record_unallocated_payment
 
 logger = logging.getLogger(__name__)
@@ -444,3 +451,51 @@ class CreditPurchaseStatusView(APIView):
             'currency': purchase.currency,
             'created_at': purchase.created_at.isoformat(),
         })
+
+
+@extend_schema(responses=TutorWalletSerializer)
+class TutorWalletView(APIView):
+    permission_classes = (IsTeacher,)
+
+    def get(self, request):
+        payload = tutor_wallet_payload(request.user)
+        account = TutorPayoutAccount.objects.filter(tutor=request.user).first()
+        try:
+            payload['payout_bank_account'] = masked_payout_account(account) if account else None
+        except (PayoutDataError, ImproperlyConfigured):
+            logger.exception('Tutor payout account could not be read for user_id=%s', request.user.id)
+            return Response({'code': 'payout_settings_unavailable'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response(payload)
+
+
+@extend_schema(
+    request=PayoutAccountWriteSerializer,
+    responses={200: PayoutAccountMaskedSerializer, 201: PayoutAccountMaskedSerializer},
+)
+class PayoutSettingsView(APIView):
+    permission_classes = (IsTeacher,)
+
+    def get(self, request):
+        account = TutorPayoutAccount.objects.filter(tutor=request.user).first()
+        try:
+            return Response(masked_payout_account(account))
+        except (PayoutDataError, ImproperlyConfigured):
+            logger.exception('Tutor payout account could not be read for user_id=%s', request.user.id)
+            return Response({'code': 'payout_settings_unavailable'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    def post(self, request):
+        return self._save(request)
+
+    def patch(self, request):
+        return self._save(request)
+
+    def _save(self, request):
+        serializer = PayoutAccountWriteSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        existed = TutorPayoutAccount.objects.filter(tutor=request.user).exists()
+        try:
+            account = serializer.save()
+        except ImproperlyConfigured:
+            logger.exception('Payout encryption is not configured for user_id=%s', request.user.id)
+            return Response({'code': 'payout_encryption_unavailable'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response(masked_payout_account(account), status=status.HTTP_200_OK if existed else status.HTTP_201_CREATED)

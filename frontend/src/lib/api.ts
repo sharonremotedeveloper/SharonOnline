@@ -1,7 +1,13 @@
 import { API_BASE, MOCK, USE_MOCKS, liveRequest, request } from "./http";
 import type { components } from "@/types/api.generated";
 import { BookingDetail, BookingSlot, CreditLedgerEntry } from "@/types/booking";
-import { EskomStatus, PostLessonMemoInput, TeacherWalletData, TeacherPayoutBankAccount } from "@/types/teacher";
+import {
+  EskomStatus,
+  PostLessonMemoInput,
+  TeacherPayoutBankAccount,
+  TeacherWalletData,
+  TeacherPayoutBankAccountInput,
+} from "@/types/teacher";
 import {
   AdminTelemetry,
   PendingTeacherApplication,
@@ -706,79 +712,28 @@ export const api = {
     if (live !== MOCK) return live;
 
     return {
-      pending_escrow_usd: 64.0,
-      cleared_balance_usd: 128.0,
-      cleared_balance_zar: 2400.0,
-      fx_rate_usd_to_zar: 18.75,
-      payout_bank_account: {
-        bank_name: "Capitec Bank",
-        account_holder_name: "Sharon M.",
-        account_number: "1234567890",
-        account_number_masked: "•••• •••• 7890",
-        branch_code: "470010",
-        account_type: "savings",
-      },
-      transactions: [
-        {
-          id: "tx-1",
-          date: "2026-09-28",
-          booking_ref: "BK-884192",
-          student_name: "Aiko Tanaka",
-          gross_usd: 8.0,
-          net_zar: 120.0,
-          status: "cleared",
-        },
-        {
-          id: "tx-2",
-          date: "2026-09-28",
-          booking_ref: "BK-884185",
-          student_name: "Marco Rossi",
-          gross_usd: 8.0,
-          net_zar: 120.0,
-          status: "cleared",
-        },
-        {
-          id: "tx-3",
-          date: "2026-09-29",
-          booking_ref: "BK-884210",
-          student_name: "Kenji Sato",
-          gross_usd: 8.0,
-          net_zar: 120.0,
-          status: "pending",
-        },
-        {
-          id: "tx-4",
-          date: "2026-09-29",
-          booking_ref: "BK-884225",
-          student_name: "Elena Rostova",
-          gross_usd: 8.0,
-          net_zar: 120.0,
-          status: "pending",
-        },
-        {
-          id: "tx-5",
-          date: "2026-09-25",
-          booking_ref: "BATCH-SEP25",
-          student_name: "Bi-Weekly EFT Payout",
-          gross_usd: 160.0,
-          net_zar: 2400.0,
-          status: "paid_out",
-        },
-      ],
+      pending_escrow_zar: 0,
+      cleared_balance_zar: 0,
+      fx_context: [],
+      payout_bank_account: null,
+      transactions: [],
     };
   },
 
-  async updatePayoutSettings(data: TeacherPayoutBankAccount) {
+  async getPayoutSettings(): Promise<TeacherPayoutBankAccount> {
+    const live = await liveRequest(`${API_BASE}/payments/payout-settings/`, {});
+    if (live !== MOCK) return live;
+    return { configured: false };
+  },
+
+  async updatePayoutSettings(data: TeacherPayoutBankAccountInput): Promise<TeacherPayoutBankAccount> {
     const live = await liveRequest(`${API_BASE}/payments/payout-settings/`, {
         method: "POST",
         body: JSON.stringify(data),
       });
     if (live !== MOCK) return live;
 
-    return {
-      success: true,
-      message: "South African EFT payout account updated and encrypted.",
-    };
+    return { configured: false };
   },
 
   async saveTeacherAvailability(availability: any) {
@@ -994,101 +949,14 @@ export const api = {
       return Array.isArray(live) ? live : (live?.items || []);
     }
 
-    return [
-      {
-        id: "esc-1",
-        booking_ref: "BK-884192",
-        student_name: "Aiko Tanaka",
-        teacher_name: "Sharon M.",
-        lesson_date: "2026-09-30 15:00",
-        amount_usd: 8.0,
-        amount_zar: 150.0,
-        platform_fee_usd: 1.6,
-        teacher_net_zar: 120.0,
-        escrow_status: "holding",
-        release_date: "2026-10-01 15:00",
-      },
-      {
-        id: "esc-2",
-        booking_ref: "BK-884185",
-        student_name: "Marco Rossi",
-        teacher_name: "Sharon M.",
-        lesson_date: "2026-09-30 14:00",
-        amount_usd: 8.0,
-        amount_zar: 150.0,
-        platform_fee_usd: 1.6,
-        teacher_net_zar: 120.0,
-        escrow_status: "holding",
-        release_date: "2026-10-01 14:00",
-      },
-      {
-        id: "esc-3",
-        booking_ref: "BK-884110",
-        student_name: "Kenji Sato",
-        teacher_name: "Liam O.",
-        lesson_date: "2026-09-29 11:00",
-        amount_usd: 8.0,
-        amount_zar: 150.0,
-        platform_fee_usd: 1.6,
-        teacher_net_zar: 120.0,
-        escrow_status: "cleared",
-        release_date: "2026-09-30 11:00",
-      },
-      {
-        id: "esc-4",
-        booking_ref: "BK-884090",
-        student_name: "Elena Rostova",
-        teacher_name: "Elena V.",
-        lesson_date: "2026-09-28 17:00",
-        amount_usd: 8.0,
-        amount_zar: 150.0,
-        platform_fee_usd: 1.6,
-        teacher_net_zar: 120.0,
-        escrow_status: "cleared",
-        release_date: "2026-09-29 17:00",
-      },
-    ];
+    return [];
   },
 
   async getPayoutBatch(): Promise<PayoutBatchItem[]> {
     const live = await liveRequest(`${API_BASE}/admin/payouts/batch/`, {});
     if (live !== MOCK) return live;
 
-    return [
-      {
-        id: "pay-1",
-        teacher_id: "tut-1",
-        teacher_name: "Sharon M.",
-        bank_name: "Capitec Bank",
-        account_number_masked: "•••• •••• 7890",
-        branch_code: "470010",
-        cleared_lessons_count: 20,
-        payout_amount_zar: 2400.0,
-        status: "pending",
-      },
-      {
-        id: "pay-2",
-        teacher_id: "tut-2",
-        teacher_name: "Liam O.",
-        bank_name: "First National Bank (FNB)",
-        account_number_masked: "•••• •••• 1142",
-        branch_code: "250655",
-        cleared_lessons_count: 14,
-        payout_amount_zar: 1680.0,
-        status: "pending",
-      },
-      {
-        id: "pay-3",
-        teacher_id: "tut-3",
-        teacher_name: "Elena V.",
-        bank_name: "Standard Bank",
-        account_number_masked: "•••• •••• 9923",
-        branch_code: "051001",
-        cleared_lessons_count: 12,
-        payout_amount_zar: 1440.0,
-        status: "pending",
-      },
-    ];
+    return [];
   },
 
   async executePayoutBatch() {
@@ -1097,14 +965,7 @@ export const api = {
       });
     if (live !== MOCK) return live;
 
-    return {
-      success: true,
-      batch_id: `ACB-BATCH-${Date.now().toString().slice(-6)}`,
-      total_payout_zar: 5520.0,
-      recipients_count: 3,
-      status: "processed" as const,
-      message: "South African ACB EFT batch executed. Bank transaction files generated.",
-    };
+    throw new Error("Payout execution is disabled until an approved banking rail and maker-checker policy exist.");
   },
 };
 
