@@ -4,6 +4,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 import logging
 import uuid
+from urllib.parse import urlencode
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.conf import settings
@@ -41,6 +42,13 @@ CENT = Decimal('0.01')
 
 
 SETTLED_STATES = (PaymentTransaction.Status.SUCCESS, PaymentTransaction.Status.UNALLOCATED)
+
+
+def _with_ref(url: str, reference: str) -> str:
+    """Append the opaque TX- reference (never a token or internal id) to a buyer-redirect URL."""
+    if not url:
+        return ''
+    return f"{url}{'&' if '?' in url else '?'}{urlencode({'ref': reference})}"
 
 
 def _anomaly(gateway, reference, reason, detail='', tx=None, payload=None):
@@ -164,7 +172,9 @@ class CheckoutInitializeView(APIView):
                 "action_url": payfast.process_url(),
                 "fields": payfast.build_checkout_fields(
                     reference=reference, amount=amount, item_name=item_name,
-                    booking_id=target_id, notify_url=settings.PAYFAST_NOTIFY_URL),
+                    booking_id=target_id, notify_url=settings.PAYFAST_NOTIFY_URL,
+                    return_url=_with_ref(settings.PAYFAST_RETURN_URL, reference),
+                    cancel_url=_with_ref(settings.PAYFAST_CANCEL_URL, reference)),
             })
         return Response({
             "gateway": "paypal",
