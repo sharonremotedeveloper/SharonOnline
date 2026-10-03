@@ -67,4 +67,4 @@ Verified clean: no conflict markers or unmerged index entries; migrations apply 
 | `redis-races` | real Redis 7 lock races and owner checks |
 | `api-contract` | schema + TS types cannot drift |
 
-Dependabot (weekly, grouped) covers pip, npm and GitHub Actions; Next.js / React majors are excluded because they are one deliberate upgrade. **Left for Anesu:** turn these jobs into *required* checks (Settings -> Branches -> branch protection for `develop` and `main`).
+Dependabot (weekly, grouped) covers pip, npm and GitHub Actions and proposes **minor and patch updates only**: a major version is a deliberate migration (the first auto-proposed batch of majors failed CI), so Next.js 15/16 + React 19 + `eslint-config-next` 16 stay Task 8.9, Tailwind 4 and `@types/node` majors are done by hand when wanted. Dependencies adopted after testing: icalendar 7, drf-spectacular 0.30, celery 5.6.3, django-filter 26, dj-database-url 3, lucide-react 1.49, date-fns 4.4. **Left for Anesu:** turn these jobs into *required* checks (Settings -> Branches -> branch protection for `develop` and `main`).

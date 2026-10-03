@@ -1,7 +1,10 @@
 version: 2
 
 # Weekly update PRs. Security updates for known-vulnerable packages are raised by GitHub regardless of this schedule.
-# Each ecosystem is grouped so a week's routine bumps arrive as one reviewable PR; majors stay separate.
+#
+# Policy: minor and patch updates arrive as one grouped PR per ecosystem. MAJOR versions are not proposed automatically, because
+# each one is a deliberate migration with its own task (the first batch of auto-proposed majors failed CI for exactly that
+# reason). Do a major by hand: bump it, run the whole suite, and record it in the plan.
 updates:
   - package-ecosystem: pip
     directory: /backend
@@ -12,6 +15,12 @@ updates:
     groups:
       python-minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
+      # Django moves on the LTS line only (5.2 now); pip-audit in CI is what forces a security bump.
+      - dependency-name: django
+        update-types: [version-update:semver-major, version-update:semver-minor]
 
   - package-ecosystem: npm
     directory: /frontend
@@ -23,13 +32,14 @@ updates:
       npm-minor-and-patch:
         update-types: [minor, patch]
     ignore:
-      # Next.js 15/16 and React 19 are one deliberate upgrade (Task 8.9), not a routine bump.
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
+      # Next.js 15/16, React 19 and eslint-config-next 16 are one deliberate upgrade (Task 8.9).
       - dependency-name: next
-        update-types: [version-update:semver-major]
-      - dependency-name: react
-        update-types: [version-update:semver-major]
-      - dependency-name: react-dom
-        update-types: [version-update:semver-major]
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      - dependency-name: eslint-config-next
+        update-types: [version-update:semver-major, version-update:semver-minor]
+      # Tailwind 4 replaces the config system; @types/node follows the Node 22 LTS runtime we ship.
 
   - package-ecosystem: github-actions
     directory: /
