@@ -2,13 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CURRENCIES, CurrencyCode, DEFAULT_BUNDLES, detectDefaultCurrency } from "@/lib/currency";
+import { CURRENCIES, CurrencyCode, detectDefaultCurrency } from "@/lib/currency";
+import { api } from "@/lib/api";
+import { formatPackPerLesson, formatPackPrice, type CreditPackPrice } from "@/lib/prices";
+import { useApiData } from "@/hooks/useApiData";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { CurrencySwitcher } from "./CurrencySwitcher";
 import { Check, Shield, Zap, Sparkles } from "lucide-react";
 
 export function PricingTable() {
   const [currency, setCurrency] = useState<CurrencyCode>("USD");
-  const curr = CURRENCIES[currency];
+  const { data: packs, error, loading, reload } = useApiData<CreditPackPrice[]>(() => api.getCreditPacks(), []);
 
   useEffect(() => {
     setCurrency(detectDefaultCurrency());
@@ -35,85 +39,98 @@ export function PricingTable() {
         <CurrencySwitcher variant="inline" onCurrencyChange={(c) => setCurrency(c)} />
       </div>
 
-      {/* Credit Pack Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {DEFAULT_BUNDLES.map((bundle) => {
-          const rawPrice = bundle.prices[currency];
-          const formattedPrice = curr.format(rawPrice);
-          const perLessonPrice = curr.format(rawPrice / bundle.credits);
+      {/* Credit Pack Cards Grid: every price comes from the API as an exact decimal string */}
+      {error ? (
+        <ErrorState error={error} title="We could not load our prices" onRetry={reload} />
+      ) : loading ? (
+        <div className="bg-white rounded-2xl p-8 border border-divider text-center text-xs text-ink-muted">
+          Loading prices...
+        </div>
+      ) : !packs || packs.length === 0 ? (
+        <div className="bg-white rounded-2xl p-8 border border-divider text-center text-xs text-ink-muted">
+          No lesson packs are available right now. Please check back soon.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {packs.map((pack) => {
+            const formattedPrice = formatPackPrice(pack, currency);
+            const perLessonPrice = formatPackPerLesson(pack, currency);
+            const popular = pack.credits === 10;
 
-          return (
-            <div
-              key={bundle.id}
-              className={`relative bg-white rounded-2xl p-6 border transition-all flex flex-col justify-between ${
-                bundle.popular
-                  ? "border-accent shadow-card-hover ring-2 ring-accent/30"
-                  : "border-divider shadow-card hover:shadow-card-hover"
-              }`}
-            >
-              {bundle.popular && (
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-accent text-ink text-[11px] font-black tracking-wider uppercase flex items-center gap-1 shadow-sm">
-                  <Sparkles className="w-3 h-3" /> Most Popular
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-ink-muted uppercase tracking-wider">{bundle.name}</span>
-                  {bundle.discount && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-success/15 text-success text-[11px] font-bold">
-                      {bundle.discount}
-                    </span>
-                  )}
-                </div>
-
-                <div>
-                  <div className="text-3xl font-extrabold text-ink font-serif">{formattedPrice}</div>
-                  <div className="text-xs font-semibold text-ink-muted mt-1">
-                    {perLessonPrice} / 25-min lesson
+            return (
+              <div
+                key={pack.id}
+                className={`relative bg-white rounded-2xl p-6 border transition-all flex flex-col justify-between ${
+                  popular
+                    ? "border-accent shadow-card-hover ring-2 ring-accent/30"
+                    : "border-divider shadow-card hover:shadow-card-hover"
+                }`}
+              >
+                {popular && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-accent text-ink text-[11px] font-black tracking-wider uppercase flex items-center gap-1 shadow-sm">
+                    <Sparkles className="w-3 h-3" /> Most Popular
                   </div>
+                )}
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-ink-muted uppercase tracking-wider">{pack.name}</span>
+                  </div>
+
+                  <div>
+                    {formattedPrice ? (
+                      <>
+                        <div className="text-3xl font-extrabold text-ink font-serif">{formattedPrice}</div>
+                        {perLessonPrice && (
+                          <div className="text-xs font-semibold text-ink-muted mt-1">
+                            {perLessonPrice} / 25-min lesson
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-xs font-semibold text-ink-muted">Not available in {currency}</div>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-ink-muted leading-relaxed border-t border-divider pt-3">
+                    {pack.credits} x 25-min private lesson{pack.credits > 1 ? "s" : ""}
+                  </p>
+
+                  <ul className="space-y-2 text-xs text-ink font-medium">
+                    <li className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-success flex-shrink-0" />
+                      <span>
+                        {pack.credits} Lesson Ticket{pack.credits > 1 ? "s" : ""}
+                      </span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-success flex-shrink-0" />
+                      <span>1-on-1 Private Zoom Classroom</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Check className="w-3.5 h-3.5 text-success flex-shrink-0" />
+                      <span>Post-Lesson Memo & Vocab Bank</span>
+                    </li>
+                  </ul>
                 </div>
 
-                <p className="text-xs text-ink-muted leading-relaxed border-t border-divider pt-3">
-                  {bundle.tagline}
-                </p>
-
-                <ul className="space-y-2 text-xs text-ink font-medium">
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-success flex-shrink-0" />
-                    <span>{bundle.credits} Lesson Ticket{bundle.credits > 1 ? "s" : ""}</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-success flex-shrink-0" />
-                    <span>1-on-1 Private Zoom Classroom</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-success flex-shrink-0" />
-                    <span>Post-Lesson Memo & Vocab Bank</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-success flex-shrink-0" />
-                    <span>No Expiration Date</span>
-                  </li>
-                </ul>
+                <div className="pt-6">
+                  <Link
+                    href={`/register?bundle=${encodeURIComponent(pack.code)}&currency=${currency}`}
+                    className={`w-full py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                      popular
+                        ? "bg-primary hover:bg-primary-hover text-white shadow-sm"
+                        : "bg-cream-surface hover:bg-cream-deep text-ink border border-divider"
+                    }`}
+                  >
+                    <Zap className="w-3.5 h-3.5" /> Buy {pack.credits} Lesson{pack.credits > 1 ? "s" : ""}
+                  </Link>
+                </div>
               </div>
-
-              <div className="pt-6">
-                <Link
-                  href={`/register?bundle=${bundle.id}&currency=${currency}`}
-                  className={`w-full py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
-                    bundle.popular
-                      ? "bg-primary hover:bg-primary-hover text-white shadow-sm"
-                      : "bg-cream-surface hover:bg-cream-deep text-ink border border-divider"
-                  }`}
-                >
-                  <Zap className="w-3.5 h-3.5" /> Buy {bundle.credits} Lesson{bundle.credits > 1 ? "s" : ""}
-                </Link>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Money-Back Guarantee & Payment Badges */}
       <div className="bg-cream-surface rounded-2xl p-6 border border-divider flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">

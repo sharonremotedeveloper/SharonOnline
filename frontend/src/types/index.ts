@@ -39,7 +39,6 @@ export interface Teacher {
   intro_video_thumbnail?: string;
   rating_avg: number | string;
   rating_count: number;
-  price_per_25min_usd: number | string;
   specialties: string[];
   country: string;
   is_verified: boolean;

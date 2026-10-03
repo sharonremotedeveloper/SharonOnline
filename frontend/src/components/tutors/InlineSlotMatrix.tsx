@@ -6,11 +6,11 @@ import { Clock, Globe, ArrowRight, ShieldCheck, Zap, Lock } from "lucide-react";
 import { api } from "@/lib/api";
 import { Slot, TeacherSlotsResponse } from "@/types";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
+import { LessonPriceLabel } from "@/components/ui/LessonPriceLabel";
 
 interface InlineSlotMatrixProps {
   tutorId: string;
   tutorName: string;
-  pricePerLesson: number;
 }
 
 const COMMON_TIMEZONES = [
@@ -21,7 +21,7 @@ const COMMON_TIMEZONES = [
   { value: "America/New_York", label: "New York (EST/EDT, UTC-5/-4)" },
 ];
 
-export function InlineSlotMatrix({ tutorId, tutorName, pricePerLesson }: InlineSlotMatrixProps) {
+export function InlineSlotMatrix({ tutorId, tutorName }: InlineSlotMatrixProps) {
   const router = useRouter();
   const [timezone, setTimezone] = useState("Asia/Tokyo");
   const [slotsData, setSlotsData] = useState<TeacherSlotsResponse | null>(null);
@@ -169,7 +169,7 @@ export function InlineSlotMatrix({ tutorId, tutorName, pricePerLesson }: InlineS
               <span>Selecting a slot initiates a <strong>10-minute lock</strong> to complete booking.</span>
             </div>
             <div className="text-right font-bold text-ink">
-              ${pricePerLesson.toFixed(2)} / class
+              <LessonPriceLabel /> / class
             </div>
           </div>
         </div>

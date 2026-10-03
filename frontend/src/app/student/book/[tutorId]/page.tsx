@@ -9,6 +9,7 @@ import { PublicTutor } from "@/types/tutor";
 import { BookingSlot } from "@/types/booking";
 import { Avatar } from "@/components/ui/Avatar";
 import { StarRating } from "@/components/ui/StarRating";
+import { LessonPriceLabel } from "@/components/ui/LessonPriceLabel";
 import { TimezoneSelector } from "@/components/booking/TimezoneSelector";
 import { SlotGrid } from "@/components/booking/SlotGrid";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
@@ -133,9 +134,7 @@ export default function StudentBookingPage() {
 
           <div className="flex flex-col sm:items-end gap-2 border-t sm:border-t-0 pt-3 sm:pt-0 border-divider">
             <div className="text-right">
-              <span className="text-2xl font-black text-teal font-serif">
-                ${Number(tutor.price_per_25min_usd).toFixed(2)}
-              </span>
+              <LessonPriceLabel className="text-2xl font-black text-teal font-serif" />
               <span className="text-xs text-ink-muted"> / 25-minute lesson</span>
             </div>
             <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">

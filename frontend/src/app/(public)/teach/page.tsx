@@ -8,16 +8,8 @@ export default function TeachPage() {
   const [lessonsPerDay, setLessonsPerDay] = useState(6);
   const [daysPerWeek, setDaysPerWeek] = useState(5);
 
-  // Earnings model: $6.40 net per 25-min slot ($8.00 gross * 80% payout split)
-  // ZAR rate approx R18.50 per USD -> R118.40 per 25-min lesson net
-  const netUsdPerLesson = 6.4;
-  const netZarPerLesson = 118.4;
-
   const weeklyLessons = lessonsPerDay * daysPerWeek;
-  const monthlyLessons = weeklyLessons * 4.33;
-
-  const monthlyEarningsUsd = Math.round(monthlyLessons * netUsdPerLesson);
-  const monthlyEarningsZar = Math.round(monthlyLessons * netZarPerLesson);
+  const monthlyLessons = Math.round(weeklyLessons * 4.33);
 
   return (
     <div className="space-y-16 pb-16">
@@ -39,9 +31,9 @@ export default function TeachPage() {
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-3xl p-8 border border-divider shadow-card space-y-8">
           <div className="text-center space-y-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-primary">Earnings Calculator</h2>
-            <h3 className="text-2xl font-extrabold text-ink font-serif">Estimate Your Monthly Tutor Payout</h3>
-            <p className="text-xs text-ink-muted">Tutors earn an 80% split ($6.40 / ~R118 net per 25-minute lesson)</p>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-primary">Schedule Planner</h2>
+            <h3 className="text-2xl font-extrabold text-ink font-serif">Plan Your Teaching Week</h3>
+            <p className="text-xs text-ink-muted">Tutors earn a share of every completed 25-minute lesson. Your exact payout per lesson is shown in your tutor wallet.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
@@ -78,12 +70,12 @@ export default function TeachPage() {
             </div>
 
             <div className="bg-cream-surface rounded-2xl p-6 border border-cream-deep text-center space-y-3">
-              <div className="text-xs font-bold uppercase tracking-wider text-ink-muted">Estimated Monthly Income</div>
+              <div className="text-xs font-bold uppercase tracking-wider text-ink-muted">Estimated Lessons Per Month</div>
               <div className="text-4xl font-extrabold text-teal font-serif">
-                R{monthlyEarningsZar.toLocaleString()} <span className="text-sm font-semibold text-ink-muted">ZAR</span>
+                {monthlyLessons} <span className="text-sm font-semibold text-ink-muted">lessons</span>
               </div>
               <div className="text-xs font-semibold text-ink-muted">
-                (Approx. ${monthlyEarningsUsd.toLocaleString()} USD / month)
+                ({weeklyLessons} lessons / week)
               </div>
               <div className="text-[11px] text-ink-faint border-t border-divider pt-3">
                 Bi-weekly direct bank payouts to FNB, Standard Bank, Capitec, ABSA, Nedbank or Wise.
