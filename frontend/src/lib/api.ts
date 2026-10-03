@@ -952,14 +952,6 @@ export const api = {
     return [];
   },
 
-  async executePayoutBatch() {
-    const live = await liveRequest(`${API_BASE}/admin/payouts/execute-batch/`, {
-        method: "POST",
-      });
-    if (live !== MOCK) return live;
-
-    throw new Error("Payout execution is disabled until an approved banking rail and maker-checker policy exist.");
-  },
 };
 
 export const bookingApi = api;

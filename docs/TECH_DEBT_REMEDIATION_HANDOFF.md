@@ -5,7 +5,7 @@ This is the cross-agent handoff for the eight approved Sharon Online remediation
 ## Current state
 
 - Integration branch: `remediation/tech-debt`
-- Active branch: `feature/batch-7-eskom-power-guard`
+- Active branch: `feature/batch-8-quality-stabilization`
 - Isolated worktree: `C:\Dev\Active Projects\Notion\sharon-remediation`
 - Shared checkout was deliberately left unchanged. Claude's Zoom attendance work was imported from commit `2181dbd` and augmented on this isolated branch.
 
@@ -182,3 +182,29 @@ Verification:
 External-action boundary:
 
 - Provider behavior was tested only with injected local clients and responses. No EskomSePush account, API, Resend provider, remote Git, cloud database, or other external service was accessed.
+
+## Batch 8 - quality gates and final stabilization
+
+Implemented:
+
+- Added a committed non-interactive ESLint configuration and resolved every reported warning; lint now exits cleanly without prompting.
+- Added required GitHub Actions jobs for Django checks, migration drift, the backend suite, frontend tests, ESLint, generated OpenAPI drift, production build, PostgreSQL ledger-trigger tests, and Redis 7 race tests.
+- Provisioned disposable PostgreSQL 16 and Redis 7 service containers in CI so the three locally skipped infrastructure tests execute against their real backends.
+- Removed the unused frontend payout-execution client action and verified no fabricated payout totals/batch IDs or hardcoded Eskom stages remain in application code.
+- Re-ran all local gates after the final lint fixes and validated the workflow files as parseable YAML.
+
+Verification:
+
+- Complete local backend regression: 774 passed, 3 infrastructure tests skipped locally and assigned to required CI service jobs.
+- Frontend tests: 90 passed.
+- ESLint: zero warnings/errors.
+- Generated-contract drift: passed.
+- Next.js production build: passed (the marketing homepage intentionally renders an empty tutor state when no local API is running).
+- `manage.py check`: no issues; migration drift: none.
+- Workflow YAML: parsed successfully.
+
+Outstanding gated evidence:
+
+- The PostgreSQL and Redis jobs require the first CI run because this workstation has no local Docker/Redis runtime.
+- PayFast, PayPal, Resend, and EskomSePush sandbox verification was not performed. Per the project rule, each remains blocked until the active account is confirmed as `sharonremotedeveloper@gmail.com` and Anesu explicitly approves that provider action.
+- No remote branch, pull request, deploy, provider API, or cloud database action was performed.

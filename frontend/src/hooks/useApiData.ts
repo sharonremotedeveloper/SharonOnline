@@ -22,23 +22,24 @@ export function useApiData<T>(loader: () => Promise<T>, deps: unknown[] = []): A
 
   useEffect(() => {
     const id = ++latest.current;
+    let active = true;
     setLoading(true);
     setError(null);
     loader()
       .then((result) => {
-        if (id === latest.current) setData(result);
+        if (active && id === latest.current) setData(result);
       })
       .catch((err) => {
-        if (id === latest.current) {
+        if (active && id === latest.current) {
           setData(null);
           setError(err);
         }
       })
       .finally(() => {
-        if (id === latest.current) setLoading(false);
+        if (active && id === latest.current) setLoading(false);
       });
     return () => {
-      latest.current++;
+      active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, tick]);
