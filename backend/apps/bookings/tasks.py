@@ -14,7 +14,12 @@ from apps.payments.services.credits import grant_credit
 from apps.teachers.models import TeacherStrike
 from apps.teachers.strikes import add_strike
 from apps.payments.services.settlement import successful_transaction
+from apps.payments.services.funding import funding_for_settlement
+from apps.payments.models import CreditWalletEntry
 from apps.common.locks import distributed_task_lock
+from apps.integrations.services.attendance import (
+    STUDENT, TEACHER, credited_attendance_minutes, present_with_disconnect_grace,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +55,8 @@ def purge_expired_reservations_task():
 
             # Free Redis pessimistic slot lock
             start_iso = booking.start_time_utc.isoformat()
-            release_slot_lock(str(booking.teacher.id), start_iso, str(booking.student.id))
+            release_slot_lock(str(booking.teacher.id), start_iso, str(booking.student.id),
+                              token=booking.slot_lock_token or None)
 
             purged_count += 1
             logger.info(
@@ -92,10 +98,7 @@ def audit_attendance_and_noshows_task():
 
     for booking in late_candidates:
         teacher_email = booking.teacher.user.email
-        has_joined = AttendanceAudit.objects.filter(
-            booking=booking,
-            participant_email=teacher_email
-        ).exists()
+        has_joined = present_with_disconnect_grace(booking, TEACHER, now)
 
         if not has_joined:
             booking.tutor_late_alert_sent = True
@@ -123,15 +126,8 @@ def audit_attendance_and_noshows_task():
             teacher_email = booking.teacher.user.email
             student_email = booking.student.email
 
-            teacher_attended = AttendanceAudit.objects.filter(
-                booking=booking,
-                participant_email=teacher_email
-            ).exists()
-
-            student_attended = AttendanceAudit.objects.filter(
-                booking=booking,
-                participant_email=student_email
-            ).exists()
+            teacher_attended = present_with_disconnect_grace(booking, TEACHER, now)
+            student_attended = present_with_disconnect_grace(booking, STUDENT, now)
 
             if booking.status == Booking.Status.IN_PROGRESS and not teacher_attended:
                 continue    # inconsistent data (room open, no tutor record): the end-of-lesson check disputes it
@@ -142,11 +138,14 @@ def audit_attendance_and_noshows_task():
                 try:
                     from apps.integrations.zoom import zoom_client
                     z_telemetry = zoom_client.get_meeting_status(booking.zoom_meeting_id)
-                    if z_telemetry.get('status') == 'started' or z_telemetry.get('participant_count', 0) > 0:
+                    if z_telemetry.get('status') == 'started':
                         AttendanceAudit.objects.get_or_create(
                             booking=booking,
-                            participant_email=teacher_email,
+                            zoom_session_id='active_zoom_probe',
                             defaults={
+                                "participant_email": teacher_email,
+                                "classification": AttendanceAudit.Classification.TEACHER,
+                                "identity": "active_zoom_probe",
                                 "join_time_utc": booking.start_time_utc,
                                 "raw_payload": {"source": "active_zoom_probe"}
                             }
@@ -170,22 +169,30 @@ def audit_attendance_and_noshows_task():
                 teacher = booking.teacher
                 add_strike(teacher, TeacherStrike.Kind.NO_SHOW, booking=booking)
 
-                # Student restitution (D-6): the full captured amount goes back through the gateway (the student may turn it
-                # into wallet credit), plus 1 bonus credit as an apology, booked as a platform expense.
+                funding = funding_for_settlement(booking, context='teacher_no_show_restitution')
+                if funding is None:
+                    logger.error('Teacher no-show restitution stopped for booking %s: missing funding.', booking.id)
+                    continue
+                # Student restitution (D-6): the full captured amount goes back through the gateway (or, for a credit-funded
+                # lesson, as a restored credit), plus 1 bonus credit as an apology, booked as a platform expense. All valued
+                # from the booking's immutable funding record - never from the current list price.
                 from apps.payments.models import CreditBundle, RefundRequest
                 from apps.payments.services.ledger_service import record_compensation_entry
                 from apps.payments.services.refunds import request_refund
                 request_refund(booking, RefundRequest.Reason.TEACHER_NO_SHOW)
-                paid = successful_transaction(booking)
-                bonus_value = paid.amount if paid else booking.teacher.price_per_25min_usd
-                bonus_currency = paid.currency if paid else 'USD'
-                grant_credit(booking.student, source=CreditBundle.Source.BONUS, pack_name='Teacher no-show apology',
-                             unit_value=bonus_value, currency=bonus_currency)
+                grant_credit(
+                    booking.student, source=CreditBundle.Source.BONUS, pack_name='Teacher no-show apology',
+                    unit_amount=funding.captured_amount, currency=funding.currency,
+                    fx_rate_to_zar=funding.fx_rate_to_zar, fx_source=funding.fx_source,
+                    booking=booking, idempotency_key=f'teacher-no-show-bonus:{booking.id}',
+                )
                 record_compensation_entry(
                     user=booking.student,
                     booking=booking,
-                    amount_usd=bonus_value,
-                    currency=bonus_currency,
+                    amount_usd=funding.captured_amount,
+                    currency=funding.currency,
+                    fx_rate_to_zar=funding.fx_rate_to_zar,
+                    fx_source=funding.fx_source,
                     reason="Teacher no-show bonus compensation"
                 )
 
@@ -217,11 +224,7 @@ def audit_attendance_and_noshows_task():
             if not booking or booking.status not in [Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS]:
                 continue
 
-            teacher_email = booking.teacher.user.email
-            teacher_minutes = AttendanceAudit.objects.filter(
-                booking=booking,
-                participant_email=teacher_email
-            ).aggregate(total=Sum('total_minutes'))['total'] or 0
+            teacher_minutes = credited_attendance_minutes(booking, TEACHER, through=booking.end_time_utc)
 
             if teacher_minutes >= settings.LESSON_DELIVERED_MIN_TEACHER_MINUTES:
                 transition_booking(booking, Booking.Status.COMPLETED_PENDING_MEMO,
@@ -364,17 +367,24 @@ def enforce_memo_sla_task():
             teacher = booking.teacher
             add_strike(teacher, TeacherStrike.Kind.MEMO_SLA, booking=booking)
 
-            # Compensate student with 1 free apology credit (worth one lesson at the tutor's list price)
+            funding = funding_for_settlement(booking, context='memo_sla_compensation')
+            if funding is None:
+                logger.error('Memo SLA compensation stopped for booking %s: missing funding.', booking.id)
+                continue
+            # Compensate student with 1 free apology credit valued from the booking's immutable funding.
             from apps.payments.models import CreditBundle
-            grant_credit(booking.student, source=CreditBundle.Source.BONUS, pack_name='Memo SLA apology credit',
-                         unit_value=booking.teacher.price_per_25min_usd, currency='USD')
+            grant_credit(
+                booking.student, credits=1, pack_name='Memo SLA apology credit', source=CreditBundle.Source.BONUS,
+                unit_amount=funding.captured_amount, currency=funding.currency,
+                fx_rate_to_zar=funding.fx_rate_to_zar, fx_source=funding.fx_source,
+                booking=booking, idempotency_key=f'memo-sla:{booking.id}',
+            )
 
             # Record platform-absorbed compensation entry
             from apps.payments.services.ledger_service import record_compensation_entry
             record_compensation_entry(
                 user=booking.student,
                 booking=booking,
-                amount_usd=booking.teacher.price_per_25min_usd,
                 reason="Tutor 24h memo SLA forfeiture compensation"
             )
 

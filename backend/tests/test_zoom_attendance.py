@@ -26,8 +26,8 @@ def lesson(teacher_user, student_user):
                                   zoom_meeting_id=MEETING, zoom_join_url='https://zoom.us/j/1', zoom_start_url='https://zoom.us/s/1')
 
 
-def send(event, participant=None, *, host_id=HOST, meeting_id=MEETING, **obj):
-    body = {'event': event, 'payload': {'object': {'id': meeting_id, 'host_id': host_id, **obj}}}
+def send(event, participant=None, *, host_id=HOST, meeting_id=MEETING, event_id=None, **obj):
+    body = {'event': event, 'event_id': event_id, 'payload': {'object': {'id': meeting_id, 'host_id': host_id, **obj}}}
     if participant is not None:
         body['payload']['object']['participant'] = participant
     raw = json.dumps(body).encode()
@@ -66,6 +66,14 @@ class TestTutorIdentity:
         assert (a.participant_email, a.identity) == (lesson.teacher.user.email, 'host')
         lesson.refresh_from_db()
         assert lesson.status == S.IN_PROGRESS
+
+    def test_host_without_an_email_is_still_explicitly_the_teacher(self, lesson):
+        lesson.teacher.user.email = ''
+        lesson.teacher.user.save(update_fields=['email'])
+        join(lesson, tutor(email=''))
+        audit = rows(lesson).get()
+        assert audit.classification == 'teacher'
+        assert audit.identity == 'host'
 
     def test_a_guest_who_types_the_tutors_email_is_not_the_tutor(self, lesson):
         join(lesson, {'id': '', 'user_id': 'g1', 'participant_uuid': 'g1', 'email': lesson.teacher.user.email})
@@ -108,6 +116,18 @@ class TestStudentIdentity:
     def test_a_participant_with_no_email_at_all_is_unmatched(self, lesson):
         join(lesson, {'user_id': 'x1', 'participant_uuid': 'x1', 'user_name': 'Phone user'})
         assert rows(lesson).get().identity == 'unmatched'
+
+    def test_identity_metadata_and_event_id_are_preserved(self, lesson):
+        send('meeting.participant_joined', {
+            **pupil(lesson), 'id': 'participant-7', 'registrant_id': 'registrant-9',
+            'join_time': timezone.now().isoformat(),
+        }, event_id='event-123')
+        audit = rows(lesson).get()
+        assert audit.classification == 'student'
+        assert audit.participant_id == 'participant-7'
+        assert audit.registrant_id == 'registrant-9'
+        assert audit.host_id == HOST
+        assert audit.event_ids == ['event-123']
 
     def test_a_stranger_does_not_save_the_student_from_a_no_show_verdict(self, lesson):
         Booking.objects.filter(pk=lesson.pk).update(start_time_utc=timezone.now() - timedelta(minutes=11),
@@ -199,6 +219,33 @@ class TestTimes:
     def test_an_unparseable_time_is_not_a_500(self, lesson):
         send('meeting.participant_joined', {**tutor(), 'join_time': 'not-a-date'})
         assert rows(lesson).get().join_time_utc is not None
+
+    def test_five_minute_disconnect_grace_counts_short_reconnect_gap(self, lesson):
+        from apps.integrations.services.attendance import TEACHER, credited_attendance_minutes
+        start = lesson.start_time_utc
+        AttendanceAudit.objects.create(
+            booking=lesson, participant_email=lesson.teacher.user.email, classification='teacher',
+            zoom_session_id='g1', join_time_utc=start, leave_time_utc=start + timedelta(minutes=8),
+            total_minutes=8,
+        )
+        AttendanceAudit.objects.create(
+            booking=lesson, participant_email=lesson.teacher.user.email, classification='teacher',
+            zoom_session_id='g2', join_time_utc=start + timedelta(minutes=12),
+            leave_time_utc=start + timedelta(minutes=20), total_minutes=8,
+        )
+        assert credited_attendance_minutes(lesson, TEACHER, through=start + timedelta(minutes=25)) == 20
+
+    def test_unknown_participant_count_cannot_prevent_teacher_no_show(self, lesson):
+        Booking.objects.filter(pk=lesson.pk).update(
+            start_time_utc=timezone.now() - timedelta(minutes=11),
+            end_time_utc=timezone.now() + timedelta(minutes=14),
+            status=S.CONFIRMED,
+        )
+        join(lesson, {'id': '', 'user_id': 'unknown', 'email': 'unknown@example.test'})
+        with patch.object(zoom_client, 'get_meeting_status', return_value={'status': 'waiting', 'participant_count': 4}):
+            audit_attendance_and_noshows_task()
+        lesson.refresh_from_db()
+        assert lesson.status == S.TEACHER_NO_SHOW
 
 
 # ------------------------------------------------------------------ meeting.started

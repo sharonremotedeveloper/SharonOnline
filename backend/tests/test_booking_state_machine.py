@@ -2,6 +2,7 @@
 import ast
 import itertools
 from datetime import timedelta
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,8 @@ from apps.bookings.models import Booking, BookingStatusChange, LessonMemo
 from apps.bookings.services.state_machine import (
     ALLOWED_TRANSITIONS, TERMINAL_STATUSES, InvalidTransition, can_transition, transition_booking,
 )
-from apps.payments.models import CreditBundle
+from apps.payments.models import CreditBundle, RefundRequest, PaymentTransaction
+from apps.payments.services.funding import ensure_gateway_funding
 from apps.payments.services.webhook_handler import process_payment_webhook
 
 S = Booking.Status
@@ -22,9 +24,16 @@ ALL = list(Booking.Status.values)
 
 
 def make_booking(teacher, student, status=S.CONFIRMED, offset_hours=48, **kw):
+    funded = kw.pop('funded', False)
     start = timezone.now() + timedelta(hours=offset_hours)
-    return Booking.objects.create(teacher=teacher, student=student, start_time_utc=start,
-                                  end_time_utc=start + timedelta(minutes=25), status=status, **kw)
+    booking = Booking.objects.create(teacher=teacher, student=student, start_time_utc=start,
+                                     end_time_utc=start + timedelta(minutes=25), status=status, **kw)
+    if funded:
+        tx = PaymentTransaction.objects.create(
+            booking=booking, gateway='paypal', gateway_reference=f'TEST-{booking.id}',
+            amount=Decimal('9.00'), currency='USD', status='success')
+        ensure_gateway_funding(tx, booking)
+    return booking
 
 
 # ------------------------------------------------------------------ the map itself
@@ -171,19 +180,20 @@ class TestMemo:
 @pytest.mark.django_db
 class TestOutage:
     def test_outage_is_audited_and_credits_once(self, teacher_user, student_user):
-        booking = make_booking(teacher_user, student_user, status=S.CONFIRMED, offset_hours=0.1)  # starts in 6 min
+        booking = make_booking(teacher_user, student_user, status=S.CONFIRMED, offset_hours=0.1, funded=True)  # starts in 6 min
         c = _client(teacher_user.user)
         assert c.post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 200
         assert c.post(f'/api/v1/bookings/{booking.id}/report-outage/').status_code == 409
-        assert CreditBundle.objects.get(user=student_user).remaining_credits == 1       # nothing was captured: a wallet lot
+        assert RefundRequest.objects.filter(booking=booking, reason='outage').count() == 1       # one gateway refund, not two
+        assert not CreditBundle.objects.filter(user=student_user).exists()
         change = BookingStatusChange.objects.get(booking=booking)
-        assert (change.from_status, change.to_status, change.actor) == (S.CONFIRMED, S.INTERRUPTED_POWER, f'user:{teacher_user.user.username}')
+        assert (change.from_status, change.to_status, change.actor) == (S.CONFIRMED, S.INTERRUPTED_POWER, 'user:test_tutor')
 
 
 @pytest.mark.django_db
 class TestDisputeResolution:
     def _dispute(self, teacher_user, student_user, status=S.DISPUTED):
-        booking = make_booking(teacher_user, student_user, status=status, offset_hours=-3)
+        booking = make_booking(teacher_user, student_user, status=status, offset_hours=-3, funded=True)
         return DisputeCase.objects.create(booking=booking, student=student_user, teacher=teacher_user, student_statement='x')
 
     def resolve(self, admin, dispute, resolution='full_refund_student'):
@@ -206,7 +216,7 @@ class TestDisputeResolution:
         assert second.status_code == 409
         d.refresh_from_db(); d.booking.refresh_from_db()
         assert (d.resolution, d.booking.status) == ('full_refund_student', S.CANCELLED)
-        assert CreditBundle.objects.get(user=student_user).remaining_credits == 1  # refunded once, not twice
+        assert RefundRequest.objects.filter(booking=d.booking, reason='dispute').count() == 1  # refunded once, not twice
 
     def test_an_already_resolved_dispute_is_refused_even_if_its_booking_is_disputed_again(self, admin_user, teacher_user, student_user):
         d = self._dispute(teacher_user, student_user)
@@ -245,7 +255,7 @@ class TestBackgroundJobs:
 
     def test_memo_sla_forfeits_unmemoed_lessons_but_not_memoed_ones(self, teacher_user, student_user):
         from apps.bookings.tasks import enforce_memo_sla_task
-        late = make_booking(teacher_user, student_user, status=S.COMPLETED_PENDING_MEMO, offset_hours=-30)
+        late = make_booking(teacher_user, student_user, status=S.COMPLETED_PENDING_MEMO, offset_hours=-30, funded=True)
         done = make_booking(teacher_user, student_user, status=S.COMPLETED_PENDING_MEMO, offset_hours=-31)
         LessonMemo.objects.create(booking=done, teacher=teacher_user, student=student_user, feedback_text='ok')
         assert enforce_memo_sla_task()['memos_forfeited'] == 1
@@ -267,7 +277,7 @@ class TestBackgroundJobs:
     def test_escrow_release_completes_pending_memo_lessons_with_audit(self, teacher_user, student_user):
         from apps.bookings.models import AttendanceAudit
         from apps.payments.tasks import release_cleared_escrow_task
-        booking = make_booking(teacher_user, student_user, status=S.COMPLETED_PENDING_MEMO, offset_hours=-30)
+        booking = make_booking(teacher_user, student_user, status=S.COMPLETED_PENDING_MEMO, offset_hours=-30, funded=True)
         AttendanceAudit.objects.create(booking=booking, participant_email=teacher_user.user.email, total_minutes=24)
         assert release_cleared_escrow_task()['cleared_count'] == 1
         assert Booking.objects.get(pk=booking.pk).status == S.COMPLETED

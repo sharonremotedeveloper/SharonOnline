@@ -2,12 +2,21 @@ import pytest
 from rest_framework.test import APIClient
 from django.utils import timezone
 from datetime import timedelta
+from decimal import Decimal
 
 from apps.users.models import User
 from apps.teachers.models import TeacherProfile
 from apps.bookings.models import Booking
 from apps.admin_api.models import DisputeCase, PayoutBatch
-from apps.payments.models import CreditBundle
+from apps.payments.models import CreditBundle, PaymentTransaction
+from apps.payments.services.funding import ensure_gateway_funding
+
+
+def _fund(booking):
+    tx = PaymentTransaction.objects.create(
+        booking=booking, gateway='paypal', gateway_reference=f'TEST-{booking.id}',
+        amount=Decimal('9.00'), currency='USD', status='success')
+    ensure_gateway_funding(tx, booking)
 
 @pytest.mark.django_db
 def test_admin_telemetry_access_control(admin_user, student_user):
@@ -82,6 +91,7 @@ def test_dispute_resolution_50_50_split(admin_user, teacher_user, student_user):
         end_time_utc=now - timedelta(hours=1, minutes=35),
         status=Booking.Status.DISPUTED
     )
+    _fund(booking)
     dispute = DisputeCase.objects.create(
         booking=booking,
         student=student_user,
@@ -128,16 +138,15 @@ def test_execute_payout_batch(admin_user, teacher_user):
     # 1. Fetch batch preview
     batch_res = client.get('/api/v1/admin/payouts/batch/')
     assert batch_res.status_code == 200
-    assert len(batch_res.json()) >= 1
+    assert batch_res.json() == []
 
     # 2. Execute batch
     exec_res = client.post('/api/v1/admin/payouts/execute-batch/')
-    assert exec_res.status_code == 200
+    assert exec_res.status_code == 503
     data = exec_res.json()
-    assert data['success'] is True
-    assert data['status'] == 'processed'
-    assert 'ACB-BATCH-' in data['batch_id']
-    assert PayoutBatch.objects.filter(batch_reference=data['batch_id']).exists()
+    assert data['success'] is False
+    assert data['code'] == 'payout_execution_disabled'
+    assert not PayoutBatch.objects.exists()
 
 
 @pytest.mark.django_db
@@ -206,6 +215,7 @@ def test_dispute_resolution_full_refund_and_release_tutor(admin_user, teacher_us
         end_time_utc=now - timedelta(hours=2, minutes=35),
         status=Booking.Status.DISPUTED
     )
+    _fund(booking1)
     disp1 = DisputeCase.objects.create(
         booking=booking1,
         student=student_user,
@@ -235,6 +245,7 @@ def test_dispute_resolution_full_refund_and_release_tutor(admin_user, teacher_us
         end_time_utc=now - timedelta(hours=3, minutes=35),
         status=Booking.Status.DISPUTED
     )
+    _fund(booking2)
     disp2 = DisputeCase.objects.create(
         booking=booking2,
         student=student_user,

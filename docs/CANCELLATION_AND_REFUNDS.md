@@ -19,7 +19,7 @@ policy change is an environment variable, not a code change. Anesu should still 
 | Tutor cancels < 24 h ahead | full refund **+ 1 bonus credit** + 1 strike | `TUTOR_CANCEL_BONUS_CREDITS=1` |
 | Tutor no-show (T+10) | full refund + 1 bonus credit + 1 strike (refund now goes via the gateway) | - |
 | Strikes | each counts 90 days; 3 inside the window deactivate the tutor; only an admin reactivates | `STRIKE_LIMIT=3`, `STRIKE_WINDOW_DAYS=90` |
-| Power outage | **only the lesson's tutor (or staff)** can report it, inside the existing window; student gets a full gateway refund; tutor unpaid, no strike. A student with a problem opens a dispute. If the tutor already taught >= 20 min it is a delivered lesson (409 `lesson_delivered`) | `LESSON_DELIVERED_MIN_TEACHER_MINUTES=20` |
+| Power outage | the lesson's **tutor or staff** can always report it, inside the existing window; a **student only when the provider confirms an active outage in the tutor's area** (409 `outage_unconfirmed` otherwise; their own power or internet problem is a dispute). Student gets a full gateway refund; tutor unpaid, no strike. If the tutor already taught >= 20 min it is a delivered lesson (409 `lesson_delivered`) | `LESSON_DELIVERED_MIN_TEACHER_MINUTES=20` |
 | Refund route (all of the above + arbitration "full refund") | gateway refund; while still pending the student may convert it to wallet credit | `REFUND_GATEWAY_BACKEND` |
 | Wallet credit | each grant is its own lot that expires **30 days** after it is granted; spent soonest-expiry first; expired lots are written off to breakage revenue | `CREDIT_EXPIRY_DAYS_REFUND/BONUS/BUNDLE=30` |
 
@@ -35,8 +35,16 @@ policy change is an environment variable, not a code change. Anesu should still 
 | Reschedule | none: the same booking, payment and escrow move |
 | Credit lot expires | DR 2040, CR **4020 breakage revenue** for `remaining x unit_value` (`credit_expired`, not a settlement) |
 
-Nothing captured (legacy rows / credit-funded bookings): there is no gateway money to return, so the student gets a wallet lot
-immediately (DR 2010, CR 2040 at the tutor's list price). `RefundRequest` is unique per (booking, reason).
+What is refunded, and in which currency, always comes from the booking's immutable `BookingFunding` record (what it was paid with),
+never from the current list price:
+
+* **paid through a gateway** -> `RefundRequest` + ledger 2050 as above;
+* **paid with a credit** -> the credit comes back as a new lot (DR 2010, CR 2040), no gateway call;
+* **no funding record** (a data fault) -> `MissingFunding`: nothing is refunded, a `SettlementAnomaly` is recorded for finance, and a
+  cancel is refused with 409 `funding_unavailable` rather than guessing.
+
+`RefundRequest` is unique per (booking, reason). Credits are lots with a wallet history (`CreditWalletEntry`: purchase / redemption /
+refund / bonus / expiry), and the per-credit value field is `unit_amount`.
 
 ## Booking statuses
 
@@ -69,7 +77,7 @@ the Phase 15 student/tutor screen work**; the contract is ready.
 
 ## Please confirm (Anesu)
 
-1. **Purchased bundles expire in 30 days too** (you said credits expire in 30 days). A 10- or 20-lesson pack that lapses in a month
+1. **Purchased bundles expire in 30 days too** (the pack catalog and redemption came from Codex's batch 2) (you said credits expire in 30 days). A 10- or 20-lesson pack that lapses in a month
    is harsh and may need legal review (D-12, South African consumer-protection rules on prepaid vouchers). Change
    `CREDIT_EXPIRY_DAYS_BUNDLE` before packs go on sale (Task 10.6).
 2. **Outage tutor pay is zero** (and a tutor with 10-19 minutes taught gets nothing). The original spec mentioned a 50 % courtesy

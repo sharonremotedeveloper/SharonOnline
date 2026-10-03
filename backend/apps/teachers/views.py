@@ -4,7 +4,9 @@ from django.db.models import Q
 from rest_framework.exceptions import PermissionDenied
 from apps.users.permissions import IsTeacher
 from .models import TeacherProfile, TeacherAvailability
-from .serializers import TeacherListSerializer, TeacherDetailSerializer, TeacherAvailabilitySerializer
+from .serializers import (
+    PowerBackupSerializer, TeacherListSerializer, TeacherDetailSerializer, TeacherAvailabilitySerializer,
+)
 
 class TeacherListView(generics.ListAPIView):
     serializer_class = TeacherListSerializer
@@ -72,3 +74,14 @@ class TeacherAvailabilityManageView(generics.ListCreateAPIView):
         if not hasattr(self.request.user, 'teacher_profile'):
             raise PermissionDenied('A teacher profile is required (your application has not been set up yet).')
         serializer.save(teacher=self.request.user.teacher_profile)
+
+
+class TeacherPowerBackupView(generics.UpdateAPIView):
+    serializer_class = PowerBackupSerializer
+    permission_classes = (permissions.IsAuthenticated, IsTeacher)
+    http_method_names = ('patch',)
+
+    def get_object(self):
+        if not hasattr(self.request.user, 'teacher_profile'):
+            raise PermissionDenied('A teacher profile is required.')
+        return self.request.user.teacher_profile

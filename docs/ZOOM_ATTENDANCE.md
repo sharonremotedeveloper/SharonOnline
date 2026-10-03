@@ -1,19 +1,23 @@
 # Zoom attendance mapping (Task 9.8)
 
 Attendance decides no-show verdicts (T+10), the 20-minute completion rule, escrow release and disputes, and all of it
-reads `AttendanceAudit.participant_email`. So the rule is: **a row only carries an account e-mail when the participant
-was positively identified.** The decision lives in one place, `integrations/services/attendance.py::classify()`; the
+reads `AttendanceAudit.classification`. So the rule is: **only an explicit `teacher` or `student` classification counts;
+`unknown` evidence never changes state or money.** The decision lives in one place, `integrations/services/attendance.py::classify()`; the
 webhook view only parses, locks the booking and dispatches.
 
 ## Who is who
 
-| Participant | Identified as | `identity` | Stored `participant_email` |
+| Participant | `classification` | `identity` | Stored `participant_email` |
 | :--- | :--- | :--- | :--- |
 | Zoom account id equals the payload `host_id` (whoever opened the host/start link) | tutor | `host` | tutor's account e-mail |
 | Signed-in Zoom account (non-empty `participant.id`) whose e-mail is the tutor's | tutor | `account_email` | tutor's account e-mail |
 | Joined with the student's e-mail (case-insensitive) | student | `email` | student's account e-mail |
 | `meeting.started` (the host opened the room) | tutor present | `meeting_started` | tutor's account e-mail, **0 minutes** |
-| Anyone else | nobody | `unmatched` | empty (raw payload kept as evidence) |
+| Anyone else | `unknown` | `unmatched` | empty (raw payload kept as evidence) |
+
+Each attendance row also retains Zoom participant ID, registrant ID, host ID, event IDs, session ID, and raw payload. Unknown
+rows are read-only in Django administration for investigation, but every no-show, completion, and settlement query filters by
+classification.
 
 What changed: a guest used to be recorded as the student by default, the tutor was matched on a self-typed e-mail, and the
 host check compared the host id with the per-session `user_id` (the wrong field). A guest typing the tutor's e-mail can no
@@ -29,6 +33,8 @@ longer stop a teacher no-show verdict, and a stranger can no longer stand in for
 * **`meeting.started`** records the tutor as present (no minutes) and moves the booking to `in_progress`, so a lost `participant_joined` no longer produces a false teacher no-show.
 * **In progress** now means *the tutor is in the room*; a student alone leaves the booking `confirmed`.
 * **Late telemetry after a verdict** opens a dispute only from the party the verdict blamed: tutor activity after `teacher_no_show`, student activity after `student_no_show`. Strangers and the other party are recorded but change nothing.
+* **Five-minute disconnect grace** treats a participant as present for five minutes after a leave event and merges reconnect gaps of at most five minutes when calculating credited lesson attendance.
+* **Active probing** accepts only Zoom's authoritative `started` meeting status as host evidence. A non-zero participant count alone proves no identity and cannot prevent a no-show.
 * The T+10 job now also looks at `in_progress` bookings: tutor present + student absent -> `student_no_show` (previously unreachable once the tutor's join had moved the booking out of `confirmed`, so a student no-show ended as a normal completion).
 * Malformed payloads (non-object `payload`/`object`/`participant`) are acknowledged and ignored, not 500s.
 * `ZoomClient.create_meeting` raises `ZoomError` carrying Zoom's reason when Zoom rejects the request (it used to return `None`, which surfaced as an opaque `TypeError` in the fulfillment task).

@@ -26,8 +26,18 @@ from apps.payments.services.ledger_service import (
     DEFAULT_FX_USD_TO_ZAR,
 )
 from apps.payments.services.webhook_handler import process_payment_webhook
+from apps.payments.services.funding import ensure_gateway_funding
 from apps.payments.tasks import release_cleared_escrow_task
 from apps.admin_api.models import DisputeCase, PayoutBatch
+
+
+def fund_booking(booking, amount=Decimal('9.00'), *, currency='USD', status=PaymentTransaction.Status.SUCCESS):
+    tx = PaymentTransaction.objects.create(
+        booking=booking, gateway=PaymentTransaction.Gateway.PAYPAL,
+        gateway_reference=f'FUND-{booking.id}-{uuid.uuid4().hex[:6]}', amount=amount,
+        currency=currency, status=status)
+    ensure_gateway_funding(tx, booking)
+    return tx
 
 
 @pytest.fixture
@@ -163,6 +173,7 @@ def test_escrow_clearance_double_entry_split(student_user, teacher_user):
         end_time_utc=now - timedelta(days=2, minutes=-25),
         status=Booking.Status.COMPLETED
     )
+    fund_booking(booking)
 
     entries = record_escrow_clearance_entry(booking=booking, amount_usd=Decimal('9.00'))
     assert len(entries) == 3
@@ -180,10 +191,10 @@ def test_escrow_clearance_double_entry_split(student_user, teacher_user):
     platform_cr = [e for e in cr_entries if e.account == LedgerAccount.REVENUE_PLATFORM_COMMISSION][0]
 
     assert tutor_cr.amount == Decimal('7.20')
-    assert tutor_cr.amount_zar == Decimal('135.00')  # 7.20 * 18.75
+    assert tutor_cr.amount_zar == Decimal('129.60')  # 7.20 * persisted 18.00 capture FX
 
     assert platform_cr.amount == Decimal('1.80')
-    assert platform_cr.amount_zar == Decimal('33.75')  # 1.80 * 18.75
+    assert platform_cr.amount_zar == Decimal('32.40')  # 1.80 * persisted 18.00 capture FX
 
     # Sum DR == Sum CR
     assert dr_entries[0].amount == tutor_cr.amount + platform_cr.amount
@@ -236,6 +247,7 @@ def test_dispute_tribunal_50_50_platform_absorbed(admin_user, student_user, teac
         end_time_utc=now - timedelta(hours=2, minutes=35),
         status=Booking.Status.DISPUTED
     )
+    fund_booking(booking)
     dispute = DisputeCase.objects.create(
         booking=booking,
         student=student_user,
@@ -329,6 +341,7 @@ def test_trial_balance_zero_sum_audit(student_user, teacher_user, admin_user):
             end_time_utc=now - timedelta(days=i + 2, minutes=-25),
             status=Booking.Status.COMPLETED
         )
+        fund_booking(b)
         record_escrow_clearance_entry(booking=b, amount_usd=Decimal('9.00'))
 
     # 3. 1 Payout batch
@@ -349,6 +362,7 @@ def test_trial_balance_zero_sum_audit(student_user, teacher_user, admin_user):
         end_time_utc=now - timedelta(hours=4, minutes=35),
         status=Booking.Status.INTERRUPTED_POWER
     )
+    fund_booking(b_outage)
     record_outage_refund_entry(booking=b_outage, user=student_user)
 
     # 5. 1 Tutor No-Show compensation
@@ -549,6 +563,7 @@ def test_ledger_dispute_resolutions_full_refund_and_release_tutor(student_user, 
         end_time_utc=now - timedelta(hours=1, minutes=35),
         status=Booking.Status.DISPUTED
     )
+    fund_booking(booking)
     dispute = DisputeCase.objects.create(
         booking=booking,
         student=student_user,
@@ -638,6 +653,7 @@ def test_student_refund_journal_entries_gateway_and_wallet(student_user, teacher
         currency='USD',
         status=PaymentTransaction.Status.REFUNDED
     )
+    ensure_gateway_funding(tx, booking)
 
     # 1. Direct gateway cash refund
     gw_entries = record_student_refund_entry(
@@ -734,6 +750,7 @@ def test_ledger_telemetry_live_balance_calculation(student_user, teacher_user):
         currency='USD',
         status=PaymentTransaction.Status.SUCCESS
     )
+    ensure_gateway_funding(tx, booking)
 
     # 1. Capture payment ($9)
     record_payment_capture_entry(payment_transaction=tx, booking=booking, user=student_user)

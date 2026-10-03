@@ -12,8 +12,10 @@ from .models import User
 from .serializers import (
     RegisterSerializer, UserSerializer, CustomTokenObtainPairSerializer, PasswordResetRequestSerializer,
     PasswordResetConfirmSerializer, PasswordChangeSerializer, EmailVerifyConfirmSerializer,
+    SupportInquirySerializer,
+    SupportInquiryAcceptedSerializer,
 )
-from .services import queue_password_reset_email, queue_verification_email, revoke_all_sessions
+from .services import queue_password_reset_email, queue_support_inquiry, queue_verification_email, revoke_all_sessions
 from .throttles import LoginUsernameThrottle, PasswordResetEmailThrottle
 from .tokens import user_from_verify_token
 
@@ -152,3 +154,23 @@ class EmailVerifyConfirmView(APIView):
             user.email_verified = True
             user.save(update_fields=['email_verified', 'updated_at'])
         return Response({'detail': 'E-mail confirmed.'})
+
+
+@extend_schema(request=SupportInquirySerializer, responses={202: SupportInquiryAcceptedSerializer})
+class SupportInquiryView(APIView):
+    """Persist the request before queueing its notification, so provider failure cannot lose it."""
+
+    permission_classes = (AllowAny,)
+    authentication_classes = ()
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'inquiry'
+
+    def post(self, request):
+        serializer = SupportInquirySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        inquiry = serializer.save()
+        queue_support_inquiry(inquiry)
+        return Response(
+            {'detail': 'Your inquiry has been received.', 'inquiry_id': str(inquiry.id)},
+            status=status.HTTP_202_ACCEPTED,
+        )

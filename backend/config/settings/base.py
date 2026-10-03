@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import timedelta
+import json
 import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -138,12 +139,14 @@ REST_FRAMEWORK = {
         'reserve': '30/min',
         'cancel': '30/hour',
         'review': '30/hour',
+        'payout_settings': '5/hour',
         'password_reset': '5/hour',          # per IP; plus 3/hour per target address (PasswordResetEmailThrottle)
         'password_reset_email': '3/hour',
         'password_reset_confirm': '10/hour',
         'password_change': '10/hour',
         'email_verify': '5/hour',
         'email_verify_confirm': '20/hour',
+        'inquiry': '5/hour',
         'webhook': '120/min',
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
@@ -156,6 +159,15 @@ REST_FRAMEWORK = {
 FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'http://localhost:3000')
 PASSWORD_RESET_TIMEOUT = 60 * 60  # seconds; reset links are single-use AND short-lived
 EMAIL_VERIFY_MAX_AGE = 3 * 24 * 60 * 60
+SUPPORT_TO_EMAIL = os.environ.get('SUPPORT_TO_EMAIL', 'support@sharonesl.com')
+
+# Versioned Fernet keyring for encrypted tutor payout details. Example:
+# PAYOUT_DATA_KEYS='{"v1":"<fernet-key>","v2":"<fernet-key>"}' and PAYOUT_DATA_ACTIVE_KEY='v2'.
+try:
+    PAYOUT_DATA_KEYS = json.loads(os.environ.get('PAYOUT_DATA_KEYS', '{}'))
+except json.JSONDecodeError:
+    PAYOUT_DATA_KEYS = {}
+PAYOUT_DATA_ACTIVE_KEY = os.environ.get('PAYOUT_DATA_ACTIVE_KEY', '')
 
 # Slot holds (Task 9.4): a started-but-unfinished payment keeps its hold this long past the 10-minute base window,
 # and no hold (however many payment attempts) outlives the hard cap.
@@ -184,6 +196,12 @@ LESSON_DELIVERED_MIN_TEACHER_MINUTES = int(os.environ.get('LESSON_DELIVERED_MIN_
 # Dotted path of the object that talks to PayPal / PayFast to return money. Until Task 10.7 the default leaves requests
 # pending for a human to process (sandbox only).
 REFUND_GATEWAY_BACKEND = os.environ.get('REFUND_GATEWAY_BACKEND', 'apps.payments.services.refunds.ManualSandboxRefundGateway')
+# EskomSePush provider. The periodic task is the only provider caller; request paths read durable cached status.
+ESKOMSEPUSH_API_KEY = os.environ.get('ESKOMSEPUSH_API_KEY', '')
+ESKOMSEPUSH_BASE_URL = os.environ.get('ESKOMSEPUSH_BASE_URL', 'https://developer.sepush.co.za/business/2.0')
+ESKOMSEPUSH_TIMEOUT_SECONDS = int(os.environ.get('ESKOMSEPUSH_TIMEOUT_SECONDS', '10'))
+ESKOMSEPUSH_FRESH_SECONDS = int(os.environ.get('ESKOMSEPUSH_FRESH_SECONDS', '1800'))
+ESKOMSEPUSH_STALE_SECONDS = int(os.environ.get('ESKOMSEPUSH_STALE_SECONDS', '86400'))
 
 # OpenAPI schema (Task 8.8). The served schema is admin-only; the committed copy + generated TS types come from
 # `manage.py spectacular` / `npm run gen:api`.

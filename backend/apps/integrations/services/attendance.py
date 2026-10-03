@@ -18,6 +18,7 @@ import logging
 from datetime import timedelta, timezone as dt_timezone
 
 import dateutil.parser
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.admin_api.models import DisputeCase
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 S = Booking.Status
 ACTOR = 'system:zoom_webhook'
 
-TEACHER, STUDENT = 'teacher', 'student'
+TEACHER, STUDENT, UNKNOWN = 'teacher', 'student', 'unknown'
 STARTED = 'meeting_started'      # presence-only row from meeting.started; carries no minutes
 
 
@@ -44,7 +45,7 @@ def classify(booking, meeting_obj: dict, participant: dict):
         return TEACHER, teacher.email, 'account_email'
     if email and email == booking.student.email.strip().lower():
         return STUDENT, booking.student.email, 'email'
-    return None, '', 'unmatched'
+    return UNKNOWN, '', 'unmatched'
 
 
 def parse_time(raw, fallback):
@@ -69,7 +70,7 @@ def _session_key(participant: dict) -> str:
     return str(participant.get('user_id') or participant.get('participant_uuid') or '').strip()[:96]
 
 
-def _fill(row, *, join=None, leave=None, user_id=''):
+def _fill(row, *, join=None, leave=None, user_id='', event_id=''):
     """Apply only what the row does not already know, so retries and out-of-order delivery converge on the same result."""
     if join and not row.join_time_utc:
         row.join_time_utc = join
@@ -77,11 +78,13 @@ def _fill(row, *, join=None, leave=None, user_id=''):
         row.leave_time_utc = leave
     if user_id and not row.zoom_user_id:
         row.zoom_user_id = user_id
+    if event_id and event_id not in row.event_ids:
+        row.event_ids = [*row.event_ids, event_id]
     row.total_minutes = _minutes(row.join_time_utc, row.leave_time_utc)
     row.save()
 
 
-def _session_row(booking, key, email, identity, participant, *, join=None, leave=None):
+def _session_row(booking, key, role, email, identity, meeting_obj, participant, *, join=None, leave=None, event_id=''):
     """The row for this Zoom join session, created if it is new."""
     user_id = str(participant.get('user_id') or participant.get('id') or '')[:64]
     row = AttendanceAudit.objects.filter(booking=booking, zoom_session_id=key).first() if key else None
@@ -99,9 +102,24 @@ def _session_row(booking, key, email, identity, participant, *, join=None, leave
         row = (AttendanceAudit.objects.filter(booking=booking, participant_email=email, leave_time_utc__isnull=True)
                .order_by('-join_time_utc').first())
     if row is None:
-        row = AttendanceAudit(booking=booking, participant_email=email, identity=identity, zoom_session_id=key,
-                              zoom_user_id=user_id, raw_payload=participant)
-    _fill(row, join=join, leave=leave, user_id=user_id)
+        row = AttendanceAudit(
+            booking=booking,
+            participant_email=email,
+            identity=identity,
+            classification=role,
+            zoom_session_id=key,
+            zoom_user_id=user_id,
+            participant_id=str(participant.get('id') or '')[:128],
+            registrant_id=str(participant.get('registrant_id') or '')[:128],
+            host_id=str(meeting_obj.get('host_id') or '')[:128],
+            event_ids=[event_id] if event_id else [],
+            raw_payload=participant,
+        )
+    elif row.classification == UNKNOWN and role != UNKNOWN:
+        row.classification = role
+        row.participant_email = email
+        row.identity = identity
+    _fill(row, join=join, leave=leave, user_id=user_id, event_id=event_id)
     return row
 
 
@@ -133,36 +151,91 @@ def _tutor_present(booking, who):
         transition_booking(booking, S.IN_PROGRESS, actor=ACTOR, reason=f'{who} joined')
 
 
-def on_participant_joined(booking, meeting_obj, participant, now):
+def on_participant_joined(booking, meeting_obj, participant, now, event_id=''):
     role, email, identity = classify(booking, meeting_obj, participant)
     join = min(parse_time(participant.get('join_time'), now), now + timedelta(minutes=5))
-    _session_row(booking, _session_key(participant), email, identity, participant, join=join)
+    _session_row(booking, _session_key(participant), role, email, identity, meeting_obj, participant,
+                 join=join, event_id=event_id)
     if role == TEACHER:
         _tutor_present(booking, email)
     _quarantine_if_contradicted(booking, role, 'join', email, f"joined at {join.isoformat()}")
 
 
-def on_participant_left(booking, meeting_obj, participant, now):
+def on_participant_left(booking, meeting_obj, participant, now, event_id=''):
     role, email, identity = classify(booking, meeting_obj, participant)
     leave = parse_time(participant.get('leave_time'), now)
-    row = _session_row(booking, _session_key(participant), email, identity, participant, leave=leave)
+    row = _session_row(booking, _session_key(participant), role, email, identity, meeting_obj, participant,
+                       leave=leave, event_id=event_id)
     logger.info("[ZOOM ATTENDANCE] %s left booking %s after %sm", email or 'unmatched participant', booking.id, row.total_minutes)
     _quarantine_if_contradicted(booking, role, 'leave', email, f"logged {row.total_minutes}m")
 
 
-def on_meeting_started(booking, meeting_obj, now):
+def on_meeting_started(booking, meeting_obj, now, event_id=''):
     """The host opened the room: the tutor is there even if their participant_joined event is late or lost."""
     teacher = booking.teacher.user
-    if not AttendanceAudit.objects.filter(booking=booking, participant_email=teacher.email).exists():
+    row = classified_rows(booking, TEACHER).first()
+    if row is None:
         AttendanceAudit.objects.create(
-            booking=booking, participant_email=teacher.email, identity=STARTED, zoom_session_id=STARTED,
+            booking=booking, participant_email=teacher.email, identity=STARTED,
+            classification=TEACHER, zoom_session_id=STARTED,
+            host_id=str(meeting_obj.get('host_id') or '')[:128], event_ids=[event_id] if event_id else [],
             join_time_utc=parse_time(meeting_obj.get('start_time'), now), raw_payload={'event': 'meeting.started'})
+    else:
+        if not row.host_id:
+            row.host_id = str(meeting_obj.get('host_id') or '')[:128]
+        _fill(row, event_id=event_id)
     _tutor_present(booking, teacher.email)
     _quarantine_if_contradicted(booking, TEACHER, 'start', teacher.email, "started the meeting")
 
 
-def on_meeting_ended(booking, meeting_obj, now):
+def on_meeting_ended(booking, meeting_obj, now, event_id=''):
     """Close every still-open session at Zoom's own end time (ours is only the fallback)."""
     end = parse_time(meeting_obj.get('end_time'), now)
     for row in AttendanceAudit.objects.filter(booking=booking, leave_time_utc__isnull=True).exclude(identity=STARTED):
-        _fill(row, leave=max(end, row.join_time_utc) if row.join_time_utc else end)
+        _fill(row, leave=max(end, row.join_time_utc) if row.join_time_utc else end, event_id=event_id)
+
+
+DISCONNECT_GRACE = timedelta(minutes=5)
+
+
+def classified_rows(booking, classification):
+    """Use explicit identity; the blank-classification branch supports pre-migration rows only."""
+    email = booking.teacher.user.email if classification == TEACHER else booking.student.email
+    return AttendanceAudit.objects.filter(booking=booking).filter(
+        Q(classification=classification) |
+        Q(classification='', participant_email=email) |
+        Q(classification=UNKNOWN, identity='', participant_email=email)
+    )
+
+
+def present_with_disconnect_grace(booking, classification, at):
+    rows = classified_rows(booking, classification)
+    if rows.filter(join_time_utc__isnull=True, total_minutes__gt=0).exists():
+        return True
+    return rows.filter(
+        join_time_utc__lte=at,
+    ).filter(Q(leave_time_utc__isnull=True) | Q(leave_time_utc__gte=at - DISCONNECT_GRACE)).exists()
+
+
+def credited_attendance_minutes(booking, classification, *, through=None):
+    """Sum identified presence while crediting reconnect gaps of at most five minutes."""
+    through = through or timezone.now()
+    rows = classified_rows(booking, classification)
+    legacy_rows = rows.filter(Q(join_time_utc__isnull=True) | Q(leave_time_utc__isnull=True, total_minutes__gt=0))
+    legacy_minutes = sum(legacy_rows.values_list('total_minutes', flat=True))
+    intervals = []
+    interval_rows = rows.exclude(join_time_utc__isnull=True).exclude(leave_time_utc__isnull=True, total_minutes__gt=0)
+    for row in interval_rows.order_by('join_time_utc'):
+        start = max(row.join_time_utc, booking.start_time_utc)
+        end = min(row.leave_time_utc or through, booking.end_time_utc, through)
+        if end > start:
+            intervals.append((start, end))
+    if not intervals:
+        return legacy_minutes
+    merged = [list(intervals[0])]
+    for start, end in intervals[1:]:
+        if start <= merged[-1][1] + DISCONNECT_GRACE:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    return legacy_minutes + int(sum((end - start).total_seconds() for start, end in merged) // 60)

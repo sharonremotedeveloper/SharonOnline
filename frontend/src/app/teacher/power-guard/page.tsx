@@ -18,18 +18,8 @@ import { api } from "@/lib/api";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
 
-const SUBURBS = [
-  "City of Johannesburg Block 3 - Rosebank/Sandton",
-  "City of Johannesburg Block 7 - Randburg",
-  "Cape Town City Bowl Area 7",
-  "Cape Town Southern Suburbs Area 12",
-  "Durban Central Block 1",
-  "Pretoria East Area 4",
-];
-
 export default function TeacherPowerGuardPage() {
   const { data: status, error: loadError, loading, reload } = useApiData(() => api.getEskomStatus(), []);
-  const [selectedArea, setSelectedArea] = useState("");
   const [hasInverter, setHasInverter] = useState(false);
   const [hasLte, setHasLte] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -38,7 +28,6 @@ export default function TeacherPowerGuardPage() {
 
   useEffect(() => {
     if (status) {
-      setSelectedArea(status.area_name);
       setHasInverter(status.has_inverter_backup);
       setHasLte(status.has_lte_failover);
     }
@@ -50,7 +39,6 @@ export default function TeacherPowerGuardPage() {
     setSaveError(null);
     try {
       await api.updatePowerBackup({
-        area_name: selectedArea,
         has_inverter_backup: hasInverter,
         has_lte_failover: hasLte,
       });
@@ -69,7 +57,7 @@ export default function TeacherPowerGuardPage() {
       <div className="min-h-screen bg-cream flex items-center justify-center py-20">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm font-bold text-ink-muted">Connecting to EskomSePush API telemetry...</p>
+          <p className="text-sm font-bold text-ink-muted">Loading the latest cached Power Guard status...</p>
         </div>
       </div>
     );
@@ -93,8 +81,6 @@ export default function TeacherPowerGuardPage() {
       </div>
     );
   }
-
-  const areaOptions = SUBURBS.includes(status.area_name) ? SUBURBS : [status.area_name, ...SUBURBS];
 
   const getStageColor = (stage: number) => {
     if (stage === 0) return "bg-emerald-500 text-white";
@@ -141,6 +127,15 @@ export default function TeacherPowerGuardPage() {
 
         <InlineError error={saveError} />
 
+        {status.stale && (
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 flex gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>
+              Showing the last provider reading from {new Date(status.retrieved_at).toLocaleString()}. Provider state: {status.provider_status}.
+            </span>
+          </div>
+        )}
+
         {/* Live Grid Stage Monitor Card */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-divider pb-6">
@@ -151,7 +146,7 @@ export default function TeacherPowerGuardPage() {
                 <span>Stage {status.stage} Currently Active</span>
               </h2>
               <p className="text-xs text-ink-muted">
-                Feed from EskomSePush API · Suburb: <strong>{selectedArea}</strong>
+                Cached EskomSePush reading · Area: <strong>{status.area_name}</strong>
               </p>
             </div>
 
@@ -171,24 +166,17 @@ export default function TeacherPowerGuardPage() {
             </div>
           </div>
 
-          {/* Suburb Selector */}
+          {/* Provider area and next outage */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-teal" />
                 <span>Municipal Suburb &amp; Load Shedding Block</span>
               </label>
-              <select
-                value={selectedArea}
-                onChange={(e) => setSelectedArea(e.target.value)}
-                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink font-semibold focus:outline-none focus:ring-2 focus:ring-teal/30"
-              >
-                {areaOptions.map((sub) => (
-                  <option key={sub} value={sub}>
-                    {sub}
-                  </option>
-                ))}
-              </select>
+              <div className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink font-semibold">
+                {status.area_name}
+              </div>
+              <p className="text-[11px] text-ink-muted">Area mapping is managed by support and provider identifiers are not guessed in this form.</p>
             </div>
 
             <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-1">
@@ -198,7 +186,7 @@ export default function TeacherPowerGuardPage() {
               </span>
               <p className="text-sm font-extrabold text-ink font-mono">
                 {status.next_outage_start && status.next_outage_end
-                  ? `${status.next_outage_start} - ${status.next_outage_end} SAST`
+                  ? `${new Date(status.next_outage_start).toLocaleString()} - ${new Date(status.next_outage_end).toLocaleString()}`
                   : "No outage window reported"}
               </p>
               <p className="text-[11px] text-ink-muted">
@@ -213,8 +201,7 @@ export default function TeacherPowerGuardPage() {
           <div className="border-b border-divider pb-4 space-y-1">
             <h3 className="text-lg font-black text-ink font-serif">Power &amp; Fiber Redundancy Certification</h3>
             <p className="text-xs text-ink-muted">
-              Certify your backup hardware to display the &quot;Power Guard Certified&quot; badge and keep all your teaching
-              slots visible even during Stage 4-6 outages.
+              Record the backup hardware used when the platform evaluates risk for upcoming lessons.
             </p>
           </div>
 
@@ -301,15 +288,13 @@ export default function TeacherPowerGuardPage() {
             </span>
             <ul className="text-[11px] text-ink-muted list-disc list-inside space-y-1">
               <li>
-                <strong>Badge on Profile:</strong> Displays a green verified battery badge on your card in the student
-                tutor directory.
+                <strong>Risk assessment:</strong> Power and connectivity backup are considered together for proactive alerts.
               </li>
               <li>
-                <strong>Zero Booking Restrictions:</strong> Your schedule is never blocked during load shedding stages.
+                <strong>Advance warning:</strong> At-risk lessons receive idempotent notifications from cached provider windows.
               </li>
               <li>
-                <strong>Escrow Interruption Shield:</strong> If a sudden catastrophic substation fault occurs, you are
-                shielded from negative reviews and cancellation strikes.
+                <strong>Evidence:</strong> Student-reported outages require fresh provider corroboration or tutor/staff confirmation.
               </li>
             </ul>
           </div>

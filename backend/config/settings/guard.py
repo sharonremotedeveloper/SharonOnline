@@ -1,6 +1,8 @@
 import os
+import json
 from urllib.parse import urlparse
 
+from cryptography.fernet import Fernet
 from django.core.exceptions import ImproperlyConfigured
 
 _DEV_SECRET_PREFIX = 'django-insecure'
@@ -40,6 +42,22 @@ def validate_production_settings(env=os.environ):
 
     if not env.get('ZOOM_WEBHOOK_SECRET_TOKEN'):
         errors.append('ZOOM_WEBHOOK_SECRET_TOKEN must be set')
+    if not env.get('ESKOMSEPUSH_API_KEY'):
+        errors.append('ESKOMSEPUSH_API_KEY must be set so Power Guard never fabricates provider status')
+
+    try:
+        payout_keys = json.loads(env.get('PAYOUT_DATA_KEYS', '{}'))
+    except ValueError:
+        payout_keys = {}
+    payout_active = env.get('PAYOUT_DATA_ACTIVE_KEY', '')
+    if not isinstance(payout_keys, dict) or not payout_active or payout_active not in payout_keys:
+        errors.append('PAYOUT_DATA_KEYS must be a JSON keyring containing PAYOUT_DATA_ACTIVE_KEY')
+    else:
+        try:
+            for key in payout_keys.values():
+                Fernet(str(key).encode('ascii'))
+        except (ValueError, UnicodeError):
+            errors.append('Every PAYOUT_DATA_KEYS value must be a valid Fernet key')
 
     truthy = ('1', 'true', 'yes')
     no_proxy = env.get('BEHIND_NO_PROXY', '').lower() in truthy

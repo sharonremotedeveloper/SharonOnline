@@ -241,11 +241,42 @@ A four-way audit (backend, frontend, spec-vs-roadmap, infra) found that Phases 1
 | :--- | :--- | :--- |
 | **Phase 7** | Security emergency + spec freeze (decisions D-1..D-12) | `7A + 7B DONE (7.1-7.9, adversarial-review fixes; 220 tests); 7.10 + D-3,4,7-12 awaiting Anesu` |
 | **Phase 8** | Honest frontend + real auth | `IN PROGRESS - 8.1-8.8 + 9.2 done (honest client, HttpOnly cookie sessions via Next BFF proxy, signed-session middleware, real reserve->booking_id, password reset/change, e-mail verification, login by e-mail); 8.9 Next.js major upgrade open` |
-| **Phase 9** | Booking core (`transition_booking()`, reserve → book) | `IN PROGRESS - 9.1 (state machine + audit trail), 9.2, 9.4 (in-flight payments keep their hold) and 9.3 (slot grid shows every taken slot), 9.7 (settlement paths, no double payout), 9.9 (validated, atomic lesson memo) and 9.10 (one private, once-only review endpoint) 9.5 (filtered, scoped booking list), 9.8 (verified Zoom attendance mapping) and 9.6 (cancel / reschedule engine, gateway refunds, 30-day credit lots, windowed strikes) done - Phase 9 complete` |
-| **Phase 10** | Real payments (PayPal/PayFast sandbox, credits, refunds, multi-currency ledger) | `NOT STARTED` |
+| **Phase 9** | Booking core (`transition_booking()`, reserve → book) | `DONE (2026-10-03) - 9.1-9.10: state machine + audit trail, holds, slot grid, booking list, cancel / reschedule engine (D-6), settlement paths, verified Zoom attendance, memo, reviews; 876 backend + 93 frontend tests` |
+| **Phase 10** | Real payments (PayPal/PayFast sandbox, credits, refunds, multi-currency ledger) | `NEXT - about half the groundwork exists (Codex remediation merged 2026-10-03: funding provenance, credit packs + redemption, FX snapshots, ledger trigger, CI). Plan: PHASE_10_EXECUTION_PLAN.md. Remaining: lesson price catalog, PayPal orders + buttons, real refund gateways, receipts, sandbox verification. Needs Anesu: PayPal sandbox credentials, pack expiry, currencies, FX source` |
 | **Phase 11** | Tutor lifecycle + real payouts | `NOT STARTED` |
 | **Phase 12** | Integrations + notifications (Zoom, Resend, GCal, Eskom) | `NOT STARTED` |
-| **Phase 13** | Platform ops (prod images, CI, Sentry, hosted staging) | `NOT STARTED` |
+| **Phase 13** | Platform ops (prod images, CI, Sentry, hosted staging) | `NOT STARTED - 13.3 (CI) is recommended to start alongside Phase 10` |
 | **Phase 14** | Compliance + legal (POPIA/GDPR) | `NOT STARTED` |
 | **Phase 15** | Missing screens, admin, SEO, test pyramid | `NOT STARTED` |
 | **Phase 16** | UAT + launch | `NOT STARTED` |
+
+---
+
+## 6. Technical-debt remediation batches (started 2026-10-02)
+
+| Batch | Scope | Status |
+| :--- | :--- | :--- |
+| **1** | Honest admin financial data, disabled payout mutation, ownership-safe booking and Celery locks | `CODE COMPLETE - backend 679/679, focused 74/74, frontend 88/88, Django/migration checks and production build passed; real Redis CI execution pending Batch 8 infrastructure` |
+| **2** | Funding provenance, credit catalog, wallet history, credit redemption, dual-target checkout | `COMPLETE - backend 688 passed/2 Redis CI skips, focused 9/9 + 4/4, frontend 88/88, Django/migration checks and production build passed` |
+| **3** | FX, balanced journals, fees, reconciliation, DB immutability, durable fulfillment | `COMPLETE - backend 693 passed/3 infrastructure skips, focused 103/103, frontend 88/88 and production build passed; PostgreSQL trigger CI execution pending Batch 8` |
+| **4** | Zoom participant identity and attendance correctness | `COMPLETE - Claude commit reconciled and extended; focused 91/91, backend 734 passed/3 infrastructure skips, frontend 88/88 and production build passed` |
+| **5** | Student profiles, support inquiries, generated API contracts, timezone/count corrections | `COMPLETE - focused 74/74, backend 749 passed/3 infrastructure skips, frontend 90/90, contract drift check, Django/migration checks and production build passed` |
+| **6** | Tutor wallet and encrypted payout settings; payout execution remains disabled | `COMPLETE - focused 67/67, backend 764 passed/3 infrastructure skips, frontend 90/90, contract drift, Django/migration checks and production build passed` |
+| **7** | Provider-backed Eskom Power Guard | `COMPLETE - focused 220/220, backend 774 passed/3 infrastructure skips, frontend 90/90, contract drift, Django/migration checks and production build passed` |
+| **8** | CI and final stabilization | `CODE COMPLETE - local backend 774 passed/3 CI-service skips, frontend 90/90, lint 0 warnings, contract drift, Django/migration checks and build passed; first CI service run and explicitly authorized provider sandboxes remain gated` |
+
+Batch 1 replaced every fabricated admin telemetry floor and payout preview row with database/ledger results. Empty state is now explicit, `POST /api/v1/admin/payouts/execute-batch/` is a non-mutating `503 payout_execution_disabled`, and the frontend action is visibly disabled. Reservation locks now persist unique ownership tokens and use atomic compare-and-delete/expire operations; periodic task locks also use unique ownership and cannot release a successor's lock.
+
+Batch 2 made captured funding the sole settlement authority. Every paid booking has an immutable funding snapshot; missing funding creates a durable anomaly and blocks settlement. The launch credit catalog, purchases, wallet history, atomic oldest-credit redemption, discounted per-credit funding, and dual-target checkout are database-backed. Gateway webhooks now determine success while the UI polls authoritative booking or purchase state.
+
+Batch 3 persists capture-time FX and provider-fee provenance, posts gateway fees to account 5030, balances journals in both transaction currency and ZAR, and installs PostgreSQL ledger mutation triggers. Reconciliation no longer guesses that old checkouts failed, and fulfillment dispatch failures now remain durable and retryable.
+
+Batch 4 stores complete Zoom identity/event evidence with explicit teacher/student/unknown classification. Unknown guests cannot affect lesson state or money, event retries and reordering converge safely, Zoom timestamps remain authoritative, and five-minute reconnect grace is applied consistently to no-show and settlement decisions.
+
+Batch 5 replaces fabricated student-profile defaults with durable one-to-one data and one validated GET/PATCH serializer. Support requests are persisted before a retryable Resend notification is queued. Booking/profile/wallet frontend contracts now derive from OpenAPI with CI drift protection, and tutor dashboard day/month metrics use the viewer timezone plus server counts.
+
+Batch 6 derives pending and cleared tutor balances from immutable funding snapshots and ledger account 2020. Payout details are encrypted with a versioned Fernet keyring, masked on every read, and protected by current-password reauthentication and tutor scoping. Admin previews require both a positive ledger balance and configured account; payout execution remains disabled. Generated API contracts now drive the tutor wallet UI, and fabricated financial fallbacks were removed.
+
+Batch 7 replaces the hardcoded grid stage with normalized EskomSePush provider results stored as durable fresh/stale area evidence. Tutor backup settings now include LTE failover and are tutor-scoped. Upcoming outage-window overlaps create idempotent, retryable notifications; student restitution requires fresh active provider corroboration while tutor/staff reports retain the booking-time guard. No provider action was performed during implementation.
+
+Batch 8 adds non-interactive zero-warning ESLint and a complete CI matrix. SQLite/local gates pass; dedicated PostgreSQL 16 and Redis 7 jobs now execute the append-only ledger trigger and ownership-race suites in real service containers. The frontend payout mutation client was removed, while the server remains explicitly non-mutating. Provider sandbox evidence is intentionally pending the mandatory Sharon-account and per-action approval gate.

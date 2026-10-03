@@ -87,7 +87,7 @@ paths:
           description: ''
   /api/v1/admin/payouts/batch/:
     get:
-      operationId: v1_admin_payouts_batch_retrieve
+      operationId: v1_admin_payouts_batch_list
       tags:
       - v1
       security:
@@ -97,8 +97,9 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                type: array
+                items:
+                  $ref: '#/components/schemas/PayoutBatchItem'
           description: ''
   /api/v1/admin/payouts/execute-batch/:
     post:
@@ -122,7 +123,7 @@ paths:
       security:
       - jwtAuth: []
       responses:
-        '200':
+        '503':
           content:
             application/json:
               schema:
@@ -194,6 +195,34 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/v1/auth/inquiries/:
+    post:
+      operationId: v1_auth_inquiries_create
+      description: Persist the request before queueing its notification, so provider
+        failure cannot lose it.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SupportInquiryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SupportInquiryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SupportInquiryRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SupportInquiryAccepted'
           description: ''
   /api/v1/auth/logout/:
     post:
@@ -683,15 +712,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/LessonMemo'
           description: ''
+  /api/v1/bookings/{booking_id}/redeem-credit/:
+    post:
+      operationId: v1_bookings_redeem_credit_create
+      parameters:
+      - in: path
+        name: booking_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/bookings/{booking_id}/report-outage/:
     post:
       operationId: v1_bookings_report_outage_create
       description: |-
-        The lesson's tutor (or staff) reports an Eskom load-shedding / grid outage around the lesson (D-6):
-        1. Marks the booking INTERRUPTED_POWER.
-        2. Queues a full gateway refund for the student (they may convert it to wallet credit). The tutor is not paid and gets no strike.
-        A student cannot file this report (it would refund them while the tutor goes unpaid): a student problem goes through a dispute.
-        A lesson the tutor taught for the minimum lesson time is a delivered lesson, not an outage.
+        An Eskom load-shedding / grid outage around the lesson (D-6):
+        1. The lesson's tutor or staff can report it; a student only when the provider confirms an active outage in the tutor's area
+           (a student's own power or internet problem is a dispute, since it would refund them while the tutor goes unpaid).
+        2. The booking becomes INTERRUPTED_POWER and a full gateway refund is queued (the student may convert it to wallet credit).
+           The tutor is not paid and gets no strike.
+        3. A lesson the tutor already taught for the minimum lesson time is a delivered lesson, not an outage.
       parameters:
       - in: path
         name: booking_id
@@ -890,6 +942,20 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/integrations/eskom/status/:
+    get:
+      operationId: v1_integrations_eskom_status_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EskomStatus'
+          description: ''
   /api/v1/integrations/r2/presigned-url/:
     post:
       operationId: v1_integrations_r2_presigned_url_create
@@ -1035,6 +1101,44 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/payments/credit-packs/:
+    get:
+      operationId: v1_payments_credit_packs_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/payments/credit-purchases/{purchase_id}/:
+    get:
+      operationId: v1_payments_credit_purchases_retrieve
+      parameters:
+      - in: path
+        name: purchase_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/payments/credits/:
     get:
       operationId: v1_payments_credits_retrieve
@@ -1048,6 +1152,101 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Wallet'
+          description: ''
+  /api/v1/payments/payout-settings/:
+    get:
+      operationId: v1_payments_payout_settings_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutAccountMasked'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutAccountMasked'
+          description: ''
+    post:
+      operationId: v1_payments_payout_settings_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayoutAccountWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PayoutAccountWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PayoutAccountWriteRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutAccountMasked'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutAccountMasked'
+          description: ''
+    patch:
+      operationId: v1_payments_payout_settings_partial_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPayoutAccountWriteRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPayoutAccountWriteRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPayoutAccountWriteRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutAccountMasked'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutAccountMasked'
+          description: ''
+  /api/v1/payments/wallet/tutor/:
+    get:
+      operationId: v1_payments_wallet_tutor_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TutorWallet'
           description: ''
   /api/v1/refunds/:
     get:
@@ -1207,8 +1406,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/StudentProfile'
           description: ''
     patch:
       operationId: v1_student_profile_partial_update
@@ -1218,16 +1416,13 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/PatchedStudentProfileRequest'
           application/x-www-form-urlencoded:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/PatchedStudentProfileRequest'
           multipart/form-data:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/PatchedStudentProfileRequest'
       security:
       - jwtAuth: []
       responses:
@@ -1235,8 +1430,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/StudentProfile'
           description: ''
   /api/v1/teacher/students/:
     get:
@@ -1379,6 +1573,31 @@ paths:
               schema:
                 $ref: '#/components/schemas/TeacherAvailability'
           description: ''
+  /api/v1/teachers/profile/power-backup/:
+    patch:
+      operationId: v1_teachers_profile_power_backup_partial_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPowerBackupRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPowerBackupRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPowerBackupRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PowerBackup'
+          description: ''
 components:
   schemas:
     AccentEnum:
@@ -1393,6 +1612,34 @@ components:
         * `UK` - British
         * `US` - American
         * `OTHER` - International
+    AccountTypeEnum:
+      enum:
+      - cheque
+      - savings
+      type: string
+      description: |-
+        * `cheque` - cheque
+        * `savings` - savings
+    BankNameEnum:
+      enum:
+      - Capitec Bank
+      - First National Bank (FNB)
+      - Standard Bank
+      - Nedbank
+      - Absa Bank
+      - Discovery Bank
+      - TymeBank
+      - Investec Bank
+      type: string
+      description: |-
+        * `Capitec Bank` - Capitec Bank
+        * `First National Bank (FNB)` - First National Bank (FNB)
+        * `Standard Bank` - Standard Bank
+        * `Nedbank` - Nedbank
+        * `Absa Bank` - Absa Bank
+        * `Discovery Bank` - Discovery Bank
+        * `TymeBank` - TymeBank
+        * `Investec Bank` - Investec Bank
     BookingCreate:
       type: object
       properties:
@@ -1519,13 +1766,11 @@ components:
           description: 1 to 5 star rating
         student_review:
           type: string
-          readOnly: true
-          description: 'PRIVATE written review: staff only. Never shown to the tutor
-            or other students.'
         memo:
           allOf:
           - $ref: '#/components/schemas/LessonMemo'
           readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -1566,7 +1811,6 @@ components:
       - status
       - student
       - student_rating
-      - student_review
       - teacher
       - viewer_timezone
       - zoom_join_url
@@ -1623,11 +1867,22 @@ components:
           type: string
         country:
           type: string
+        email:
+          type: string
+          format: email
+        target_level:
+          type: string
+          readOnly: true
+        learning_goals:
+          type: string
+          readOnly: true
       required:
       - country
       - first_name
       - full_name
       - id
+      - learning_goals
+      - target_level
       - timezone
     CancelPreview:
       type: object
@@ -1795,6 +2050,67 @@ components:
       required:
       - code
       - error
+    EskomOutage:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+        note:
+          type: string
+      required:
+      - end
+      - note
+      - start
+    EskomStatus:
+      type: object
+      properties:
+        area_id:
+          type: string
+        area_name:
+          type: string
+        stage:
+          type: integer
+          maximum: 8
+          minimum: 0
+        outages:
+          type: array
+          items:
+            $ref: '#/components/schemas/EskomOutage'
+        next_outage_start:
+          type: string
+          format: date-time
+          nullable: true
+        next_outage_end:
+          type: string
+          format: date-time
+          nullable: true
+        has_inverter_backup:
+          type: boolean
+        has_lte_failover:
+          type: boolean
+        stale:
+          type: boolean
+        provider_status:
+          type: string
+        retrieved_at:
+          type: string
+          format: date-time
+      required:
+      - area_id
+      - area_name
+      - has_inverter_backup
+      - has_lte_failover
+      - next_outage_end
+      - next_outage_start
+      - outages
+      - provider_status
+      - retrieved_at
+      - stage
+      - stale
     LessonMemo:
       type: object
       properties:
@@ -2146,6 +2462,65 @@ components:
           maxLength: 254
       required:
       - email
+    PatchedPayoutAccountWriteRequest:
+      type: object
+      properties:
+        current_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 128
+        account_holder_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        account_number:
+          type: string
+          minLength: 1
+          maxLength: 16
+          pattern: ^\d{6,16}$
+        bank_name:
+          $ref: '#/components/schemas/BankNameEnum'
+        branch_code:
+          type: string
+          minLength: 1
+          maxLength: 6
+          pattern: ^\d{6}$
+        account_type:
+          $ref: '#/components/schemas/AccountTypeEnum'
+        identification_number:
+          oneOf:
+          - type: string
+            pattern: ^[A-Za-z0-9 -]{6,30}$
+          - type: string
+            maxLength: 0
+    PatchedPowerBackupRequest:
+      type: object
+      properties:
+        has_inverter_backup:
+          type: boolean
+        has_lte_failover:
+          type: boolean
+    PatchedStudentProfileRequest:
+      type: object
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 301
+        country:
+          type: string
+          maxLength: 2
+        timezone:
+          type: string
+          minLength: 1
+          maxLength: 64
+        target_level:
+          type: string
+          maxLength: 64
+        learning_goals:
+          type: string
+          maxLength: 2000
     PatchedUserRequest:
       type: object
       properties:
@@ -2182,6 +2557,106 @@ components:
         phone_number:
           type: string
           maxLength: 32
+    PayoutAccountMasked:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        bank_name:
+          $ref: '#/components/schemas/BankNameEnum'
+        account_holder_name:
+          type: string
+        account_number_masked:
+          type: string
+        branch_code:
+          type: string
+        account_type:
+          $ref: '#/components/schemas/AccountTypeEnum'
+        identification_masked:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - configured
+    PayoutAccountWriteRequest:
+      type: object
+      properties:
+        current_password:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 128
+        account_holder_name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        account_number:
+          type: string
+          minLength: 1
+          maxLength: 16
+          pattern: ^\d{6,16}$
+        bank_name:
+          $ref: '#/components/schemas/BankNameEnum'
+        branch_code:
+          type: string
+          minLength: 1
+          maxLength: 6
+          pattern: ^\d{6}$
+        account_type:
+          $ref: '#/components/schemas/AccountTypeEnum'
+        identification_number:
+          oneOf:
+          - type: string
+            pattern: ^[A-Za-z0-9 -]{6,30}$
+          - type: string
+            maxLength: 0
+      required:
+      - account_holder_name
+      - account_number
+      - account_type
+      - bank_name
+      - branch_code
+      - current_password
+    PayoutBatchItem:
+      type: object
+      properties:
+        id:
+          type: string
+        teacher_id:
+          type: string
+        teacher_name:
+          type: string
+        bank_name:
+          type: string
+        account_number_masked:
+          type: string
+        branch_code:
+          type: string
+        cleared_lessons_count:
+          type: integer
+        payout_amount_zar:
+          type: number
+          format: double
+        status:
+          type: string
+      required:
+      - account_number_masked
+      - bank_name
+      - branch_code
+      - cleared_lessons_count
+      - id
+      - payout_amount_zar
+      - status
+      - teacher_id
+      - teacher_name
+    PowerBackup:
+      type: object
+      properties:
+        has_inverter_backup:
+          type: boolean
+        has_lte_failover:
+          type: boolean
     Refund:
       type: object
       properties:
@@ -2436,6 +2911,80 @@ components:
       - message
       - status
       - success
+    StudentProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        full_name:
+          type: string
+          maxLength: 301
+        email:
+          type: string
+          format: email
+          readOnly: true
+        country:
+          type: string
+          maxLength: 2
+        timezone:
+          type: string
+          maxLength: 64
+        target_level:
+          type: string
+          maxLength: 64
+        learning_goals:
+          type: string
+          maxLength: 2000
+      required:
+      - country
+      - email
+      - full_name
+      - id
+      - learning_goals
+      - target_level
+      - timezone
+    SupportInquiryAccepted:
+      type: object
+      properties:
+        detail:
+          type: string
+        inquiry_id:
+          type: string
+          format: uuid
+      required:
+      - detail
+      - inquiry_id
+    SupportInquiryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 254
+        user_type:
+          allOf:
+          - $ref: '#/components/schemas/UserTypeEnum'
+          default: other
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 200
+        message:
+          type: string
+          minLength: 1
+          maxLength: 5000
+      required:
+      - email
+      - message
+      - name
+      - subject
     TagsEnum:
       enum:
       - Patience & Empathy
@@ -2686,14 +3235,135 @@ components:
           minLength: 1
       required:
       - refresh
+    TutorWallet:
+      type: object
+      properties:
+        pending_escrow_zar:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        cleared_balance_zar:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        fx_context:
+          type: array
+          items:
+            $ref: '#/components/schemas/TutorWalletFx'
+        payout_bank_account:
+          allOf:
+          - $ref: '#/components/schemas/PayoutAccountMasked'
+          nullable: true
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TutorWalletTransaction'
+      required:
+      - cleared_balance_zar
+      - fx_context
+      - payout_bank_account
+      - pending_escrow_zar
+      - transactions
+    TutorWalletFx:
+      type: object
+      properties:
+        currency:
+          type: string
+        fx_rate_to_zar:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        fx_source:
+          type: string
+      required:
+      - currency
+      - fx_rate_to_zar
+      - fx_source
+    TutorWalletTransaction:
+      type: object
+      properties:
+        id:
+          type: string
+        date:
+          type: string
+          format: date-time
+        booking_ref:
+          type: string
+        student_name:
+          type: string
+        gross_amount:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        currency:
+          type: string
+        gross_zar:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        net_amount:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        net_zar:
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        fx_rate_to_zar:
+          type: number
+          format: double
+          maximum: 1000000
+          minimum: -1000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+        fx_source:
+          type: string
+        status:
+          type: string
+      required:
+      - booking_ref
+      - currency
+      - date
+      - fx_rate_to_zar
+      - fx_source
+      - gross_amount
+      - gross_zar
+      - id
+      - net_amount
+      - net_zar
+      - status
+      - student_name
     TypeEnum:
       enum:
+      - opening
       - purchase
       - redemption
       - refund
       - bonus
       type: string
       description: |-
+        * `opening` - opening
         * `purchase` - purchase
         * `redemption` - redemption
         * `refund` - refund
@@ -2820,6 +3490,16 @@ components:
         * `student` - Student
         * `teacher` - Teacher
         * `admin` - Administrator
+    UserTypeEnum:
+      enum:
+      - student
+      - teacher
+      - other
+      type: string
+      description: |-
+        * `student` - Student
+        * `teacher` - Teacher
+        * `other` - Other
     Wallet:
       type: object
       properties:

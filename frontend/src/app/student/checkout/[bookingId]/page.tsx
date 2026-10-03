@@ -40,6 +40,7 @@ export default function StudentCheckoutPage() {
   const [reloadTick, setReloadTick] = useState(0);
   // Seconds left on the server-side slot hold, computed once when the booking loads (source of truth: lock_expires_at).
   const [holdSeconds, setHoldSeconds] = useState<number | null>(null);
+  const [paymentPending, setPaymentPending] = useState(false);
 
   // Real credit balance only; never assume a default. `/auth/me/` may not provide it yet.
   const userCredits = user?.credits ?? 0;
@@ -95,15 +96,54 @@ export default function StudentCheckoutPage() {
     }
   };
 
-  const handleGatewaySuccess = async (gatewayType: string) => {
+  useEffect(() => {
+    if (!paymentPending || !bookingId) return;
+    const timer = window.setInterval(async () => {
+      try {
+        const fresh = await api.getBooking(bookingId);
+        setBooking(fresh);
+        if (fresh.status === "confirmed") {
+          window.clearInterval(timer);
+          router.push(`/student/confirmed/${bookingId}`);
+        } else if (fresh.status !== "pending_payment") {
+          window.clearInterval(timer);
+          setPaymentPending(false);
+          setError(`Payment was not applied because the booking is now ${fresh.status}. Support has been notified.`);
+        }
+      } catch (err) {
+        console.error("Payment status poll failed:", err);
+      }
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [paymentPending, bookingId, router]);
+
+  const handleGatewayStart = async (gatewayType: "paypal" | "payfast") => {
     setSubmitting(true);
     setError(null);
     try {
-      await api.confirmPayment(bookingId, { gateway: gatewayType });
-      router.push(`/student/confirmed/${bookingId}`);
+      const checkout = await api.initializeCheckout({ booking_id: bookingId, gateway: gatewayType });
+      setPaymentPending(true);
+      if (gatewayType === "payfast" && checkout?.action_url && checkout?.fields) {
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = checkout.action_url;
+        for (const [name, value] of Object.entries(checkout.fields)) {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = name;
+          input.value = String(value);
+          form.appendChild(input);
+        }
+        document.body.appendChild(form);
+        form.submit();
+        return;
+      }
+      setError("Checkout is initialized. This page will show success only after the payment gateway webhook confirms capture.");
     } catch (err) {
-      console.error("Failed to confirm payment:", err);
-      setError(`We could not confirm your payment, so this booking is not confirmed. ${errorMessage(err)}`);
+      console.error("Failed to initialize payment:", err);
+      setError(`We could not start checkout. ${errorMessage(err)}`);
+      setPaymentPending(false);
+    } finally {
       setSubmitting(false);
     }
   };
@@ -284,7 +324,7 @@ export default function StudentCheckoutPage() {
               <PayPalButtonsWrapper
                 amountUsd={booking.price_usd}
                 bookingReference={booking.booking_reference}
-                onSuccess={() => handleGatewaySuccess("paypal")}
+                onSuccess={() => handleGatewayStart("paypal")}
                 disabled={submitting}
               />
             )}
@@ -295,7 +335,7 @@ export default function StudentCheckoutPage() {
                 amountZar={booking.price_zar}
                 bookingReference={booking.booking_reference}
                 itemDescription={`25-min lesson with ${booking.teacher.full_name}`}
-                onSuccess={() => handleGatewaySuccess("payfast")}
+                onSuccess={() => handleGatewayStart("payfast")}
                 disabled={submitting}
               />
             )}

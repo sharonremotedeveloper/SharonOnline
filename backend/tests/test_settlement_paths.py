@@ -14,6 +14,7 @@ from apps.payments.models import CreditBundle, LedgerAccount, LedgerEntry, Payme
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.webhook_handler import process_payment_webhook
 from apps.payments.tasks import release_cleared_escrow_task
+from apps.payments.services.funding import ensure_gateway_funding
 
 S = Booking.Status
 User = get_user_model()
@@ -28,8 +29,14 @@ def _client(user):
 
 def lesson(teacher, student, start_in_min, status=S.PENDING_PAYMENT):
     start = timezone.now() + start_in_min * MIN
-    return Booking.objects.create(teacher=teacher, student=student, start_time_utc=start,
-                                  end_time_utc=start + 25 * MIN, status=status)
+    booking = Booking.objects.create(teacher=teacher, student=student, start_time_utc=start,
+                                     end_time_utc=start + 25 * MIN, status=status)
+    if status != S.PENDING_PAYMENT:
+        tx = PaymentTransaction.objects.create(
+            booking=booking, gateway='paypal', gateway_reference=f'TEST-{booking.id}',
+            amount=Decimal('9.00'), currency='USD', status='success')
+        ensure_gateway_funding(tx, booking)
+    return booking
 
 
 def captured(teacher, student, start_in_min, *, gateway='payfast', amount='168.75', currency='ZAR', ref='CAP-1'):
@@ -73,9 +80,9 @@ class TestGrantCredit:
     def test_students_with_several_bundles_do_not_crash_and_stay_consistent(self, student_user):
         for _ in range(2):
             CreditBundle.objects.create(user=student_user, total_credits=5, remaining_credits=2, amount_paid=40)
-        b = grant_credit(student_user, credits=2)                      # a grant is its own lot now: older lots are untouched
+        b = grant_credit(student_user, credits=2)
         assert CreditBundle.objects.filter(user=student_user).count() == 3
-        assert (b.total_credits, b.remaining_credits) == (2, 2)
+        assert (b.total_credits, b.remaining_credits) == (2, 2) and b.remaining_credits <= b.total_credits
         assert sum(x.remaining_credits for x in CreditBundle.objects.filter(user=student_user)) == 6
 
     def test_rejects_nonsense(self, student_user):
@@ -112,9 +119,11 @@ class TestOutageReport:
         stranger = User.objects.create_user(username='nosy', email='n@x.com', password='x-pass-12345', role='student')
         other_tutor = User.objects.create_user(username='t2', email='t2@x.com', password='x-pass-12345', role='teacher')
         b1 = lesson(teacher_user, student_user, 10, status=S.CONFIRMED)
-        for denied in (stranger, student_user, other_tutor):              # D-6: a student cannot file an outage (it refunds them, unpays the tutor)
+        for denied in (stranger, other_tutor):                            # not a party to the lesson
             res = self.report(denied, b1)
-            assert res.status_code == 403 and res.json()['code'] == 'outage_report_tutor_only'
+            assert res.status_code == 403 and res.json()['code'] == 'not_a_party'
+        res = self.report(student_user, b1)                               # the student needs provider evidence of an outage
+        assert res.status_code == 409 and res.json()['code'] == 'outage_unconfirmed'
         assert Booking.objects.get(pk=b1.pk).status == S.CONFIRMED
         assert self.report(teacher_user.user, b1).status_code == 200      # the tutor of the booking
         b2 = lesson(teacher_user, student_user, 40, status=S.CONFIRMED)
@@ -230,7 +239,7 @@ def test_teacher_no_show_refund_drains_the_escrow_in_the_captured_currency(teach
     # D-6: the refund goes back through the gateway; the apology is 1 bonus credit (not a second refund)
     assert RefundRequest.objects.get(booking=booking).status == 'pending_gateway'
     bonus = CreditBundle.objects.get(user=student_user)
-    assert (bonus.source, bonus.remaining_credits, bonus.currency, bonus.unit_value) == ('bonus', 1, 'ZAR', Decimal('168.75'))
+    assert (bonus.source, bonus.remaining_credits, bonus.currency, bonus.unit_amount) == ('bonus', 1, 'ZAR', Decimal('168.75'))
     teacher_user.refresh_from_db()
     assert teacher_user.sla_strikes == 1
 

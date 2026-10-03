@@ -10,8 +10,11 @@ from apps.bookings.models import Booking, AttendanceAudit
 from apps.bookings.services.state_machine import transition_booking
 from apps.payments.services.settlement import RELEASABLE_STATUSES, attendance_verified_for_release, settled_exists
 from apps.payments.models import PaymentTransaction
+from apps.payments.services.reconciliation import reconcile_initialized_transaction
+from apps.payments.services.funding import funding_for_settlement
 from apps.admin_api.models import DisputeCase
 from apps.common.locks import distributed_task_lock
+from apps.integrations.services.attendance import TEACHER, credited_attendance_minutes
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +54,7 @@ def release_cleared_escrow_task():
 
         for booking in candidates:
             # Dual verification: check attendance minutes
-            teacher_email = booking.teacher.user.email
-            teacher_minutes = AttendanceAudit.objects.filter(
-                booking=booking,
-                participant_email=teacher_email
-            ).aggregate(total=Sum('total_minutes'))['total'] or 0
+            teacher_minutes = credited_attendance_minutes(booking, TEACHER, through=booking.end_time_utc)
 
             if not attendance_verified_for_release(booking, teacher_minutes):
                 logger.warning(
@@ -63,16 +62,14 @@ def release_cleared_escrow_task():
                 )
                 continue
 
-            # Find matching successful transaction
-            tx = PaymentTransaction.objects.filter(
-                booking=booking,
-                status=PaymentTransaction.Status.SUCCESS,
-                escrow_cleared=False
-            ).first()
-
-            amount_usd = tx.amount if tx else booking.teacher.price_per_25min_usd
-            tutor_net_usd = (amount_usd * Decimal('0.80')).quantize(Decimal('0.01'))
-            platform_fee_usd = amount_usd - tutor_net_usd
+            funding = funding_for_settlement(booking, context='release_cleared_escrow_task')
+            if funding is None:
+                logger.error('Escrow release stopped for booking %s: missing funding provenance.', booking.id)
+                continue
+            tx = funding.payment_transaction
+            gross = funding.captured_amount
+            tutor_net = (gross * Decimal('0.80')).quantize(Decimal('0.01'))
+            platform_fee = gross - tutor_net
 
             if tx:
                 tx.escrow_cleared = True
@@ -89,14 +86,15 @@ def release_cleared_escrow_task():
             record_escrow_clearance_entry(
                 booking=booking,
                 payment_transaction=tx,
-                amount_usd=amount_usd
+                funding=funding,
             )
 
             cleared_count += 1
-            total_cleared_usd += tutor_net_usd
+            if funding.currency == 'USD':
+                total_cleared_usd += tutor_net
             logger.info(
-                f"[ESCROW CLEARED] Booking {booking.id}: Net ${tutor_net_usd} to tutor "
-                f"{booking.teacher.user.username}, fee ${platform_fee_usd} to platform."
+                f"[ESCROW CLEARED] Booking {booking.id}: Net {tutor_net} {funding.currency} to tutor "
+                f"{booking.teacher.user.username}, fee {platform_fee} {funding.currency} to platform."
             )
 
     return {
@@ -110,22 +108,24 @@ def release_cleared_escrow_task():
 def reconcile_pending_transactions_task():
     """
     Hourly maintenance task:
-    Reconciles orphaned or unconfirmed payment transactions older than 2 hours.
-    Marks abandoned sessions as FAILED to prevent ledger drift.
+    Queries provider-aware reconciliation for old initialized checkouts. A transaction is marked
+    failed only when the provider says so; unavailable or inconclusive status remains initialized
+    and creates a durable anomaly for operator follow-up.
     """
     now = timezone.now()
     cutoff_2h = now - timedelta(hours=2)
 
-    with transaction.atomic():
-        abandoned_txs = PaymentTransaction.objects.select_for_update(skip_locked=True).filter(
-            status=PaymentTransaction.Status.INITIALIZED,
-            created_at__lt=cutoff_2h
-        )
-        count = abandoned_txs.count()
-        abandoned_txs.update(status=PaymentTransaction.Status.FAILED)
+    abandoned_txs = list(PaymentTransaction.objects.filter(
+        status=PaymentTransaction.Status.INITIALIZED,
+        created_at__lt=cutoff_2h
+    ).select_related('booking', 'credit_purchase')[:100])
+    results = {'failed': 0, 'pending': 0, 'unresolved': 0, 'completed': 0}
+    for payment_transaction in abandoned_txs:
+        result = reconcile_initialized_transaction(payment_transaction)
+        results[result.state] = results.get(result.state, 0) + 1
 
-    logger.info(f"Reconciled {count} abandoned payment transactions to FAILED.")
-    return {"reconciled_count": count}
+    logger.info("Gateway reconciliation inspected %s transactions: %s", len(abandoned_txs), results)
+    return {"reconciled_count": len(abandoned_txs), **results}
 
 
 @shared_task(name='apps.payments.tasks.expire_credits_task')

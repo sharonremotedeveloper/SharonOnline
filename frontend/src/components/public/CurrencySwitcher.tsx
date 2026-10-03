@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CURRENCIES, CurrencyCode, detectDefaultCurrency } from "@/lib/currency";
 import { Globe } from "lucide-react";
 
@@ -12,12 +12,13 @@ interface CurrencySwitcherProps {
 export function CurrencySwitcher({ onCurrencyChange, variant = "select" }: CurrencySwitcherProps) {
   const [selected, setSelected] = useState<CurrencyCode>("USD");
   const [mounted, setMounted] = useState(false);
+  const initialCurrencyChange = useRef(onCurrencyChange);
 
   useEffect(() => {
     setMounted(true);
     const code = detectDefaultCurrency();
     setSelected(code);
-    if (onCurrencyChange) onCurrencyChange(code);
+    initialCurrencyChange.current?.(code);
   }, []);
 
   const handleChange = (code: CurrencyCode) => {

@@ -13,7 +13,7 @@ def give_existing_credits_an_expiry(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('payments', '0008_credit_lots_refunds_ledger_accounts'),
+        ('payments', '0013_creditbundle_expired_at_creditbundle_expired_credits_and_more'),
     ]
 
     operations = [

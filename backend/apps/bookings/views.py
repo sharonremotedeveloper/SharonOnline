@@ -13,6 +13,7 @@ from django.db import transaction
 from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from .models import AttendanceAudit, Booking, LessonMemo
 from apps.srs.models import StudentFlashcard
 from apps.teachers.models import TeacherProfile
@@ -33,7 +34,10 @@ from .services.reviews import ReviewError, submit_review
 from .services.state_machine import InvalidTransition, transition_booking
 from apps.users.permissions import IsStudent
 from apps.payments.services.credits import grant_credit
+from apps.payments.services.credits import CreditRedemptionError, redeem_booking_credit
 from apps.payments.services.settlement import successful_transaction
+from apps.payments.services.funding import funding_for_settlement
+from apps.payments.models import CreditWalletEntry
 from apps.materials.models import Material
 
 MAX_SLOT_DAYS = 14
@@ -155,8 +159,29 @@ class BookingDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         user = self.request.user
         if user.role == 'teacher' and hasattr(user, 'teacher_profile'):
-            return Booking.objects.filter(teacher=user.teacher_profile)
-        return Booking.objects.filter(student=user)
+            return Booking.objects.select_related('student__student_profile', 'teacher__user', 'material').filter(teacher=user.teacher_profile)
+        return Booking.objects.select_related('student__student_profile', 'teacher__user', 'material').filter(student=user)
+
+
+@extend_schema(request=None, responses=OpenApiTypes.OBJECT)
+class RedeemCreditView(APIView):
+    permission_classes = (IsStudent,)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'checkout'
+
+    def post(self, request, booking_id):
+        booking = get_object_or_404(Booking, pk=booking_id, student=request.user)
+        try:
+            booking, changed = redeem_booking_credit(booking=booking, student=request.user)
+        except CreditRedemptionError as exc:
+            return Response({'error': exc.message}, status=exc.status_code)
+        return Response({
+            'success': True,
+            'booking_id': str(booking.id),
+            'status': booking.status,
+            'redeemed': changed,
+            'message': '1 lesson credit redeemed successfully.' if changed else 'Credit was already redeemed.',
+        })
 
 # A memo is only for lessons that have actually ended. CONFIRMED / IN_PROGRESS lessons are settled by the attendance job
 # first (which decides completed-pending-memo vs disputed), so a tutor cannot skip that check by posting a memo early.
@@ -256,20 +281,22 @@ class LegacySubmitReviewView(SubmitReviewView):
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class ReportOutageView(APIView):
     """
-    The lesson's tutor (or staff) reports an Eskom load-shedding / grid outage around the lesson (D-6):
-    1. Marks the booking INTERRUPTED_POWER.
-    2. Queues a full gateway refund for the student (they may convert it to wallet credit). The tutor is not paid and gets no strike.
-    A student cannot file this report (it would refund them while the tutor goes unpaid): a student problem goes through a dispute.
-    A lesson the tutor taught for the minimum lesson time is a delivered lesson, not an outage.
+    An Eskom load-shedding / grid outage around the lesson (D-6):
+    1. The lesson's tutor or staff can report it; a student only when the provider confirms an active outage in the tutor's area
+       (a student's own power or internet problem is a dispute, since it would refund them while the tutor goes unpaid).
+    2. The booking becomes INTERRUPTED_POWER and a full gateway refund is queued (the student may convert it to wallet credit).
+       The tutor is not paid and gets no strike.
+    3. A lesson the tutor already taught for the minimum lesson time is a delivered lesson, not an outage.
     """
     permission_classes = (permissions.IsAuthenticated,)
 
     def post(self, request, booking_id):
         booking = get_object_or_404(Booking, id=booking_id)
-        is_teacher = (booking.teacher.user == request.user)
-        if not (is_teacher or request.user.is_staff):
-            return Response({"error": "Only the lesson's tutor can report a power outage. If you had a problem with this lesson, open a dispute.",
-                             "code": "outage_report_tutor_only"}, status=status.HTTP_403_FORBIDDEN)
+        is_student = (booking.student_id == request.user.id)
+        is_teacher = (booking.teacher.user_id == request.user.id)
+        if not (is_student or is_teacher or request.user.is_staff):
+            return Response({"error": "Only the student or the tutor of this lesson can report a power outage.",
+                             "code": "not_a_party"}, status=status.HTTP_403_FORBIDDEN)
 
         raw_reason = request.data.get("reason") if hasattr(request.data, "get") else None
         reason = (str(raw_reason).strip() if isinstance(raw_reason, str) else "")[:255] or "Eskom Load Shedding / Power Interruption"
@@ -291,17 +318,44 @@ class ReportOutageView(APIView):
                                           f"{settings.OUTAGE_REPORT_AFTER_END_SECONDS // 60} minutes after it ends."},
                                 status=status.HTTP_409_CONFLICT)
 
-            from django.db.models import Sum
-            taught = AttendanceAudit.objects.filter(booking=booking, participant_email=booking.teacher.user.email) \
-                .aggregate(t=Sum('total_minutes'))['t'] or 0
+            # A student's report is accepted only when the provider independently confirms an outage in the tutor's area right now;
+            # the lesson's tutor and staff do not need that corroboration.
+            if is_student and not (is_teacher or request.user.is_staff):
+                from apps.integrations.models import EskomAreaStatus
+                area = EskomAreaStatus.objects.filter(
+                    area_id=booking.teacher.eskom_area_id,
+                    provider_status=EskomAreaStatus.ProviderStatus.OK,
+                    fresh_until__gte=now,
+                ).first()
+                corroborated = False
+                for outage in (area.outages if area and isinstance(area.outages, list) else []):
+                    start = parse_datetime(str(outage.get('start') or '')) if isinstance(outage, dict) else None
+                    end = parse_datetime(str(outage.get('end') or '')) if isinstance(outage, dict) else None
+                    if start and end and start <= now <= end:
+                        corroborated = True
+                        break
+                if not corroborated:
+                    return Response({
+                        'code': 'outage_unconfirmed',
+                        'error': 'A student outage report requires an active provider outage in the tutor\'s area, '
+                                 'or confirmation from the tutor or staff.',
+                    }, status=status.HTTP_409_CONFLICT)
+
+            # A lesson the tutor already taught for the minimum lesson time is a delivered lesson, not an outage.
+            from apps.integrations.services.attendance import credited_attendance_minutes, TEACHER
+            taught = credited_attendance_minutes(booking, TEACHER)
             if taught >= settings.LESSON_DELIVERED_MIN_TEACHER_MINUTES:
                 return Response({"error": f"The tutor already taught {taught} minutes, so this lesson counts as delivered.",
                                  "code": "lesson_delivered"}, status=status.HTTP_409_CONFLICT)
 
+            funding = funding_for_settlement(booking, context='power_outage_refund')
+            if funding is None:
+                return Response({'error': 'This booking has no verified funding record; support review is required.'},
+                                status=status.HTTP_409_CONFLICT)
             result = transition_booking(booking, Booking.Status.INTERRUPTED_POWER, actor=request.user, reason=reason)
             if result.changed:
-                # The lesson did not run: the whole capture goes back to the student through the gateway and the booking's
-                # escrow drains by exactly what was captured (the tutor is not paid for an interrupted lesson).
+                # The lesson did not run: the whole capture goes back to the student (through the gateway, or as a restored
+                # credit for a credit-funded lesson) and the booking's escrow drains by exactly what was captured.
                 from apps.payments.models import LedgerEntry, RefundRequest
                 from apps.payments.services.refunds import request_refund
                 request_refund(booking, RefundRequest.Reason.OUTAGE, event_type=LedgerEntry.EventType.OUTAGE_REFUND,

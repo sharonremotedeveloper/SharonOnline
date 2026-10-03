@@ -14,7 +14,7 @@ from django.utils import timezone
 
 from apps.bookings.models import Booking
 from apps.bookings.services.holds import hold_expires_at, live_hold_q
-from apps.bookings.services.lock_service import acquire_slot_lock, release_slot_lock
+from apps.bookings.services.lock_service import acquire_slot_lock, new_slot_lock_token, release_slot_lock
 from apps.bookings.services.slot_generator import LESSON_DURATION_MINUTES, generate_teacher_slots
 from apps.teachers.models import TeacherProfile
 
@@ -73,16 +73,18 @@ def reserve_slot(*, student, teacher_id, start_time_utc, material=None) -> Tuple
 
     # Use the generator's own timestamp string so the lock key matches the one it checks for "reserved" slots.
     lock_ts = slot['start_time_utc']
-    if not acquire_slot_lock(str(teacher.id), lock_ts, str(student.id)):
+    lock_token = new_slot_lock_token()
+    if not acquire_slot_lock(str(teacher.id), lock_ts, str(student.id), token=lock_token):
         raise ReservationError(409, "This 25-minute slot was just taken. Please choose another.")
 
     try:
         with transaction.atomic():
             booking = Booking.objects.create(
                 teacher=teacher, student=student, material=material,
-                start_time_utc=start, end_time_utc=end, status=Booking.Status.PENDING_PAYMENT)
+                start_time_utc=start, end_time_utc=end, status=Booking.Status.PENDING_PAYMENT,
+                slot_lock_token=lock_token)
     except Exception:
-        release_slot_lock(str(teacher.id), lock_ts, str(student.id))
+        release_slot_lock(str(teacher.id), lock_ts, str(student.id), token=lock_token)
         raise
     return booking, True
 

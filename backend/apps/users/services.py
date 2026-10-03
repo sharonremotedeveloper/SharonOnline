@@ -1,7 +1,7 @@
 from django.db import transaction
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
-from .tasks import KIND_PASSWORD_RESET, KIND_VERIFY_EMAIL, send_account_email_task
+from .tasks import KIND_PASSWORD_RESET, KIND_VERIFY_EMAIL, send_account_email_task, send_support_inquiry_notification
 
 
 def queue_account_email(user, kind: str) -> None:
@@ -16,6 +16,11 @@ def queue_verification_email(user) -> None:
 
 def queue_password_reset_email(user) -> None:
     queue_account_email(user, KIND_PASSWORD_RESET)
+
+
+def queue_support_inquiry(inquiry) -> None:
+    inquiry_id = str(inquiry.pk)
+    transaction.on_commit(lambda: send_support_inquiry_notification.delay(inquiry_id))
 
 
 def revoke_all_sessions(user) -> int:

@@ -4,6 +4,7 @@ from drf_spectacular.utils import extend_schema
 import logging
 from django.db import transaction
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
@@ -11,10 +12,55 @@ from rest_framework.permissions import AllowAny
 from rest_framework.throttling import ScopedRateThrottle
 
 from apps.bookings.models import Booking
+from apps.integrations.models import EskomAreaStatus
+from apps.integrations.serializers import EskomStatusSerializer
+from apps.users.permissions import IsTeacher
 from .services import attendance
 from .zoom import zoom_client
 
 logger = logging.getLogger(__name__)
+
+
+@extend_schema(responses={200: EskomStatusSerializer})
+class EskomStatusView(APIView):
+    permission_classes = (permissions.IsAuthenticated, IsTeacher)
+
+    def get(self, request):
+        profile = getattr(request.user, 'teacher_profile', None)
+        if profile is None or not profile.eskom_area_id:
+            return Response({'code': 'eskom_area_not_configured'}, status=status.HTTP_409_CONFLICT)
+        area = EskomAreaStatus.objects.filter(area_id=profile.eskom_area_id).first()
+        if area is None:
+            return Response({
+                'code': 'eskom_status_unavailable', 'area_id': profile.eskom_area_id,
+                'provider_status': 'unavailable',
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        now = timezone.now()
+        outages = area.outages if isinstance(area.outages, list) else []
+        future = []
+        for item in outages:
+            if not isinstance(item, dict):
+                continue
+            start = parse_datetime(str(item.get('start') or ''))
+            end = parse_datetime(str(item.get('end') or ''))
+            if start and end and end >= now:
+                future.append((start, item))
+        next_outage = min(future, key=lambda pair: pair[0])[1] if future else None
+        provider_status = area.provider_status
+        stale = area.fresh_until < now or provider_status != EskomAreaStatus.ProviderStatus.OK
+        if stale and provider_status == EskomAreaStatus.ProviderStatus.OK:
+            provider_status = EskomAreaStatus.ProviderStatus.STALE
+        payload = {
+            'area_id': area.area_id, 'area_name': area.area_name, 'stage': area.stage,
+            'outages': outages,
+            'next_outage_start': next_outage['start'] if next_outage else None,
+            'next_outage_end': next_outage['end'] if next_outage else None,
+            'has_inverter_backup': profile.has_inverter_backup,
+            'has_lte_failover': profile.has_lte_failover,
+            'stale': stale, 'provider_status': provider_status,
+            'retrieved_at': area.provider_retrieved_at,
+        }
+        return Response(EskomStatusSerializer(payload).data)
 
 
 @extend_schema(exclude=True)  # machine-to-machine webhook, not part of the client API
@@ -38,6 +84,7 @@ class ZoomWebhookReceiverView(APIView):
             return Response({"error": "Malformed JSON payload"}, status=status.HTTP_400_BAD_REQUEST)
 
         event = payload_data.get('event')
+        event_id = str(payload_data.get('event_id') or payload_data.get('id') or '')[:128]
 
         # 2. Zoom Endpoint URL Validation Handshake (Challenge-Response CRC)
         if event == 'endpoint.url_validation':
@@ -88,11 +135,11 @@ class ZoomWebhookReceiverView(APIView):
                 if not isinstance(participant, dict) or not participant:
                     return Response({"status": "skipped", "reason": "No participant"}, status=status.HTTP_200_OK)
                 handler = attendance.on_participant_joined if event == 'meeting.participant_joined' else attendance.on_participant_left
-                handler(booking, meeting_obj, participant, now)
+                handler(booking, meeting_obj, participant, now, event_id=event_id)
             elif event == 'meeting.started':
-                attendance.on_meeting_started(booking, meeting_obj, now)
+                attendance.on_meeting_started(booking, meeting_obj, now, event_id=event_id)
             elif event == 'meeting.ended':
-                attendance.on_meeting_ended(booking, meeting_obj, now)
+                attendance.on_meeting_ended(booking, meeting_obj, now, event_id=event_id)
 
         return Response({
             "status": "success",

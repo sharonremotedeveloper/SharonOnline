@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import Link from "next/link";
 import {
   Calendar,
@@ -20,34 +19,52 @@ import { BookingDetail } from "@/types/booking";
 import { EskomStageBanner } from "@/components/teacher/EskomStageBanner";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
+import { useAuth } from "@/context/AuthContext";
+import { viewerPeriodBounds } from "@/lib/dashboardTime";
 
 /** The server filters and counts, so nothing here depends on how many lessons the tutor has had. */
-async function loadTeacherBookings(): Promise<{ upcoming: BookingDetail[]; pendingMemos: BookingDetail[]; completedThisMonth: number }> {
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-  const [upcoming, memos, completed] = await Promise.all([
-    listBookings({ when: "upcoming", status: ["confirmed", "in_progress"], pageSize: 50 }),
-    listBookings({ status: ["completed_pending_memo"], pageSize: 50 }),
+async function loadTeacherBookings(timezone: string): Promise<{
+  upcoming: BookingDetail[];
+  pendingMemos: BookingDetail[];
+  pendingMemoCount: number;
+  todayLessons: BookingDetail[];
+  todayCount: number;
+  completedThisMonth: number;
+}> {
+  const { dayStart, dayEnd, monthStart } = viewerPeriodBounds(timezone);
+  const [upcoming, memos, today, completed] = await Promise.all([
+    listBookings({ when: "upcoming", status: ["confirmed", "in_progress"], pageSize: 1 }),
+    listBookings({ status: ["completed_pending_memo"], pageSize: 1 }),
+    listBookings({ status: ["confirmed", "in_progress"], from: dayStart, to: dayEnd, ordering: "start_time_utc", pageSize: 50 }),
     listBookings({ status: ["completed", "completed_pending_memo"], from: monthStart, pageSize: 1 }),
   ]);
-  return { upcoming: upcoming.items, pendingMemos: memos.items, completedThisMonth: completed.count };
+  return {
+    upcoming: upcoming.items,
+    pendingMemos: memos.items,
+    pendingMemoCount: memos.count,
+    todayLessons: today.items,
+    todayCount: today.count,
+    completedThisMonth: completed.count,
+  };
 }
 
 export default function TeacherDashboardPage() {
+  const { user } = useAuth();
+  const viewerTimezone = user?.timezone || "UTC";
   // Each data source loads independently so one failing source never blanks the others.
   const eskom = useApiData(() => api.getEskomStatus(), []);
   const walletQ = useApiData(() => api.getTeacherWallet(), []);
-  const bookingsQ = useApiData(loadTeacherBookings, []);
+  const bookingsQ = useApiData(() => loadTeacherBookings(viewerTimezone), [viewerTimezone]);
   const eskomStatus = eskom.data;
   const wallet = walletQ.data;
 
   const upcoming = bookingsQ.data?.upcoming ?? [];
   const pendingMemos = bookingsQ.data?.pendingMemos ?? [];
+  const pendingMemoCount = bookingsQ.data?.pendingMemoCount ?? 0;
   const completedThisMonth = bookingsQ.data?.completedThisMonth ?? 0;
   const upcomingLesson = upcoming[0] ?? null;
-  const todayLessons = useMemo(() => {
-    const todayStr = new Date().toDateString();
-    return upcoming.filter((b) => new Date(b.start_time_utc).toDateString() === todayStr);
-  }, [upcoming]);
+  const todayLessons = bookingsQ.data?.todayLessons ?? [];
+  const todayCount = bookingsQ.data?.todayCount ?? 0;
 
   const pendingMemo = pendingMemos[0] ?? null;
   const fmtWhen = (b: BookingDetail) =>
@@ -120,7 +137,7 @@ export default function TeacherDashboardPage() {
               </div>
               <div className="space-y-0.5">
                 <div className="text-xs font-bold text-plum">
-                  {pendingMemos.length} Pending Post-Lesson Memo{pendingMemos.length === 1 ? "" : "s"}
+                  {pendingMemoCount} Pending Post-Lesson Memo{pendingMemoCount === 1 ? "" : "s"}
                 </div>
                 <div className="text-sm font-black text-ink">
                   {pendingMemo.student.full_name} — {pendingMemo.material_title || "Lesson"}
@@ -226,7 +243,7 @@ export default function TeacherDashboardPage() {
                 <div className="text-2xl font-black text-emerald-800 font-serif">
                   R{wallet.cleared_balance_zar.toFixed(2)} ZAR
                 </div>
-                <p className="text-[11px] text-ink-muted">Paid out in the next batch EFT.</p>
+                <p className="text-[11px] text-ink-muted">Ledger-cleared and awaiting an approved payout workflow.</p>
               </>
             ) : (
               <>
@@ -251,7 +268,7 @@ export default function TeacherDashboardPage() {
             </div>
             {bookingsQ.data && (
               <span className="text-xs font-bold text-teal bg-teal/10 px-3 py-1 rounded-full">
-                {todayLessons.length} Scheduled {todayLessons.length === 1 ? "Lesson" : "Lessons"}
+                {todayCount} Scheduled {todayCount === 1 ? "Lesson" : "Lessons"}
               </span>
             )}
           </div>

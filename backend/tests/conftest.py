@@ -21,6 +21,10 @@ def test_environment_settings(settings):
     settings.CELERY_TASK_EAGER_PROPAGATES = True
     settings.CELERY_BROKER_URL = 'memory://'
     settings.CELERY_RESULT_BACKEND = 'cache+memory://'
+    # Password strength is a production concern, not what these tests exercise. The
+    # production hasher made each fixture user cost several seconds and turned the
+    # full regression gate into an hour-long run.
+    settings.PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
 
 @pytest.fixture
 def teacher_user(db):

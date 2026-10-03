@@ -28,7 +28,7 @@ class BookingPagination(PageNumberPagination):
 
 def scoped_bookings(user):
     """A tutor sees the lessons they teach, anyone else the lessons they booked. A tutor account with no profile sees nothing."""
-    qs = Booking.objects.select_related('teacher__user', 'student', 'material', 'memo')
+    qs = Booking.objects.select_related('teacher__user', 'student', 'student__student_profile', 'material', 'memo')
     if user.role == 'teacher':
         profile = getattr(user, 'teacher_profile', None)
         return qs.filter(teacher=profile) if profile else qs.none()
