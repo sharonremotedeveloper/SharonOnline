@@ -193,9 +193,20 @@ CREDIT_EXPIRY_DAYS_REFUND = int(os.environ.get('CREDIT_EXPIRY_DAYS_REFUND', '30'
 CREDIT_EXPIRY_DAYS_BONUS = int(os.environ.get('CREDIT_EXPIRY_DAYS_BONUS', '30'))
 CREDIT_EXPIRY_DAYS_BUNDLE = int(os.environ.get('CREDIT_EXPIRY_DAYS_BUNDLE', '30'))       # purchased packs (Task 10.6); legal review D-12 may extend this
 LESSON_DELIVERED_MIN_TEACHER_MINUTES = int(os.environ.get('LESSON_DELIVERED_MIN_TEACHER_MINUTES', '20'))
-# Dotted path of the object that talks to PayPal / PayFast to return money. Until Task 10.7 the default leaves requests
-# pending for a human to process (sandbox only).
+# Dotted path of the object that talks to PayPal / PayFast to return money (Task 10.7). The default moves no money: requests
+# wait for a person (sandbox / dev / CI). Production selects the routing backend through the environment, and
+# scripts/check_deploy.py fails a production check while this is still the manual backend.
 REFUND_GATEWAY_BACKEND = os.environ.get('REFUND_GATEWAY_BACKEND', 'apps.payments.services.refunds.ManualSandboxRefundGateway')
+# Refund claim / retry protocol (docs/TASK_10_7_REFUND_GATEWAYS_PLAN.md section 2b).
+REFUND_MAX_ATTEMPTS = int(os.environ.get('REFUND_MAX_ATTEMPTS', '8'))                              # transient retries before a human is asked ...
+REFUND_TRANSIENT_WINDOW_HOURS = int(os.environ.get('REFUND_TRANSIENT_WINDOW_HOURS', '168'))        # ... and only once this long has also passed
+REFUND_ATTEMPT_LEASE_MINUTES = int(os.environ.get('REFUND_ATTEMPT_LEASE_MINUTES', '10'))           # how long a worker owns a claimed refund
+REFUND_MANUAL_ALERT_AFTER_HOURS = int(os.environ.get('REFUND_MANUAL_ALERT_AFTER_HOURS', '72'))     # a manual-backend refund waiting this long alerts the admin
+REFUND_REPLAY_WINDOW_DAYS = int(os.environ.get('REFUND_REPLAY_WINDOW_DAYS', '30'))                 # a claimed refund older than this is never replayed blind
+REFUND_SWEEP_LIMIT = int(os.environ.get('REFUND_SWEEP_LIMIT', '25'))                               # claims per sweep
+REFUND_SWEEP_BUDGET_SECONDS = int(os.environ.get('REFUND_SWEEP_BUDGET_SECONDS', '600'))            # wall clock per sweep (beat lock TTL is 800 s)
+REFUND_POLL_INTERVAL_MINUTES = int(os.environ.get('REFUND_POLL_INTERVAL_MINUTES', '60'))           # lookup cadence for SUBMITTED refunds
+REFUND_FIRST_ATTEMPT_DELAY_MINUTES = int(os.environ.get('REFUND_FIRST_ATTEMPT_DELAY_MINUTES', '60'))   # the student's window to convert to wallet credit (provisional, Anesu to confirm)
 # EskomSePush provider. The periodic task is the only provider caller; request paths read durable cached status.
 ESKOMSEPUSH_API_KEY = os.environ.get('ESKOMSEPUSH_API_KEY', '')
 ESKOMSEPUSH_BASE_URL = os.environ.get('ESKOMSEPUSH_BASE_URL', 'https://developer.sepush.co.za/business/2.0')
