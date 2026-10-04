@@ -15,7 +15,7 @@ INTEGRATIONS = APPS / 'integrations'
 # Baseline 2026-10-04: {file (relative to apps/): number of silent failures}. Only ever lower these numbers.
 ALLOWLIST = {
     'integrations/google_calendar.py': 3,         # "not connected" / failed insert both return "" (G1 rewrites)
-    'integrations/zoom.py': 2,                    # failed/missing OAuth returns "" -> fabricated meeting (Z1)
+    'integrations/zoom.py': 1,                    # F0 made a failed OAuth raise; one "" left for Z1
 }
 
 

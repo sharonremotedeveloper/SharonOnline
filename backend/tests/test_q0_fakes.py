@@ -66,7 +66,8 @@ def test_fake_zoom_create_status_delete(fake_zoom):
     fake_zoom.set_status(meeting['meeting_id'], 'started')
     assert zoom_client.get_meeting_status(meeting['meeting_id'])['status'] == 'started'
     fake_zoom.set_status(meeting['meeting_id'], 'error')
-    assert zoom_client.get_meeting_status(meeting['meeting_id'])['status'] == 'error'
+    with pytest.raises(ZoomError):                        # since F0 a non-200 raises (the probe reads it as unknown)
+        zoom_client.get_meeting_status(meeting['meeting_id'])
     assert zoom_client.delete_meeting(meeting['meeting_id']) is True
     assert meeting['meeting_id'] not in fake_zoom.meetings
     assert zoom_client.delete_meeting(meeting['meeting_id']) is True                       # 404 counts as deleted

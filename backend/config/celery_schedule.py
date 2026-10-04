@@ -72,10 +72,11 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(minute=45),
         'options': {'queue': 'financial_escrow', 'expires': 3000},
     },
-    'retry-fulfillment-dispatches-5min': {
+    # Safety net since F0 (each failure schedules its own countdown retry; this picks up lost messages and due rows).
+    'retry-fulfillment-dispatches-1min': {
         'task': 'apps.integrations.tasks.retry_fulfillment_dispatches_task',
-        'schedule': 300.0,
-        'options': {'queue': 'critical_io', 'expires': 240},
+        'schedule': 60.0,
+        'options': {'queue': 'critical_io', 'expires': 50},
     },
 }
 

@@ -312,3 +312,8 @@ def configure_test_settings(settings):
 
 ### ERR-137: probe-only tutor presence produced a student no-show; a resolved DisputeCase hid a new dispute (F0 review M2, m7)
 - **Fix:** after a `started` probe without tutor attendance rows the T+10 job records presence only and leaves the verdict to the lesson-end check; `dispute_without_verdict` reopens a RESOLVED case (history kept in `admin_notes`). Tests: `test_probe_only_presence_never_scores_a_student_no_show`, `test_a_resolved_dispute_case_is_reopened_for_a_new_verdictless_dispute`.
+
+### ERR-190: layer-0 integration, Q0 guards failed after merging F0 (integrator block 190-199)
+- **Symptom:** on `integration/layer-0` after merging F0: `test_guard_integrations_silent_failures` ("zoom.py: allowlist says 2 but only 1 remain"), `test_guard_ruff_baseline` (new S311 in `fulfillment.py`, unused imports in `test_f0_review*.py`; then "Fixed - delete ... bookings/tasks.py C901/F841"), `test_q0_fakes::test_fake_zoom_create_status_delete` (`ZoomError` on a fake 500).
+- **Root cause:** F0 and Q0 were built in parallel. F0 removed one silent `return ""` and two old lint violations (shrink-only baselines must be lowered), added unused test imports and a `random.uniform` jitter, and made a non-200 Zoom status raise, which Q0's fake test still expected as a returned `error` status.
+- **Fix:** lowered the zoom allowlist to 1 and the ruff baseline (`bookings/tasks.py` C901/F841 removed, `BASELINE_MAX_PAIRS` 67); removed the unused imports; the jitter keeps `random` with a line-level `noqa: S311` (retry timing, not a security value; a test patches it); the fake test now expects `ZoomError`. Also applied the F0 reviewers' recommendation: the fulfilment sweep runs every 60 s (`retry-fulfillment-dispatches-1min`).

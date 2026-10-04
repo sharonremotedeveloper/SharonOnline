@@ -4,12 +4,10 @@ Slice F0, re-review condition C1:
     config.settings.local, so a shared/staging compose stack without credentials must not score fake teacher no-shows);
 (2) scripts/check_deploy.py reports missing Zoom S2S credentials.
 """
-import os
-
 import pytest
 
 from apps.integrations.zoom import ZoomError, zoom_client
-from test_refund_deploy_check import SCRIPT, _run, load_script
+from test_refund_deploy_check import _run, load_script
 
 MEETING = '55500011122'
 ZOOM_VARS = ('ZOOM_ACCOUNT_ID', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET')

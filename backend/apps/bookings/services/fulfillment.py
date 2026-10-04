@@ -120,7 +120,8 @@ def admin_requeue(dispatches, *, actor) -> list:
 def retry_delay_seconds(attempts: int, retry_after) -> int:
     """Jittered exponential backoff: FULFILLMENT_RETRY_SECONDS doubling per attempt, capped, never below retry_after."""
     base = min(settings.FULFILLMENT_RETRY_SECONDS * 2 ** min(max(attempts, 1) - 1, 20), settings.FULFILLMENT_RETRY_MAX_SECONDS)
-    delay = min(int(base * random.uniform(0.8, 1.2)), settings.FULFILLMENT_RETRY_MAX_SECONDS)
+    jitter = random.uniform(0.8, 1.2)  # noqa: S311 - spreads retry timing only, not a security value
+    delay = min(int(base * jitter), settings.FULFILLMENT_RETRY_MAX_SECONDS)
     return max(delay, int(retry_after or 0))
 
 

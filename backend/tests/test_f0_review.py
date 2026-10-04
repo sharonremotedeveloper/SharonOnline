@@ -15,16 +15,15 @@ from django.test import RequestFactory
 from django.utils import timezone
 
 from apps.admin_api.models import DisputeCase
-from apps.bookings.models import AttendanceAudit, Booking
+from apps.bookings.models import Booking
 from apps.bookings.tasks import audit_attendance_and_noshows_task
 from apps.integrations.tasks import (
-    cleanup_gcal_event, cleanup_zoom_meeting, dispatch_booking_fulfillment, retry_fulfillment_dispatches_task,
+    cleanup_gcal_event, dispatch_booking_fulfillment, retry_fulfillment_dispatches_task,
 )
 from apps.integrations.zoom import ZoomError, zoom_client
 from apps.payments.models import FulfillmentDispatch
 from apps.payments.services.webhook_handler import dispatch_fulfillment
 from apps.teachers.models import TeacherStrike
-from payment_helpers import lesson
 from test_f0_fulfilment_probe import MEETING, NEW_MEETING, at_t10, confirmed, no_penalty
 
 S = Booking.Status
