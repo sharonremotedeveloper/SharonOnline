@@ -121,8 +121,9 @@ class TestList:
         settings.REFUND_FIRST_ATTEMPT_DELAY_MINUTES = 0
         manual, plain = mk(), mk()
         refunds.process_pending_refunds()                       # the manual backend answers 'manual' for both
-        # `plain` is a pending refund whose latest answer was not manual (attempts are append-only: add a later one)
-        refunds._write_attempt(plain, 'send', 'transient')
+        assert RefundRequest.objects.get(pk=manual.pk).last_error_code == refunds.MANUAL_WAITING_CODE
+        # `plain` is a pending refund whose latest answer was not manual (any later result overwrites the marker)
+        RefundRequest.objects.filter(pk=plain.pk).update(last_error_code='503')
         body = admin.get(LIST + '?waiting_manual=true').json()
         assert {r['id'] for r in body['results']} == {str(manual.pk)}
         assert body['buckets']['waiting_manual'] == 1
@@ -130,8 +131,8 @@ class TestList:
 
     def test_waiting_manual_means_pending_only(self, mk, admin):
         r = mk()
-        refunds._write_attempt(r, 'send', 'manual')
-        refunds.mark_failed(r.pk, 'a person gave up', kind=FK.GUARD)       # latest answer is still 'manual', but it is not pending now
+        RefundRequest.objects.filter(pk=r.pk).update(last_error_code=refunds.MANUAL_WAITING_CODE)
+        refunds.mark_failed(r.pk, 'a person gave up', kind=FK.GUARD)       # the marker is still there, but it is not pending now
         body = admin.get(LIST + '?waiting_manual=true').json()
         assert body['results'] == [] and body['buckets']['waiting_manual'] == 0
 
@@ -161,7 +162,8 @@ class TestList:
         refunds._write_attempt(r, 'admin_retry', 'retry', actor=admin_user, request_id='rid')
         attempts = admin.get(LIST).json()['results'][0]['recent_attempts']
         assert len(attempts) == 5
-        assert [a['seq'] for a in attempts] == [8, 7, 6, 5, 4]
+        newest = RefundAttempt.objects.filter(refund=r).order_by('-seq').first().seq     # failed() itself writes an audit row (QA M5)
+        assert [a['seq'] for a in attempts] == [newest, newest - 1, newest - 2, newest - 3, newest - 4]
         assert set(attempts[0]) == {'seq', 'kind', 'result_state', 'http_status', 'error_code', 'created_at', 'actor'}
         assert attempts[0]['actor'] == 'test_admin' and attempts[0]['kind'] == 'admin_retry'
         assert attempts[1]['actor'] is None and attempts[1]['http_status'] == 506

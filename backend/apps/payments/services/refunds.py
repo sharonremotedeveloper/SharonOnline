@@ -214,6 +214,7 @@ FK = RefundRequest.FailureKind
 
 CAPTURE_REF_RE = re.compile(r'[A-Za-z0-9_-]{5,64}')          # matched with fullmatch(): no trailing-newline loophole
 BACKOFF = (timedelta(minutes=15), timedelta(hours=1), timedelta(hours=4), timedelta(hours=12), timedelta(hours=24))
+MANUAL_WAITING_CODE = 'MANUAL'                                # last_error_code of a pending refund that waits for a person (no audit row is written for manual answers)
 MANUAL_RECHECK = timedelta(hours=6)                           # a manual backend is looked at again this often, burning no attempt
 BREAKER_THRESHOLD = 3                                         # consecutive transient / provider-level results that stop a gateway for a sweep
 SUBMITTED_STALE_AFTER = timedelta(days=14)
@@ -724,6 +725,7 @@ def apply_result(refund_id, token: str, result: RefundResult, *, kind: str) -> s
                 refund.first_attempt_at = None
                 refund.last_attempt_at = None                # never attempted, so the student may still choose wallet credit
             _retry_later(refund, MANUAL_RECHECK, now)
+            refund.last_error_code = MANUAL_WAITING_CODE      # the admin queue's waiting-for-a-person marker; any later result overwrites it
             refund.failure_detail = (result.detail or '')[:2000]
             refund.save(update_fields=['attempts', 'first_attempt_at', 'last_attempt_at', 'next_attempt_at', 'failure_detail',
                                        'claim_token', 'claimed_until', 'last_http_status', 'last_error_code', 'updated_at'])

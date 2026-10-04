@@ -38,8 +38,9 @@ def _annotated():
 
 
 def _waiting_manual_q() -> Q:
-    """Pending, and the last thing the gateway said was 'this backend does not move money': a person has to pay it."""
-    return Q(status=RS.PENDING_GATEWAY, latest_state='manual')
+    """Pending, and the last thing the gateway said was 'this backend does not move money': a person has to pay it.
+    Manual answers write no RefundAttempt row (they asked nothing of the provider), so the service marks the row itself."""
+    return Q(status=RS.PENDING_GATEWAY, last_error_code=refunds.MANUAL_WAITING_CODE)
 
 
 def _in_flight_q(now) -> Q:
