@@ -1345,22 +1345,138 @@ class TestStateTransitions:
         with pytest.raises(ValueError):
             refunds.mark_paid_manually(r.pk, actor=admin_user, reference='  ')
 
-    def test_the_django_admin_action_goes_through_the_service_and_keeps_its_label(self, teacher_user, student_user, admin_user, rf):
-        from django.contrib.admin.sites import AdminSite
+    def test_the_django_admin_action_keeps_its_label(self):
         from apps.payments.admin import RefundRequestAdmin
-        ma = RefundRequestAdmin(RefundRequest, AdminSite())
-        messages = []
-        ma.message_user = lambda request, msg, *a, **k: messages.append(msg)
-        a, b = new_refund(teacher_user, student_user), new_refund(teacher_user, student_user)
-        set_row(b, status=RS.SUBMITTED)
-        request = rf.post('/')
-        request.user = admin_user
-        ma.mark_paid_in_gateway(request, RefundRequest.objects.filter(pk__in=[a.pk, b.pk]))
-        assert fresh(a).status == RS.PROCESSED and fresh(a).gateway_reference == f'MANUAL-{a.pk}' and fresh(b).status == RS.SUBMITTED
+        assert RefundRequestAdmin.mark_paid_in_gateway.short_description == 'Mark as paid in the gateway (posts the cash movement)'
+
+
+class TestDjangoAdminMarkPaid:
+    """M4: the admin action takes the REAL provider refund id (an intermediate form), never invents one, reports per-row errors and
+    is limited to superusers / platform admins on top of Django's change permission."""
+
+    @pytest.fixture(autouse=True)
+    def plain_static_files(self, settings):
+        """The admin pages render in tests without a collectstatic manifest."""
+        settings.STORAGES = {**settings.STORAGES, 'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}}
+
+    @pytest.fixture
+    def web(self, admin_user):
+        from django.test import Client
+        client = Client()
+        client.force_login(admin_user)
+        return client
+
+    @staticmethod
+    def url():
+        from django.urls import reverse
+        return reverse('admin:payments_refundrequest_changelist')
+
+    def _ask(self, client, refunds_, **extra):
+        data = {'action': 'mark_paid_in_gateway', '_selected_action': [str(r.pk) for r in refunds_], **extra}
+        return client.post(self.url(), data, follow=False)
+
+    def _messages(self, response):
+        return [str(m) for m in response.context['messages']] if response.context else []
+
+    def test_the_first_step_shows_a_form_and_changes_nothing(self, teacher_user, student_user, web):
+        r = new_refund(teacher_user, student_user)
+        response = self._ask(web, [r])
+        assert response.status_code == 200 and f'ref_{r.pk}' in response.content.decode()
+        assert fresh(r).status == RS.PENDING_GATEWAY and RefundAttempt.objects.count() == 0 and journals(r) == 0
+
+    def test_the_real_provider_refund_id_is_what_gets_recorded(self, teacher_user, student_user, web, admin_user):
+        r = new_refund(teacher_user, student_user)
+        response = self._ask(web, [r], apply='1', **{f'ref_{r.pk}': '  4AB12345CD678901E  '})
+        assert response.status_code == 302
+        r2 = fresh(r)
+        assert r2.status == RS.PROCESSED and r2.gateway_reference == '4AB12345CD678901E' and not r2.gateway_reference.startswith('MANUAL')
         row = RefundAttempt.objects.get()
-        assert row.kind == 'admin_mark_paid' and row.actor_id == admin_user.pk and row.refund_id == a.pk
-        assert messages == ['1 refund(s) marked as paid.']
-        assert ma.mark_paid_in_gateway.short_description == 'Mark as paid in the gateway (posts the cash movement)'
+        assert row.kind == 'admin_mark_paid' and row.actor_id == admin_user.pk and row.refund_id == r.pk
+        assert journals(r) == 2
+
+    def test_every_selected_refund_needs_its_own_reference(self, teacher_user, student_user, web):
+        a, b = new_refund(teacher_user, student_user), new_refund(teacher_user, student_user)
+        response = self._ask(web, [a, b], apply='1', **{f'ref_{a.pk}': 'GOODREF-123', f'ref_{b.pk}': ''})
+        assert response.status_code == 200                                   # form shown again with the error
+        assert fresh(a).status == RS.PENDING_GATEWAY and fresh(b).status == RS.PENDING_GATEWAY      # all or nothing
+        assert RefundAttempt.objects.count() == 0
+
+    @pytest.mark.parametrize('bad', ['', '   ', 'abcd', 'a' * 65, 'has space', 'ABC\nDEF', '../../etc', 'trés-long', 'RF<script>', 'MANUAL!'])
+    def test_blank_or_misshapen_references_are_refused(self, teacher_user, student_user, web, bad):
+        r = new_refund(teacher_user, student_user)
+        response = self._ask(web, [r], apply='1', **{f'ref_{r.pk}': bad})
+        assert response.status_code == 200 and fresh(r).status == RS.PENDING_GATEWAY and RefundAttempt.objects.count() == 0
+
+    @pytest.mark.parametrize('good', ['ABCDE', 'a' * 64, 'RF_ok-123', '4AB12345CD678901E'])
+    def test_well_formed_references_are_accepted(self, teacher_user, student_user, web, good):
+        r = new_refund(teacher_user, student_user)
+        assert self._ask(web, [r], apply='1', **{f'ref_{r.pk}': good}).status_code == 302
+        assert fresh(r).gateway_reference == good
+
+    def test_a_refund_that_cannot_be_paid_by_hand_is_reported_per_row_not_a_500(self, teacher_user, student_user, web):
+        ok, sub, done = (new_refund(teacher_user, student_user) for _ in range(3))
+        set_row(sub, status=RS.SUBMITTED)
+        refunds.mark_processed(done.pk, 'RF-DONE-1')
+        data = {f'ref_{ok.pk}': 'REF-OK-0001', f'ref_{sub.pk}': 'REF-SUB-0001', f'ref_{done.pk}': 'REF-DONE-0001'}
+        response = web.post(self.url(), {'action': 'mark_paid_in_gateway', 'apply': '1',
+                                         '_selected_action': [str(r.pk) for r in (ok, sub, done)], **data}, follow=True)
+        assert response.status_code == 200
+        assert fresh(ok).status == RS.PROCESSED and fresh(ok).gateway_reference == 'REF-OK-0001'
+        assert fresh(sub).status == RS.SUBMITTED and fresh(done).gateway_reference == 'RF-DONE-1'      # untouched
+        messages = self._messages(response)
+        assert any(str(sub.pk) in m and 'submitted' in m for m in messages)
+        assert any('1 refund(s) marked as paid' in m for m in messages)
+        assert journals(ok) == 2 and journals(sub) == 0 and journals(done) == 2
+
+    def test_a_failed_refund_can_be_paid_by_hand(self, teacher_user, student_user, web):
+        r = set_row(new_refund(teacher_user, student_user), status=RS.FAILED, failure_kind='rejected')
+        assert self._ask(web, [r], apply='1', **{f'ref_{r.pk}': 'MANUAL-REF-77'}).status_code == 302
+        assert fresh(r).status == RS.PROCESSED
+
+    def _staff(self, *, role, superuser=False, perms=('change_refundrequest', 'view_refundrequest')):
+        from django.contrib.auth.models import Permission
+        from django.test import Client
+        from apps.users.models import User
+        user = User.objects.create_user(username=f'staff-{role}-{superuser}-{len(perms)}', email=f'{role}{superuser}{len(perms)}@t.com', password='x',
+                                        role=role, is_staff=True, is_superuser=superuser)
+        user.user_permissions.add(*Permission.objects.filter(codename__in=perms, content_type__app_label='payments'))
+        client = Client()
+        client.force_login(user)
+        return client, user
+
+    @pytest.mark.parametrize('role', ['student', 'teacher'])
+    def test_a_staff_user_who_is_not_a_platform_admin_cannot_do_it_even_with_the_django_permission(self, teacher_user, student_user, role):
+        client, _ = self._staff(role=role)
+        r = new_refund(teacher_user, student_user)
+        self._ask(client, [r], apply='1', **{f'ref_{r.pk}': 'REF-NOPE-001'})
+        self._ask(client, [r])
+        assert fresh(r).status == RS.PENDING_GATEWAY and RefundAttempt.objects.count() == 0
+
+    def test_the_platform_admin_role_alone_is_not_enough_without_the_django_change_permission(self, teacher_user, student_user):
+        client, _ = self._staff(role='admin', perms=('view_refundrequest',))
+        r = new_refund(teacher_user, student_user)
+        self._ask(client, [r], apply='1', **{f'ref_{r.pk}': 'REF-NOPE-002'})
+        assert fresh(r).status == RS.PENDING_GATEWAY
+
+    def test_a_platform_admin_with_the_change_permission_can(self, teacher_user, student_user):
+        client, user = self._staff(role='admin')
+        r = new_refund(teacher_user, student_user)
+        assert self._ask(client, [r], apply='1', **{f'ref_{r.pk}': 'REF-YES-0001'}).status_code == 302
+        assert fresh(r).status == RS.PROCESSED and RefundAttempt.objects.get().actor_id == user.pk
+
+    def test_a_superuser_can_whatever_the_role_field_says(self, teacher_user, student_user):
+        client, _ = self._staff(role='teacher', superuser=True)
+        r = new_refund(teacher_user, student_user)
+        assert self._ask(client, [r], apply='1', **{f'ref_{r.pk}': 'REF-SUPER-01'}).status_code == 302
+        assert fresh(r).status == RS.PROCESSED
+
+    def test_the_action_calls_only_the_service_with_the_actor(self, teacher_user, student_user, web, admin_user, monkeypatch):
+        seen = []
+        real = refunds.mark_paid_manually
+        monkeypatch.setattr(refunds, 'mark_paid_manually', lambda pk, *, actor, reference: seen.append((pk, actor, reference)) or real(pk, actor=actor, reference=reference))
+        r = new_refund(teacher_user, student_user)
+        self._ask(web, [r], apply='1', **{f'ref_{r.pk}': 'SERVICE-REF-1'})
+        assert seen == [(r.pk, admin_user, 'SERVICE-REF-1')]
 
 
 # ================================================================================================ retry_failed

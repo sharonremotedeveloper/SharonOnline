@@ -1,0 +1,39 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+  &rsaquo; <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; {{ title }}
+</div>
+{% endblock %}
+
+{% block content %}
+<p>
+  Mark each refund as paid only AFTER you returned the money in the gateway's own console. Enter the refund id the gateway
+  shows (PayPal refund id, 5 to 64 letters, digits, "-" or "_"). It is stored on the refund and posts the cash movement to the
+  ledger once. Nothing is posted until every reference is valid.
+</p>
+<form method="post">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <table>
+    <thead><tr><th>Refund</th><th>Amount</th><th>Status</th><th>Gateway refund id</th></tr></thead>
+    <tbody>
+    {% for refund, field in rows %}
+      <tr>
+        <td>{{ refund.pk }}</td>
+        <td>{{ refund.amount }} {{ refund.currency }}</td>
+        <td>{{ refund.status }}</td>
+        <td>{{ field.errors }}{{ field }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% for pk in selected %}<input type="hidden" name="_selected_action" value="{{ pk }}">{% endfor %}
+  <input type="hidden" name="action" value="mark_paid_in_gateway">
+  <input type="hidden" name="apply" value="1">
+  <p><input type="submit" class="default" value="Mark as paid"> <a href="{% url opts|admin_urlname:'changelist' %}">Cancel</a></p>
+</form>
+{% endblock %}
