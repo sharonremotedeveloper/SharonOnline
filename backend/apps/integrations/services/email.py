@@ -27,8 +27,8 @@ SENT, RETRYABLE, FAILED, IN_FLIGHT = 'sent', 'retryable', 'failed', 'in_flight'
 MODE_RESEND, MODE_CONSOLE = 'resend', 'console'
 MAX_IDEMPOTENCY_KEY_LENGTH = 256          # Resend's documented limit
 _LINE_BREAK = re.compile(r'[\r\n]')
-_SAFE_PROVIDER_NAME = re.compile(r'^[a-z][a-z0-9_]{0,63}$')
-_SAFE_MESSAGE_ID = re.compile(r'^[A-Za-z0-9_.:-]{1,128}$')
+_SAFE_PROVIDER_NAME = re.compile(r'[a-z][a-z0-9_]{0,63}')       # used with fullmatch (no trailing-newline loophole)
+_SAFE_MESSAGE_ID = re.compile(r'[A-Za-z0-9_.:-]{1,128}')
 
 
 class InvalidEmailError(ValueError):
@@ -127,10 +127,10 @@ def _classify(response) -> EmailResult:
     body = _json_or_empty(response)
     if 200 <= status_code < 300:
         message_id = str(body.get('id') or '')
-        return EmailResult(SENT, provider_message_id=message_id if _SAFE_MESSAGE_ID.match(message_id) else '',
+        return EmailResult(SENT, provider_message_id=message_id if _SAFE_MESSAGE_ID.fullmatch(message_id) else '',
                            http_status=status_code)
     name = str(body.get('name') or '')
-    code = f'http_{status_code}:{name}' if _SAFE_PROVIDER_NAME.match(name) else f'http_{status_code}'
+    code = f'http_{status_code}:{name}' if _SAFE_PROVIDER_NAME.fullmatch(name) else f'http_{status_code}'
     if status_code == 409:                     # same key, different payload or a concurrent request: retry later
         return EmailResult(IN_FLIGHT, error_code=code, http_status=status_code)
     if status_code == 429 or status_code >= 500:

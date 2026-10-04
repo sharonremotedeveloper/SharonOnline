@@ -139,6 +139,16 @@ class TestErrorMapping:
         resend.response = FakeResponse(422, {'name': f'<{ADDRESS}> bad', 'message': 'x'})
         assert send().error_code == 'http_422'
 
+    def test_an_odd_provider_id_is_not_kept(self, resend, caplog):
+        resend.response = FakeResponse(200, {'id': f'{ADDRESS}'})
+        with caplog.at_level('DEBUG'):
+            result = send()
+        assert (result.status, result.provider_message_id) == ('sent', '') and ADDRESS not in caplog.text
+
+    def test_a_provider_name_with_a_trailing_newline_is_dropped(self, resend):
+        resend.response = FakeResponse(422, {'name': 'validation_error\n'})
+        assert send().error_code == 'http_422'
+
     def test_2xx_without_json_is_still_sent(self, resend):
         resend.response = FakeResponse(200, None)
         result = send()
