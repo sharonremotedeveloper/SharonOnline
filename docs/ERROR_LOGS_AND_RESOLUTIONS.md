@@ -238,3 +238,13 @@ def configure_test_settings(settings):
 - **Symptom:** `ValueError: Missing staticfiles manifest entry for 'admin/css/base.css'` when a test rendered the refund admin form.
 - **Root cause:** settings use `CompressedManifestStaticFilesStorage`; tests never run collectstatic.
 - **Fix:** the admin tests switch `STORAGES['staticfiles']` to the plain `StaticFilesStorage` (fixture `plain_static_files`); production settings untouched.
+
+### ERR-180: `render_html` test expected a plain `str` (slice N1c)
+- **Symptom:** `tests/test_send_email.py::TestEscapingHelper::test_result_is_a_plain_string` failed: `assert <class 'SafeString'> is str` after `str(format_html(...))`.
+- **Root cause:** `SafeString.__str__` returns the object itself, so `str()` cannot strip the safe marker; the test's expectation was the wrong contract, not a code bug.
+- **Fix:** `render_html` returns the `SafeString` from `format_html` (it is a `str`, already escaped, so a Django template will not escape it twice); the test now asserts `isinstance(..., SafeString)`. Documented in `docs/NOTIFICATIONS.md`.
+
+### ERR-181: provider id / error-name filters let a trailing newline through (slice N1c)
+- **Symptom:** found while writing the mutation table: `re.compile(r'^[a-z_]+$').match('validation_error\n')` matches, so a provider error name (or message id) ending in a newline would reach `error_code` and the log line.
+- **Root cause:** Python's `$` also matches just before a final `\n`.
+- **Fix:** both filters in `apps/integrations/services/email.py` use `fullmatch` without anchors. Tests: `test_a_provider_name_with_a_trailing_newline_is_dropped`, `test_an_odd_provider_id_is_not_kept` (mutants 16 and 17 in `docs/mutation/N1c.md`).
