@@ -2166,6 +2166,122 @@ class TestLogSafetyEmailDedupeAndActor:
             refunds.retry_failed(r.pk)                                  # the keyword is mandatory: there is no system default
 
 
+class FakeHttpResponse:
+    def __init__(self, status=200, payload=None, headers=None):
+        self.status_code, self.payload, self.headers = status, payload if payload is not None else {}, headers or {}
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            import requests
+            raise requests.HTTPError(str(self.status_code))
+
+    def json(self):
+        return self.payload
+
+
+@pytest.fixture
+def wire(monkeypatch, settings):
+    """The REAL stack - router, PayPal adapter, paypal client, apply_result - with only `requests` replaced."""
+    from apps.payments.gateways import paypal
+    settings.REFUND_GATEWAY_BACKEND = 'apps.payments.services.refund_gateways.RoutingRefundGateway'
+    state = {'calls': [], 'queue': []}
+    monkeypatch.setattr(paypal.requests, 'post', lambda url, **kw: FakeHttpResponse(200, {'access_token': 'TOK-123', 'expires_in': 3600}))
+
+    def fake_request(method, url, **kw):
+        state['calls'].append({'method': method, 'url': url, **kw})
+        return state['queue'].pop(0)
+    monkeypatch.setattr(paypal.requests, 'request', fake_request)
+    return state
+
+
+class TestEndToEndThroughTheRouter:
+    """QA (a): process_pending_refunds -> RoutingRefundGateway -> PayPalRefundGateway -> paypal.create_refund -> apply_result."""
+
+    def test_completed(self, teacher_user, student_user, wire):
+        wire['queue'].append(FakeHttpResponse(201, {'id': 'RFDONE12345', 'status': 'COMPLETED'}))
+        r = new_refund(teacher_user, student_user)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, completed=1)
+        call = wire['calls'][0]
+        assert call['method'] == 'POST' and call['url'].endswith(f'/v2/payments/captures/{r.payment_transaction.gateway_reference}/refund')
+        assert call['headers']['PayPal-Request-Id'] == f'refund-{r.pk}'
+        assert call['json'] == {'amount': {'value': '9.00', 'currency_code': 'USD'}, 'note_to_payer': 'Refund from Sharon Online',
+                                'invoice_id': str(r.pk)}
+        r = fresh(r)
+        assert r.status == RS.PROCESSED and r.gateway_reference == 'RFDONE12345' and journals(r) == 2
+        assert net(r.booking, ACC.ASSET_GATEWAY_PAYPAL) == 0
+
+    def test_pending_then_the_poll_completes_it(self, teacher_user, student_user, wire, clock):
+        wire['queue'].extend([FakeHttpResponse(201, {'id': 'RFPEND12345', 'status': 'PENDING'}),
+                              FakeHttpResponse(200, {'id': 'RFPEND12345', 'status': 'COMPLETED'})])
+        r = new_refund(teacher_user, student_user)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, submitted=1)
+        assert fresh(r).status == RS.SUBMITTED and fresh(r).gateway_reference == 'RFPEND12345' and journals(r) == 0
+        clock.advance(61 * MIN)
+        assert refunds.process_pending_refunds() == result_dict(polled=1, completed=1)
+        assert wire['calls'][1]['method'] == 'GET' and wire['calls'][1]['url'].endswith('/v2/payments/refunds/RFPEND12345')
+        assert fresh(r).status == RS.PROCESSED and journals(r) == 2 and len(wire['calls']) == 2          # never re-sent
+
+    def test_capture_fully_refunded_is_failed_already_refunded_with_an_alert(self, teacher_user, student_user, wire):
+        wire['queue'].append(FakeHttpResponse(422, {'name': 'UNPROCESSABLE_ENTITY', 'details': [{'issue': 'CAPTURE_FULLY_REFUNDED'}]}))
+        r = new_refund(teacher_user, student_user)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, rejected=1)
+        r = fresh(r)
+        assert r.status == RS.FAILED and r.failure_kind == 'already_refunded' and r.last_http_status == 422
+        assert r.last_error_code == 'CAPTURE_FULLY_REFUNDED' and journals(r) == 0
+        assert alerts('refund_failed_already_refunded', r.pk).count() == 1
+
+    def test_429_with_retry_after_waits_and_replays_the_same_request_id(self, teacher_user, student_user, wire, clock):
+        wire['queue'].extend([FakeHttpResponse(429, {'name': 'RATE_LIMIT_REACHED'}, {'Retry-After': '7200'}),
+                              FakeHttpResponse(201, {'id': 'RFLATER1234', 'status': 'COMPLETED'})])
+        r = new_refund(teacher_user, student_user)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, transient=1)
+        assert fresh(r).next_attempt_at == clock.now + 2 * HOUR and fresh(r).status == RS.PENDING_GATEWAY and fresh(r).attempts == 1
+        clock.advance(HOUR)
+        assert refunds.process_pending_refunds() == result_dict() and len(wire['calls']) == 1          # honoured: not asked again early
+        clock.advance(HOUR + MIN)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, completed=1)
+        assert [c['headers']['PayPal-Request-Id'] for c in wire['calls']] == [f'refund-{r.pk}'] * 2
+        assert fresh(r).status == RS.PROCESSED
+
+    def test_a_malformed_capture_id_is_stopped_by_the_guard_before_any_http(self, teacher_user, student_user, wire):
+        r = new_refund(teacher_user, student_user)
+        PaymentTransaction.objects.filter(pk=r.payment_transaction_id).update(gateway_reference='bad id/../x')
+        assert refunds.process_pending_refunds() == result_dict()
+        assert wire['calls'] == [] and fresh(r).status == RS.FAILED and fresh(r).failure_kind == 'guard'
+
+    def test_payfast_stays_manual_through_the_router_without_any_http(self, teacher_user, student_user, wire, settings):
+        settings.PAYFAST_REFUNDS_ENABLED = False
+        r = new_refund(teacher_user, student_user, gateway='payfast', amount='168.75', currency='ZAR')
+        assert refunds.process_pending_refunds() == result_dict(sent=1, manual=1)
+        assert wire['calls'] == [] and fresh(r).status == RS.PENDING_GATEWAY and fresh(r).attempts == 0 and RefundAttempt.objects.count() == 0
+
+    def test_missing_paypal_credentials_stay_manual_without_any_http(self, teacher_user, student_user, wire, settings):
+        settings.PAYPAL_CLIENT_ID = settings.PAYPAL_CLIENT_SECRET = ''
+        r = new_refund(teacher_user, student_user)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, manual=1)
+        assert wire['calls'] == [] and fresh(r).status == RS.PENDING_GATEWAY
+
+
+class TestClockSeamCoversTheTimestampsTouched:
+    """QA (c): every time stamp the QA fixes touch comes from refunds._now, so tests (and replays) can walk time."""
+
+    def test_stamps_follow_the_patched_clock_not_the_wall_clock(self, teacher_user, student_user, admin_user, clock, settings):
+        clock.advance(400 * DAY)
+        settings.REFUND_FIRST_ATTEMPT_DELAY_MINUTES = 60
+        a = new_refund(teacher_user, student_user)
+        refunds.mark_processed(a.pk, 'RF-CLK-1')
+        assert fresh(a).processed_at == clock.now
+        b = new_refund(teacher_user, student_user)
+        refunds.convert_to_wallet(b.pk)
+        assert fresh(b).processed_at == clock.now
+        c = set_row(new_refund(teacher_user, student_user), status=RS.FAILED, failure_kind='exhausted', attempts=3)
+        refunds.retry_failed(c.pk, actor=admin_user, confirm_not_refunded=True)
+        assert fresh(c).first_attempt_at == clock.now
+        d = TestDeferredRefundWindow()._deferred(teacher_user, student_user, settings, clock, ref='CAP-CLK')
+        refunds.activate_deferred_refunds(d[0])
+        assert fresh(d[1]).next_attempt_at == clock.now + 60 * MIN
+
+
 class TestAuditTrailCoversEveryTransition:
     """M5: every status transition of a refund leaves exactly one immutable RefundAttempt row, never a duplicate on a replay."""
 

@@ -172,3 +172,31 @@ Match by `gateway_reference` first; found and `SUBMITTED` -> `mark_processed`, e
 | R-C | admin API list/retry + OpenAPI + generated TS + student "On its way" label; docs (CANCELLATION_AND_REFUNDS, SETTLEMENT_PATHS, ADR, ops runbook); roadmap | R-B |
 | QA | independent review + mutation checks | R-A, R-B, R-C |
 | ARCH | final diff review | all |
+
+
+---
+
+## QA fixes (2026-10-04)
+
+Branch `feature/10-7f-qa-fixes` (from `feature/10-7-refund-gateways`). Each item was written test-first and mutation-checked.
+
+| Item | Change |
+| :--- | :--- |
+| H1 | One helper `ledger_service.gateway_cash_account(tx)` (gateway only, never currency) for capture, DEF-501, unallocated, credit-pack and refund postings. A PayPal ZAR payment now nets 1020 to zero after its refund (ERR-110). |
+| H2 | `config/settings/guard.py` refuses to boot production on the Manual refund backend (unset/blank resolves to it) unless `ALLOW_MANUAL_REFUNDS_IN_PROD` is truthy. `.env.example` documents `REFUND_GATEWAY_BACKEND` (production value `apps.payments.services.refund_gateways.RoutingRefundGateway`) and the override. `scripts/check_deploy.py` stays as a smoke test of the Routing path. Blank `REFUND_GATEWAY_BACKEND` in base settings now means the default. |
+| M1 | PayPal 404 RESOURCE_NOT_FOUND / INVALID_RESOURCE_ID on the SEND path is an ordinary per-row transient (`provider_level` False, code kept): attempts and the exhaustion rule apply (a 404-only row ends `failed(exhausted)`, never `replay_window`); the per-gateway breaker still trips on 3 in a row. New per-refund alert `refund_capture_not_found` after 3 straight 404s of the current request id. Lookup path unchanged (provider-level). |
+| M2 | `retry_failed` from `rejected` / `provider_failed` needs `confirm_not_refunded` when attempts > 1 or an earlier send/poll row of the same request id was transient/manual. A single definitive answer keeps the no-confirm retry. |
+| M3 | `activate_deferred_refunds` stamps `next_attempt_at = now + REFUND_FIRST_ATTEMPT_DELAY_MINUTES`; the student's wallet-conversion window restarts when the money arrives. |
+| M4 | Django-admin "Mark as paid" is a two-step action with a validated form (real gateway refund id per row, `^[A-Za-z0-9_-]{5,64}$`, no invented `MANUAL-<pk>`), per-row error messages (no 500), restricted to superusers / `role == admin` plus Django change permission. |
+| M5 | `RefundAttempt.kind` gains `webhook`, `convert`, `guard`, `mark_failed` (migration 0021, choices only). One row per guard / replay-window failure, webhook completion (`mark_processed(..., via_webhook=True)`), wallet conversion (actor = the student) and `mark_failed`; no duplicates on replays. |
+| M6 | `paypal_events.apply_refund` returns after the CRITICAL `refund_after_convert` alert (no fall-through to `_external_refund`); the unreachable `except RefundStateError` branch is removed. |
+| L1 | A `manual` answer writes no RefundAttempt row and does not count against `REFUND_SWEEP_LIMIT`. |
+| L2 | The apply-failure log line carries type name and ids only (no text, no traceback). |
+| L3 | Refund e-mail dedupe is an atomic `cache.add` before sending, deleted on failure. |
+| L4 | `retry_failed` requires an actor. |
+
+Deviations / notes: a fourth new kind `mark_failed` was added (the brief listed three); `mark_failed` and `convert_to_wallet` gained an optional `actor`. `'manual'` stays in the M2 ambiguity query only for rows written before L1.
+
+**UNVERIFIED:** how long PayPal retains a `PayPal-Request-Id` versus `REFUND_REPLAY_WINDOW_DAYS=30` (the plan assumes ~45 days). Confirm in the PayPal sandbox/docs before go-live; if retention is shorter, lower the replay window.
+
+Follow-up (not done here): split `refunds.py` (about 850 lines).
