@@ -9,15 +9,22 @@ Source scans (AST, not regex) with a **baseline allowlist** at the top of each f
 
 | Guard | File | What fails | Baseline (2026-10-04) |
 | :--- | :--- | :--- | :--- |
-| (a) tutor status writes | `test_guard_teacher_status_writes.py` | `is_verified` / `is_active` / `status` written on a TeacherProfile (attribute, tuple target, `setattr`, ORM `create/update/get_or_create/update_or_create` kwargs or `defaults`) outside `teachers/vetting.py` | 4 files, 8 writes (`admin_api/views.py` 2, `teachers/strikes.py` 2, two seed commands 2+2). **T1a empties it.** |
-| (b) row locks over joins | `test_guard_select_for_update.py` | a queryset chain with `select_for_update()` (no `of=`) and `select_related(...)`, either order, multi-line | 4 files, 9 sites (`credits.py` 3, `grace.py` 3, `webhook_handler.py` 2, `integrations/views.py` 1). PaymentTransaction is zero-tolerance (supersedes the Task 10.7 scan). |
-| (c) HTTP timeouts | `test_guard_http_timeouts.py` | `requests.<verb>(...)` / `httpx.<verb>(...)` without `timeout=` | empty |
-| (d) PII in logs | `test_guard_pii_logging.py` | a `logger/log/logging.<level>` call that interpolates (f-string, `%`, `.format`, or lazy `%s` arg) an expression whose name mentions email / token / password / phone / secret | 3 files, 8 calls (`bookings/tasks.py` 5, `integrations/email.py` 1, `integrations/services/attendance.py` 2) |
+| (a) tutor status writes | `test_guard_teacher_status_writes.py` | `is_verified` / `is_active` / `status` written on a TeacherProfile (attribute incl. tuple targets, `setattr`, `update(...)` kwargs and `**{...}`, `bulk_update` field lists, TeacherProfile `create/get_or_create/update_or_create` kwargs or `defaults`) outside `teachers/vetting.py`. Receiver heuristic below. | 4 files, 8 writes (`admin_api/views.py` 2, `teachers/strikes.py` 2, two seed commands 2+2). **T1a empties it.** |
+| (b) row locks over joins | `test_guard_select_for_update.py` | a queryset chain with `select_for_update()` whose `of=` is missing or does not name `'self'`, plus `select_related(...)`; either order, multi-line, and split across two statements in one function (`qs = X.select_related(...)` then `qs.select_for_update()`) | 4 files, 9 sites (`credits.py` 3, `grace.py` 3, `webhook_handler.py` 2, `integrations/views.py` 1). PaymentTransaction is zero-tolerance (supersedes the Task 10.7 scan). |
+| (c) HTTP timeouts | `test_guard_http_timeouts.py` | `requests` / `httpx` verb calls (also through `import requests as r` and `from requests import post`) without `timeout=`, or with `timeout=None` | empty |
+| (d) PII in logs | `test_guard_pii_logging.py` | a logging call (`logger`, `log`, `logging`, or any name/attribute ending in `logger` / `_log`, e.g. `self.logger`) that interpolates (f-string, `%`, `.format`, `+` concatenation, lazy `%s` arg, `extra={...}`) an expression whose name ENDS in email / token / password / phone / secret (snake_case and camelCase split into words; `phone_number`, `email_address` too; `token_count` is not flagged) | 3 files, 8 calls (`bookings/tasks.py` 5, `integrations/email.py` 1, `integrations/services/attendance.py` 2) |
+| booking status | `tests/test_booking_state_machine.py::TestNoDirectStatusWrites` (pre-existing, extended) | `x.status = Booking.Status...`, `.update(status=Booking.Status...)`, and a Booking `create/get_or_create/update_or_create` in any status other than `PENDING_PAYMENT` | `seed_phase41_data.py` 3 (demo bookings) |
 | (e) silent failures | `test_guard_integrations_silent_failures.py` | in `apps/integrations/`: an `except` whose body is only `pass`, or `return ""` | 2 files, 5 sites (`google_calendar.py` 3, `zoom.py` 2) |
 | (f) view permissions | `test_guard_view_permissions.py` | a DRF view class in `apps/*/*views*.py` without `permission_classes` in its body or a same-module base; an `@api_view` without `@permission_classes` | empty |
 | (g) migration leaves | `test_guard_migration_leaves.py` | `MigrationLoader.detect_conflicts() != {}` (two leaves in one app after parallel merges) | no allowlist |
 | (h) `.env.example` | `test_guard_env_example.py` | a key read in `config/settings/*.py` (`os.environ.get/[]`, `os.getenv`, `env.get/[]`, `_env_bool`, `_int`) that has no `KEY=` / `# KEY=` line in `.env.example` | 25 keys (cancellation/strike/credit policy, refund worker tuning, `SUPPORT_TO_EMAIL`, `BEHIND_NO_PROXY`, `PAYPAL_CAPTURE_CONFIRMS`, `LESSON_DELIVERED_MIN_TEACHER_MINUTES`) |
-| ruff baseline | `test_guard_ruff_baseline.py` | a ruff violation outside the baseline, a baseline entry that no longer matches, or the baseline growing past 69 pairs | see §2 |
+| ruff baseline | `test_guard_ruff_baseline.py` | a ruff violation outside the baseline, a baseline entry that no longer matches, the baseline growing past 69 pairs, or a C901 / S / B count per (file, code) going up (or down without lowering `RUFF_COUNTS`) | see §2 |
+
+**Receiver heuristic of guard (a)** (no types, only the receiver's source text): availability / strike / slot -> other model;
+then teacher / profile / tutor -> tutor (so `request.user.teacher_profile` is a tutor); then user / pack / price / bundle /
+booking / transaction / refund / purchase -> other; anything else (`locked`, `qs`) -> unknown; `self` -> tutor only inside
+`class TeacherProfile`. `is_verified` is flagged everywhere, `is_active` on tutor and unknown receivers, `status` on tutor
+receivers only. The guard parser accepts a UTF-8 BOM and a syntax error names the file.
 
 **The ratchet** (`guards/_scan.py::ratchet_errors`): allowlists are `{file: count}` (not line numbers, so moving code does not
 break them). A file not listed, or with more sites than allowed, fails ("NEW offender"). A file with **fewer** sites than
@@ -39,16 +46,21 @@ pagination rules of plan §5 are follow-ups; the per-kind notification-template 
   star imports; `scripts/mutate.py` (and its test) run git/pytest subprocesses.
 - `[lint.extend-per-file-ignores]` - **baseline**: the rule codes each file violated on 2026-10-04 (173 violations, 53 files,
   69 file/code pairs). Only remove entries. New files must be clean: `ruff check .` must exit 0.
+- Because a file-level ignore would hide a second violation of the same code, `test_guard_ruff_baseline.py::RUFF_COUNTS` pins
+  the number of C901 and S* / B* violations per (file, code) (42 violations, 26 pairs). A higher count fails ("NEW"); a lower
+  count fails until you lower `RUFF_COUNTS` (and delete the ruff.toml entry when it reaches 0). F codes stay per-file.
 
 No `# noqa` sweep (`--add-noqa` is not allowed); a targeted `# noqa: <code> - reason` on one new line is acceptable.
 Version pinned in `requirements-dev.txt` (`ruff==0.14.14`).
 
 ## 3. No-network fixture (`tests/network_guard.py`, autouse `no_network`)
 
-Blocks `socket.connect` / `connect_ex` / `getaddrinfo` for non-local hosts. Allowed: Unix sockets, localhost / loopback, and
-the hosts in `DATABASE_URL`, `REDIS_URL`, `REDIS_TEST_URL` (plus the addresses they resolve to), so the Postgres and Redis
-jobs work. A blocked call raises `NetworkBlocked` (a `RuntimeError`, deliberately not an `OSError`, so `requests` never
-turns it into a "provider down, retry" path). Opt out with `@pytest.mark.allow_network`.
+Blocks `socket.connect` / `connect_ex` / `getaddrinfo` / `gethostbyname` / `gethostbyname_ex` for non-local hosts. Allowed:
+Unix sockets, localhost / loopback, and the hosts in `DATABASE_URL`, `REDIS_URL`, `REDIS_TEST_URL` (plus the addresses they
+resolve to), so the Postgres and Redis jobs work. A blocked call raises `NetworkBlocked` (a `RuntimeError`, deliberately
+not an `OSError`, so `requests` never turns it into a "provider down, retry" path) AND is recorded: the fixture fails the
+test at teardown if any attempt happened, even when application code swallowed the exception (`except Exception`). A test
+that provokes a block on purpose takes the record with `network_guard.consume()`. Opt out with `@pytest.mark.allow_network`.
 
 ## 4. Fakes (`tests/fakes.py`) and fixtures (`tests/conftest.py`)
 
@@ -62,6 +74,12 @@ They replace the provider at the HTTP / SDK boundary, so the real client code ru
 | `fake_r2` | boto3 S3 client stub returned by `get_r2_client()` | `put_object/head_object/get_object(Range, IfMatch)/copy_object(CopySourceIfMatch)/delete_object/generate_presigned_url`, real `ClientError` codes (`404`, `NoSuchKey`, `PreconditionFailed`), `.objects`, `.calls`, `.presigned` |
 
 Every fake HTTP call must pass `timeout=`; an unexpected URL is an `AssertionError`.
+
+**FakeR2 caveat:** the fixture patches the module attribute `apps.common.r2_client.get_r2_client`. It only takes effect where
+the client is looked up through that global at call time: inside `r2_client.py` call `get_r2_client()` by its global name,
+and elsewhere use `r2_client.get_r2_client()` (module attribute), never `from apps.common.r2_client import get_r2_client`
+(that binds the real function at import time and bypasses the fake). The same applies to the `requests` attribute that
+FakeResend / FakeZoom / FakeGoogle replace in `integrations/{email,zoom,google_calendar}.py`.
 
 ## 5. Factories (`tests/factories.py`) and the clock
 
@@ -88,7 +106,8 @@ leaves. Smoke test: `tests/test_q0_migration_helpers.py` (users 0004 -> 0005).
 python scripts/mutate.py --file apps/x.py --line 42 --find "<=" --replace "<" --test tests/test_x.py [--test ...]
 ```
 Refuses a dirty tree (`git status --porcelain` non-empty), mutates the first occurrence on that one line, refuses a Python
-mutant that does not compile, runs pytest with bytecode writing off, restores the file byte-for-byte in a `finally` and
+mutant that does not compile, prints the backup path (recover from it if the process is killed), runs pytest with bytecode
+writing off, restores the file byte-for-byte in a `finally` and
 verifies it by hash. Exit 0 = KILLED, 1 = SURVIVED, 2 = refused / no verdict. In Windows PowerShell 5.1 escape embedded
 double quotes (`'return \"\"'`), see ERR-120. Each slice records its mutants in `docs/mutation/<slice>.md`.
 
