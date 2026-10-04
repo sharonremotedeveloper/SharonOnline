@@ -149,13 +149,24 @@ def transition_teacher(teacher, to_status, *, actor, reason='', rubric=None, rev
 
 
 def create_teacher_profile(user, *, status=St.APPLIED, actor, reason='', **fields) -> TeacherProfile:
-    """Create a tutor profile in `status` with its baseline audit row (from_status '')."""
+    """
+    Create a tutor profile in `status` with its baseline audit row (from_status ''). STAFF and SYSTEM may create any
+    status; the tutor (SELF) only `applied`; anyone else nothing.
+    """
     _check_status(status)
-    _kind, label, actor_user = _actor(actor, user.pk)
+    kind, label, actor_user = _actor(actor, user.pk)
+    if kind is None or (kind == SELF and status != St.APPLIED):
+        raise TransitionNotPermitted(None, '', status, kind or 'another user')
     with transaction.atomic():
         profile = TeacherProfile.objects.create(user=user, status=status, **fields)
         _record(profile.pk, '', status, label, actor_user, reason, None, None)
     return profile
+
+
+def record_baseline(profile, *, actor, reason='') -> None:
+    """Baseline audit row for a profile created outside create_teacher_profile (the Django admin "add" form)."""
+    _kind, label, actor_user = _actor(actor, profile.user_id)
+    _record(profile.pk, '', profile.status, label, actor_user, reason, None, None)
 
 
 _FRESH_FIELDS = ['status', 'is_verified', 'is_active', 'updated_at']

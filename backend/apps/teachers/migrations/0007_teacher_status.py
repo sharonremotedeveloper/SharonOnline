@@ -8,8 +8,10 @@ two old booleans onto a status (plan §3.1, docs/TUTOR_STATUS_MACHINE.md §6). H
     (False, True)             ->  applied       suspended                                  -> (True,  False)
     (True,  False)            ->  suspended     applied|submitted|in_review|changes_requested -> (False, True)
 
-Approved tutors are grandfathered (`training_completed_at` = migration time) so the T6 training gate never blocks a live
-tutor. Every profile gets one baseline audit row ('' -> status, actor 'system:migration_0007').
+Approved and suspended tutors (both were vetted and live) are grandfathered (`training_completed_at` = migration time) so
+the T6 training gate never blocks a live or reinstated tutor. Note: any (is_verified True, is_active False) row maps to
+`suspended`, whatever produced it (a strike deactivation, a Django-admin edit, or a reject recorded that way by hand);
+the old booleans cannot tell these apart, so staff must review suspended tutors after the deploy. Every profile gets one baseline audit row ('' -> status, actor 'system:migration_0007').
 """
 import uuid
 
@@ -21,6 +23,8 @@ from django.utils import timezone
 ACTOR = 'system:migration_0007'
 FORWARD = {(True, True): 'approved', (False, False): 'rejected', (False, True): 'applied', (True, False): 'suspended'}
 BACKWARD = {'approved': (True, True), 'suspended': (True, False), 'rejected': (False, False)}   # others -> (False, True)
+# Vetted, once-live tutors count as trained: approved, and suspended (they were approved before the strike/admin action).
+GRANDFATHERED = ('approved', 'suspended')
 STATUS_CHOICES = [
     ('applied', 'Applied'), ('submitted', 'Submitted for review'), ('in_review', 'In review'), ('approved', 'Approved'),
     ('changes_requested', 'Changes requested'), ('rejected', 'Rejected'), ('suspended', 'Suspended'),
@@ -32,7 +36,7 @@ def booleans_to_status(apps, schema_editor):
     Change = apps.get_model('teachers', 'TeacherStatusChange')
     now = timezone.now()
     for (verified, active), status in FORWARD.items():
-        extra = {'training_completed_at': now} if status == 'approved' else {}
+        extra = {'training_completed_at': now} if status in GRANDFATHERED else {}
         Profile.objects.filter(is_verified=verified, is_active=active).update(status=status, **extra)
     rows = [Change(teacher_id=pk, from_status='', to_status=status, actor=ACTOR, reason='baseline', reviewed_assets={})
             for pk, status in Profile.objects.values_list('pk', 'status').iterator()]

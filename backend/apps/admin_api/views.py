@@ -118,7 +118,9 @@ class PendingTeachersListView(APIView):
 class VerifyTeacherView(APIView):
     # LEGACY (T1a shim, T1b replaces it with explicit review actions): approve / reject in one call by walking the shortest
     # legal path to `approved` / `rejected` through teachers/vetting.py, as the admin. Same response shape and codes as
-    # before; a target the transition table cannot reach is 409. (A comment, not a docstring: it would leak into OpenAPI.)
+    # before; a target the transition table cannot reach is 409. A rejection never walks through `approved` (that would
+    # record a fake reinstatement), so rejecting a suspended tutor is 409. T1b must delete this shim before N1a wires
+    # notify_status_change. (A comment, not a docstring: it would leak into OpenAPI.)
     permission_classes = [IsPlatformAdmin]
 
     def patch(self, request, pk):
@@ -126,14 +128,13 @@ class VerifyTeacherView(APIView):
         serializer.is_valid(raise_exception=True)
         is_verified = serializer.validated_data['is_verified']
         reason = serializer.validated_data.get('rejection_reason', '') or 'legacy-verify'
-
-        profile = TeacherProfile.objects.filter(pk=pk).first()
-        if profile is None:
-            return Response({'error': 'Teacher profile not found'}, status=status.HTTP_404_NOT_FOUND)
         target = TeacherProfile.Status.APPROVED if is_verified else TeacherProfile.Status.REJECTED
         try:
             with transaction.atomic():
-                path = _legacy_verify_path(TeacherProfile.objects.select_for_update().get(pk=pk).status, target)
+                profile = TeacherProfile.objects.select_for_update().filter(pk=pk).first()    # the one read, locked
+                if profile is None:
+                    return Response({'error': 'Teacher profile not found'}, status=status.HTTP_404_NOT_FOUND)
+                path = _legacy_verify_path(profile.status, target)
                 if path is None:
                     raise vetting.InvalidTeacherTransition(profile.pk, profile.status, target)
                 for step in path:
@@ -150,8 +151,12 @@ class VerifyTeacherView(APIView):
 
 
 def _legacy_verify_path(current, target):
-    """Shortest list of statuses from `current` to `target` over the staff edges (breadth first); None if unreachable."""
-    queue, seen = [(current, [])], {current}
+    """
+    Shortest list of statuses from `current` to `target` over the staff edges (breadth first); None if unreachable.
+    A path to `rejected` may not pass through `approved` (no fake reinstatement in the audit trail).
+    """
+    avoid = {TeacherProfile.Status.APPROVED} if target == TeacherProfile.Status.REJECTED else set()
+    queue, seen = [(current, [])], {current} | avoid
     while queue:
         node, path = queue.pop(0)
         if node == target:

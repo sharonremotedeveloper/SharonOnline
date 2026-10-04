@@ -1,5 +1,7 @@
 from django.contrib import admin
+from django.db import transaction
 from .models import TeacherProfile, TeacherAvailability, TeacherStatusChange
+from .vetting import record_baseline
 
 class TeacherAvailabilityInline(admin.TabularInline):
     model = TeacherAvailability
@@ -49,6 +51,13 @@ class TeacherProfileAdmin(admin.ModelAdmin):
             'description': 'Public audio snippets, profile avatars, and private TEFL certificates managed in Cloudflare R2.'
         }),
     )
+
+    def save_model(self, request, obj, form, change):
+        """An admin-added profile starts `applied` (status is read-only) and gets its baseline audit row."""
+        with transaction.atomic():
+            super().save_model(request, obj, form, change)
+            if not change:
+                record_baseline(obj, actor=request.user, reason='created in Django admin')
 
     def get_name(self, obj):
         return obj.user.get_full_name() or obj.user.username

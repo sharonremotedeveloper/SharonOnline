@@ -1,3 +1,5 @@
+from contextlib import ExitStack, contextmanager
+
 from django.db import models
 from django.db.models import Case, Q, Value, When
 from django.conf import settings
@@ -8,6 +10,22 @@ STATUS_VALUES = ('applied', 'submitted', 'in_review', 'approved', 'changes_reque
 VERIFIED_STATUSES = ('approved', 'suspended')
 ACTIVE_STATUSES = ('applied', 'submitted', 'in_review', 'changes_requested', 'approved')
 GENERATED_FLAGS = frozenset({'is_verified', 'is_active'})
+# Written only with an explicit update_fields by their owners (vetting.py / strikes.py); a full-row save skips them.
+SERVICE_OWNED = ('status', 'sla_strikes')
+_INTERNAL = '_internal_generated_write'
+
+
+@contextmanager
+def _internal_write(instance):
+    """Let Django's own machinery set the generated flags on `instance` (re-entrant)."""
+    state = instance.__dict__
+    state[_INTERNAL] = state.get(_INTERNAL, 0) + 1
+    try:
+        yield
+    finally:
+        state[_INTERNAL] -= 1
+        if not state[_INTERNAL]:
+            del state[_INTERNAL]
 
 
 def _refuse_generated(names, where):
@@ -27,6 +45,16 @@ class TeacherProfileQuerySet(models.QuerySet):
     def bulk_update(self, objs, fields, *args, **kwargs):
         _refuse_generated(fields, 'QuerySet.bulk_update')
         return super().bulk_update(objs, fields, *args, **kwargs)
+
+    def bulk_create(self, objs, *args, **kwargs):
+        objs = list(objs)
+        with ExitStack() as stack:          # INSERT ... RETURNING sets the generated flags on each object
+            for obj in objs:
+                stack.enter_context(_internal_write(obj))
+            created = super().bulk_create(objs, *args, **kwargs)
+        for obj in created:
+            obj._remember_owned(SERVICE_OWNED)
+        return created
 
 
 class TeacherProfile(models.Model):
@@ -90,17 +118,57 @@ class TeacherProfile(models.Model):
             models.CheckConstraint(condition=Q(status__in=STATUS_VALUES), name='teacherprofile_status_valid'),
         ]
 
+    # ---- tripwires (docs/TUTOR_STATUS_MACHINE.md §4). Django's own loading/saving may set the generated flags on an
+    # instance (from_db, refresh_from_db, INSERT ... RETURNING, bulk_create); everything else raises.
     def __init__(self, *args, **kwargs):
         # from_db() passes field values positionally, so only callers can hit this; Django would silently drop them.
         hit = GENERATED_FLAGS.intersection(kwargs)
         if hit:
             raise TypeError(f"{sorted(hit)} are generated from status; pass status=... (plan §3.1).")
-        super().__init__(*args, **kwargs)
+        with _internal_write(self):
+            super().__init__(*args, **kwargs)
+
+    def __setattr__(self, name, value):
+        if name in GENERATED_FLAGS and not self.__dict__.get(_INTERNAL):
+            raise AttributeError(f"TeacherProfile.{name} is generated from status; use apps.teachers.vetting.transition_teacher.")
+        super().__setattr__(name, value)
+
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        instance._remember_owned(SERVICE_OWNED)
+        return instance
+
+    def refresh_from_db(self, using=None, fields=None, from_queryset=None):
+        with _internal_write(self):
+            super().refresh_from_db(using=using, fields=fields, from_queryset=from_queryset)
+        self._remember_owned(SERVICE_OWNED if fields is None else [n for n in SERVICE_OWNED if n in fields])
 
     def save(self, *args, **kwargs):
         if kwargs.get('update_fields') is not None:
             _refuse_generated(kwargs['update_fields'], 'save(update_fields=...)')   # Django would make it a silent no-op
-        super().save(*args, **kwargs)
+        elif not self._state.adding and not kwargs.get('force_insert'):
+            # A full-row save never writes the service-owned columns: a stale copy (e.g. a DRF PATCH that loaded the
+            # profile before a strike suspended the tutor) must not write `approved` back. Changing them here is an error.
+            kwargs['update_fields'] = self._full_row_fields()
+        written = kwargs.get('update_fields')
+        with _internal_write(self):
+            super().save(*args, **kwargs)
+        self._remember_owned(SERVICE_OWNED if written is None else [n for n in SERVICE_OWNED if n in written])
+
+    def _remember_owned(self, names):
+        loaded = self.__dict__.setdefault('_loaded_owned', {})
+        loaded.update({n: self.__dict__[n] for n in names if n in self.__dict__})
+
+    def _full_row_fields(self):
+        loaded = self.__dict__.get('_loaded_owned', {})
+        changed = sorted(n for n, v in loaded.items() if self.__dict__.get(n, v) != v)
+        if changed:
+            raise ValueError(f"{changed} changed on the instance: status only via apps.teachers.vetting.transition_teacher, "
+                             "sla_strikes only via apps.teachers.strikes.add_strike.")
+        deferred = self.get_deferred_fields()
+        return [f.name for f in self._meta.concrete_fields
+                if not (f.primary_key or f.generated or f.name in SERVICE_OWNED or f.attname in deferred)]
 
     @property
     def resolved_avatar_url(self) -> str:

@@ -185,24 +185,65 @@ def test_detector_ignores_reads_and_other_models(tmp_path):
     assert teacher_status_writes(ok) == []
 
 
+# Strict detector receivers (apps/teachers/ only). Every receiver counts as a TeacherProfile (neutral names such as `locked`,
+# `qs`, `row` included) EXCEPT: a `Model.objects...` chain of another model, `self` inside another class, and names of the
+# other teachers-app models that have (or will have) their own `status` (documents, applications, training, ...).
+OTHER_TEACHERS_MODELS = re.compile(r'document|application|training|progress|asset|upload|module|course|quiz|strike|availab|slot',
+                                   re.IGNORECASE)
+MODEL_CHAIN = re.compile(r'^([A-Z]\w*)\.objects\b')
+
+
+def strict_receiver_is_tutor(receiver_text, enclosing_class=None):
+    if receiver_text == 'self':
+        return enclosing_class in TUTOR_CLASSES
+    chain = MODEL_CHAIN.match(receiver_text)
+    if chain:
+        return chain.group(1) in TUTOR_CLASSES
+    return not OTHER_TEACHERS_MODELS.search(receiver_text)
+
+
+class _StrictVisitor(ast.NodeVisitor):
+    def __init__(self):
+        self.hits, self.classes = [], []
+
+    def visit_ClassDef(self, node):
+        self.classes.append(node.name)
+        self.generic_visit(node)
+        self.classes.pop()
+
+    def _tutor(self, receiver):
+        return strict_receiver_is_tutor(src(receiver), self.classes[-1] if self.classes else None)
+
+    def _assign(self, node, targets):
+        self.hits += [f'{node.lineno}: {src(a)} = ...' for t in targets for a in _attr_targets(t)
+                      if a.attr == 'status' and self._tutor(a.value)]
+        self.generic_visit(node)
+
+    def visit_Assign(self, node):
+        self._assign(node, node.targets)
+
+    def visit_AugAssign(self, node):
+        self._assign(node, [node.target])
+
+    def visit_AnnAssign(self, node):
+        self._assign(node, [node.target])
+
+    def visit_Call(self, node):
+        func = node.func
+        if isinstance(func, ast.Name) and func.id == 'setattr' and len(node.args) >= 2 \
+                and isinstance(node.args[1], ast.Constant) and node.args[1].value == 'status' and self._tutor(node.args[0]):
+            self.hits.append(f'{node.lineno}: setattr(..., "status", ...)')
+        elif isinstance(func, ast.Attribute) and func.attr in CREATE_METHODS | UPDATE_METHODS | {BULK_UPDATE} \
+                and self._tutor(func.value):
+            self.hits += [f'{node.lineno}: {func.attr}({how}...)' for field, how in _written_fields(node) if field == 'status']
+        self.generic_visit(node)
+
+
 def strict_status_writes(path):
-    """Inside apps/teachers/: ANY `.status` assignment / setattr, or `status=` kwarg to an ORM write method."""
-    hits = []
-    for node in ast.walk(parse(path)):
-        if isinstance(node, (ast.Assign, ast.AugAssign, ast.AnnAssign)):
-            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            hits += [f'{node.lineno}: {src(a)} = ...' for t in targets for a in _attr_targets(t) if a.attr == 'status']
-        elif isinstance(node, ast.Call):
-            func = node.func
-            if isinstance(func, ast.Name) and func.id == 'setattr' and len(node.args) >= 2 \
-                    and isinstance(node.args[1], ast.Constant) and node.args[1].value == 'status':
-                hits.append(f'{node.lineno}: setattr(..., "status", ...)')
-            elif isinstance(func, ast.Attribute) and func.attr in CREATE_METHODS | UPDATE_METHODS | {BULK_UPDATE}:
-                hits += [f'{node.lineno}: {func.attr}(status=...)' for kw in node.keywords if kw.arg == 'status']
-                hits += [f'{node.lineno}: {func.attr}([... "status" ...])' for arg in node.args
-                         if isinstance(arg, (ast.List, ast.Tuple)) and any(
-                             isinstance(e, ast.Constant) and e.value == 'status' for e in arg.elts)]
-    return hits
+    """Inside apps/teachers/: any `status` write on a (possible) TeacherProfile receiver, see strict_receiver_is_tutor."""
+    visitor = _StrictVisitor()
+    visitor.visit(parse(path))
+    return visitor.hits
 
 
 def test_strict_detector_ignores_other_teachers_app_models_with_their_own_status(tmp_path):
@@ -245,8 +286,8 @@ def test_the_service_itself_is_seen_by_the_strict_detector():
 
 def test_strict_detector_shapes(tmp_path):
     bad = tmp_path / 'bad.py'
-    bad.write_text("locked.status = 'x'\nsetattr(row, 'status', 'x')\nQ.objects.filter().update(status='x')\n"
-                   "Q.objects.bulk_update(rows, ['status'])\n", encoding='utf-8')
+    bad.write_text("locked.status = 'x'\nsetattr(row, 'status', 'x')\nTeacherProfile.objects.filter().update(status='x')\n"
+                   "TeacherProfile.objects.bulk_update(rows, ['status'])\n", encoding='utf-8')
     assert len(strict_status_writes(bad)) == 4
     ok = tmp_path / 'ok.py'
     ok.write_text("x = profile.status\nQ.objects.filter(status='approved')\n", encoding='utf-8')
