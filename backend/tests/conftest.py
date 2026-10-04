@@ -18,6 +18,8 @@ def test_environment_settings(settings):
     from django.core.cache import cache
     cache.clear()  # throttle counters / locks must not leak between tests
     settings.CELERY_TASK_ALWAYS_EAGER = True
+    # A developer .env may select the real refund router; no test may reach a payment gateway by accident.
+    settings.REFUND_GATEWAY_BACKEND = 'apps.payments.services.refund_gateways.ManualSandboxRefundGateway'
     settings.CELERY_TASK_EAGER_PROPAGATES = True
     settings.CELERY_BROKER_URL = 'memory://'
     settings.CELERY_RESULT_BACKEND = 'cache+memory://'

@@ -30,13 +30,18 @@ class RefundListView(generics.ListAPIView):
 
 @extend_schema(request=None, responses=RefundSerializer)
 class ConvertRefundToWalletView(APIView):
-    """Turn a still-pending gateway refund into 30-day wallet credit (instead of waiting for the card/PayPal refund)."""
+    """
+    Turn a still-pending gateway refund into 30-day wallet credit (instead of waiting for the card/PayPal refund). Only before the
+    gateway has been asked: afterwards the money may already be on its way, and the answer is 409 `refund_in_progress`.
+    """
     permission_classes = (IsStudent,)
 
     def post(self, request, refund_id):
         refund = get_object_or_404(RefundRequest, pk=refund_id, user=request.user)
         try:
-            refunds.convert_to_wallet(refund.pk)
+            refunds.convert_to_wallet(refund.pk, actor=request.user)
+        except refunds.RefundInProgress as exc:
+            return Response({"error": str(exc), "code": "refund_in_progress"}, status=status.HTTP_409_CONFLICT)
         except refunds.RefundStateError as exc:
             return Response({"error": str(exc), "code": "already_processed"}, status=status.HTTP_409_CONFLICT)
         refund.refresh_from_db()

@@ -1,3 +1,4 @@
+import logging
 import os
 import json
 from urllib.parse import urlparse
@@ -7,12 +8,17 @@ from django.core.exceptions import ImproperlyConfigured
 
 _DEV_SECRET_PREFIX = 'django-insecure'
 SANDBOX_PAYFAST_MERCHANT_ID = '10000100'
+_DEFAULT_REFUND_BACKEND = 'apps.payments.services.refunds.ManualSandboxRefundGateway'    # what settings/base.py uses when the env is unset
+_ROUTING_REFUND_BACKEND = 'apps.payments.services.refund_gateways.RoutingRefundGateway'
 _LOCAL_HOSTS = {'localhost', '127.0.0.1', '0.0.0.0', 'backend', '::1'}
 
 
 def _is_local_origin(origin: str) -> bool:
     host = urlparse(origin).hostname or ''
     return host in _LOCAL_HOSTS or host.endswith('.localhost')
+
+
+_log = logging.getLogger(__name__)
 
 
 def validate_production_settings(env=os.environ):
@@ -105,6 +111,18 @@ def validate_production_settings(env=os.environ):
         for name in ('PAYPAL_CLIENT_SECRET', 'PAYPAL_WEBHOOK_ID'):
             if not env.get(name):
                 errors.append(f'{name} is required when PayPal is configured')
+
+    # Refunds: the manual backend moves no money, so a production process left on it (the base default) would queue every refund
+    # forever while the ledger says "owed". Unset or blank resolves to that default, so it is refused too.
+    refund_backend = (env.get('REFUND_GATEWAY_BACKEND', '') or '').strip() or _DEFAULT_REFUND_BACKEND
+    if refund_backend.rsplit('.', 1)[-1] == 'ManualSandboxRefundGateway' and env.get('ALLOW_MANUAL_REFUNDS_IN_PROD', '').lower() not in truthy:
+        errors.append(f'REFUND_GATEWAY_BACKEND is the manual refund backend, which never returns money to students; set it to '
+                      f'{_ROUTING_REFUND_BACKEND}, or set ALLOW_MANUAL_REFUNDS_IN_PROD=1 only for a deliberate staging deploy')
+
+    if (refund_backend.rsplit('.', 1)[-1] == 'RoutingRefundGateway'
+            and not (env.get('PAYPAL_CLIENT_ID') and env.get('PAYPAL_CLIENT_SECRET'))):
+        _log.warning('REFUND_GATEWAY_BACKEND is the routing backend but PayPal credentials are blank: PayPal refunds will wait for a person '
+                     '(manual answers) until PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET are set.')
 
     if errors:
         raise ImproperlyConfigured('Unsafe production configuration: ' + '; '.join(errors))

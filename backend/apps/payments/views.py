@@ -322,7 +322,7 @@ class PayFastWebhookView(APIView):
 
         # Phase 2 - lock and apply; re-check state because it may have changed during the postback.
         with transaction.atomic():
-            tx = PaymentTransaction.objects.select_for_update().select_related('booking').get(pk=tx.pk)
+            tx = PaymentTransaction.objects.select_for_update(of=('self',)).select_related('booking').get(pk=tx.pk)
             if tx.status in SETTLED_STATES:
                 if tx.gateway_reference == pf_payment_id:
                     return Response("OK", status=status.HTTP_200_OK)

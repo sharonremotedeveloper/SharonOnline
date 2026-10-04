@@ -17,6 +17,7 @@ GOOD = {
     'RESEND_API_KEY': 're_live_abcdefghijklmnop',
     'PAYOUT_DATA_KEYS': json.dumps({'v1': Fernet.generate_key().decode()}),
     'PAYOUT_DATA_ACTIVE_KEY': 'v1',
+    'REFUND_GATEWAY_BACKEND': 'apps.payments.services.refund_gateways.RoutingRefundGateway',
 }
 
 
@@ -134,3 +135,74 @@ def test_live_payfast_return_cancel_urls_default_from_frontend_when_unset():
     env = {**GOOD, **LIVE_PAYFAST}
     del env['PAYFAST_RETURN_URL'], env['PAYFAST_CANCEL_URL']
     validate_production_settings(env)  # defaults derive from the (already guarded https) FRONTEND_BASE_URL
+
+
+# ---- Task 10.7 QA H2: production must refuse the manual (money-less) refund backend AT BOOT --------------------------------
+MANUAL_PATHS = [
+    'apps.payments.services.refunds.ManualSandboxRefundGateway',
+    'apps.payments.services.refund_gateways.ManualSandboxRefundGateway',
+    'some.other.module.ManualSandboxRefundGateway',
+]
+
+
+@pytest.mark.parametrize('backend', MANUAL_PATHS)
+def test_the_manual_refund_backend_is_refused_at_boot(backend):
+    with pytest.raises(ImproperlyConfigured, match='REFUND_GATEWAY_BACKEND'):
+        validate_production_settings({**GOOD, 'REFUND_GATEWAY_BACKEND': backend})
+
+
+@pytest.mark.parametrize('blank', ['', '   '])
+def test_an_unset_or_blank_refund_backend_resolves_to_the_manual_default_and_is_refused(blank):
+    env = {k: v for k, v in GOOD.items() if k != 'REFUND_GATEWAY_BACKEND'}
+    with pytest.raises(ImproperlyConfigured, match='REFUND_GATEWAY_BACKEND'):
+        validate_production_settings(env)
+    with pytest.raises(ImproperlyConfigured, match='REFUND_GATEWAY_BACKEND'):
+        validate_production_settings({**env, 'REFUND_GATEWAY_BACKEND': blank})
+
+
+def test_the_routing_refund_backend_is_accepted():
+    validate_production_settings({**GOOD, 'REFUND_GATEWAY_BACKEND': 'apps.payments.services.refund_gateways.RoutingRefundGateway'})
+
+
+@pytest.mark.parametrize('flag', ['1', 'true', 'YES'])
+def test_the_manual_refund_backend_needs_the_explicit_override(flag):
+    validate_production_settings({**GOOD, 'REFUND_GATEWAY_BACKEND': MANUAL_PATHS[0], 'ALLOW_MANUAL_REFUNDS_IN_PROD': flag})
+
+
+@pytest.mark.parametrize('flag', ['', '0', 'false', 'no'])
+def test_a_falsy_override_does_not_unlock_the_manual_backend(flag):
+    with pytest.raises(ImproperlyConfigured, match='REFUND_GATEWAY_BACKEND'):
+        validate_production_settings({**GOOD, 'REFUND_GATEWAY_BACKEND': MANUAL_PATHS[0], 'ALLOW_MANUAL_REFUNDS_IN_PROD': flag})
+
+
+def test_the_override_is_not_needed_for_the_routing_backend():
+    validate_production_settings({**GOOD, 'ALLOW_MANUAL_REFUNDS_IN_PROD': '0'})
+
+
+def test_the_error_names_the_override_and_the_production_value():
+    with pytest.raises(ImproperlyConfigured) as raised:
+        validate_production_settings({**GOOD, 'REFUND_GATEWAY_BACKEND': MANUAL_PATHS[0]})
+    text = str(raised.value)
+    assert 'ALLOW_MANUAL_REFUNDS_IN_PROD' in text and 'RoutingRefundGateway' in text
+
+
+def test_a_blank_refund_backend_env_means_the_default_in_base_settings(monkeypatch):
+    from importlib import import_module, reload
+    base = import_module('config.settings.base')
+    try:
+        monkeypatch.setenv('REFUND_GATEWAY_BACKEND', '')
+        assert reload(base).REFUND_GATEWAY_BACKEND == 'apps.payments.services.refunds.ManualSandboxRefundGateway'
+        monkeypatch.setenv('REFUND_GATEWAY_BACKEND', '   ')
+        assert reload(base).REFUND_GATEWAY_BACKEND == 'apps.payments.services.refunds.ManualSandboxRefundGateway'
+        monkeypatch.setenv('REFUND_GATEWAY_BACKEND', 'apps.payments.services.refund_gateways.RoutingRefundGateway')
+        assert reload(base).REFUND_GATEWAY_BACKEND.endswith('RoutingRefundGateway')
+    finally:
+        monkeypatch.undo()
+        reload(base)
+
+
+def test_env_example_documents_both_refund_settings():
+    from pathlib import Path
+    example = (Path(__file__).resolve().parents[2] / '.env.example').read_text(encoding='utf-8')
+    assert 'REFUND_GATEWAY_BACKEND=' in example and 'ALLOW_MANUAL_REFUNDS_IN_PROD=' in example
+    assert 'apps.payments.services.refund_gateways.RoutingRefundGateway' in example

@@ -60,7 +60,7 @@ def settle_completed_capture(tx_pk, capture: dict, *, payload: dict) -> str:
     reference = capture.get('custom_id')
     fee = (capture.get('seller_receivable_breakdown') or {}).get('paypal_fee') or {}
     with transaction.atomic():
-        tx = PaymentTransaction.objects.select_for_update().select_related('booking').get(pk=tx_pk)
+        tx = PaymentTransaction.objects.select_for_update(of=('self',)).select_related('booking').get(pk=tx_pk)
         if tx.status in SETTLED_STATES:
             if tx.gateway_reference == capture_id:
                 return 'duplicate'

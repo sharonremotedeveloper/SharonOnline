@@ -292,6 +292,9 @@ class RefundRequest(models.Model):
         AWAITING_CLEARANCE = 'awaiting_clearance', 'Waiting for the payment to clear'
         VOID = 'void', 'Not needed (the payment never cleared)'
         PENDING_GATEWAY = 'pending_gateway', 'Waiting for the gateway'
+        # The provider accepted the refund but has not finished it (PayPal PENDING). Polled by `lookup` and finished by the
+        # PAYMENT.CAPTURE.REFUNDED webhook; never re-sent, never convertible to wallet credit (the money is on its way).
+        SUBMITTED = 'submitted', 'On its way'
         PROCESSED = 'processed', 'Paid to the original payment method'
         CONVERTED = 'converted', 'Converted to wallet credit'
         FAILED = 'failed', 'Gateway refused (needs a human)'
@@ -304,18 +307,85 @@ class RefundRequest(models.Model):
     currency = models.CharField(max_length=3)
     reason = models.CharField(max_length=20, choices=Reason.choices)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING_GATEWAY, db_index=True)
-    gateway_reference = models.CharField(max_length=255, blank=True)
+    gateway_reference = models.CharField(max_length=255, blank=True)        # the provider's refund id
     failure_detail = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     processed_at = models.DateTimeField(null=True, blank=True)
 
+    # --- Task 10.7 claim / call / apply protocol (docs/TASK_10_7_REFUND_GATEWAYS_PLAN.md section 2b) ---
+    class FailureKind(models.TextChoices):
+        REJECTED = 'rejected', 'The provider refused it'
+        ALREADY_REFUNDED = 'already_refunded', 'The provider says the payment is already fully refunded'
+        GUARD = 'guard', 'A safety check refused it before any call'
+        EXHAUSTED = 'exhausted', 'Retries ran out'
+        REPLAY_WINDOW = 'replay_window', 'Too old to replay blind'
+        PROVIDER_FAILED = 'provider_failed', 'The provider failed it after accepting it'
+
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)                  # send attempts that may have reached the provider
+    next_attempt_at = models.DateTimeField(null=True, blank=True)           # backoff / next poll
+    last_attempt_at = models.DateTimeField(null=True, blank=True)
+    first_attempt_at = models.DateTimeField(null=True, blank=True)          # start of the transient and replay windows
+    claim_token = models.CharField(max_length=32, blank=True)               # '' when no worker holds the row
+    claimed_until = models.DateTimeField(null=True, blank=True)             # lease of the live claim
+    gateway_request_id = models.CharField(max_length=80, blank=True)        # stable idempotency key, stored on the first claim
+    request_epoch = models.PositiveSmallIntegerField(default=0)             # bumped when a human retries after a certain refusal
+    failure_kind = models.CharField(max_length=24, blank=True, choices=FailureKind.choices)
+    last_http_status = models.PositiveSmallIntegerField(null=True, blank=True)
+    last_error_code = models.CharField(max_length=64, blank=True)
+
     class Meta:
         ordering = ['-created_at']
         constraints = [models.UniqueConstraint(fields=['booking', 'reason'], name='uniq_refund_per_booking_reason')]
+        indexes = [models.Index(fields=['status', 'next_attempt_at'], name='refund_status_next_idx')]
 
     def __str__(self):
         return f"Refund {self.amount} {self.currency} ({self.reason}, {self.status})"
+
+
+class RefundAttempt(models.Model):
+    """
+    Append-only audit of what was done to a refund: one row per claim result (send / poll), per admin action and per other status
+    transition (webhook completion, wallet conversion, guard / replay-window failure, marked failed), written inside the
+    transaction that applies it. Never updated or deleted. (A `manual` answer is not an attempt and leaves no row.)
+    """
+    class Kind(models.TextChoices):
+        SEND = 'send', 'Sent to the gateway'
+        POLL = 'poll', 'Polled the gateway'
+        ADMIN_RETRY = 'admin_retry', 'Retried by an admin'
+        ADMIN_MARK_PAID = 'admin_mark_paid', 'Marked paid by an admin'
+        WEBHOOK = 'webhook', 'Completed by a PayPal webhook'
+        CONVERT = 'convert', 'Converted to wallet credit'
+        GUARD = 'guard', 'Stopped by a safety guard before sending'
+        MARK_FAILED = 'mark_failed', 'Marked failed'
+
+    id = models.BigAutoField(primary_key=True)
+    refund = models.ForeignKey(RefundRequest, on_delete=models.PROTECT, related_name='attempt_log')
+    seq = models.PositiveIntegerField()
+    kind = models.CharField(max_length=16, choices=Kind.choices)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    request_id = models.CharField(max_length=80, blank=True)
+    result_state = models.CharField(max_length=16, blank=True)
+    http_status = models.PositiveSmallIntegerField(null=True, blank=True)
+    error_code = models.CharField(max_length=64, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    objects = ImmutableFinancialQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['refund_id', 'seq']
+        constraints = [models.UniqueConstraint(fields=['refund', 'seq'], name='uniq_refund_attempt_seq')]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise LedgerImmutabilityError('Refund attempts are immutable.')
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise LedgerImmutabilityError('Refund attempts are immutable.')
+
+    def __str__(self):
+        return f"Refund {self.refund_id} #{self.seq} {self.kind} -> {self.result_state}"
 
 
 class CreditWalletEntry(models.Model):

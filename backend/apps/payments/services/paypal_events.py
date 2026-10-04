@@ -23,6 +23,7 @@ from apps.admin_api.models import DisputeCase
 from apps.payments.gateways import paypal
 from apps.payments.models import CreditPurchase, PaymentTransaction, RefundRequest
 from apps.payments.services import grace, refunds
+from apps.payments.services.alerts import alert_admin
 from apps.payments.services.anomalies import record_anomaly
 from apps.payments.services.paypal_capture import (CaptureRejected, record_failed_capture, record_pending_capture,
                                                    settle_completed_capture, verify_capture_amount)
@@ -183,18 +184,48 @@ def on_capture_refunded(event: dict) -> str:
 
 
 def apply_refund(tx_pk, refund_id: str, amount: Decimal, currency: str, event: dict) -> str:
+    """
+    A COMPLETED refund PayPal reports for one of our payments. Order matters: (1) our own refund by its provider id (a
+    SUBMITTED one is finished here; a FAILED one PayPal now says was paid after all is finished too, because the money did
+    move), (2) one of our open refunds with the same amount, (3) a converted/void request that is being paid twice (CRITICAL),
+    (4) a refund made outside our flow.
+    """
     with transaction.atomic():
-        tx = PaymentTransaction.objects.select_for_update().select_related('booking').get(pk=tx_pk)
+        tx = PaymentTransaction.objects.select_for_update(of=('self',)).select_related('booking').get(pk=tx_pk)
         requests = RefundRequest.objects.select_for_update().filter(payment_transaction=tx)
-        if requests.filter(gateway_reference=refund_id).exists():
+        known = requests.filter(gateway_reference=refund_id).first()
+        if known is not None:
+            if known.status in (RefundRequest.Status.SUBMITTED, RefundRequest.Status.FAILED):
+                refunds.mark_processed(known.pk, refund_id, via_webhook=True)     # the provider finished it: post the cash leg once
+                return 'refund_completed'
             return 'duplicate'
         amount = quantize_money(amount, currency or tx.currency)
-        ours = [r for r in requests.filter(status__in=(RefundRequest.Status.PENDING_GATEWAY, RefundRequest.Status.FAILED))
-                .order_by('created_at') if r.currency.upper() == currency and quantize_money(r.amount, r.currency) == amount]
+        open_states = (RefundRequest.Status.PENDING_GATEWAY, RefundRequest.Status.SUBMITTED, RefundRequest.Status.FAILED)
+        ours = [r for r in requests.filter(status__in=open_states).order_by('created_at')
+                if r.currency.upper() == currency and quantize_money(r.amount, r.currency) == amount]
         if ours:
-            refunds.mark_processed(ours[0].pk, refund_id)       # idempotent: posts the cash leg once
+            # Only states mark_processed accepts are matched and the rows are locked above, so no RefundStateError is expected here;
+            # if one ever happens it propagates (the transaction rolls back and PayPal's retry meets the converted row below).
+            refunds.mark_processed(ours[0].pk, refund_id, via_webhook=True)   # idempotent: posts the cash leg once
             return 'refund_completed'
+        paid_twice = [r for r in requests.filter(status__in=(RefundRequest.Status.CONVERTED, RefundRequest.Status.VOID))
+                      .order_by('created_at') if r.currency.upper() == currency and quantize_money(r.amount, r.currency) == amount]
+        if paid_twice:
+            # Money moved twice: raise the CRITICAL alert and STOP. Falling through to _external_refund would file a second,
+            # blocking anomaly (and could post) for the same money.
+            return _refund_after_convert(tx, paid_twice[0], refund_id, amount, currency, event)
         return _external_refund(tx, requests, refund_id, amount, currency, event)
+
+
+def _refund_after_convert(tx, refund, provider_refund_id: str, amount, currency: str, event: dict) -> str:
+    """The student was already given wallet credit (or the payment never cleared) and PayPal paid the money back as well: money moved twice."""
+    alert_admin('refund_after_convert', f"CRITICAL: refund {refund.pk} was paid by PayPal after it was {refund.status}",
+                f"PayPal refund {provider_refund_id} of {amount} {currency} on capture {tx.gateway_reference} matches refund request "
+                f"{refund.pk}, which is already {refund.status} (event {event.get('event_type', 'n/a')}). The student may have been "
+                f"paid twice: finance must reverse the wallet credit or recover the money. Nothing was posted automatically.",
+                key=str(refund.pk), tx=tx, booking=refund.booking)
+    logger.error("[PAYPAL] refund %s paid for request %s that is already %s", provider_refund_id, refund.pk, refund.status)
+    return 'refund_after_convert'
 
 
 def _external_refund(tx, requests, refund_id, amount, currency, event) -> str:
@@ -214,7 +245,7 @@ def _external_refund(tx, requests, refund_id, amount, currency, event) -> str:
         except (refunds.AlreadySettled, refunds.MissingFunding) as exc:
             notes.append(str(exc))
         else:
-            refunds.mark_processed(outcome.refund.pk, refund_id)
+            refunds.mark_processed(outcome.refund.pk, refund_id, via_webhook=True)
             posted = True
     record_anomaly('paypal', refund_id, 'external_refund',
                    f"refund {refund_id} of {amount} {currency} on capture {tx.gateway_reference} was not initiated by "
@@ -229,7 +260,7 @@ def _external_refund(tx, requests, refund_id, amount, currency, event) -> str:
 def flag_chargeback(tx, *, reference: str, reason: str, detail: str, event: dict) -> None:
     """Durable anomaly + DisputeCase for an admin. Deliberately posts nothing to the ledger and changes no status."""
     with transaction.atomic():
-        tx = PaymentTransaction.objects.select_for_update().select_related('booking__student', 'booking__teacher').get(pk=tx.pk)
+        tx = PaymentTransaction.objects.select_for_update(of=('self',)).select_related('booking__student', 'booking__teacher').get(pk=tx.pk)
         record_anomaly('paypal', reference, reason, detail, tx=tx, payload=event)
         if not tx.booking_id:
             return                                  # a credit-pack purchase: the anomaly is the flag

@@ -186,7 +186,7 @@ def confirm_grace_booking(tx) -> GraceDecision:
     decision = None
     with transaction.atomic():
         _serialize_grace_decisions()
-        tx = PaymentTransaction.objects.select_for_update().select_related('booking').get(pk=tx.pk)
+        tx = PaymentTransaction.objects.select_for_update(of=('self',)).select_related('booking').get(pk=tx.pk)
         if tx.status != PaymentTransaction.Status.PENDING_CAPTURE or not tx.booking_id:
             return GraceDecision(False, 'not_pending')
         booking = Booking.objects.select_for_update().select_related('teacher', 'student').get(pk=tx.booking_id)
@@ -323,7 +323,7 @@ def on_failed(tx) -> str:
     """
     now = timezone.now()
     with transaction.atomic():
-        tx = (PaymentTransaction.objects.select_for_update().select_related('booking', 'credit_purchase__user').get(pk=tx.pk))
+        tx = (PaymentTransaction.objects.select_for_update(of=('self',)).select_related('booking', 'credit_purchase__user').get(pk=tx.pk))
         if tx.status in (PaymentTransaction.Status.SUCCESS, PaymentTransaction.Status.UNALLOCATED,
                          PaymentTransaction.Status.REFUNDED):
             return 'noop'

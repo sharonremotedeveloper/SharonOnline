@@ -15,6 +15,7 @@ from apps.payments.services.credits import grant_credit
 from apps.payments.services.webhook_handler import process_payment_webhook
 from apps.payments.tasks import release_cleared_escrow_task
 from apps.payments.services.funding import ensure_gateway_funding
+from payment_helpers import captured, lesson, net  # noqa: F401  (re-exported: other test modules still import them from here)
 
 S = Booking.Status
 User = get_user_model()
@@ -27,30 +28,6 @@ def _client(user):
     return c
 
 
-def lesson(teacher, student, start_in_min, status=S.PENDING_PAYMENT):
-    start = timezone.now() + start_in_min * MIN
-    booking = Booking.objects.create(teacher=teacher, student=student, start_time_utc=start,
-                                     end_time_utc=start + 25 * MIN, status=status)
-    if status != S.PENDING_PAYMENT:
-        tx = PaymentTransaction.objects.create(
-            booking=booking, gateway='paypal', gateway_reference=f'TEST-{booking.id}',
-            amount=Decimal('9.00'), currency='USD', status='success')
-        ensure_gateway_funding(tx, booking)
-    return booking
-
-
-def captured(teacher, student, start_in_min, *, gateway='payfast', amount='168.75', currency='ZAR', ref='CAP-1'):
-    """A booking that was really paid through the webhook handler (ledger capture entry included)."""
-    booking = lesson(teacher, student, start_in_min)
-    PaymentTransaction.objects.create(booking=booking, gateway=gateway, gateway_reference=f"INIT-{ref}",
-                                      merchant_reference=ref, amount=amount, currency=currency)
-    process_payment_webhook(booking_id=str(booking.id), gateway=gateway, transaction_id=f"GW-{ref}",
-                            amount=Decimal(amount), currency=currency, status='success', raw_payload={})
-    booking.refresh_from_db()
-    assert booking.status == S.CONFIRMED
-    return booking
-
-
 def force(booking, status, *, start_in_min=None):
     """Test-only: put a booking into a state the lifecycle would normally reach over time."""
     fields = {'status': status}
@@ -60,14 +37,6 @@ def force(booking, status, *, start_in_min=None):
     Booking.objects.filter(pk=booking.pk).update(**fields)
     booking.refresh_from_db()
     return booking
-
-
-def net(booking, account):
-    """credit - debit on one ledger account for one booking, in the entries' own currency."""
-    rows = LedgerEntry.objects.filter(booking=booking, account=account)
-    cr = rows.filter(entry_type=LedgerEntry.EntryType.CREDIT).aggregate(t=Sum('amount'))['t'] or Decimal('0')
-    dr = rows.filter(entry_type=LedgerEntry.EntryType.DEBIT).aggregate(t=Sum('amount'))['t'] or Decimal('0')
-    return cr - dr
 
 
 # ------------------------------------------------------------------ credits helper

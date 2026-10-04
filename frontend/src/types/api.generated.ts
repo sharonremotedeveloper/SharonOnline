@@ -116,6 +116,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/refunds/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_admin_refunds_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/refunds/{refund_id}/retry/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description 409 codes: `not_failed` (only a failed refund can be retried), `confirmation_required` (ambiguous failure: send `confirm_not_refunded_in_gateway: true` after checking the gateway), `guard_failed` (a safety check still refuses it). */
+        post: operations["v1_admin_refunds_retry_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/teachers/{id}/verify/": {
         parameters: {
             query?: never;
@@ -824,7 +857,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Turn a still-pending gateway refund into 30-day wallet credit (instead of waiting for the card/PayPal refund). */
+        /**
+         * @description Turn a still-pending gateway refund into 30-day wallet credit (instead of waiting for the card/PayPal refund). Only before the
+         *     gateway has been asked: afterwards the money may already be on its way, and the answer is 409 `refund_in_progress`.
+         */
         post: operations["v1_refunds_convert_to_wallet_create"];
         delete?: never;
         options?: never;
@@ -1030,6 +1066,72 @@ export interface components {
          * @enum {string}
          */
         AccountTypeEnum: "cheque" | "savings";
+        AdminRefund: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly booking_id: string;
+            /** @description Display name only (never an e-mail address). */
+            readonly student: string;
+            /** @description Exact decimal string in `currency`. */
+            readonly amount: string;
+            readonly currency: string;
+            readonly reason: components["schemas"]["RefundReasonEnum"];
+            readonly status: components["schemas"]["RefundStatusEnum"];
+            readonly failure_kind: components["schemas"]["FailureKindEnum"];
+            /** @description Stripped and truncated to 200 characters. */
+            readonly failure_detail: string;
+            readonly attempts: number;
+            /** Format: date-time */
+            readonly next_attempt_at: string | null;
+            readonly last_http_status: number | null;
+            readonly last_error_code: string;
+            readonly gateway: string;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: double */
+            readonly age_hours: number;
+            readonly recent_attempts: components["schemas"]["AdminRefundAttempt"][];
+        };
+        AdminRefundAttempt: {
+            seq: number;
+            kind: string;
+            result_state: string;
+            http_status: number | null;
+            error_code: string;
+            /** Format: date-time */
+            created_at: string;
+            /** @description Username of the admin, or null for the system. */
+            actor: string | null;
+        };
+        AdminRefundBuckets: {
+            status: {
+                [key: string]: number;
+            };
+            failure_kind: {
+                [key: string]: number;
+            };
+            in_flight: number;
+            waiting_manual: number;
+        };
+        AdminRefundError: {
+            error: string;
+            code: string;
+        };
+        AdminRefundPage: {
+            buckets: components["schemas"]["AdminRefundBuckets"];
+            count: number;
+            next: string | null;
+            previous: string | null;
+            results: components["schemas"]["AdminRefund"][];
+        };
+        AdminRefundRetryRequest: {
+            /**
+             * @description Required for ambiguous failures (exhausted, replay_window, already_refunded): the admin has checked the gateway and the money did NOT go out.
+             * @default false
+             */
+            confirm_not_refunded_in_gateway: boolean;
+        };
         /**
          * @description * `Capitec Bank` - Capitec Bank
          *     * `First National Bank (FNB)` - First National Bank (FNB)
@@ -1226,6 +1328,16 @@ export interface components {
             /** Format: date-time */
             retrieved_at: string;
         };
+        /**
+         * @description * `rejected` - The provider refused it
+         *     * `already_refunded` - The provider says the payment is already fully refunded
+         *     * `guard` - A safety check refused it before any call
+         *     * `exhausted` - Retries ran out
+         *     * `replay_window` - Too old to replay blind
+         *     * `provider_failed` - The provider failed it after accepting it
+         * @enum {string}
+         */
+        FailureKindEnum: "rejected" | "already_refunded" | "guard" | "exhausted" | "replay_window" | "provider_failed";
         LessonMemo: {
             /** Format: uuid */
             readonly id: string;
@@ -1482,12 +1594,13 @@ export interface components {
          * @description * `awaiting_clearance` - Waiting for the payment to clear
          *     * `void` - Not needed (the payment never cleared)
          *     * `pending_gateway` - Waiting for the gateway
+         *     * `submitted` - On its way
          *     * `processed` - Paid to the original payment method
          *     * `converted` - Converted to wallet credit
          *     * `failed` - Gateway refused (needs a human)
          * @enum {string}
          */
-        RefundStatusEnum: "awaiting_clearance" | "void" | "pending_gateway" | "processed" | "converted" | "failed";
+        RefundStatusEnum: "awaiting_clearance" | "void" | "pending_gateway" | "submitted" | "processed" | "converted" | "failed";
         Register: {
             /** Format: uuid */
             readonly id: string;
@@ -2014,6 +2127,88 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    v1_admin_refunds_retrieve: {
+        parameters: {
+            query?: {
+                /** @description rejected | already_refunded | guard | exhausted | replay_window | provider_failed */
+                failure_kind?: string;
+                /** @description paypal | payfast */
+                gateway?: string;
+                /** @description true: only rows a worker holds a live lease on; false: only rows without one. */
+                in_flight?: boolean;
+                page_size?: number;
+                /** @description A RefundRequest status. */
+                status?: string;
+                /** @description true: pending rows whose last gateway answer was 'manual'. */
+                waiting_manual?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRefundPage"];
+                };
+            };
+        };
+    };
+    v1_admin_refunds_retry_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                refund_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AdminRefundRetryRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AdminRefundRetryRequest"];
+                "multipart/form-data": components["schemas"]["AdminRefundRetryRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRefund"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRefundError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRefundError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRefundError"];
                 };
             };
         };

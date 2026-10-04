@@ -148,6 +148,7 @@ REST_FRAMEWORK = {
         'email_verify_confirm': '20/hour',
         'inquiry': '5/hour',
         'webhook': '120/min',
+        'admin_refund_retry': '30/hour',   # staff retrying failed refunds (Task 10.7)
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
     # NEVER map 0 to None: DRF treats None as "trust the whole client-supplied X-Forwarded-For header", which lets
@@ -193,9 +194,21 @@ CREDIT_EXPIRY_DAYS_REFUND = int(os.environ.get('CREDIT_EXPIRY_DAYS_REFUND', '30'
 CREDIT_EXPIRY_DAYS_BONUS = int(os.environ.get('CREDIT_EXPIRY_DAYS_BONUS', '30'))
 CREDIT_EXPIRY_DAYS_BUNDLE = int(os.environ.get('CREDIT_EXPIRY_DAYS_BUNDLE', '30'))       # purchased packs (Task 10.6); legal review D-12 may extend this
 LESSON_DELIVERED_MIN_TEACHER_MINUTES = int(os.environ.get('LESSON_DELIVERED_MIN_TEACHER_MINUTES', '20'))
-# Dotted path of the object that talks to PayPal / PayFast to return money. Until Task 10.7 the default leaves requests
-# pending for a human to process (sandbox only).
-REFUND_GATEWAY_BACKEND = os.environ.get('REFUND_GATEWAY_BACKEND', 'apps.payments.services.refunds.ManualSandboxRefundGateway')
+# Dotted path of the object that talks to PayPal / PayFast to return money (Task 10.7). The default moves no money: requests
+# wait for a person (sandbox / dev / CI). Production selects the routing backend through the environment, and
+# scripts/check_deploy.py fails a production check while this is still the manual backend.
+# (A blank value, e.g. copied from .env.example, means the default, exactly as the production guard reads it.)
+REFUND_GATEWAY_BACKEND = (os.environ.get('REFUND_GATEWAY_BACKEND') or '').strip() or 'apps.payments.services.refunds.ManualSandboxRefundGateway'
+# Refund claim / retry protocol (docs/TASK_10_7_REFUND_GATEWAYS_PLAN.md section 2b).
+REFUND_MAX_ATTEMPTS = int(os.environ.get('REFUND_MAX_ATTEMPTS', '8'))                              # transient retries before a human is asked ...
+REFUND_TRANSIENT_WINDOW_HOURS = int(os.environ.get('REFUND_TRANSIENT_WINDOW_HOURS', '168'))        # ... and only once this long has also passed
+REFUND_ATTEMPT_LEASE_MINUTES = int(os.environ.get('REFUND_ATTEMPT_LEASE_MINUTES', '10'))           # how long a worker owns a claimed refund
+REFUND_MANUAL_ALERT_AFTER_HOURS = int(os.environ.get('REFUND_MANUAL_ALERT_AFTER_HOURS', '72'))     # a manual-backend refund waiting this long alerts the admin
+REFUND_REPLAY_WINDOW_DAYS = int(os.environ.get('REFUND_REPLAY_WINDOW_DAYS', '30'))                 # a claimed refund older than this is never replayed blind
+REFUND_SWEEP_LIMIT = int(os.environ.get('REFUND_SWEEP_LIMIT', '25'))                               # claims per sweep
+REFUND_SWEEP_BUDGET_SECONDS = int(os.environ.get('REFUND_SWEEP_BUDGET_SECONDS', '600'))            # wall clock per sweep (beat lock TTL is 800 s)
+REFUND_POLL_INTERVAL_MINUTES = int(os.environ.get('REFUND_POLL_INTERVAL_MINUTES', '60'))           # lookup cadence for SUBMITTED refunds
+REFUND_FIRST_ATTEMPT_DELAY_MINUTES = int(os.environ.get('REFUND_FIRST_ATTEMPT_DELAY_MINUTES', '60'))   # the student's window to convert to wallet credit (provisional, Anesu to confirm)
 # EskomSePush provider. The periodic task is the only provider caller; request paths read durable cached status.
 ESKOMSEPUSH_API_KEY = os.environ.get('ESKOMSEPUSH_API_KEY', '')
 ESKOMSEPUSH_BASE_URL = os.environ.get('ESKOMSEPUSH_BASE_URL', 'https://developer.sepush.co.za/business/2.0')
@@ -320,3 +333,6 @@ PAYPAL_MODE = os.environ.get('PAYPAL_MODE', 'sandbox')
 PAYPAL_WEBHOOK_ID = os.environ.get('PAYPAL_WEBHOOK_ID', '')
 # Task 10.2 (P-9): ask PayPal to refuse eCheck-style funding. Off until the sandbox shows eCheck pendings.
 PAYPAL_REQUIRE_IMMEDIATE_PAYMENT = os.environ.get('PAYPAL_REQUIRE_IMMEDIATE_PAYMENT', 'False').strip().lower() in ('1', 'true', 'yes')
+# Task 10.7: refund gateway switches. PayFast refunds stay off until docs/PAYFAST_REFUNDS_UNVERIFIED.md is cleared.
+PAYFAST_REFUNDS_ENABLED = _env_bool('PAYFAST_REFUNDS_ENABLED', False)
+PAYPAL_REFUND_NOTE = os.environ.get('PAYPAL_REFUND_NOTE', 'Refund from Sharon Online')  # shown to the payer

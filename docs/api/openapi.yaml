@@ -173,6 +173,106 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/admin/refunds/:
+    get:
+      operationId: v1_admin_refunds_retrieve
+      parameters:
+      - in: query
+        name: failure_kind
+        schema:
+          type: string
+        description: rejected | already_refunded | guard | exhausted | replay_window
+          | provider_failed
+      - in: query
+        name: gateway
+        schema:
+          type: string
+        description: paypal | payfast
+      - in: query
+        name: in_flight
+        schema:
+          type: boolean
+        description: 'true: only rows a worker holds a live lease on; false: only
+          rows without one.'
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+        description: A RefundRequest status.
+      - in: query
+        name: waiting_manual
+        schema:
+          type: boolean
+        description: 'true: pending rows whose last gateway answer was ''manual''.'
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRefundPage'
+          description: ''
+  /api/v1/admin/refunds/{refund_id}/retry/:
+    post:
+      operationId: v1_admin_refunds_retry_create
+      description: '409 codes: `not_failed` (only a failed refund can be retried),
+        `confirmation_required` (ambiguous failure: send `confirm_not_refunded_in_gateway:
+        true` after checking the gateway), `guard_failed` (a safety check still refuses
+        it).'
+      parameters:
+      - in: path
+        name: refund_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminRefundRetryRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AdminRefundRetryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AdminRefundRetryRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRefund'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRefundError'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRefundError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminRefundError'
+          description: ''
   /api/v1/admin/teachers/{id}/verify/:
     patch:
       operationId: v1_admin_teachers_verify_partial_update
@@ -1366,8 +1466,9 @@ paths:
   /api/v1/refunds/{refund_id}/convert-to-wallet/:
     post:
       operationId: v1_refunds_convert_to_wallet_create
-      description: Turn a still-pending gateway refund into 30-day wallet credit (instead
-        of waiting for the card/PayPal refund).
+      description: |-
+        Turn a still-pending gateway refund into 30-day wallet credit (instead of waiting for the card/PayPal refund). Only before the
+        gateway has been asked: afterwards the money may already be on its way, and the answer is 409 `refund_in_progress`.
       parameters:
       - in: path
         name: refund_id
@@ -1714,6 +1815,184 @@ components:
       description: |-
         * `cheque` - cheque
         * `savings` - savings
+    AdminRefund:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        booking_id:
+          type: string
+          format: uuid
+          readOnly: true
+        student:
+          type: string
+          readOnly: true
+          description: Display name only (never an e-mail address).
+        amount:
+          type: string
+          readOnly: true
+          description: Exact decimal string in `currency`.
+        currency:
+          type: string
+          readOnly: true
+        reason:
+          allOf:
+          - $ref: '#/components/schemas/RefundReasonEnum'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/RefundStatusEnum'
+          readOnly: true
+        failure_kind:
+          allOf:
+          - $ref: '#/components/schemas/FailureKindEnum'
+          readOnly: true
+        failure_detail:
+          type: string
+          readOnly: true
+          description: Stripped and truncated to 200 characters.
+        attempts:
+          type: integer
+          readOnly: true
+        next_attempt_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        last_http_status:
+          type: integer
+          readOnly: true
+          nullable: true
+        last_error_code:
+          type: string
+          readOnly: true
+        gateway:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        age_hours:
+          type: number
+          format: double
+          readOnly: true
+        recent_attempts:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminRefundAttempt'
+          readOnly: true
+      required:
+      - age_hours
+      - amount
+      - attempts
+      - booking_id
+      - created_at
+      - currency
+      - failure_detail
+      - failure_kind
+      - gateway
+      - id
+      - last_error_code
+      - last_http_status
+      - next_attempt_at
+      - reason
+      - recent_attempts
+      - status
+      - student
+    AdminRefundAttempt:
+      type: object
+      properties:
+        seq:
+          type: integer
+        kind:
+          type: string
+        result_state:
+          type: string
+        http_status:
+          type: integer
+          nullable: true
+        error_code:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        actor:
+          type: string
+          nullable: true
+          description: Username of the admin, or null for the system.
+      required:
+      - actor
+      - created_at
+      - error_code
+      - http_status
+      - kind
+      - result_state
+      - seq
+    AdminRefundBuckets:
+      type: object
+      properties:
+        status:
+          type: object
+          additionalProperties:
+            type: integer
+        failure_kind:
+          type: object
+          additionalProperties:
+            type: integer
+        in_flight:
+          type: integer
+        waiting_manual:
+          type: integer
+      required:
+      - failure_kind
+      - in_flight
+      - status
+      - waiting_manual
+    AdminRefundError:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+      required:
+      - code
+      - error
+    AdminRefundPage:
+      type: object
+      properties:
+        buckets:
+          $ref: '#/components/schemas/AdminRefundBuckets'
+        count:
+          type: integer
+        next:
+          type: string
+          nullable: true
+        previous:
+          type: string
+          nullable: true
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminRefund'
+      required:
+      - buckets
+      - count
+      - next
+      - previous
+      - results
+    AdminRefundRetryRequest:
+      type: object
+      properties:
+        confirm_not_refunded_in_gateway:
+          type: boolean
+          default: false
+          description: 'Required for ambiguous failures (exhausted, replay_window,
+            already_refunded): the admin has checked the gateway and the money did
+            NOT go out.'
     BankNameEnum:
       enum:
       - Capitec Bank
@@ -2203,6 +2482,22 @@ components:
       - retrieved_at
       - stage
       - stale
+    FailureKindEnum:
+      enum:
+      - rejected
+      - already_refunded
+      - guard
+      - exhausted
+      - replay_window
+      - provider_failed
+      type: string
+      description: |-
+        * `rejected` - The provider refused it
+        * `already_refunded` - The provider says the payment is already fully refunded
+        * `guard` - A safety check refused it before any call
+        * `exhausted` - Retries ran out
+        * `replay_window` - Too old to replay blind
+        * `provider_failed` - The provider failed it after accepting it
     LessonMemo:
       type: object
       properties:
@@ -2813,6 +3108,7 @@ components:
       - awaiting_clearance
       - void
       - pending_gateway
+      - submitted
       - processed
       - converted
       - failed
@@ -2821,6 +3117,7 @@ components:
         * `awaiting_clearance` - Waiting for the payment to clear
         * `void` - Not needed (the payment never cleared)
         * `pending_gateway` - Waiting for the gateway
+        * `submitted` - On its way
         * `processed` - Paid to the original payment method
         * `converted` - Converted to wallet credit
         * `failed` - Gateway refused (needs a human)
