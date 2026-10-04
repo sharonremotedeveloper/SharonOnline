@@ -9,7 +9,8 @@ ledger, not from a flag that could be forgotten).
 | :--- | :--- | :--- | :--- | :--- |
 | `completed`, `completed_pending_memo`, `completed_memo_forfeited` | release job, 24 h after lesson end, needs >= 20 tutor minutes | pays | **80 %** (platform 20 %) | `escrow_cleared` |
 | `student_no_show` | adjudicated at T+10m (tutor present); release job 24 h after end, needs a tutor attendance record (not the 20-minute rule) | pays, no credit back | **80 %** (platform 20 %) | `escrow_cleared` |
-| `teacher_no_show` | adjudicated at T+10m | full **gateway refund** (convertible to wallet credit) **+ 1 bonus credit** | nothing, 1 strike (3 in 90 days = deactivated) | `refund_issued` + `compensation_awarded` |
+| `teacher_no_show` | adjudicated at T+10m, **only** when the lesson has a Zoom meeting id and Zoom answers `waiting` (Slice F0) | full **gateway refund** (convertible to wallet credit) **+ 1 bonus credit** | nothing, 1 strike (3 in 90 days = deactivated) | `refund_issued` + `compensation_awarded` |
+| `disputed` (no verdict possible) | T+10m when the lesson has **no Zoom meeting id**, or lesson end when the Zoom probe stayed **unknown** (error/timeout) the whole window; an open `DisputeCase` is created | nothing yet: the admin decides (rows below) | nothing yet, **no strike** | none until arbitration |
 | `interrupted_power` | `POST /bookings/<id>/report-outage/` (that booking's tutor or staff; a student only with a provider-confirmed outage in the tutor's area; never if the tutor taught >= 20 min) | full gateway refund | nothing, no strike | `outage_refund` |
 | `cancelled_by_student` | student cancels > 2 h before start | full gateway refund | nothing | `refund_issued` |
 | `student_late_cancelled` | student cancels <= 2 h before start (acknowledged) | pays, no credit back | **80 %** at +24 h (no attendance needed) | `escrow_cleared` |

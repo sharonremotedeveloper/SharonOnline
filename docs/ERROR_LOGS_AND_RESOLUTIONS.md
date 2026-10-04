@@ -238,3 +238,22 @@ def configure_test_settings(settings):
 - **Symptom:** `ValueError: Missing staticfiles manifest entry for 'admin/css/base.css'` when a test rendered the refund admin form.
 - **Root cause:** settings use `CompressedManifestStaticFilesStorage`; tests never run collectstatic.
 - **Fix:** the admin tests switch `STORAGES['staticfiles']` to the plain `StaticFilesStorage` (fixture `plain_static_files`); production settings untouched.
+
+### ERR-130: a rescheduled lesson had no Zoom room and its tutor was scored a no-show (Slice F0, defect A)
+- **Symptom (code trace + red test):** after a reschedule the booking kept `zoom_meeting_id=''`; the T+10 job skipped the probe for an empty id and applied TEACHER_NO_SHOW (strike, refund, bonus credit).
+- **Root cause:** `rescheduling.py` blanked the `zoom_*` fields, but the booking's `FulfillmentDispatch` still had `zoom/calendar/email_completed=True`, so `dispatch_booking_fulfillment` skipped every step; the no-show branch never checked that a room existed.
+- **Fix:** `fulfillment.reset_for_reprovision` inside the reschedule transaction; a lesson without a meeting id goes to DISPUTED + open DisputeCase (`attendance_probe.dispute_without_verdict`), never a no-show. Tests: `TestRescheduleReprovisions`, `TestNoMeetingIsNeverANoShow`.
+
+### ERR-131: a Zoom API error during the T+10 probe counted as "tutor absent" (Slice F0, defect B)
+- **Symptom:** `get_meeting_status` returned `{'status': 'error'}` on any non-200 and the caller's blanket `except` only logged; `teacher_attended` stayed False and the tutor was scored a no-show. A status change during the probe also crashed the run (`InvalidTransition`).
+- **Root cause:** a two-state reading of a three-state fact, and the HTTP call made under the booking row lock.
+- **Fix:** `attendance_probe.probe_meeting` -> `started | not_started | unknown`; `unknown` defers to the next run and an unresolved lesson is DISPUTED at its end; probes run before any lock, then lock + re-check status/meeting id. Tests: `TestProbeMapping`, `TestProbeUnknownDefers`, `test_the_http_probe_runs_outside_any_transaction`.
+
+### ERR-132: fulfilment could run twice, overwrite a cancellation, and never stop retrying (Slice F0, defect C)
+- **Root cause:** `RUNNING` was set with a read-modify-save (no compare-and-swap), the booking was saved in full from a stale instance, its status never re-checked, "no Google token" counted as completed, and failures retried forever.
+- **Fix:** `bookings/services/fulfillment.py` (CAS claim + lease, row-locked status re-check, `update_fields`, per-step states, terminal FAILED + alert, orphan deletion; migration `payments/0022`). Tests: `TestClaim`, `TestFulfilmentRun`, `TestEmailFailureContract`.
+
+### ERR-133: transactional F0 tests failed only in the full suite (`PriceNotConfigured: No active lesson price for ZAR`)
+- **Symptom:** `test_the_http_probe_runs_outside_any_transaction` passed alone and failed after another `transaction=True` test; switching to `serialized_rollback=True` then failed with `IntegrityError: UNIQUE constraint failed: django_content_type...` on SQLite.
+- **Root cause:** a transactional test flushes the database afterwards, deleting the migration-seeded `LessonPrice` catalog for the next transactional test; serialized rollback re-inserts content types that the flush keeps.
+- **Fix:** a `price_catalog` fixture that re-creates the four seeded prices with `get_or_create` for the transactional F0 tests.
