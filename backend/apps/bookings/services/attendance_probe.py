@@ -49,9 +49,23 @@ def probe_meeting(meeting_id: str) -> str:
     if status == 'started':
         return STARTED
     if status == 'waiting':
-        return NOT_STARTED
+        return _never_held(meeting_id)
     logger.warning('Zoom probe inconclusive: meeting=%s', meeting_id)
     return UNKNOWN
+
+
+def _never_held(meeting_id: str) -> str:
+    """A scheduled (type 2) meeting reverts to `waiting` after it ends, so `waiting` alone does not prove the tutor never
+    came: only `waiting` AND no past instance is NOT_STARTED. An unclear past-instance answer is UNKNOWN."""
+    try:
+        instances = zoom_client.get_past_instances(meeting_id)
+    except Exception as exc:    # same rule as the status call: no clear answer, no verdict
+        logger.warning('Zoom past-instance check failed: meeting=%s error=%s', meeting_id, type(exc).__name__)
+        return UNKNOWN
+    if instances:
+        logger.warning('Zoom meeting already held (past instance) though now waiting: meeting=%s', meeting_id)
+        return UNKNOWN
+    return NOT_STARTED
 
 
 def _t10_candidates(now):
@@ -107,6 +121,9 @@ def _verdict(booking, probe, now, results) -> None:
             results['teacher_no_shows'] += 1
             return
         _record_probe_presence(booking)
+        # The tutor is known only from the probe: the attendance webhooks may have been lost, so missing student rows are
+        # no evidence of a student absence. No student no-show; the lesson-end check decides (review M2).
+        return
     if not student_present:
         transition_booking(booking, S.STUDENT_NO_SHOW, actor=ACTOR, reason='student absent at T+10m, teacher present')
         results['student_no_shows'] += 1
@@ -157,12 +174,16 @@ def end_of_window_reason(booking) -> str:
 def dispute_without_verdict(booking, reason: str) -> None:
     """Human-visible state for a lesson we cannot judge: DISPUTED + an open DisputeCase. No refund, strike or credit."""
     result = transition_booking(booking, S.DISPUTED, actor=ACTOR, reason=reason)
-    DisputeCase.objects.get_or_create(booking=booking, defaults={
+    note = (f'{reason}. No attendance verdict was possible (Slice F0). Nothing was refunded, credited or struck: '
+            'decide from the attendance records and the Zoom account.')
+    case, created = DisputeCase.objects.select_for_update().get_or_create(booking=booking, defaults={
         'student': booking.student, 'teacher': booking.teacher, 'status': DisputeCase.Status.OPEN,
-        'student_statement': f'Automated: {reason}.',
-        'teacher_statement': '',
-        'admin_notes': 'No attendance verdict was possible (Slice F0). Nothing was refunded, credited or struck: '
-                       'decide from the attendance records and the Zoom account.'})
+        'student_statement': f'Automated: {reason}.', 'teacher_statement': '', 'admin_notes': note})
+    if not created and case.status != DisputeCase.Status.OPEN:
+        # One case per booking (OneToOne): an earlier, resolved case is reopened as the work item, its history kept.
+        case.status, case.resolution, case.resolved_at = DisputeCase.Status.OPEN, None, None
+        case.admin_notes = f'{case.admin_notes}\n[reopened] {note}'.strip()
+        case.save(update_fields=['status', 'resolution', 'resolved_at', 'admin_notes'])
     if result.changed:
         # TODO(N1a): admin notification through notify(); the open DisputeCase is the durable work item meanwhile.
         logger.error('[ADMIN ALERT] Lesson disputed without an attendance verdict: booking=%s', booking.id)

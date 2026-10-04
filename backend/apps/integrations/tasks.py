@@ -13,15 +13,17 @@ logger = logging.getLogger(__name__)
 
 @shared_task(name='apps.integrations.tasks.retry_fulfillment_dispatches_task')
 def retry_fulfillment_dispatches_task():
-    """Re-enqueue durable fulfillment failures whose retry time has arrived, and RUNNING claims whose worker died (lease)."""
+    """Re-enqueue durable fulfillment failures whose retry time has arrived, RUNNING claims whose worker died (lease), and
+    PENDING/QUEUED rows whose message was lost (no booking may stay without a room)."""
     from apps.common.locks import distributed_task_lock
-    from apps.bookings.services.fulfillment import stale_running_q
+    from apps.bookings.services.fulfillment import stale_queued_q, stale_running_q
     from apps.payments.services.webhook_handler import dispatch_fulfillment
 
     @distributed_task_lock('lock:beat:retry_fulfillment_dispatches', timeout_seconds=240)
     def _execute():
         now = timezone.now()
-        due = Q(status=FulfillmentDispatch.Status.RETRYABLE, next_retry_at__lte=now) | stale_running_q(now)
+        due = (Q(status=FulfillmentDispatch.Status.RETRYABLE, next_retry_at__lte=now) | stale_running_q(now)
+               | stale_queued_q(now))
         due_ids = list(FulfillmentDispatch.objects.filter(due).values_list('booking_id', flat=True)[:100])
         for booking_id in due_ids:
             dispatch_fulfillment(str(booking_id))

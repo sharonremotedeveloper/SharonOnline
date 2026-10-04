@@ -7,7 +7,8 @@ logger = logging.getLogger(__name__)
 def sync_booking_to_teacher_gcal(booking) -> str:
     """
     Inserts a confirmed booking onto the teacher's connected Google Calendar via Google Calendar API v3.
-    Returns the Google Calendar event ID if successful.
+    Returns the Google Calendar event ID if successful. It does NOT save the booking: the caller stores the id under the
+    booking's row lock (bookings/services/fulfillment.py), so a stale instance can never overwrite a cancel or a reschedule.
     """
     teacher_token = booking.teacher.user.google_calendar_token
     if not teacher_token:
@@ -48,8 +49,6 @@ def sync_booking_to_teacher_gcal(booking) -> str:
         resp = requests.post(url, headers=headers, json=event_body, timeout=10)
         if resp.status_code in [200, 201]:
             event_id = resp.json().get('id', '')
-            booking.teacher_gcal_event_id = event_id
-            booking.save(update_fields=['teacher_gcal_event_id'])
             logger.info(f"Successfully synced to Google Calendar event_id={event_id}")
             return event_id
         else:

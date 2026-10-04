@@ -90,6 +90,11 @@ def confirmed(teacher, student, start_in_min=30 * H):
     return lesson(teacher, student, start_in_min, status=S.CONFIRMED)
 
 
+def make_due(booking):
+    """Fast-forward a RETRYABLE dispatch to its retry time (a retry is refused before then: review m1)."""
+    FulfillmentDispatch.objects.filter(booking=booking).update(next_retry_at=timezone.now() - timedelta(seconds=1))
+
+
 # ====================================================================== A. reschedule -> new Zoom room
 @pytest.mark.django_db
 class TestRescheduleReprovisions:
@@ -411,6 +416,7 @@ class TestFulfilmentRun:
                 mock.patch('apps.bookings.services.fulfillment.send_booking_confirmation_email',
                            side_effect=[False, True]) as mail:
             dispatch_booking_fulfillment(str(b.id))
+            make_due(b)
             assert dispatch_booking_fulfillment(str(b.id)) is True
         assert create.call_count == 1 and mail.call_count == 2
 
@@ -492,11 +498,12 @@ class TestFulfilmentRun:
 
     def test_terminal_failed_after_max_attempts_with_an_alert(self, teacher_user, student_user, settings, caplog):
         settings.FULFILLMENT_MAX_ATTEMPTS = 2
-        b = confirmed(teacher_user, student_user)
+        b = confirmed(teacher_user, student_user, start_in_min=-1)     # terminal only once the lesson has started (review M4)
         with mock.patch.object(zoom_client, 'create_meeting', side_effect=ZoomError('down')), \
                 caplog.at_level(logging.ERROR):
             dispatch_booking_fulfillment(str(b.id))
             assert FulfillmentDispatch.objects.get(booking=b).status == FD.RETRYABLE
+            make_due(b)
             dispatch_booking_fulfillment(str(b.id))
         d = FulfillmentDispatch.objects.get(booking=b)
         assert (d.status, d.attempts, d.next_retry_at) == (FD.FAILED, 2, None)
@@ -582,6 +589,7 @@ class TestMutationGuards:
                 mock.patch('apps.bookings.services.fulfillment.sync_booking_to_teacher_gcal', return_value='evt') as sync, \
                 mock.patch('apps.bookings.services.fulfillment.send_booking_confirmation_email', side_effect=[False, True]):
             dispatch_booking_fulfillment(str(b.id))
+            make_due(b)
             assert dispatch_booking_fulfillment(str(b.id)) is True
         assert sync.call_count == 1
 
@@ -672,15 +680,16 @@ class TestEmailFailureContract:
             dispatch_booking_fulfillment(str(b.id))
         d = FulfillmentDispatch.objects.get(booking=b)
         assert d.status == FD.RETRYABLE
-        assert d.next_retry_at <= timezone.now() + timedelta(seconds=61)
+        assert d.next_retry_at <= timezone.now() + timedelta(seconds=73)       # 60 s base, +20 % jitter
 
     def test_transient_failures_end_terminal_at_the_cap(self, teacher_user, student_user, settings):
         settings.FULFILLMENT_MAX_ATTEMPTS = 2
-        b = confirmed(teacher_user, student_user)
+        b = confirmed(teacher_user, student_user, start_in_min=-1)
         with mock.patch.object(zoom_client, 'create_meeting', return_value=NEW_MEETING) as create, \
                 mock.patch('apps.bookings.services.fulfillment.send_booking_confirmation_email',
                            side_effect=_email_error('retryable')):
             dispatch_booking_fulfillment(str(b.id))
+            make_due(b)
             dispatch_booking_fulfillment(str(b.id))
             assert retry_fulfillment_dispatches_task()['redispatched_count'] == 0
         assert FulfillmentDispatch.objects.get(booking=b).status == FD.FAILED

@@ -94,7 +94,14 @@ def _audit_attendance_locked(now, probes):
         "student_no_shows": 0,
         "completed_sessions": 0,
     }
+    _flag_late_tutors(now, results)                 # 1. T+5m
+    # 2. T+10m No-Show Adjudication (row lock + status re-check per booking; the probes ran before, lock-free)
+    adjudicate_t10(now, probes, results)
+    _close_ended_lessons(now, results)              # 3. lesson end
+    return results
 
+
+def _flag_late_tutors(now, results):
     # 1. T+5m Tutor Lateness Check
     t5_window_start = now - timedelta(minutes=10)
     t5_window_end = now - timedelta(minutes=5)
@@ -117,9 +124,8 @@ def _audit_attendance_locked(now, probes):
                 f"[RADAR ALERT] Tutor {teacher_email} is 5+ minutes late for booking {booking.id}!"
             )
 
-    # 2. T+10m No-Show Adjudication (row lock + status re-check per booking; the probes ran before, lock-free)
-    adjudicate_t10(now, probes, results)
 
+def _close_ended_lessons(now, results):
     # 3. Lesson End Dwell-Time Evaluation (T+25m)
     ended_candidates = Booking.objects.filter(
         status__in=[Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS],
@@ -151,8 +157,6 @@ def _audit_attendance_locked(now, probes):
                 logger.warning(
                     f"Booking {booking.id} held in DISPUTED: teacher only logged {teacher_minutes}m (required: 20m)."
                 )
-
-    return results
 
 
 @shared_task(name='apps.bookings.tasks.dispatch_pre_lesson_reminders_task')

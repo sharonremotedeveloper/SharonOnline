@@ -197,7 +197,11 @@ LESSON_DELIVERED_MIN_TEACHER_MINUTES = int(os.environ.get('LESSON_DELIVERED_MIN_
 # Lesson fulfilment (Zoom room, tutor calendar, confirmation e-mail) and the T+10 Zoom probe (Slice F0, docs/ZOOM_ATTENDANCE.md).
 FULFILLMENT_MAX_ATTEMPTS = int(os.environ.get('FULFILLMENT_MAX_ATTEMPTS', '5'))        # then terminal FAILED + admin alert
 FULFILLMENT_LEASE_SECONDS = int(os.environ.get('FULFILLMENT_LEASE_SECONDS', '600'))    # a RUNNING claim older than this is reclaimable
-FULFILLMENT_RETRY_SECONDS = int(os.environ.get('FULFILLMENT_RETRY_SECONDS', '60'))     # earliest retry after a failed step
+FULFILLMENT_RETRY_SECONDS = int(os.environ.get('FULFILLMENT_RETRY_SECONDS', '30'))     # first retry delay (doubles, jittered)
+FULFILLMENT_QUEUED_STALE_SECONDS = int(os.environ.get('FULFILLMENT_QUEUED_STALE_SECONDS', '120'))  # QUEUED/PENDING this old = lost message
+FULFILLMENT_RETRY_MAX_SECONDS = int(os.environ.get('FULFILLMENT_RETRY_MAX_SECONDS', '1800'))      # backoff cap
+# Simulated Zoom rooms without credentials: never in production (only config/settings/local.py turns this on).
+ZOOM_SIMULATE_WITHOUT_CREDENTIALS = False
 ATTENDANCE_PROBE_BUDGET_SECONDS = int(os.environ.get('ATTENDANCE_PROBE_BUDGET_SECONDS', '25'))  # wall clock for Zoom probes per T+10 run (beat lock TTL 50 s)
 # Dotted path of the object that talks to PayPal / PayFast to return money (Task 10.7). The default moves no money: requests
 # wait for a person (sandbox / dev / CI). Production selects the routing backend through the environment, and
