@@ -271,5 +271,9 @@ def configure_test_settings(settings):
 - **Root cause:** a lost broker message left a QUEUED row forever; retries only every 5 minutes with no backoff; a replayed webhook re-queued a RETRYABLE row and bypassed a provider `retry_after`; the cap ended in FAILED even weeks before the lesson.
 - **Fix:** sweep re-dispatches PENDING/QUEUED rows untouched for 120 s; jittered exponential backoff + `apply_async(countdown)`; RETRYABLE claimed/requeued only when due; terminal after the cap only once the lesson started (alert at the cap); Django-admin re-queue action. Tests: `TestStaleQueued`, `TestRetryCadence`, `TestAdminRequeue`, `TestRetryAfterFence`.
 
+### ERR-138: a compose stack without Zoom credentials could still simulate rooms and score fake no-shows (F0 re-review C1)
+- **Root cause:** simulation was gated only by `ZOOM_SIMULATE_WITHOUT_CREDENTIALS`, which `config/settings/local.py` sets, and docker compose runs those settings, so a shared/staging compose stack would get `waiting` + no past instance for every room; `check_deploy.py` did not check the Zoom credentials.
+- **Fix:** simulation also requires `DEBUG`; tests opt in with the explicit `simulated_zoom` / `zoom_never_held` fixtures; `check_deploy.py::zoom_credentials_problems` fails a production check without `ZOOM_ACCOUNT_ID` / `ZOOM_CLIENT_ID` / `ZOOM_CLIENT_SECRET`. Tests: `test_f0_review_c1.py`.
+
 ### ERR-137: probe-only tutor presence produced a student no-show; a resolved DisputeCase hid a new dispute (F0 review M2, m7)
 - **Fix:** after a `started` probe without tutor attendance rows the T+10 job records presence only and leaves the verdict to the lesson-end check; `dispute_without_verdict` reopens a RESOLVED case (history kept in `admin_notes`). Tests: `test_probe_only_presence_never_scores_a_student_no_show`, `test_a_resolved_dispute_case_is_reopened_for_a_new_verdictless_dispute`.

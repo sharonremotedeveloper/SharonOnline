@@ -129,8 +129,7 @@ class TestOAuthFailureIsUnknown:
                     call()
         post.assert_not_called()
 
-    def test_local_simulation_still_works_without_credentials(self, settings):
-        settings.ZOOM_SIMULATE_WITHOUT_CREDENTIALS = True
+    def test_local_simulation_still_works_without_credentials(self, simulated_zoom):
         room = zoom_client.create_meeting('t', '2026-10-05T09:00:00Z')
         assert room['meeting_id'] and room['join_url'].startswith('https://zoom.us/j/')
         assert zoom_client.get_past_instances(MEETING) == []

@@ -184,7 +184,7 @@ class TestProbeMapping:
         (None, 'unknown'),
         ('started', 'unknown'),
     ])
-    def test_status_mapping(self, payload, expected):
+    def test_status_mapping(self, payload, expected, zoom_never_held):
         with mock.patch.object(zoom_client, 'get_meeting_status', return_value=payload):
             assert probe_module().probe_meeting(MEETING) == expected
 
@@ -216,7 +216,7 @@ class TestProbeUnknownDefers:
         assert res['teacher_no_shows'] == 0
         no_penalty(b)
 
-    def test_unknown_then_not_started_is_a_no_show_on_a_later_run(self, teacher_user, student_user):
+    def test_unknown_then_not_started_is_a_no_show_on_a_later_run(self, teacher_user, student_user, zoom_never_held):
         b = at_t10(teacher_user, student_user)
         with mock.patch.object(zoom_client, 'get_meeting_status', side_effect=requests.Timeout('slow')):
             audit_attendance_and_noshows_task()
@@ -240,7 +240,7 @@ class TestProbeUnknownDefers:
         reason = BookingStatusChange.objects.get(booking=b, to_status=S.DISPUTED).reason.lower()
         assert 'verdict' in reason
 
-    def test_not_started_is_still_a_no_show(self, teacher_user, student_user):
+    def test_not_started_is_still_a_no_show(self, teacher_user, student_user, zoom_never_held):
         b = at_t10(teacher_user, student_user)
         with mock.patch.object(zoom_client, 'get_meeting_status', return_value={'status': 'waiting'}):
             res = audit_attendance_and_noshows_task()
@@ -304,7 +304,7 @@ def price_catalog(db):
 
 
 @pytest.mark.django_db(transaction=True)
-def test_the_http_probe_runs_outside_any_transaction(price_catalog, teacher_user, student_user):
+def test_the_http_probe_runs_outside_any_transaction(price_catalog, teacher_user, student_user, zoom_never_held):
     b = at_t10(teacher_user, student_user)
     seen = []
 

@@ -196,7 +196,7 @@ class TestStudentNoShowSettlement:
 
 
 @pytest.mark.django_db
-def test_teacher_no_show_refund_drains_the_escrow_in_the_captured_currency(teacher_user, student_user):
+def test_teacher_no_show_refund_drains_the_escrow_in_the_captured_currency(teacher_user, student_user, zoom_never_held):
     from apps.bookings.tasks import audit_attendance_and_noshows_task
     from unittest.mock import patch
     from apps.integrations.zoom import zoom_client

@@ -98,3 +98,18 @@ def fake_paypal_orders(monkeypatch, settings):
 
     monkeypatch.setattr('apps.payments.views.create_checkout_order', fake_create, raising=False)
     return calls
+
+
+@pytest.fixture
+def zoom_never_held(monkeypatch):
+    """Zoom reports no past instance for the lesson's meeting: together with a `waiting` status the tutor never opened it.
+    (Slice F0: `waiting` alone is not proof, a scheduled meeting reverts to `waiting` after it ends.)"""
+    from apps.integrations.zoom import zoom_client
+    monkeypatch.setattr(zoom_client, 'get_past_instances', lambda meeting_id: [])
+
+
+@pytest.fixture
+def simulated_zoom(settings):
+    """Explicit opt-in to the local simulated Zoom rooms (no credentials): needs both the local flag and DEBUG (Slice F0 C1)."""
+    settings.DEBUG = True
+    settings.ZOOM_SIMULATE_WITHOUT_CREDENTIALS = True

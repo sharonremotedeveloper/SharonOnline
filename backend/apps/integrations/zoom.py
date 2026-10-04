@@ -44,13 +44,14 @@ class ZoomClient:
         raise ZoomError(f"Zoom OAuth token request failed (HTTP {response.status_code})")
 
     def _token(self):
-        """A bearer token, or None when simulation is allowed (no credentials AND settings.ZOOM_SIMULATE_WITHOUT_CREDENTIALS,
-        which only local/test settings enable; production inherits False from base). Otherwise ZoomError."""
+        """A bearer token, or None when simulation is allowed: no credentials AND settings.ZOOM_SIMULATE_WITHOUT_CREDENTIALS
+        (only local settings enable it; production inherits False) AND settings.DEBUG (docker compose also runs the local
+        settings, so a shared/staging stack with DEBUG off never fabricates rooms or a 'waiting' status). Otherwise ZoomError."""
         token = self.get_access_token()
         if token:
             return token
         from django.conf import settings
-        if getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False):
+        if settings.DEBUG and getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False):
             logger.warning("Zoom API credentials not configured. Using simulated rooms (local settings only).")
             return None
         raise ZoomError("Zoom credentials are not configured and simulation is disabled")

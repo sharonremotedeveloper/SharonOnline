@@ -61,9 +61,24 @@ A teacher no-show refunds the student, grants a bonus credit and strikes the tut
 * **Credentials and simulation (review B1).** With Zoom credentials configured, a failed OAuth token request **raises
   `ZoomError`** from create / status / past-instances / delete (logged with the HTTP status only, never the provider body): no
   fabricated room, no simulated `waiting`, no silent "deleted". Simulated rooms and a simulated `waiting` status exist only when
-  credentials are absent **and** `ZOOM_SIMULATE_WITHOUT_CREDENTIALS` is on, which only `config/settings/local.py` (local runs
-  and tests) sets; production inherits `False` from `base.py`, so a production process without credentials raises too.
-  Z1 still owns the token cache, backoff and moving credentials into settings.
+  credentials are absent **and** `ZOOM_SIMULATE_WITHOUT_CREDENTIALS` is on (only `config/settings/local.py` sets it;
+  production inherits `False` from `base.py`) **and** `DEBUG` is on (re-review C1). Tests opt in explicitly with the
+  `simulated_zoom` fixture; tests that mean "Zoom says waiting and the meeting was never held" use `zoom_never_held`.
+  `scripts/check_deploy.py` fails when `ZOOM_ACCOUNT_ID` / `ZOOM_CLIENT_ID` / `ZOOM_CLIENT_SECRET` is missing.
+* **Docker compose is dev-only for attendance.** It runs `config.settings.local`; without Zoom credentials it either simulates
+  (DEBUG on: every simulated room reads `waiting` with no past instance, so a lesson nobody joins becomes a teacher no-show)
+  or raises (DEBUG off: lessons get no room and end DISPUTED). Never run real lessons, a shared demo or staging attendance on
+  a compose stack without real Zoom credentials.
+
+### Open conditions handed on
+* **C2 - sandbox check (before launch):** call `GET /past_meetings/{id}/instances` for a meeting that was never held (200 with
+  `meetings: []`, or 404?) and measure how soon an instance appears after a meeting ends. A 404 would turn every real
+  no-show into DISPUTED (safe but manual); a slow instance would let a just-ended lesson read `waiting` + no instance.
+* **C3 - Z1:** cache the Server-to-Server OAuth token (about 55 min TTL, keyed by account, single-flight, invalidated on 401).
+  Today every probe/create/delete requests a new token.
+* **Before go-live (N1a):** every `[ADMIN ALERT]` log line from F0 (fulfilment needs attention / failed, orphaned meeting or
+  calendar event, lesson disputed without a verdict) must be replaced by a `notify()` to `ADMIN_ALERT_RECIPIENTS`; a log
+  line alone is not an alert anyone will see.
 
 ## Fulfilment (Slice F0, `bookings/services/fulfillment.py`)
 

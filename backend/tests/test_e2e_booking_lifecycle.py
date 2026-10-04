@@ -15,6 +15,7 @@ from rest_framework.test import APIRequestFactory, force_authenticate
 from apps.bookings.views import ReportOutageView
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures('simulated_zoom')        # the lifecycle runs fulfilment against the local simulated Zoom room
 def test_full_e2e_booking_and_post_lesson_lifecycle():
     """
     End-to-end critical path test:

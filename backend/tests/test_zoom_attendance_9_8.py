@@ -80,7 +80,7 @@ class TestTutorIdentity:
         a = rows(lesson).get()
         assert (a.participant_email, a.identity) == (lesson.teacher.user.email, 'account_email')
 
-    def test_a_guest_typing_the_tutors_email_cannot_stop_the_no_show_verdict(self, lesson):
+    def test_a_guest_typing_the_tutors_email_cannot_stop_the_no_show_verdict(self, lesson, zoom_never_held):
         Booking.objects.filter(pk=lesson.pk).update(start_time_utc=timezone.now() - timedelta(minutes=11),
                                                     end_time_utc=timezone.now() + timedelta(minutes=14))
         join(lesson, pupil(lesson))

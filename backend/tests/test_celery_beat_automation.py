@@ -306,7 +306,7 @@ class TestCeleryBeatAutomation:
         booking.refresh_from_db()
         assert booking.tutor_late_alert_sent is True
 
-    def test_audit_attendance_t10_teacher_no_show(self, teacher_user, student_user):
+    def test_audit_attendance_t10_teacher_no_show(self, teacher_user, student_user, zoom_never_held):
         """
         At T+10m past start time, absent teacher triggers TEACHER_NO_SHOW,
         reliability strike, and 2 credits (refund + bonus) for student.
