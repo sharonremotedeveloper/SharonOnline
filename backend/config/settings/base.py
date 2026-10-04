@@ -196,7 +196,8 @@ LESSON_DELIVERED_MIN_TEACHER_MINUTES = int(os.environ.get('LESSON_DELIVERED_MIN_
 # Dotted path of the object that talks to PayPal / PayFast to return money (Task 10.7). The default moves no money: requests
 # wait for a person (sandbox / dev / CI). Production selects the routing backend through the environment, and
 # scripts/check_deploy.py fails a production check while this is still the manual backend.
-REFUND_GATEWAY_BACKEND = os.environ.get('REFUND_GATEWAY_BACKEND', 'apps.payments.services.refunds.ManualSandboxRefundGateway')
+# (A blank value, e.g. copied from .env.example, means the default, exactly as the production guard reads it.)
+REFUND_GATEWAY_BACKEND = (os.environ.get('REFUND_GATEWAY_BACKEND') or '').strip() or 'apps.payments.services.refunds.ManualSandboxRefundGateway'
 # Refund claim / retry protocol (docs/TASK_10_7_REFUND_GATEWAYS_PLAN.md section 2b).
 REFUND_MAX_ATTEMPTS = int(os.environ.get('REFUND_MAX_ATTEMPTS', '8'))                              # transient retries before a human is asked ...
 REFUND_TRANSIENT_WINDOW_HOURS = int(os.environ.get('REFUND_TRANSIENT_WINDOW_HOURS', '168'))        # ... and only once this long has also passed

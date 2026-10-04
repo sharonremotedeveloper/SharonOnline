@@ -47,6 +47,7 @@ class TestCheckDeployScript:
         done = _run({'REFUND_GATEWAY_BACKEND': 'apps.payments.services.refunds.ManualSandboxRefundGateway'})
         assert done.returncode != 0
         assert 'REFUND_GATEWAY_BACKEND' in (done.stdout + done.stderr)
+        assert 'Unsafe production configuration' in done.stderr      # refused by the boot guard itself, not only by this script
 
     def test_a_production_check_passes_with_the_routing_backend(self):
         done = _run({})
