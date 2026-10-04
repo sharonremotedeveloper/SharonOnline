@@ -205,6 +205,34 @@ def strict_status_writes(path):
     return hits
 
 
+def test_strict_detector_ignores_other_teachers_app_models_with_their_own_status(tmp_path):
+    """Sign-off minor 7: future teachers-app models (documents, applications, training) have a `status` of their own."""
+    ok = tmp_path / 'ok.py'
+    ok.write_text(
+        "document.status = 'quarantined'\n"
+        "teacher_document.status = 'committed'\n"
+        "application.status = 'sent'\n"
+        "training_progress.status = 'done'\n"
+        "TeacherDocument.objects.filter(pk=1).update(status='committed')\n"
+        "TeacherApplication.objects.create(user=u, status='sent')\n"
+        "TrainingProgress.objects.bulk_update(rows, ['status'])\n"
+        "class TeacherDocument(models.Model):\n"
+        "    def commit(self):\n"
+        "        self.status = 'committed'\n",
+        encoding='utf-8')
+    assert strict_status_writes(ok) == []
+    bad = tmp_path / 'bad.py'
+    bad.write_text(
+        "class TeacherProfile(models.Model):\n"
+        "    def x(self):\n"
+        "        self.status = 'approved'\n"
+        "TeacherProfile.objects.filter(pk=1).update(status='approved')\n"
+        "locked.status = 'approved'\n"
+        "teacher.status = 'approved'\n",
+        encoding='utf-8')
+    assert len(strict_status_writes(bad)) == 4
+
+
 def test_teachers_app_writes_status_only_in_the_service():
     found = scan(strict_status_writes, APPS / 'teachers')
     found = {path: sites for path, sites in found.items() if f'teachers/{path}' not in ALLOWED_WRITERS}

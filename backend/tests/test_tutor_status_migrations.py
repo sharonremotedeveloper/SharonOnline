@@ -43,7 +43,8 @@ def _round_trip():
         for (verified, active), status in FORWARD.items():
             p = Profile.objects.get(headline=f'{verified}-{active}')
             assert (p.status, p.is_verified, p.is_active) == (status, verified, active)
-            assert (p.training_completed_at is not None) == (status == 'approved')       # live tutors grandfathered
+            # vetted tutors (approved, and suspended ones that were live) are grandfathered as trained
+            assert (p.training_completed_at is not None) == (status in ('approved', 'suspended'))
             change = Change.objects.get(teacher=p)
             assert (change.from_status, change.to_status, change.actor) == ('', status, 'system:migration_0007')
         Profile.objects.filter(headline='False-True').update(status='in_review')
