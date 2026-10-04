@@ -2,8 +2,9 @@
 Guard (c): every outbound HTTP call through `requests` / `httpx` passes `timeout=`.
 
 A call without a timeout can hang a Celery worker (or a request thread) forever on a stuck provider. Covers module-level
-calls (`requests.post(...)`, `httpx.get(...)`) and `requests.request(...)`; `**kwargs` forwarding is reported too, because
-the scan cannot see whether a timeout is inside.
+calls (`requests.post(...)`, `httpx.get(...)`) and `requests.request(...)`, module aliases (`import requests as r`) and
+imported verbs (`from requests import post`); `timeout=None` counts as no timeout; `**kwargs` forwarding is reported too,
+because the scan cannot see whether a timeout is inside.
 
 How to shrink: add `timeout=` to a listed call, then lower its count here.
 """
@@ -17,18 +18,34 @@ VERBS = {'get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'request', 
 ALLOWLIST = {}
 
 
+def _aliases(tree):
+    """Names bound to the client modules (`import requests as r`) and to their verbs (`from requests import post as p`)."""
+    modules, functions = set(CLIENT_MODULES), set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            modules |= {a.asname or a.name for a in node.names if a.name in CLIENT_MODULES}
+        elif isinstance(node, ast.ImportFrom) and node.module in CLIENT_MODULES:
+            functions |= {a.asname or a.name for a in node.names if a.name in VERBS}
+    return modules, functions
+
+
+def _is_client_call(node, modules, functions):
+    func = node.func
+    if isinstance(func, ast.Attribute):
+        return isinstance(func.value, ast.Name) and func.value.id in modules and func.attr in VERBS
+    return isinstance(func, ast.Name) and func.id in functions
+
+
+def _has_real_timeout(node):
+    timeout = next((kw.value for kw in node.keywords if kw.arg == 'timeout'), None)
+    return timeout is not None and not (isinstance(timeout, ast.Constant) and timeout.value is None)
+
+
 def calls_without_timeout(path):
-    hits = []
-    for node in ast.walk(parse(path)):
-        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
-            continue
-        receiver = node.func.value
-        if not (isinstance(receiver, ast.Name) and receiver.id in CLIENT_MODULES and node.func.attr in VERBS):
-            continue
-        has_timeout = any(kw.arg == 'timeout' for kw in node.keywords)
-        if not has_timeout:
-            hits.append(f'{node.lineno}: {src(node.func)}(...)')
-    return hits
+    tree = parse(path)
+    modules, functions = _aliases(tree)
+    return [f'{node.lineno}: {src(node.func)}(...)' for node in ast.walk(tree)
+            if isinstance(node, ast.Call) and _is_client_call(node, modules, functions) and not _has_real_timeout(node)]
 
 
 def test_outbound_http_calls_always_pass_a_timeout():

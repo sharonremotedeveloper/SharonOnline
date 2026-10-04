@@ -107,8 +107,15 @@ def fake_paypal_orders(monkeypatch, settings):
 @pytest.fixture(autouse=True)
 def no_network(request, monkeypatch):
     """No test opens a real outbound connection (localhost / CI service hosts are allowed). Opt out: @pytest.mark.allow_network."""
-    if request.node.get_closest_marker('allow_network') is None:
-        network_guard.install(monkeypatch)
+    if request.node.get_closest_marker('allow_network') is not None:
+        yield
+        return
+    network_guard.install(monkeypatch)
+    yield
+    error = network_guard.teardown_error()
+    network_guard.consume()
+    if error:
+        pytest.fail(error, pytrace=False)          # also catches attempts the code under test swallowed
 
 
 class FrozenClock:

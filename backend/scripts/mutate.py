@@ -88,6 +88,7 @@ def main(argv=None):
     os.close(fd)
     shutil.copy2(target, backup)
     print(f'mutant: {args.file}:{args.line}  {args.find!r} -> {args.replace!r}')
+    print(f'backup: {backup}  (if this process is killed, copy it back over {args.file})', flush=True)
     try:
         target.write_bytes(mutant)
         code = run_tests(args.python, args.test, cwd)
