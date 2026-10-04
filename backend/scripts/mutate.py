@@ -7,6 +7,8 @@ Copy-based mutation helper (Q0, docs/QUALITY_GATES.md). Proves a test actually g
 1. Refuses to run unless `git status --porcelain` is empty (so the restore can never clobber someone's edits and a crash
    leaves an obvious one-file diff).
 2. Copies the file to a temp backup, replaces the FIRST occurrence of --find on --line only (bytes; line endings kept).
+   A Python mutant that does not compile is refused (it would be "killed" by the SyntaxError, not by a test). On Windows
+   PowerShell 5.1, escape embedded double quotes in arguments (`'return \"\"'`) or they are silently dropped.
 3. Runs pytest on the given node ids with bytecode writing disabled (a stale mutant .pyc can never outlive the run).
 4. ALWAYS restores the original bytes and timestamps from the backup (finally block) and verifies the restore by hash.
 
@@ -75,6 +77,10 @@ def main(argv=None):
     original = target.read_bytes()
     try:
         mutant = mutate_line(original, args.line, args.find, args.replace)
+        if target.suffix == '.py':
+            compile(mutant, str(target), 'exec')      # a syntax error would be "killed" for the wrong reason
+    except SyntaxError as exc:
+        return _fail(f'invalid mutant: it does not compile ({exc.msg}, line {exc.lineno}); check shell quoting of --find/--replace')
     except ValueError as exc:
         return _fail(str(exc))
 

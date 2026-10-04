@@ -9,6 +9,7 @@ whole `apps/` tree and supersedes the PaymentTransaction-only scan from Task 10.
 How to shrink: add `of=('self',)` to a listed site (and prove it on the Postgres job), then lower its count here.
 """
 import ast
+import functools
 
 from guards._scan import APPS, parents, parse, ratchet_errors, scan, src
 
@@ -54,14 +55,19 @@ def unsafe_lock_joins(path):
     return hits
 
 
+@functools.lru_cache(maxsize=1)
+def _tree_hits():
+    return scan(unsafe_lock_joins)
+
+
 def test_row_locks_with_select_related_use_of_self():
-    errors = ratchet_errors(scan(unsafe_lock_joins), ALLOWLIST)
+    errors = ratchet_errors(_tree_hits(), ALLOWLIST)
     assert not errors, "select_for_update() + select_related() needs of=('self',):\n" + '\n'.join(errors)
 
 
 def test_payment_transaction_locks_are_never_allowlisted():
     """Task 10.7 rule kept at zero tolerance: PaymentTransaction.booking / .credit_purchase are nullable."""
-    bad = [f'{path}:{site}' for path, sites in scan(unsafe_lock_joins).items() for site in sites if 'PaymentTransaction' in site]
+    bad = [f'{path}:{site}' for path, sites in _tree_hits().items() for site in sites if 'PaymentTransaction' in site]
     assert not bad, "select_for_update() + select_related() on PaymentTransaction without of=('self',): " + ', '.join(bad)
 
 

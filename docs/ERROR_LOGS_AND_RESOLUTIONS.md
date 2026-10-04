@@ -238,3 +238,18 @@ def configure_test_settings(settings):
 - **Symptom:** `ValueError: Missing staticfiles manifest entry for 'admin/css/base.css'` when a test rendered the refund admin form.
 - **Root cause:** settings use `CompressedManifestStaticFilesStorage`; tests never run collectstatic.
 - **Fix:** the admin tests switch `STORAGES['staticfiles']` to the plain `StaticFilesStorage` (fixture `plain_static_files`); production settings untouched.
+
+### ERR-120: mutation runs "killed" by a SyntaxError instead of a test (slice Q0)
+- **Symptom:** two rows of the Q0 mutation table (`--replace 'return ""'`) reported KILLED, but the mutant on disk was `return "` (and `return None"`): the guard failed because the file no longer parsed, not because it detected the violation.
+- **Root cause:** Windows PowerShell 5.1 drops embedded double quotes when it passes arguments to a native executable; `scripts/mutate.py` applied whatever text it received without checking it. The same quoting loss broke a `ruff --config 'lint.per-file-ignores = {...}'` probe from the shell.
+- **Fix:** `mutate.py` now compiles a Python mutant before running tests and refuses one that does not compile (exit 2, "invalid mutant", test `test_a_mutant_that_does_not_compile_is_refused`); the docstring and `docs/QUALITY_GATES.md` say to escape quotes (`'return \"\"'`) in PowerShell. The two rows were rerun with escaped quotes and are genuine kills. The ruff baseline guard builds its `--config` overrides in Python (argv list), never through a shell.
+
+### ERR-121: ruff JSON report unreadable through a PowerShell pipe (slice Q0)
+- **Symptom:** `json.decoder.JSONDecodeError: Unexpected UTF-8 BOM` when the baseline generator read `ruff check --output-format json` from stdin.
+- **Root cause:** PowerShell 5.1 re-encodes piped native output with a BOM.
+- **Fix:** the (scratchpad) generator reads `--output-file` output with `utf-8-sig`; nothing in the repo depends on the pipe.
+
+### ERR-122: teacher-status guard missed a write through a neutral variable name (slice Q0)
+- **Symptom:** the first baseline run reported `teachers/strikes.py: allowlist says 2 but only 1 remain`, although `strikes.py` writes `is_active` twice.
+- **Root cause:** the detector only flagged `x.is_active = ...` when the receiver's name looked like a tutor (`teacher`, `profile`); `strikes.add_strike` writes `locked.is_active = False`.
+- **Fix:** `is_active` writes are flagged for every receiver except clearly different models (`user`, availability, packs, prices, bundles, slots); `is_verified` for every receiver; `status` still only for tutor-looking receivers (every model has a `status`; T1a adds its own stricter guard). Detector test covers `locked.is_active`.

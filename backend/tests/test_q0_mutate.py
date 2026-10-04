@@ -71,6 +71,14 @@ def test_a_dirty_tree_is_refused_without_touching_anything(repo):
     assert (repo / 'calc.py').read_bytes() == SOURCE
 
 
+def test_a_mutant_that_does_not_compile_is_refused(repo):
+    """ERR-120: a shell that drops quotes produced `return "` - a SyntaxError is not a kill."""
+    result = run(repo, '--file', 'calc.py', '--line', '2', '--find', 'a + b', '--replace', '"', '--test', 'test_calc.py')
+    assert result.returncode == 2
+    assert 'does not compile' in result.stdout + result.stderr
+    assert (repo / 'calc.py').read_bytes() == SOURCE
+
+
 def test_text_not_on_the_line_is_an_error_not_a_mutation(repo):
     result = run(repo, '--file', 'calc.py', '--line', '1', '--find', 'a + b', '--replace', 'a - b', '--test', 'test_calc.py')
     assert result.returncode == 2
