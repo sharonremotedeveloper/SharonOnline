@@ -20,6 +20,20 @@ def _is_local_origin(origin: str) -> bool:
 
 _log = logging.getLogger(__name__)
 
+EMAIL_MODES = ('resend', 'console')
+
+
+def resolve_email_backend_mode(env=os.environ) -> str:
+    """EMAIL_BACKEND_MODE when set; otherwise 'resend' with a real RESEND_API_KEY and 'console' without one (slice N1c).
+
+    Used by settings/base.py and by the production guard below, so both read the same answer from the same environment.
+    """
+    explicit = (env.get('EMAIL_BACKEND_MODE', '') or '').strip().lower()
+    if explicit:
+        return explicit
+    key = env.get('RESEND_API_KEY', '') or ''
+    return 'resend' if key and not key.startswith('re_dev') else 'console'
+
 
 def validate_production_settings(env=os.environ):
     """Fail fast: refuse to boot production with dev defaults or missing security config."""
@@ -45,6 +59,10 @@ def validate_production_settings(env=os.environ):
     resend_key = env.get('RESEND_API_KEY', '')
     if not resend_key or resend_key.startswith('re_dev'):
         errors.append('RESEND_API_KEY must be a real key: without it password-reset and verification e-mails are silently not sent')
+    email_mode = resolve_email_backend_mode(env)
+    if email_mode != 'resend':
+        errors.append(f"EMAIL_BACKEND_MODE must be 'resend' in production (got {email_mode!r}); "
+                      f"'console' only prints e-mails and is for local development and tests")
 
     if not env.get('ZOOM_WEBHOOK_SECRET_TOKEN'):
         errors.append('ZOOM_WEBHOOK_SECRET_TOKEN must be set')

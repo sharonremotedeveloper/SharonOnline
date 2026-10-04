@@ -49,10 +49,14 @@ CORS_ALLOW_ALL_ORIGINS = True
 if not REDIS_URL:
     CELERY_TASK_ALWAYS_EAGER = True
 
-# Make the dev e-mail mock visible in the runserver console (the reset/verify links are printed there when DEBUG).
+# E-mail send results (provider ids / error codes only) in the runserver console. With EMAIL_BACKEND_MODE=console the
+# messages themselves (including reset / verify links) are printed by Django's console mail backend, not the log.
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {'console': {'class': 'logging.StreamHandler'}},
-    'loggers': {'apps.integrations.email': {'handlers': ['console'], 'level': 'INFO'}},
+    'loggers': {
+        'apps.integrations.email': {'handlers': ['console'], 'level': 'INFO'},
+        'apps.integrations.services.email': {'handlers': ['console'], 'level': 'INFO'},
+    },
 }

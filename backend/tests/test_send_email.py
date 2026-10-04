@@ -233,8 +233,10 @@ class TestEscapingHelper:
         assert '&quot;T&quot; &amp; co' in html
         assert html.startswith('<p>Hi ')
 
-    def test_result_is_a_plain_string(self):
-        assert type(render_html('<b>{x}</b>', x='1')) is str
+    def test_result_is_a_string_marked_safe(self):
+        # Already escaped, so Django templates must not escape it a second time; JSON / TextField treat it as str.
+        from django.utils.safestring import SafeString
+        assert isinstance(render_html('<b>{x}</b>', x='1'), SafeString)
 
 
 # ------------------------------------------------------------------------------------------- production boot guard

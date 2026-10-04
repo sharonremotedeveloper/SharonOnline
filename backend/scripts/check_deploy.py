@@ -27,6 +27,7 @@ def throwaway_environment() -> dict:
         'CSRF_TRUSTED_ORIGINS': 'https://sharonesl.com',
         'FRONTEND_BASE_URL': 'https://sharonesl.com',
         'RESEND_API_KEY': 're_ci_' + secrets.token_hex(8),
+        'EMAIL_BACKEND_MODE': 'resend',                     # console mode only prints e-mails (slice N1c)
         'ZOOM_WEBHOOK_SECRET_TOKEN': secrets.token_hex(16),
         'ESKOMSEPUSH_API_KEY': secrets.token_hex(8),
         'PAYOUT_DATA_KEYS': json.dumps({key_id: Fernet.generate_key().decode()}),
@@ -47,6 +48,14 @@ def refund_backend_problems(backend: str) -> list:
     return []
 
 
+def email_mode_problems(mode: str) -> list:
+    """Reasons a production deployment must not start with this EMAIL_BACKEND_MODE (empty list = fine)."""
+    if mode != 'resend':
+        return [f"EMAIL_BACKEND_MODE is {mode!r}: production must send through Resend ('resend'); "
+                f"'console' only prints e-mails."]
+    return []
+
+
 def main() -> int:
     os.chdir(BACKEND_DIR)
     sys.path.insert(0, BACKEND_DIR)
@@ -62,7 +71,8 @@ def main() -> int:
     django.setup()
     from django.conf import settings
 
-    problems = refund_backend_problems(getattr(settings, 'REFUND_GATEWAY_BACKEND', ''))
+    problems = (refund_backend_problems(getattr(settings, 'REFUND_GATEWAY_BACKEND', ''))
+                + email_mode_problems(getattr(settings, 'EMAIL_BACKEND_MODE', '')))
     for problem in problems:
         print(f'check --deploy: {problem}', file=sys.stderr)
     if problems:
