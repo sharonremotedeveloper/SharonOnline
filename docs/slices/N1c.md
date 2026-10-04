@@ -24,6 +24,13 @@ FAILED tests/test_account_recovery.py::TestMailPlumbing::test_success_sends_to_t
 3 failed, 1 passed, 41 deselected in 8.61s
 ```
 
+## QA round 1 (APPROVE WITH CONDITIONS) - red run, tests only
+```
+tests/test_send_email_qa.py
+E   ImportError: cannot import name 'EmailPermanentError' from 'apps.integrations.email'
+ERROR tests/test_send_email_qa.py
+```
+
 ## Decisions
 - Confirmation key `booking-confirmed:{booking_id}:{reschedule_count}:student`: `Booking.reschedule_count` exists and is the
   generation; the `:student` role suffix follows the plan's §6 key so N2b can add the tutor copy without a collision.
