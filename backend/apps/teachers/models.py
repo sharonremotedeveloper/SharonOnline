@@ -9,6 +9,16 @@ class TeacherProfile(models.Model):
         AMERICAN = 'US', 'American'
         OTHER = 'OTHER', 'International'
 
+    class Status(models.TextChoices):
+        """Tutor lifecycle (plan §3.1, docs/TUTOR_STATUS_MACHINE.md). Changed only by teachers/vetting.py."""
+        APPLIED = 'applied', 'Applied'
+        SUBMITTED = 'submitted', 'Submitted for review'
+        IN_REVIEW = 'in_review', 'In review'
+        APPROVED = 'approved', 'Approved'
+        CHANGES_REQUESTED = 'changes_requested', 'Changes requested'
+        REJECTED = 'rejected', 'Rejected'
+        SUSPENDED = 'suspended', 'Suspended'
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='teacher_profile')
     bio = models.TextField(blank=True)
@@ -26,10 +36,13 @@ class TeacherProfile(models.Model):
     rating_count = models.PositiveIntegerField(default=0)
     price_per_25min_usd = models.DecimalField(max_digits=6, decimal_places=2, default=9.00)
     specialties = models.JSONField(default=list, help_text="List of tags: ['FreeTalk', 'Business English', 'Daily News', 'TOEIC']")
+    # The only stored lifecycle column; written only by teachers/vetting.py (transition_teacher / create_teacher_profile).
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.APPLIED, db_index=True)
+    # Set when the tutor finished onboarding training (T6); live tutors were grandfathered by migration 0007.
+    training_completed_at = models.DateTimeField(null=True, blank=True)
     is_verified = models.BooleanField(default=False, db_index=True)
     is_active = models.BooleanField(default=True, db_index=True)
-    # Strikes counted inside the rolling STRIKE_WINDOW_DAYS window; kept in step by services/strikes.py (never edit by hand)
-    # Strikes inside the rolling STRIKE_WINDOW_DAYS window, kept in step by services/strikes.py (do not edit by hand)
+    # Strikes inside the rolling STRIKE_WINDOW_DAYS window, kept in step by teachers/strikes.py (do not edit by hand)
     sla_strikes = models.PositiveSmallIntegerField(default=0)
     eskom_area_id = models.CharField(max_length=128, blank=True, default='')
     has_inverter_backup = models.BooleanField(default=False)
@@ -95,6 +108,51 @@ class TeacherStrike(models.Model):
             models.UniqueConstraint(fields=['booking', 'kind'], condition=models.Q(booking__isnull=False),
                                     name='uniq_strike_kind_per_booking'),
         ]
+
+
+class TeacherStatusChangeQuerySet(models.QuerySet):
+    """Append-only: bulk edits and bulk deletes are refused (a tutor's deletion still cascades through the collector)."""
+
+    def update(self, **kwargs):
+        raise ValueError('TeacherStatusChange rows are append-only; they cannot be updated.')
+
+    def delete(self):
+        raise ValueError('TeacherStatusChange rows are append-only; they cannot be deleted.')
+
+
+class TeacherStatusChange(models.Model):
+    """
+    One row per tutor status change made through teachers/vetting.py (plus a baseline row, from_status '', when a profile is
+    created or was migrated by 0007). Never edited or deleted by application code: vetting decisions and suspensions must be
+    replayable.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    teacher = models.ForeignKey(TeacherProfile, on_delete=models.CASCADE, related_name='status_changes')
+    from_status = models.CharField(max_length=20, blank=True)
+    to_status = models.CharField(max_length=20)
+    actor = models.CharField(max_length=80, help_text="'user:<username>' or a system source such as 'system:strikes'.")
+    actor_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    reason = models.CharField(max_length=500, blank=True)
+    rubric = models.JSONField(null=True, blank=True)
+    reviewed_assets = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    objects = TeacherStatusChangeQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['created_at']
+        indexes = [models.Index(fields=['teacher', 'created_at'], name='teacher_statuschange_t_idx')]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError('TeacherStatusChange rows are append-only; they cannot be edited.')
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError('TeacherStatusChange rows are append-only; they cannot be deleted.')
+
+    def __str__(self):
+        return f"{self.teacher_id}: {self.from_status or '-'} -> {self.to_status} by {self.actor}"
 
 
 class TeacherAvailability(models.Model):

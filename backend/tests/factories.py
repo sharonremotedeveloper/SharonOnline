@@ -81,7 +81,7 @@ def make_teacher_profile(user=None, *, status='approved', availability=True, **f
         raise TypeError('Pass status=... instead of is_verified/is_active (they are derived from status, plan §3.1)')
     if _has_status_field():
         fields['status'] = status
-    else:
+    if not getattr(TeacherProfile._meta.get_field('is_verified'), 'generated', False):
         fields['is_verified'], fields['is_active'] = TEACHER_STATUS_FLAGS[status]
     fields.setdefault('headline', 'TEFL Tutor')
     fields.setdefault('accent', TeacherProfile.Accent.SOUTH_AFRICAN)
@@ -90,6 +90,15 @@ def make_teacher_profile(user=None, *, status='approved', availability=True, **f
     if availability:
         TeacherAvailability.objects.create(teacher=profile, day_of_week=0, start_time=time(9, 0), end_time=time(12, 0),
                                            is_active=True)
+    return profile
+
+
+def advance_teacher(profile, *statuses, actor=None, reason='test'):
+    """Move a tutor through `statuses` with the real service (teachers/vetting.py); default actor: a platform admin."""
+    from apps.teachers.vetting import transition_teacher
+    actor = actor or make_admin()
+    for status in statuses:
+        transition_teacher(profile, status, actor=actor, reason=reason)
     return profile
 
 
