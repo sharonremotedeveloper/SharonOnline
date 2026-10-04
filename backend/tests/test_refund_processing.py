@@ -1365,10 +1365,10 @@ class TestStateTransitions:
 
 # ================================================================================================ retry_failed
 class TestRetryFailed:
-    def _failed(self, teacher_user, student_user, kind, *, epoch=0, request_id=''):
+    def _failed(self, teacher_user, student_user, kind, *, epoch=0, request_id='', attempts=1):      # one definitive answer unless a test says otherwise
         r = new_refund(teacher_user, student_user)
         return set_row(r, status=RS.FAILED, failure_kind=kind, failure_detail='boom', request_epoch=epoch,
-                       gateway_request_id=request_id, attempts=2, last_attempt_at=timezone.now() - DAY,
+                       gateway_request_id=request_id, attempts=attempts, last_attempt_at=timezone.now() - DAY,
                        first_attempt_at=timezone.now() - DAY)
 
     def test_a_rejected_retry_bumps_the_epoch_and_uses_a_new_request_id(self, teacher_user, student_user, admin_user, gw):
@@ -1916,3 +1916,126 @@ class TestCaptureNotFound404:
 
 
 FK_EXHAUSTED = RefundRequest.FailureKind.EXHAUSTED
+
+
+class TestRetryAfterAmbiguity:
+    """M2: a `rejected` / `provider_failed` failure is only 'certain' when it followed a single definitive answer. If an earlier
+    attempt of the same request id was transient/manual (or several attempts were made), the provider may have refunded unseen."""
+
+    def _walk(self, gw, clock, answers, teacher_user, student_user):
+        seq = iter(answers)
+        gw.behavior = lambda order: next(seq)
+        r = new_refund(teacher_user, student_user)
+        for _ in answers:
+            refunds.process_pending_refunds()
+            clock.advance(25 * HOUR)
+        return fresh(r)
+
+    def test_transient_then_rejected_needs_the_confirmation_to_retry(self, teacher_user, student_user, admin_user, gw, clock):
+        r = self._walk(gw, clock, [RefundResult('transient', http_status=503), RefundResult('rejected', code='INSTRUMENT_DECLINED')],
+                       teacher_user, student_user)
+        assert r.status == RS.FAILED and r.failure_kind == 'rejected' and r.attempts == 2
+        with pytest.raises(refunds.RefundConfirmationRequired):
+            refunds.retry_failed(r.pk, actor=admin_user)
+        with pytest.raises(refunds.RefundConfirmationRequired):
+            refunds.retry_failed(r.pk, actor=admin_user, confirm_not_refunded=False)
+        assert fresh(r).status == RS.FAILED and fresh(r).request_epoch == 0
+        refunds.retry_failed(r.pk, actor=admin_user, confirm_not_refunded=True)
+        r = fresh(r)
+        assert r.status == RS.PENDING_GATEWAY and r.request_epoch == 1 and r.gateway_request_id == '' and r.attempts == 0
+
+    def test_a_single_definitive_rejection_keeps_the_no_confirm_retry(self, teacher_user, student_user, admin_user, gw, clock):
+        r = self._walk(gw, clock, [RefundResult('rejected', code='INSTRUMENT_DECLINED')], teacher_user, student_user)
+        assert r.status == RS.FAILED and r.attempts == 1
+        refunds.retry_failed(r.pk, actor=admin_user)
+        assert fresh(r).status == RS.PENDING_GATEWAY and fresh(r).request_epoch == 1
+
+    def test_the_new_round_starts_clean_so_a_single_rejection_after_the_confirmed_retry_needs_no_confirmation(
+            self, teacher_user, student_user, admin_user, gw, clock):
+        r = self._walk(gw, clock, [RefundResult('transient'), RefundResult('rejected', code='X')], teacher_user, student_user)
+        refunds.retry_failed(r.pk, actor=admin_user, confirm_not_refunded=True)
+        gw.behavior = lambda order: RefundResult('rejected', code='X')
+        refunds.process_pending_refunds()
+        r = fresh(r)
+        assert r.status == RS.FAILED and r.attempts == 1 and r.request_epoch == 1
+        refunds.retry_failed(r.pk, actor=admin_user)                       # only a definitive answer in this request id
+        assert fresh(r).request_epoch == 2
+
+    def test_several_attempts_alone_are_ambiguous_even_without_a_transient_row(self, teacher_user, student_user, admin_user):
+        r = new_refund(teacher_user, student_user)
+        r = set_row(r, status=RS.FAILED, failure_kind='rejected', attempts=2, gateway_request_id=f'refund-{r.pk}')
+        RefundAttempt.objects.create(refund=r, seq=1, kind='send', request_id=f'refund-{r.pk}', result_state='rejected', http_status=422)
+        with pytest.raises(refunds.RefundConfirmationRequired):
+            refunds.retry_failed(r.pk, actor=admin_user)
+
+    def test_a_manual_row_in_the_same_request_id_is_ambiguous(self, teacher_user, student_user, admin_user):
+        r = new_refund(teacher_user, student_user)
+        r = set_row(r, status=RS.FAILED, failure_kind='rejected', attempts=1, gateway_request_id=f'refund-{r.pk}')
+        RefundAttempt.objects.create(refund=r, seq=1, kind='send', request_id=f'refund-{r.pk}', result_state='manual')
+        RefundAttempt.objects.create(refund=r, seq=2, kind='send', request_id=f'refund-{r.pk}', result_state='rejected', http_status=422)
+        with pytest.raises(refunds.RefundConfirmationRequired):
+            refunds.retry_failed(r.pk, actor=admin_user)
+
+    def test_a_transient_row_alone_is_ambiguous_even_when_the_attempt_counter_says_one(self, teacher_user, student_user, admin_user):
+        r = new_refund(teacher_user, student_user)
+        r = set_row(r, status=RS.FAILED, failure_kind='rejected', attempts=1, gateway_request_id=f'refund-{r.pk}')
+        RefundAttempt.objects.create(refund=r, seq=1, kind='send', request_id=f'refund-{r.pk}', result_state='transient', http_status=503)
+        RefundAttempt.objects.create(refund=r, seq=2, kind='send', request_id=f'refund-{r.pk}', result_state='rejected', http_status=422)
+        with pytest.raises(refunds.RefundConfirmationRequired):
+            refunds.retry_failed(r.pk, actor=admin_user)
+
+    def test_a_poll_that_could_not_tell_before_the_provider_failure_is_ambiguous(self, teacher_user, student_user, admin_user, gw, clock):
+        answers = iter([RefundResult('transient', http_status=503), RefundResult('rejected', code='CANCELLED')])
+        gw.behavior = lambda order: RefundResult('submitted', reference='RF-S')
+        gw.lookup_behavior = lambda order: next(answers)
+        r = new_refund(teacher_user, student_user)
+        for _ in range(3):
+            refunds.process_pending_refunds()
+            clock.advance(2 * HOUR)
+        r = fresh(r)
+        assert r.status == RS.FAILED and r.failure_kind == 'provider_failed' and r.attempts == 1
+        with pytest.raises(refunds.RefundConfirmationRequired):
+            refunds.retry_failed(r.pk, actor=admin_user)
+
+    def test_an_ambiguous_row_of_an_older_request_id_does_not_count(self, teacher_user, student_user, admin_user):
+        r = new_refund(teacher_user, student_user)
+        r = set_row(r, status=RS.FAILED, failure_kind='rejected', attempts=1, request_epoch=1, gateway_request_id=f'refund-{r.pk}-r1')
+        RefundAttempt.objects.create(refund=r, seq=1, kind='send', request_id=f'refund-{r.pk}', result_state='transient')
+        RefundAttempt.objects.create(refund=r, seq=2, kind='send', request_id=f'refund-{r.pk}-r1', result_state='rejected', http_status=422)
+        refunds.retry_failed(r.pk, actor=admin_user)
+        assert fresh(r).request_epoch == 2
+
+    def test_provider_failed_after_ambiguity_needs_the_confirmation(self, teacher_user, student_user, admin_user, gw, clock):
+        answers = iter([RefundResult('transient', http_status=503), RefundResult('submitted', reference='RF-S')])
+        gw.behavior = lambda order: next(answers)
+        gw.lookup_behavior = lambda order: RefundResult('rejected', code='CANCELLED')
+        r = new_refund(teacher_user, student_user)
+        for _ in range(3):
+            refunds.process_pending_refunds()
+            clock.advance(25 * HOUR)
+        r = fresh(r)
+        assert r.status == RS.FAILED and r.failure_kind == 'provider_failed' and r.attempts == 2
+        with pytest.raises(refunds.RefundConfirmationRequired):
+            refunds.retry_failed(r.pk, actor=admin_user)
+        refunds.retry_failed(r.pk, actor=admin_user, confirm_not_refunded=True)
+        r = fresh(r)
+        assert r.request_epoch == 1 and r.gateway_reference == '' and r.status == RS.PENDING_GATEWAY
+
+    def test_provider_failed_after_a_single_clean_submission_keeps_the_no_confirm_retry(self, teacher_user, student_user, admin_user, gw, clock):
+        gw.behavior = lambda order: RefundResult('submitted', reference='RF-S')
+        gw.lookup_behavior = lambda order: RefundResult('rejected', code='CANCELLED')
+        r = new_refund(teacher_user, student_user)
+        for _ in range(2):
+            refunds.process_pending_refunds()
+            clock.advance(2 * HOUR)
+        r = fresh(r)
+        assert r.status == RS.FAILED and r.failure_kind == 'provider_failed' and r.attempts == 1
+        refunds.retry_failed(r.pk, actor=admin_user)
+        assert fresh(r).request_epoch == 1
+
+    def test_the_guard_failure_never_needed_the_confirmation_and_still_does_not(self, teacher_user, student_user, admin_user):
+        r = new_refund(teacher_user, student_user)
+        r = set_row(r, status=RS.FAILED, failure_kind='guard', attempts=3, gateway_request_id=f'refund-{r.pk}')
+        RefundAttempt.objects.create(refund=r, seq=1, kind='send', request_id=f'refund-{r.pk}', result_state='transient')
+        refunds.retry_failed(r.pk, actor=admin_user)
+        assert fresh(r).status == RS.PENDING_GATEWAY and fresh(r).request_epoch == 0

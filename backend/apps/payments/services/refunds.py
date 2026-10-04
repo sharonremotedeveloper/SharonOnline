@@ -428,21 +428,36 @@ def mark_paid_manually(refund_id, *, actor, reference: str) -> RefundRequest:
         return refund
 
 
+def _may_have_refunded_unseen(refund) -> bool:
+    """
+    Could the provider have refunded this request id without us seeing it? True when more than one attempt was made, or an earlier
+    attempt of the SAME request id ended in a non-definitive answer (transient, manual): a later 'rejected' then says nothing about
+    whether an earlier call went through (a crash or timeout after PayPal accepted it). A single definitive answer is certain.
+    """
+    if refund.attempts > 1:
+        return True
+    return RefundAttempt.objects.filter(refund=refund, kind__in=(SEND, POLL), request_id=refund.gateway_request_id,
+                                        result_state__in=('transient', 'manual')).exists()
+
+
 def retry_failed(refund_id, *, actor, confirm_not_refunded: bool = False) -> RefundRequest:
     """
     An admin sends a failed refund back to the gateway. Failures the provider certainly refused (`rejected`,
-    `provider_failed`) get a NEW request id (epoch bump); `guard` keeps its id; ambiguous ones (the provider may have refunded)
-    need `confirm_not_refunded` and keep the old id, so a replay can never refund twice. The guards run again first.
+    `provider_failed` after ONE definitive answer) get a NEW request id (epoch bump); `guard` keeps its id; ambiguous ones (the
+    provider may have refunded: exhausted, replay window, already refunded, or a rejection that followed a transient/manual/repeated
+    attempt) need `confirm_not_refunded` and `exhausted`/`replay_window` keep the old id, so a replay can never refund twice. The
+    guards run again first.
     """
     with transaction.atomic():
         tx, refund = _lock_pair(refund_id)
         if refund.status != RS.FAILED:
             raise RefundStateError(f"Refund {refund.pk} is {refund.status}; only a failed refund can be retried.")
         kind = refund.failure_kind
-        if kind in AMBIGUOUS_KINDS and not confirm_not_refunded:
+        ambiguous = kind in AMBIGUOUS_KINDS or (kind in (FK.REJECTED, FK.PROVIDER_FAILED) and _may_have_refunded_unseen(refund))
+        if ambiguous and not confirm_not_refunded:
             raise RefundConfirmationRequired(
-                f"Refund {refund.pk} failed as '{kind or 'unknown'}': the provider may already have refunded it. Check the gateway, "
-                f"then retry with confirm_not_refunded=True.")
+                f"Refund {refund.pk} failed as '{kind or 'unknown'}': the provider may already have refunded it (an earlier attempt was "
+                f"not answered clearly). Check the gateway, then retry with confirm_not_refunded=True.")
         problem = _guard_problem(tx, refund)
         if problem:
             raise RefundGuardFailed(f"Refund {refund.pk} still fails a safety check: {problem}")
