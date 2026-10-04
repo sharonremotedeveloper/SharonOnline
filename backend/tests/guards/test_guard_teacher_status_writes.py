@@ -1,11 +1,12 @@
 """
 Guard (a): `TeacherProfile.is_verified` / `is_active` / `status` are written only by the tutor status service.
 
-Plan §3.1: `status` becomes the only stored column and `is_verified` / `is_active` become GeneratedFields; the one writer is
-`teachers/vetting.py::transition_teacher` (slice T1a). Until then the sites below write the booleans directly.
+Plan §3.1: `status` is the only stored column and `is_verified` / `is_active` are GeneratedFields of it; the one writer is
+`teachers/vetting.py::transition_teacher` / `create_teacher_profile` (slice T1a, docs/TUTOR_STATUS_MACHINE.md). Migrations
+are excluded by the scanner. T1a emptied the baseline allowlist: there is no exception left.
 
-How to shrink: when a site is routed through the service, lower (or delete) its count here. T1a empties this dict and adds
-`teachers/vetting.py` (+ the data migration, which is excluded anyway) to ALLOWED_WRITERS.
+Two detectors: the Q0 one over all of `apps/` (tutor-looking receivers for `status`), and a stricter one over `apps/teachers/`
+where any `status` write (every receiver, every ORM write method) outside the service fails.
 """
 import ast
 import re
@@ -13,15 +14,10 @@ import re
 from guards._scan import APPS, parse, ratchet_errors, rel, scan, src
 
 FIELDS = {'is_verified', 'is_active', 'status'}
-# The service that owns the transitions (does not exist until T1a).
+# The service that owns the transitions.
 ALLOWED_WRITERS = {'teachers/vetting.py'}
-# Baseline 2026-10-04: {file: number of direct writes}. Only ever lower these numbers.
-ALLOWLIST = {
-    'admin_api/views.py': 2,                              # VerifyTeacherView sets is_verified / is_active (T1b rewrite)
-    'teachers/strikes.py': 2,                             # add_strike deactivates (-> suspended in T1a)
-    'users/management/commands/seed_data.py': 2,          # seeds (-> factory/status in T1a)
-    'users/management/commands/seed_phase41_data.py': 2,
-}
+# Baseline 2026-10-04 was 4 files / 8 writes; T1a routed every one through the service. Never add an entry.
+ALLOWLIST = {}
 WRITE_METHODS = {'create', 'update', 'get_or_create', 'update_or_create', 'bulk_create'}
 TEACHERISH = ('teacher', 'profile', 'tutor')
 NON_TEACHER_RECEIVER = re.compile(r'user|availab|pack|price|bundle|slot', re.IGNORECASE)
@@ -126,6 +122,46 @@ def test_detector_ignores_reads_and_other_models(tmp_path):
         "is_verified = serializers.BooleanField()\n",
         encoding='utf-8')
     assert teacher_status_writes(ok) == []
+
+
+def strict_status_writes(path):
+    """Inside apps/teachers/: ANY `.status` assignment / setattr, or `status=` kwarg to an ORM write method."""
+    hits = []
+    for node in ast.walk(parse(path)):
+        if isinstance(node, (ast.Assign, ast.AugAssign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            hits += [f'{node.lineno}: {src(a)} = ...' for t in targets for a in _attr_targets(t) if a.attr == 'status']
+        elif isinstance(node, ast.Call):
+            func = node.func
+            if isinstance(func, ast.Name) and func.id == 'setattr' and len(node.args) >= 2 \
+                    and isinstance(node.args[1], ast.Constant) and node.args[1].value == 'status':
+                hits.append(f'{node.lineno}: setattr(..., "status", ...)')
+            elif isinstance(func, ast.Attribute) and func.attr in WRITE_METHODS | {'bulk_update'}:
+                hits += [f'{node.lineno}: {func.attr}(status=...)' for kw in node.keywords if kw.arg == 'status']
+                hits += [f'{node.lineno}: {func.attr}([... "status" ...])' for arg in node.args
+                         if isinstance(arg, (ast.List, ast.Tuple)) and any(
+                             isinstance(e, ast.Constant) and e.value == 'status' for e in arg.elts)]
+    return hits
+
+
+def test_teachers_app_writes_status_only_in_the_service():
+    found = scan(strict_status_writes, APPS / 'teachers')
+    found = {path: sites for path, sites in found.items() if f'teachers/{path}' not in ALLOWED_WRITERS}
+    assert not found, f'TeacherProfile.status is written only by teachers/vetting.py: {found}'
+
+
+def test_the_service_itself_is_seen_by_the_strict_detector():
+    assert strict_status_writes(APPS / 'teachers' / 'vetting.py'), 'the detector must see the one real writer'
+
+
+def test_strict_detector_shapes(tmp_path):
+    bad = tmp_path / 'bad.py'
+    bad.write_text("locked.status = 'x'\nsetattr(row, 'status', 'x')\nQ.objects.filter().update(status='x')\n"
+                   "Q.objects.bulk_update(rows, ['status'])\n", encoding='utf-8')
+    assert len(strict_status_writes(bad)) == 4
+    ok = tmp_path / 'ok.py'
+    ok.write_text("x = profile.status\nQ.objects.filter(status='approved')\n", encoding='utf-8')
+    assert strict_status_writes(ok) == []
 
 
 def test_ratchet_fails_on_a_new_offending_file(tmp_path):
