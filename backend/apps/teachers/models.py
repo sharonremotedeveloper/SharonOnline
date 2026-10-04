@@ -1,6 +1,33 @@
 from django.db import models
+from django.db.models import Case, Q, Value, When
 from django.conf import settings
 import uuid
+
+# Plan §3.1, the only truth table. is_verified: approved|suspended. is_active: everything but rejected|suspended.
+STATUS_VALUES = ('applied', 'submitted', 'in_review', 'approved', 'changes_requested', 'rejected', 'suspended')
+VERIFIED_STATUSES = ('approved', 'suspended')
+ACTIVE_STATUSES = ('applied', 'submitted', 'in_review', 'changes_requested', 'approved')
+GENERATED_FLAGS = frozenset({'is_verified', 'is_active'})
+
+
+def _refuse_generated(names, where):
+    hit = GENERATED_FLAGS.intersection(names)
+    if hit:
+        raise ValueError(f"{sorted(hit)} are generated from TeacherProfile.status and cannot be written ({where}); "
+                         "use apps.teachers.vetting.transition_teacher.")
+
+
+class TeacherProfileQuerySet(models.QuerySet):
+    """Django silently drops writes to GeneratedFields here; refuse them loudly instead."""
+
+    def update(self, **kwargs):
+        _refuse_generated(kwargs, 'QuerySet.update')
+        return super().update(**kwargs)
+
+    def bulk_update(self, objs, fields, *args, **kwargs):
+        _refuse_generated(fields, 'QuerySet.bulk_update')
+        return super().bulk_update(objs, fields, *args, **kwargs)
+
 
 class TeacherProfile(models.Model):
     class Accent(models.TextChoices):
@@ -40,8 +67,14 @@ class TeacherProfile(models.Model):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.APPLIED, db_index=True)
     # Set when the tutor finished onboarding training (T6); live tutors were grandfathered by migration 0007.
     training_completed_at = models.DateTimeField(null=True, blank=True)
-    is_verified = models.BooleanField(default=False, db_index=True)
-    is_active = models.BooleanField(default=True, db_index=True)
+    # Derived from `status` by the database (plan §3.1 truth table): every existing filter keeps working and nothing can
+    # set them. Constructor kwargs, save(update_fields=...) and queryset update() on them raise (see the tripwires below).
+    is_verified = models.GeneratedField(
+        expression=Case(When(status__in=VERIFIED_STATUSES, then=Value(True)), default=Value(False)),
+        output_field=models.BooleanField(), db_persist=True, db_index=True)
+    is_active = models.GeneratedField(
+        expression=Case(When(status__in=ACTIVE_STATUSES, then=Value(True)), default=Value(False)),
+        output_field=models.BooleanField(), db_persist=True, db_index=True)
     # Strikes inside the rolling STRIKE_WINDOW_DAYS window, kept in step by teachers/strikes.py (do not edit by hand)
     sla_strikes = models.PositiveSmallIntegerField(default=0)
     eskom_area_id = models.CharField(max_length=128, blank=True, default='')
@@ -49,6 +82,25 @@ class TeacherProfile(models.Model):
     has_lte_failover = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    objects = TeacherProfileQuerySet.as_manager()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(status__in=STATUS_VALUES), name='teacherprofile_status_valid'),
+        ]
+
+    def __init__(self, *args, **kwargs):
+        # from_db() passes field values positionally, so only callers can hit this; Django would silently drop them.
+        hit = GENERATED_FLAGS.intersection(kwargs)
+        if hit:
+            raise TypeError(f"{sorted(hit)} are generated from status; pass status=... (plan §3.1).")
+        super().__init__(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        if kwargs.get('update_fields') is not None:
+            _refuse_generated(kwargs['update_fields'], 'save(update_fields=...)')   # Django would make it a silent no-op
+        super().save(*args, **kwargs)
 
     @property
     def resolved_avatar_url(self) -> str:

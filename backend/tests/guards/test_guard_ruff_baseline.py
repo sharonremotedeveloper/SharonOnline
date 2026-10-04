@@ -19,7 +19,7 @@ import pytest
 from guards._scan import BACKEND
 
 RUFF_TOML = BACKEND / 'ruff.toml'
-BASELINE_MAX_PAIRS = 69          # (file, code) pairs on 2026-10-04; lower it whenever you remove entries
+BASELINE_MAX_PAIRS = 68          # (file, code) pairs: 69 on 2026-10-04, 68 after T1a; lower it whenever you remove entries
 
 
 def _ruff():

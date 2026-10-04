@@ -42,8 +42,7 @@ def test_full_e2e_booking_and_post_lesson_lifecycle():
         headline="Senior Business English Specialist",
         accent=TeacherProfile.Accent.SOUTH_AFRICAN,
         price_per_25min_usd=9.00,
-        is_verified=True,
-        is_active=True,
+        status=TeacherProfile.Status.APPROVED,
         rating_avg=5.00,
         rating_count=0
     )

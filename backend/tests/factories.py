@@ -65,24 +65,17 @@ def make_student_profile(user=None, **fields):
     return StudentProfile.objects.create(user=user or make_student(), **fields)
 
 
-def _has_status_field():
-    return any(field.name == 'status' for field in TeacherProfile._meta.concrete_fields)
-
-
 def make_teacher_profile(user=None, *, status='approved', availability=True, **fields):
     """
-    A tutor in a plan §3.1 status. Today `status` is mapped onto `is_verified` / `is_active`.
-    TODO(T1a): once TeacherProfile.status exists (and the booleans are GeneratedFields) pass `status` only; the branch
-    below already does that as soon as the field appears, and the flag kwargs stay refused.
+    A tutor in a plan §3.1 status (written directly, test-only: no baseline audit row; the guard scans apps/ only).
+    `is_verified` / `is_active` are GeneratedFields of `status` (T1a) and are refused here. To change the status of an
+    existing tutor use `advance_teacher` (the real service).
     """
     if status not in TEACHER_STATUS_FLAGS:
         raise ValueError(f'Unknown tutor status {status!r}; one of {sorted(TEACHER_STATUS_FLAGS)}')
     if {'is_verified', 'is_active'} & fields.keys():
         raise TypeError('Pass status=... instead of is_verified/is_active (they are derived from status, plan §3.1)')
-    if _has_status_field():
-        fields['status'] = status
-    if not getattr(TeacherProfile._meta.get_field('is_verified'), 'generated', False):
-        fields['is_verified'], fields['is_active'] = TEACHER_STATUS_FLAGS[status]
+    fields['status'] = status
     fields.setdefault('headline', 'TEFL Tutor')
     fields.setdefault('accent', TeacherProfile.Accent.SOUTH_AFRICAN)
     fields.setdefault('price_per_25min_usd', Decimal('9.00'))

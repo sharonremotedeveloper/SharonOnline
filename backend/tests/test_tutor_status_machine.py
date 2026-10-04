@@ -50,7 +50,10 @@ def actor_of(kind, profile):
 
 # ------------------------------------------------------------------ the field and the truth table
 def test_status_choices_are_the_seven_plan_states():
-    assert set(St.values) == set(TRUTH_TABLE)
+    from apps.teachers import models as m
+    assert set(St.values) == set(TRUTH_TABLE) == set(m.STATUS_VALUES)
+    assert set(m.VERIFIED_STATUSES) == {s for s, (v, _a) in TRUTH_TABLE.items() if v}
+    assert set(m.ACTIVE_STATUSES) == {s for s, (_v, a) in TRUTH_TABLE.items() if a}
 
 
 def test_a_new_profile_starts_applied_without_training():

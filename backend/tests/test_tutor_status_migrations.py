@@ -10,8 +10,12 @@ from django.db import connection, transaction
 
 from migration_helpers import _migrate, apps_at, latest_targets
 
-BEFORE = [('teachers', '0006_teacherstrike')]
-AFTER = [('teachers', '0008_generated_flags')]
+TEACHERS_BEFORE, TEACHERS_AFTER = ('teachers', '0006_teacherstrike'), ('teachers', '0008_generated_flags')
+
+
+def _targets(teachers):
+    """Every other app stays on its latest migration (so the historical User matches the real users table)."""
+    return [t for t in latest_targets() if t[0] != 'teachers'] + [teachers]
 # (is_verified, is_active) on the old schema -> status after 0007 (plan §3.1 migration mapping).
 FORWARD = {(True, True): 'approved', (False, False): 'rejected', (False, True): 'applied', (True, False): 'suspended'}
 # status -> (is_verified, is_active) after migrating back to 0006.
@@ -28,11 +32,12 @@ def _build(old_apps):
 
 
 def _round_trip():
+    before, after = _targets(TEACHERS_BEFORE), _targets(TEACHERS_AFTER)
     try:
-        _migrate(BEFORE)
-        _build(apps_at(BEFORE))
-        _migrate(AFTER)
-        new = apps_at(AFTER)
+        _migrate(before)
+        _build(apps_at(before))
+        _migrate(after)
+        new = apps_at(after)
         Profile = new.get_model('teachers', 'TeacherProfile')
         Change = new.get_model('teachers', 'TeacherStatusChange')
         for (verified, active), status in FORWARD.items():
@@ -42,8 +47,8 @@ def _round_trip():
             change = Change.objects.get(teacher=p)
             assert (change.from_status, change.to_status, change.actor) == ('', status, 'system:migration_0007')
         Profile.objects.filter(headline='False-True').update(status='in_review')
-        _migrate(BEFORE)
-        old = apps_at(BEFORE).get_model('teachers', 'TeacherProfile')
+        _migrate(before)
+        old = apps_at(before).get_model('teachers', 'TeacherProfile')
         got = {p.headline: (p.is_verified, p.is_active) for p in old.objects.all()}
         assert got == {'True-True': BACKWARD['approved'], 'False-False': BACKWARD['rejected'],
                        'True-False': BACKWARD['suspended'], 'False-True': BACKWARD['in_review']}

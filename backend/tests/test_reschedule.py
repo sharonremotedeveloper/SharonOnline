@@ -138,7 +138,7 @@ class TestRules:
     def test_a_clash_with_the_students_own_other_lesson_is_refused(self, tutor, student_user):
         other_user = User.objects.create_user(username='t2', email='t2@x.com', password='x-pass-12345', role='teacher')
         from apps.teachers.models import TeacherProfile
-        other = TeacherProfile.objects.create(user=other_user, headline='x', price_per_25min_usd=9, is_verified=True, is_active=True)
+        other = TeacherProfile.objects.create(user=other_user, headline='x', price_per_25min_usd=9, status='approved')
         b = captured(tutor, student_user, 30 * H)
         target = open_slots(tutor)[5]
         Booking.objects.create(teacher=other, student=student_user, start_time_utc=target, end_time_utc=target + timedelta(minutes=25), status=S.CONFIRMED)
@@ -153,8 +153,8 @@ class TestRules:
     def test_a_deactivated_tutor_cannot_receive_the_lesson(self, tutor, student_user):
         b = captured(tutor, student_user, 30 * H)
         target = open_slots(tutor)[5]
-        tutor.is_active = False
-        tutor.save(update_fields=['is_active'])
+        from factories import advance_teacher
+        advance_teacher(tutor, 'suspended')
         assert resched(student_user, b, target).status_code == 409
 
     def test_bad_input(self, tutor, student_user):

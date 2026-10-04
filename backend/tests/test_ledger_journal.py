@@ -69,8 +69,7 @@ def teacher_user(db):
         user=user,
         headline="Senior English Tutor",
         price_per_25min_usd=Decimal('9.00'),
-        is_verified=True,
-        is_active=True
+        status=TeacherProfile.Status.APPROVED,
     )
     return profile
 

@@ -121,7 +121,7 @@ class TestAccess:
     def test_only_the_lessons_own_tutor(self, teacher_user, student_user, admin_user):
         from apps.teachers.models import TeacherProfile
         other_user = User.objects.create_user(username='t2', email='t2@x.com', password='x-pass-12345', role='teacher')
-        TeacherProfile.objects.create(user=other_user, headline='x', price_per_25min_usd=9, is_verified=True, is_active=True)
+        TeacherProfile.objects.create(user=other_user, headline='x', price_per_25min_usd=9, status='approved')
         b = finished_lesson(teacher_user, student_user)
         assert post(None, b).status_code == 401
         assert post(student_user, b).status_code == 403

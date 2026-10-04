@@ -12,6 +12,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from apps.users.permissions import IsPlatformAdmin
+from apps.teachers import vetting
 from apps.teachers.models import TeacherProfile
 from apps.bookings.models import Booking
 from apps.bookings.services.state_machine import InvalidTransition, transition_booking
@@ -115,29 +116,51 @@ class PendingTeachersListView(APIView):
 
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class VerifyTeacherView(APIView):
+    # LEGACY (T1a shim, T1b replaces it with explicit review actions): approve / reject in one call by walking the shortest
+    # legal path to `approved` / `rejected` through teachers/vetting.py, as the admin. Same response shape and codes as
+    # before; a target the transition table cannot reach is 409. (A comment, not a docstring: it would leak into OpenAPI.)
     permission_classes = [IsPlatformAdmin]
 
     def patch(self, request, pk):
         serializer = VerifyTeacherActionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         is_verified = serializer.validated_data['is_verified']
-        rejection_reason = serializer.validated_data.get('rejection_reason', '')
+        reason = serializer.validated_data.get('rejection_reason', '') or 'legacy-verify'
 
-        try:
-            profile = TeacherProfile.objects.get(pk=pk)
-            profile.is_verified = is_verified
-            if not is_verified:
-                profile.is_active = False
-            profile.save()
-
-            return Response({
-                'success': True,
-                'teacher_id': str(profile.id),
-                'is_verified': profile.is_verified,
-                'message': "Tutor audition approved and published live." if is_verified else "Application rejected with feedback."
-            })
-        except TeacherProfile.DoesNotExist:
+        profile = TeacherProfile.objects.filter(pk=pk).first()
+        if profile is None:
             return Response({'error': 'Teacher profile not found'}, status=status.HTTP_404_NOT_FOUND)
+        target = TeacherProfile.Status.APPROVED if is_verified else TeacherProfile.Status.REJECTED
+        try:
+            with transaction.atomic():
+                path = _legacy_verify_path(TeacherProfile.objects.select_for_update().get(pk=pk).status, target)
+                if path is None:
+                    raise vetting.InvalidTeacherTransition(profile.pk, profile.status, target)
+                for step in path:
+                    vetting.transition_teacher(profile, step, actor=request.user, reason=reason)
+        except vetting.VettingError as exc:
+            return Response({'error': 'This tutor cannot be moved to that status.', 'code': 'invalid_transition'},
+                            status=exc.http_status)
+        return Response({
+            'success': True,
+            'teacher_id': str(profile.id),
+            'is_verified': profile.is_verified,
+            'message': "Tutor audition approved and published live." if is_verified else "Application rejected with feedback."
+        })
+
+
+def _legacy_verify_path(current, target):
+    """Shortest list of statuses from `current` to `target` over the staff edges (breadth first); None if unreachable."""
+    queue, seen = [(current, [])], {current}
+    while queue:
+        node, path = queue.pop(0)
+        if node == target:
+            return path
+        for nxt in vetting.ALLOWED_TRANSITIONS.get(node, {}):
+            if nxt not in seen:
+                seen.add(nxt)
+                queue.append((nxt, path + [nxt]))
+    return None
 
 
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers

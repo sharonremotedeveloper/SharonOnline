@@ -3,6 +3,7 @@ from django.utils import timezone
 from datetime import time
 from apps.users.models import User
 from apps.teachers.models import TeacherProfile, TeacherAvailability
+from apps.teachers.vetting import create_teacher_profile
 from apps.materials.models import Material
 
 class Command(BaseCommand):
@@ -118,21 +119,22 @@ class Command(BaseCommand):
                 user.set_password("password123")
                 user.save()
 
-            profile, _ = TeacherProfile.objects.get_or_create(
-                user=user,
-                defaults={
-                    "headline": item["headline"],
-                    "accent": item["accent"],
-                    "bio": item["bio"],
-                    "rating_avg": item["rating_avg"],
-                    "rating_count": item["rating_count"],
-                    "price_per_25min_usd": item["price"],
-                    "specialties": item["specialties"],
-                    "intro_video_url": item["intro_video"],
-                    "avatar_url": item["avatar"],
-                    "is_verified": True,
-                    "is_active": True
-                }
+            # Approved, trained tutors, created through the status service (baseline audit row); idempotent on re-runs.
+            profile = TeacherProfile.objects.filter(user=user).first() or create_teacher_profile(
+                user,
+                status=TeacherProfile.Status.APPROVED,
+                actor="system:seed_data",
+                reason="seed",
+                training_completed_at=timezone.now(),
+                headline=item["headline"],
+                accent=item["accent"],
+                bio=item["bio"],
+                rating_avg=item["rating_avg"],
+                rating_count=item["rating_count"],
+                price_per_25min_usd=item["price"],
+                specialties=item["specialties"],
+                intro_video_url=item["intro_video"],
+                avatar_url=item["avatar"],
             )
 
             # Weekly availability: Mon to Fri 08:00 to 18:00

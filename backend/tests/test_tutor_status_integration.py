@@ -124,7 +124,8 @@ class TestLegacyVerify:
 
 
 # ------------------------------------------------------------------ Django admin and serializers
-def test_admin_change_page_renders_with_read_only_status(admin_user):
+def test_admin_change_page_renders_with_read_only_status(admin_user, settings):
+    settings.STORAGES = {**settings.STORAGES, 'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}}
     client = APIClient()
     client.force_login(admin_user)
     profile = f.make_teacher_profile(status='approved')

@@ -138,7 +138,7 @@ class TestAggregates:
 
     def test_other_tutors_are_unaffected(self, teacher_user, student_user):
         other_user = User.objects.create_user(username='t2', email='t2@x.com', password='x-pass-12345', role='teacher')
-        other = TeacherProfile.objects.create(user=other_user, headline='x', price_per_25min_usd=9, is_verified=True, is_active=True,
+        other = TeacherProfile.objects.create(user=other_user, headline='x', price_per_25min_usd=9, status='approved',
                                               rating_avg=Decimal('4.50'), rating_count=10)
         review(student_user, lesson(teacher_user, student_user), {'rating': 1})
         other.refresh_from_db()

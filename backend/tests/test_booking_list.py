@@ -41,7 +41,7 @@ def other_student(db):
 @pytest.fixture
 def other_tutor(db):
     u = User.objects.create_user(username='t2', email='t2@x.com', password='x-pass-12345', role='teacher')
-    return TeacherProfile.objects.create(user=u, headline='x', price_per_25min_usd=9, is_verified=True, is_active=True)
+    return TeacherProfile.objects.create(user=u, headline='x', price_per_25min_usd=9, status='approved')
 
 
 # ------------------------------------------------------------------ who sees what

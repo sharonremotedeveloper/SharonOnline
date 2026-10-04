@@ -170,7 +170,7 @@ class TestWhoMayCancel:
     def test_only_the_two_people_in_the_lesson(self, teacher_user, student_user, admin_user):
         stranger = User.objects.create_user(username='nosy', email='n@x.com', password='x-pass-12345', role='student')
         other_tutor = User.objects.create_user(username='t2', email='t2@x.com', password='x-pass-12345', role='teacher')
-        TeacherProfile.objects.create(user=other_tutor, headline='x', price_per_25min_usd=9, is_verified=True, is_active=True)
+        TeacherProfile.objects.create(user=other_tutor, headline='x', price_per_25min_usd=9, status='approved')
         b = captured(teacher_user, student_user, 5 * H)
         assert cancel(None, b).status_code == 401
         assert cancel(stranger, b).status_code == 404            # it does not exist for them

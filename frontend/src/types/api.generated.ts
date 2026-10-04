@@ -1776,7 +1776,7 @@ export interface components {
             /** @description List of tags: ['FreeTalk', 'Business English', 'Daily News', 'TOEIC'] */
             specialties?: unknown;
             readonly country: string;
-            is_verified?: boolean;
+            readonly is_verified: boolean;
             bio?: string;
             /** @description Cloudflare Stream HLS or preview MP4 URL */
             intro_video_url?: string;
@@ -1806,7 +1806,7 @@ export interface components {
             /** @description List of tags: ['FreeTalk', 'Business English', 'Daily News', 'TOEIC'] */
             specialties?: unknown;
             readonly country: string;
-            is_verified?: boolean;
+            readonly is_verified: boolean;
         };
         TokenRefresh: {
             readonly access: string;

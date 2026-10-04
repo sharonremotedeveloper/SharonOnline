@@ -5,6 +5,7 @@ import uuid
 
 from apps.users.models import User
 from apps.teachers.models import TeacherProfile, TeacherAvailability
+from apps.teachers.vetting import create_teacher_profile
 from apps.bookings.models import Booking, LessonMemo, AttendanceAudit
 from apps.materials.models import Material
 from apps.payments.models import CreditBundle, PaymentTransaction
@@ -119,19 +120,20 @@ class Command(BaseCommand):
                 user.set_password("password123")
                 user.save()
 
-            TeacherProfile.objects.get_or_create(
-                user=user,
-                defaults={
-                    "headline": item["headline"],
-                    "accent": item["accent"],
-                    "bio": item["bio"],
-                    "price_per_25min_usd": item["price"],
-                    "specialties": item["specialties"],
-                    "intro_video_url": item["video_url"],
-                    "is_verified": False,
-                    "is_active": True
-                }
-            )
+            # Applications waiting in the vetting queue, created through the status service; idempotent on re-runs.
+            if not TeacherProfile.objects.filter(user=user).exists():
+                create_teacher_profile(
+                    user,
+                    status=TeacherProfile.Status.SUBMITTED,
+                    actor="system:seed_phase41_data",
+                    reason="seed",
+                    headline=item["headline"],
+                    accent=item["accent"],
+                    bio=item["bio"],
+                    price_per_25min_usd=item["price"],
+                    specialties=item["specialties"],
+                    intro_video_url=item["video_url"],
+                )
         self.stdout.write("Created 3 pending tutor applications in vetting queue.")
 
         # 2. Live & Recent Bookings with Attendance Audits

@@ -69,7 +69,7 @@ class TestBusyStatuses:
     def test_other_tutors_bookings_do_not_block(self, tutor, student_user):
         other_user = User.objects.create_user(username='t2', email='t2@x.com', password='x-pass-12345', role='teacher')
         from apps.teachers.models import TeacherProfile
-        other = TeacherProfile.objects.create(user=other_user, headline='x', price_per_25min_usd=9, is_verified=True, is_active=True)
+        other = TeacherProfile.objects.create(user=other_user, headline='x', price_per_25min_usd=9, status='approved')
         slot = first_open(tutor)
         book(other, student_user, slot, S.CONFIRMED)
         assert state(tutor, slot)['is_bookable'] is True
@@ -148,11 +148,10 @@ class TestSlotsEndpoint:
         assert body['viewer_timezone'] == 'Asia/Tokyo' and all(s['viewer_timezone'] == 'Asia/Tokyo' for s in body['slots'])
 
     def test_unverified_or_inactive_tutors_have_no_public_slots(self, tutor):
-        tutor.is_verified = False
-        tutor.save()
+        from factories import advance_teacher
+        advance_teacher(tutor, 'in_review')                     # re-vet: no longer verified
         assert self.get(tutor).status_code == 404
-        tutor.is_verified, tutor.is_active = True, False
-        tutor.save()
+        advance_teacher(tutor, 'approved', 'suspended')         # verified but inactive
         assert self.get(tutor).status_code == 404
 
     def test_the_endpoint_reports_taken_slots_consistently_with_reserve(self, tutor, student_user):
