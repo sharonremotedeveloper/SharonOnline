@@ -20,7 +20,7 @@ from apps.payments.models import (FxRate, GatewayAnomaly, LedgerAccount, LedgerE
                                   RefundAttempt, RefundRequest)
 from apps.payments.services import paypal_events, refund_gateways, refunds
 from apps.payments.services.refund_gateways import RefundResult
-from test_settlement_paths import captured, net
+from payment_helpers import captured, net
 
 ACC = LedgerAccount
 EV = LedgerEntry.EventType
@@ -465,6 +465,28 @@ class TestCrashAndConcurrency:
         assert refunds.process_pending_refunds()['sent'] == 2
         assert refunds.process_pending_refunds()['sent'] == 1
 
+    def test_waiting_manual_rows_do_not_starve_real_rows_of_the_sweep_limit(self, teacher_user, student_user, gw):
+        """QA L1: 30 due PayFast rows that only wait for a person must not use up the 25-row limit and keep a PayPal row from being sent."""
+        gw.behavior = lambda order: RefundResult('manual') if order.gateway == 'payfast' else RefundResult('completed', reference=f'RF-{order.request_id}')
+        manual = [new_refund(teacher_user, student_user, gateway='payfast', amount='168.75', currency='ZAR') for _ in range(30)]
+        real = new_refund(teacher_user, student_user)                      # the newest row: behind all 30 manual rows
+        done = refunds.process_pending_refunds()
+        assert fresh(real).status == RS.PROCESSED
+        assert done['completed'] == 1 and done['manual'] == 30
+        assert RefundAttempt.objects.count() == 1                           # only the real send is audited
+        assert all(fresh(r).status == RS.PENDING_GATEWAY and fresh(r).attempts == 0 for r in manual)
+
+    def test_the_limit_still_bounds_real_work_when_manual_rows_are_mixed_in(self, teacher_user, student_user, settings, gw):
+        settings.REFUND_SWEEP_LIMIT = 2
+        gw.behavior = lambda order: RefundResult('manual') if order.gateway == 'payfast' else RefundResult('completed', reference=f'RF-{order.request_id}')
+        for _ in range(3):
+            new_refund(teacher_user, student_user, gateway='payfast', amount='168.75', currency='ZAR')
+        for _ in range(3):
+            new_refund(teacher_user, student_user)
+        done = refunds.process_pending_refunds()
+        assert done['completed'] == 2 and done['manual'] == 3
+        assert refunds.process_pending_refunds()['completed'] == 1
+
     def test_the_sweep_budget_stops_the_run_before_the_next_claim(self, teacher_user, student_user, settings, monkeypatch):
         settings.REFUND_SWEEP_BUDGET_SECONDS = 600
         times = iter([0, 0, 700, 700, 700, 700, 700, 700])
@@ -852,7 +874,7 @@ class TestManual:
         row = fresh(r)
         assert (row.attempts, row.last_attempt_at, row.first_attempt_at) == (0, None, None)
         assert row.next_attempt_at == clock.now + 6 * HOUR and row.status == RS.PENDING_GATEWAY and row.claim_token == ''
-        assert RefundAttempt.objects.get().result_state == 'manual'
+        assert RefundAttempt.objects.count() == 0                   # QA L1: a manual answer is not an attempt, so it leaves no audit row
 
     def test_many_manual_rounds_never_exhaust_or_fail(self, teacher_user, student_user, gw, clock, settings):
         settings.REFUND_MAX_ATTEMPTS = 1
@@ -1075,7 +1097,8 @@ class TestGuards:
         out = refunds.process_pending_refunds()
         r = fresh(refund)
         assert r.status == RS.FAILED and r.failure_kind == 'guard', (r.status, r.failure_kind, r.failure_detail)
-        assert gw.calls == [] and r.attempts == 0 and r.claim_token == '' and RefundAttempt.objects.count() == 0
+        assert gw.calls == [] and r.attempts == 0 and r.claim_token == ''
+        assert [(a.kind, a.result_state, a.error_code) for a in RefundAttempt.objects.all()] == [('guard', 'failed', 'guard')]      # QA M5: audited
         assert alerts('refund_failed_guard', r.pk).count() == 1 and journals(r) == 0
         assert out['sent'] == 0
         if fragment:
@@ -1345,30 +1368,146 @@ class TestStateTransitions:
         with pytest.raises(ValueError):
             refunds.mark_paid_manually(r.pk, actor=admin_user, reference='  ')
 
-    def test_the_django_admin_action_goes_through_the_service_and_keeps_its_label(self, teacher_user, student_user, admin_user, rf):
-        from django.contrib.admin.sites import AdminSite
+    def test_the_django_admin_action_keeps_its_label(self):
         from apps.payments.admin import RefundRequestAdmin
-        ma = RefundRequestAdmin(RefundRequest, AdminSite())
-        messages = []
-        ma.message_user = lambda request, msg, *a, **k: messages.append(msg)
-        a, b = new_refund(teacher_user, student_user), new_refund(teacher_user, student_user)
-        set_row(b, status=RS.SUBMITTED)
-        request = rf.post('/')
-        request.user = admin_user
-        ma.mark_paid_in_gateway(request, RefundRequest.objects.filter(pk__in=[a.pk, b.pk]))
-        assert fresh(a).status == RS.PROCESSED and fresh(a).gateway_reference == f'MANUAL-{a.pk}' and fresh(b).status == RS.SUBMITTED
+        assert RefundRequestAdmin.mark_paid_in_gateway.short_description == 'Mark as paid in the gateway (posts the cash movement)'
+
+
+class TestDjangoAdminMarkPaid:
+    """M4: the admin action takes the REAL provider refund id (an intermediate form), never invents one, reports per-row errors and
+    is limited to superusers / platform admins on top of Django's change permission."""
+
+    @pytest.fixture(autouse=True)
+    def plain_static_files(self, settings):
+        """The admin pages render in tests without a collectstatic manifest."""
+        settings.STORAGES = {**settings.STORAGES, 'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}}
+
+    @pytest.fixture
+    def web(self, admin_user):
+        from django.test import Client
+        client = Client()
+        client.force_login(admin_user)
+        return client
+
+    @staticmethod
+    def url():
+        from django.urls import reverse
+        return reverse('admin:payments_refundrequest_changelist')
+
+    def _ask(self, client, refunds_, **extra):
+        data = {'action': 'mark_paid_in_gateway', '_selected_action': [str(r.pk) for r in refunds_], **extra}
+        return client.post(self.url(), data, follow=False)
+
+    def _messages(self, response):
+        return [str(m) for m in response.context['messages']] if response.context else []
+
+    def test_the_first_step_shows_a_form_and_changes_nothing(self, teacher_user, student_user, web):
+        r = new_refund(teacher_user, student_user)
+        response = self._ask(web, [r])
+        assert response.status_code == 200 and f'ref_{r.pk}' in response.content.decode()
+        assert fresh(r).status == RS.PENDING_GATEWAY and RefundAttempt.objects.count() == 0 and journals(r) == 0
+
+    def test_the_real_provider_refund_id_is_what_gets_recorded(self, teacher_user, student_user, web, admin_user):
+        r = new_refund(teacher_user, student_user)
+        response = self._ask(web, [r], apply='1', **{f'ref_{r.pk}': '  4AB12345CD678901E  '})
+        assert response.status_code == 302
+        r2 = fresh(r)
+        assert r2.status == RS.PROCESSED and r2.gateway_reference == '4AB12345CD678901E' and not r2.gateway_reference.startswith('MANUAL')
         row = RefundAttempt.objects.get()
-        assert row.kind == 'admin_mark_paid' and row.actor_id == admin_user.pk and row.refund_id == a.pk
-        assert messages == ['1 refund(s) marked as paid.']
-        assert ma.mark_paid_in_gateway.short_description == 'Mark as paid in the gateway (posts the cash movement)'
+        assert row.kind == 'admin_mark_paid' and row.actor_id == admin_user.pk and row.refund_id == r.pk
+        assert journals(r) == 2
+
+    def test_every_selected_refund_needs_its_own_reference(self, teacher_user, student_user, web):
+        a, b = new_refund(teacher_user, student_user), new_refund(teacher_user, student_user)
+        response = self._ask(web, [a, b], apply='1', **{f'ref_{a.pk}': 'GOODREF-123', f'ref_{b.pk}': ''})
+        assert response.status_code == 200                                   # form shown again with the error
+        assert fresh(a).status == RS.PENDING_GATEWAY and fresh(b).status == RS.PENDING_GATEWAY      # all or nothing
+        assert RefundAttempt.objects.count() == 0
+
+    @pytest.mark.parametrize('bad', ['', '   ', 'abcd', 'a' * 65, 'has space', 'ABC\nDEF', '../../etc', 'trés-long', 'RF<script>', 'MANUAL!'])
+    def test_blank_or_misshapen_references_are_refused(self, teacher_user, student_user, web, bad):
+        r = new_refund(teacher_user, student_user)
+        response = self._ask(web, [r], apply='1', **{f'ref_{r.pk}': bad})
+        assert response.status_code == 200 and fresh(r).status == RS.PENDING_GATEWAY and RefundAttempt.objects.count() == 0
+
+    @pytest.mark.parametrize('good', ['ABCDE', 'a' * 64, 'RF_ok-123', '4AB12345CD678901E'])
+    def test_well_formed_references_are_accepted(self, teacher_user, student_user, web, good):
+        r = new_refund(teacher_user, student_user)
+        assert self._ask(web, [r], apply='1', **{f'ref_{r.pk}': good}).status_code == 302
+        assert fresh(r).gateway_reference == good
+
+    def test_a_refund_that_cannot_be_paid_by_hand_is_reported_per_row_not_a_500(self, teacher_user, student_user, web):
+        ok, sub, done = (new_refund(teacher_user, student_user) for _ in range(3))
+        set_row(sub, status=RS.SUBMITTED)
+        refunds.mark_processed(done.pk, 'RF-DONE-1')
+        data = {f'ref_{ok.pk}': 'REF-OK-0001', f'ref_{sub.pk}': 'REF-SUB-0001', f'ref_{done.pk}': 'REF-DONE-0001'}
+        response = web.post(self.url(), {'action': 'mark_paid_in_gateway', 'apply': '1',
+                                         '_selected_action': [str(r.pk) for r in (ok, sub, done)], **data}, follow=True)
+        assert response.status_code == 200
+        assert fresh(ok).status == RS.PROCESSED and fresh(ok).gateway_reference == 'REF-OK-0001'
+        assert fresh(sub).status == RS.SUBMITTED and fresh(done).gateway_reference == 'RF-DONE-1'      # untouched
+        messages = self._messages(response)
+        assert any(str(sub.pk) in m and 'submitted' in m for m in messages)
+        assert any('1 refund(s) marked as paid' in m for m in messages)
+        assert journals(ok) == 2 and journals(sub) == 0 and journals(done) == 2
+
+    def test_a_failed_refund_can_be_paid_by_hand(self, teacher_user, student_user, web):
+        r = set_row(new_refund(teacher_user, student_user), status=RS.FAILED, failure_kind='rejected')
+        assert self._ask(web, [r], apply='1', **{f'ref_{r.pk}': 'MANUAL-REF-77'}).status_code == 302
+        assert fresh(r).status == RS.PROCESSED
+
+    def _staff(self, *, role, superuser=False, perms=('change_refundrequest', 'view_refundrequest')):
+        from django.contrib.auth.models import Permission
+        from django.test import Client
+        from apps.users.models import User
+        user = User.objects.create_user(username=f'staff-{role}-{superuser}-{len(perms)}', email=f'{role}{superuser}{len(perms)}@t.com', password='x',
+                                        role=role, is_staff=True, is_superuser=superuser)
+        user.user_permissions.add(*Permission.objects.filter(codename__in=perms, content_type__app_label='payments'))
+        client = Client()
+        client.force_login(user)
+        return client, user
+
+    @pytest.mark.parametrize('role', ['student', 'teacher'])
+    def test_a_staff_user_who_is_not_a_platform_admin_cannot_do_it_even_with_the_django_permission(self, teacher_user, student_user, role):
+        client, _ = self._staff(role=role)
+        r = new_refund(teacher_user, student_user)
+        self._ask(client, [r], apply='1', **{f'ref_{r.pk}': 'REF-NOPE-001'})
+        self._ask(client, [r])
+        assert fresh(r).status == RS.PENDING_GATEWAY and RefundAttempt.objects.count() == 0
+
+    def test_the_platform_admin_role_alone_is_not_enough_without_the_django_change_permission(self, teacher_user, student_user):
+        client, _ = self._staff(role='admin', perms=('view_refundrequest',))
+        r = new_refund(teacher_user, student_user)
+        self._ask(client, [r], apply='1', **{f'ref_{r.pk}': 'REF-NOPE-002'})
+        assert fresh(r).status == RS.PENDING_GATEWAY
+
+    def test_a_platform_admin_with_the_change_permission_can(self, teacher_user, student_user):
+        client, user = self._staff(role='admin')
+        r = new_refund(teacher_user, student_user)
+        assert self._ask(client, [r], apply='1', **{f'ref_{r.pk}': 'REF-YES-0001'}).status_code == 302
+        assert fresh(r).status == RS.PROCESSED and RefundAttempt.objects.get().actor_id == user.pk
+
+    def test_a_superuser_can_whatever_the_role_field_says(self, teacher_user, student_user):
+        client, _ = self._staff(role='teacher', superuser=True)
+        r = new_refund(teacher_user, student_user)
+        assert self._ask(client, [r], apply='1', **{f'ref_{r.pk}': 'REF-SUPER-01'}).status_code == 302
+        assert fresh(r).status == RS.PROCESSED
+
+    def test_the_action_calls_only_the_service_with_the_actor(self, teacher_user, student_user, web, admin_user, monkeypatch):
+        seen = []
+        real = refunds.mark_paid_manually
+        monkeypatch.setattr(refunds, 'mark_paid_manually', lambda pk, *, actor, reference: seen.append((pk, actor, reference)) or real(pk, actor=actor, reference=reference))
+        r = new_refund(teacher_user, student_user)
+        self._ask(web, [r], apply='1', **{f'ref_{r.pk}': 'SERVICE-REF-1'})
+        assert seen == [(r.pk, admin_user, 'SERVICE-REF-1')]
 
 
 # ================================================================================================ retry_failed
 class TestRetryFailed:
-    def _failed(self, teacher_user, student_user, kind, *, epoch=0, request_id=''):
+    def _failed(self, teacher_user, student_user, kind, *, epoch=0, request_id='', attempts=1):      # one definitive answer unless a test says otherwise
         r = new_refund(teacher_user, student_user)
         return set_row(r, status=RS.FAILED, failure_kind=kind, failure_detail='boom', request_epoch=epoch,
-                       gateway_request_id=request_id, attempts=2, last_attempt_at=timezone.now() - DAY,
+                       gateway_request_id=request_id, attempts=attempts, last_attempt_at=timezone.now() - DAY,
                        first_attempt_at=timezone.now() - DAY)
 
     def test_a_rejected_retry_bumps_the_epoch_and_uses_a_new_request_id(self, teacher_user, student_user, admin_user, gw):
@@ -1518,10 +1657,12 @@ class TestRefundAfterConvert:
         r = new_refund(teacher_user, student_user)
         set_row(r, status=status)
         out = paypal_events.apply_refund(r.payment_transaction_id, 'LATE-1', Decimal('9.00'), 'USD', {'event_type': 'x'})
-        assert out in ('refund_after_convert', 'external_refund')
+        assert out == 'refund_after_convert'                          # QA M6: it stops there, it never falls through to the external-refund path
         a = alerts('refund_after_convert', r.pk)
         assert a.count() == 1 and 'LATE-1' in a.first().detail
         assert LedgerEntry.objects.filter(event_type=EV.GATEWAY_REFUND_PAID).count() == 0
+        assert not GatewayAnomaly.objects.filter(reason='external_refund').exists()      # no second, blocking anomaly for the same money
+        assert alerts('refund_after_convert').count() == 1
 
     def test_the_critical_alert_is_a_distinct_code_once_per_request(self, teacher_user, student_user):
         r = new_refund(teacher_user, student_user)
@@ -1530,20 +1671,34 @@ class TestRefundAfterConvert:
         paypal_events.apply_refund(r.payment_transaction_id, 'LATE-2', Decimal('9.00'), 'USD', {})
         assert alerts('refund_after_convert', r.pk).count() == 1
 
-    def test_the_state_error_is_caught_and_filed_as_the_anomaly(self, teacher_user, student_user, monkeypatch):
+    def test_a_state_error_from_the_service_is_never_swallowed_even_if_the_row_became_converted(self, teacher_user, student_user, monkeypatch):
+        """QA M6: the old except-branch was unreachable (the row is locked and only open states are matched); the error now simply
+        propagates, the webhook transaction rolls back and PayPal's retry meets the converted row in the paid-twice branch."""
         r = new_refund(teacher_user, student_user)
 
-        def boom(refund_id, ref):
+        def boom(refund_id, ref, **kw):
             set_row(r, status=RS.CONVERTED)
             raise refunds.RefundStateError('converted')
         monkeypatch.setattr(refunds, 'mark_processed', boom)
-        out = paypal_events.apply_refund(r.payment_transaction_id, 'LATE-9', Decimal('9.00'), 'USD', {})
-        assert out == 'refund_after_convert' and alerts('refund_after_convert', r.pk).count() == 1
+        with pytest.raises(refunds.RefundStateError):
+            paypal_events.apply_refund(r.payment_transaction_id, 'LATE-9', Decimal('9.00'), 'USD', {})
+
+    def test_the_retry_after_that_rollback_files_the_critical_anomaly(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        set_row(r, status=RS.CONVERTED)
+        assert paypal_events.apply_refund(r.payment_transaction_id, 'LATE-9', Decimal('9.00'), 'USD', {}) == 'refund_after_convert'
+        assert alerts('refund_after_convert', r.pk).count() == 1
+
+    def test_the_paid_twice_branch_does_not_run_the_external_refund_path(self, teacher_user, student_user, monkeypatch):
+        r = new_refund(teacher_user, student_user)
+        set_row(r, status=RS.VOID)
+        monkeypatch.setattr(paypal_events, '_external_refund', lambda *a, **k: pytest.fail('fell through to _external_refund'))
+        assert paypal_events.apply_refund(r.payment_transaction_id, 'LATE-1', Decimal('9.00'), 'USD', {}) == 'refund_after_convert'
 
     def test_a_state_error_for_any_other_status_is_not_swallowed(self, teacher_user, student_user, monkeypatch):
         r = new_refund(teacher_user, student_user)
 
-        def boom(refund_id, ref):
+        def boom(refund_id, ref, **kw):
             raise refunds.RefundStateError('weird')
         monkeypatch.setattr(refunds, 'mark_processed', boom)
         with pytest.raises(refunds.RefundStateError):
@@ -1559,7 +1714,7 @@ class TestRefundAfterConvert:
 class TestAttemptRows:
     @pytest.mark.parametrize('result,outcome', [
         (RefundResult('completed', reference='R'), 'processed'), (RefundResult('submitted', reference='R'), 'submitted'),
-        (RefundResult('transient'), 'retry'), (RefundResult('rejected', code='X'), 'failed'), (RefundResult('manual'), 'manual'),
+        (RefundResult('transient'), 'retry'), (RefundResult('rejected', code='X'), 'failed'),
     ])
     def test_exactly_one_row_per_apply(self, teacher_user, student_user, result, outcome):
         r = new_refund(teacher_user, student_user)
@@ -1567,6 +1722,22 @@ class TestAttemptRows:
         assert refunds.apply_result(r.pk, claim.token, result, kind='send') == outcome
         assert RefundAttempt.objects.filter(refund=r).count() == 1
         assert RefundAttempt.objects.get().result_state == result.state
+
+    def test_a_manual_result_writes_no_row(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        claim = claim_one()
+        assert refunds.apply_result(r.pk, claim.token, RefundResult('manual'), kind='send') == 'manual'
+        assert RefundAttempt.objects.filter(refund=r).count() == 0
+
+    def test_a_manual_round_between_real_attempts_does_not_gap_or_duplicate_the_sequence(self, teacher_user, student_user, gw, clock):
+        answers = iter([RefundResult('transient'), RefundResult('manual'), RefundResult('manual'), RefundResult('transient')])
+        gw.behavior = lambda order: next(answers)
+        r = new_refund(teacher_user, student_user)
+        for _ in range(4):
+            refunds.process_pending_refunds()
+            clock.advance(DAY)
+        assert [(a.seq, a.result_state) for a in RefundAttempt.objects.filter(refund=r).order_by('seq')] == [(1, 'transient'), (2, 'transient')]
+        assert fresh(r).attempts == 2
 
     def test_a_noop_writes_nothing_and_seq_increments(self, teacher_user, student_user, clock, gw):
         gw.behavior = lambda order: RefundResult('transient')
@@ -1777,3 +1948,609 @@ class TestBoundaries:
         clock.advance(6 * MIN)
         refunds.process_pending_refunds()
         assert fresh(r).next_attempt_at == clock.now + 5 * MIN
+
+
+# ================================================================================================ QA fixes (2026-10-04)
+class TestCaptureSideCashAccountFollowsTheGateway:
+    """H1: the capture and the refund must hit the SAME cash account, which follows the gateway and never the currency."""
+
+    @pytest.mark.parametrize('gateway, currency, amount, account', [
+        ('paypal', 'ZAR', '168.75', ACC.ASSET_GATEWAY_PAYPAL),
+        ('payfast', 'ZAR', '168.75', ACC.ASSET_GATEWAY_PAYFAST),
+        ('paypal', 'USD', '9.00', ACC.ASSET_GATEWAY_PAYPAL),
+        ('paypal', 'EUR', '8.00', ACC.ASSET_GATEWAY_PAYPAL),
+        ('paypal', 'JPY', '1400', ACC.ASSET_GATEWAY_PAYPAL),
+    ])
+    def test_capture_then_refund_nets_both_cash_accounts_to_zero(self, teacher_user, student_user, gateway, currency, amount, account):
+        r = new_refund(teacher_user, student_user, gateway=gateway, amount=amount, currency=currency)
+        capture = LedgerEntry.objects.get(booking=r.booking, event_type=EV.PAYMENT_CAPTURED, account=account)
+        assert capture.entry_type == LedgerEntry.EntryType.DEBIT and capture.amount == Decimal(amount)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, completed=1)
+        for cash in (ACC.ASSET_GATEWAY_PAYFAST, ACC.ASSET_GATEWAY_PAYPAL):
+            assert net(r.booking, cash) == 0, f'{cash} did not net to zero for {gateway} {currency}'
+        other = ACC.ASSET_GATEWAY_PAYFAST if account == ACC.ASSET_GATEWAY_PAYPAL else ACC.ASSET_GATEWAY_PAYPAL
+        assert not LedgerEntry.objects.filter(booking=r.booking, account=other).exists()
+
+    def _tx(self, teacher_user, student_user, gateway, currency='ZAR', ref='H1-X'):
+        from payment_helpers import lesson
+        _START[0] += 90
+        return PaymentTransaction.objects.create(booking=lesson(teacher_user, student_user, _START[0]), gateway=gateway, gateway_reference=ref,
+                                                 amount=Decimal('168.75'), currency=currency, status='success',
+                                                 fx_rate_to_zar=Decimal('1.000000'), fx_source='test')
+
+    @pytest.mark.parametrize('gateway, account', [('paypal', ACC.ASSET_GATEWAY_PAYPAL), ('payfast', ACC.ASSET_GATEWAY_PAYFAST)])
+    def test_the_def501_quarantine_and_unallocated_postings_use_the_same_rule(self, teacher_user, student_user, gateway, account):
+        from apps.payments.services import ledger_service
+        ledger_service.record_def501_quarantine_entry(self._tx(teacher_user, student_user, gateway, ref=f'H1-A-{gateway}'), user=student_user)
+        ledger_service.record_unallocated_payment_entry(self._tx(teacher_user, student_user, gateway, ref=f'H1-B-{gateway}'), user=student_user)
+        cash = LedgerEntry.objects.filter(account__in=(ACC.ASSET_GATEWAY_PAYFAST, ACC.ASSET_GATEWAY_PAYPAL))
+        assert cash.count() == 2 and set(cash.values_list('account', flat=True)) == {account}
+
+    @pytest.mark.parametrize('gateway, account', [('paypal', ACC.ASSET_GATEWAY_PAYPAL), ('payfast', ACC.ASSET_GATEWAY_PAYFAST)])
+    def test_a_credit_pack_capture_uses_the_same_rule(self, teacher_user, student_user, gateway, account):
+        from types import SimpleNamespace
+        from apps.payments.services import ledger_service
+        purchase = SimpleNamespace(pack=SimpleNamespace(name='Pack'), user=student_user, fx_rate_to_zar=Decimal('1.000000'), fx_source='test')
+        ledger_service.record_credit_purchase_capture_entry(self._tx(teacher_user, student_user, gateway, ref=f'H1-C-{gateway}'), purchase)
+        cash = LedgerEntry.objects.filter(account__in=(ACC.ASSET_GATEWAY_PAYFAST, ACC.ASSET_GATEWAY_PAYPAL))
+        assert cash.count() == 1 and cash.get().account == account
+
+    def test_one_helper_serves_the_refund_side_too(self):
+        from apps.payments.services import ledger_service
+        paypal_zar = PaymentTransaction(gateway='paypal', currency='ZAR')
+        assert ledger_service.gateway_cash_account(paypal_zar) == ACC.ASSET_GATEWAY_PAYPAL == refunds._gateway_cash_account(paypal_zar)
+        payfast_usd = PaymentTransaction(gateway='payfast', currency='USD')
+        assert ledger_service.gateway_cash_account(payfast_usd) == ACC.ASSET_GATEWAY_PAYFAST == refunds._gateway_cash_account(payfast_usd)
+
+
+NOT_FOUND = RefundResult('transient', detail='PayPal does not know this id', code='INVALID_RESOURCE_ID', http_status=404)
+
+
+class TestCaptureNotFound404:
+    """M1: a 404 on the send path is a per-row transient; a person is told about THAT refund after 3 straight 404s."""
+
+    def _sweep_n(self, n, clock):
+        for _ in range(n):
+            refunds.process_pending_refunds()
+            clock.advance(25 * HOUR)
+
+    def test_a_404_burns_the_rows_own_attempt_and_backs_off(self, teacher_user, student_user, gw, clock):
+        gw.behavior = lambda order: NOT_FOUND
+        r = new_refund(teacher_user, student_user)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, transient=1)
+        r = fresh(r)
+        assert (r.status, r.attempts, r.last_http_status, r.last_error_code) == (RS.PENDING_GATEWAY, 1, 404, 'INVALID_RESOURCE_ID')
+        assert r.next_attempt_at == clock.now + 15 * MIN
+        assert not alerts('refund_capture_not_found').exists()
+
+    def test_the_alert_comes_after_three_attempts_that_all_ended_in_404(self, teacher_user, student_user, gw, clock):
+        gw.behavior = lambda order: NOT_FOUND
+        r = new_refund(teacher_user, student_user)
+        self._sweep_n(2, clock)
+        assert not alerts('refund_capture_not_found').exists()
+        self._sweep_n(1, clock)
+        found = alerts('refund_capture_not_found', r.pk)
+        assert found.count() == 1 and fresh(r).attempts == 3
+        self._sweep_n(2, clock)
+        assert alerts('refund_capture_not_found', r.pk).count() == 1          # one alert per refund, not one per attempt
+
+    def test_a_different_answer_in_between_means_it_is_not_a_straight_404_run(self, teacher_user, student_user, gw, clock):
+        answers = iter([NOT_FOUND, RefundResult('transient', http_status=503), NOT_FOUND])
+        gw.behavior = lambda order: next(answers)
+        new_refund(teacher_user, student_user)
+        self._sweep_n(3, clock)
+        assert not alerts('refund_capture_not_found').exists()
+
+    def test_only_the_current_request_ids_attempts_count(self, teacher_user, student_user, gw, clock, admin_user):
+        gw.behavior = lambda order: NOT_FOUND
+        r = new_refund(teacher_user, student_user)
+        self._sweep_n(2, clock)
+        refunds.mark_failed(r.pk, 'x', kind='rejected')
+        refunds.retry_failed(r.pk, actor=admin_user, confirm_not_refunded=True)      # epoch bump: a new request id, a new round
+        self._sweep_n(2, clock)
+        assert not alerts('refund_capture_not_found').exists()
+
+    def test_the_alert_is_resolved_when_the_refund_is_finally_paid(self, teacher_user, student_user, gw, clock):
+        gw.behavior = lambda order: NOT_FOUND
+        r = new_refund(teacher_user, student_user)
+        self._sweep_n(3, clock)
+        assert alerts('refund_capture_not_found', r.pk).filter(resolved=False).count() == 1
+        refunds.mark_processed(r.pk, 'RF-LATE')
+        assert not alerts('refund_capture_not_found', r.pk).filter(resolved=False).exists()
+
+    def test_three_404s_from_three_refunds_in_one_sweep_trip_the_gateway_breaker(self, teacher_user, student_user, gw):
+        gw.behavior = lambda order: NOT_FOUND
+        for _ in range(4):
+            new_refund(teacher_user, student_user)
+        done = refunds.process_pending_refunds()
+        assert done['sent'] == 3 and done['transient'] == 3 and done['skipped_breaker'] == 1
+        assert alerts('refund_provider_outage', 'paypal').count() == 1
+
+    def test_a_row_that_only_ever_got_404s_ends_exhausted_never_as_replay_window(self, teacher_user, student_user, gw, clock):
+        gw.behavior = lambda order: NOT_FOUND
+        r = new_refund(teacher_user, student_user)
+        self._sweep_n(14, clock)                                           # a bit over two weeks of daily attempts
+        r = fresh(r)
+        assert r.status == RS.FAILED and r.failure_kind == FK_EXHAUSTED
+        assert r.attempts >= 8 and r.last_http_status == 404
+        assert alerts('refund_failed_exhausted', r.pk).count() == 1 and not alerts('refund_failed_replay_window').exists()
+
+    def test_a_provider_level_404_from_the_lookup_still_never_fails_a_submitted_row(self, teacher_user, student_user, gw, clock):
+        gw.behavior = lambda order: RefundResult('submitted', reference='RF-S')
+        gw.lookup_behavior = lambda order: RefundResult('transient', code='INVALID_RESOURCE_ID', http_status=404, provider_level=True)
+        r = new_refund(teacher_user, student_user)
+        refunds.process_pending_refunds()
+        for _ in range(5):
+            clock.advance(2 * HOUR)
+            refunds.process_pending_refunds()
+        assert fresh(r).status == RS.SUBMITTED
+
+
+FK_EXHAUSTED = RefundRequest.FailureKind.EXHAUSTED
+
+
+class TestLogSafetyEmailDedupeAndActor:
+    SECRET = 'secret-token-abc123-DO-NOT-LOG'
+
+    def test_an_exception_while_applying_logs_only_its_type_and_ids(self, teacher_user, student_user, gw, monkeypatch, caplog):
+        """QA L2: the exception text (could carry a provider body, a URL or a token) and the traceback must never reach the log."""
+        r = new_refund(teacher_user, student_user)
+
+        def boom(refund_id, token, result, *, kind):
+            raise RuntimeError(self.SECRET)
+        monkeypatch.setattr(refunds, 'apply_result', boom)
+        with caplog.at_level(logging.DEBUG):
+            refunds.process_pending_refunds()
+        assert self.SECRET not in caplog.text
+        assert all(rec.exc_info is None and self.SECRET not in rec.getMessage() for rec in caplog.records)
+        line = next(rec.getMessage() for rec in caplog.records if 'could not apply' in rec.getMessage())
+        assert 'RuntimeError' in line and str(r.pk) in line
+
+    def test_the_email_is_sent_once_even_if_the_task_is_redelivered_while_it_is_sending(self, teacher_user, student_user, monkeypatch):
+        """QA L3: the dedupe key is taken BEFORE sending (cache.add), so a redelivery that overlaps the send cannot send a second mail."""
+        from apps.payments import tasks
+        r = fresh(new_refund(teacher_user, student_user))
+        refunds.mark_processed(r.pk, 'RF-1')
+        sent = []
+
+        def reentrant_send(to, subject, html, text=''):
+            sent.append(to)
+            if len(sent) == 1:
+                tasks.send_refund_processed_email_task(str(r.pk))        # the broker delivers the same message again, mid-send
+        monkeypatch.setattr(tasks, 'send_email', reentrant_send)
+        tasks.send_refund_processed_email_task(str(r.pk))
+        assert sent == [student_user.email]
+
+    def test_a_failed_send_releases_the_key_so_the_retry_can_send(self, teacher_user, student_user, monkeypatch):
+        from django.core.cache import cache
+        from apps.integrations.email import EmailDeliveryError
+        from apps.payments import tasks
+        r = fresh(new_refund(teacher_user, student_user))
+        refunds.mark_processed(r.pk, 'RF-1')
+        attempts = []
+
+        def flaky(to, subject, html, text=''):
+            attempts.append(to)
+            if len(attempts) == 1:
+                raise EmailDeliveryError('resend is down')
+        monkeypatch.setattr(tasks, 'send_email', flaky)
+        with pytest.raises(EmailDeliveryError):
+            tasks.send_refund_processed_email_task(str(r.pk))
+        assert cache.get(f'refund-processed-email:{r.pk}') is None
+        tasks.send_refund_processed_email_task(str(r.pk))               # the retry
+        tasks.send_refund_processed_email_task(str(r.pk))               # a later duplicate
+        assert len(attempts) == 2                                       # one failed try, one delivery, then silence
+
+    def test_a_non_delivery_error_also_releases_the_key(self, teacher_user, student_user, monkeypatch):
+        from django.core.cache import cache
+        from apps.payments import tasks
+        r = fresh(new_refund(teacher_user, student_user))
+        refunds.mark_processed(r.pk, 'RF-1')
+        monkeypatch.setattr(tasks, 'send_email', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('bug')))
+        with pytest.raises(RuntimeError):
+            tasks.send_refund_processed_email_task(str(r.pk))
+        assert cache.get(f'refund-processed-email:{r.pk}') is None
+
+    def test_retry_failed_requires_an_actor(self, teacher_user, student_user, admin_user):
+        """QA L4: an audited admin action; system code never retries a failed refund."""
+        r = set_row(new_refund(teacher_user, student_user), status=RS.FAILED, failure_kind='guard')
+        with pytest.raises(ValueError, match='actor'):
+            refunds.retry_failed(r.pk, actor=None)
+        assert fresh(r).status == RS.FAILED and RefundAttempt.objects.count() == 0
+        refunds.retry_failed(r.pk, actor=admin_user)
+        assert fresh(r).status == RS.PENDING_GATEWAY and RefundAttempt.objects.get().actor_id == admin_user.pk
+
+    def test_mark_paid_manually_already_requires_a_reference_and_retry_requires_an_actor_keyword(self, teacher_user, student_user, admin_user):
+        r = set_row(new_refund(teacher_user, student_user), status=RS.FAILED, failure_kind='guard')
+        with pytest.raises(TypeError):
+            refunds.retry_failed(r.pk)                                  # the keyword is mandatory: there is no system default
+
+
+class FakeHttpResponse:
+    def __init__(self, status=200, payload=None, headers=None):
+        self.status_code, self.payload, self.headers = status, payload if payload is not None else {}, headers or {}
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            import requests
+            raise requests.HTTPError(str(self.status_code))
+
+    def json(self):
+        return self.payload
+
+
+@pytest.fixture
+def wire(monkeypatch, settings):
+    """The REAL stack - router, PayPal adapter, paypal client, apply_result - with only `requests` replaced."""
+    from apps.payments.gateways import paypal
+    settings.REFUND_GATEWAY_BACKEND = 'apps.payments.services.refund_gateways.RoutingRefundGateway'
+    state = {'calls': [], 'queue': []}
+    monkeypatch.setattr(paypal.requests, 'post', lambda url, **kw: FakeHttpResponse(200, {'access_token': 'TOK-123', 'expires_in': 3600}))
+
+    def fake_request(method, url, **kw):
+        state['calls'].append({'method': method, 'url': url, **kw})
+        return state['queue'].pop(0)
+    monkeypatch.setattr(paypal.requests, 'request', fake_request)
+    return state
+
+
+class TestEndToEndThroughTheRouter:
+    """QA (a): process_pending_refunds -> RoutingRefundGateway -> PayPalRefundGateway -> paypal.create_refund -> apply_result."""
+
+    def test_completed(self, teacher_user, student_user, wire):
+        wire['queue'].append(FakeHttpResponse(201, {'id': 'RFDONE12345', 'status': 'COMPLETED'}))
+        r = new_refund(teacher_user, student_user)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, completed=1)
+        call = wire['calls'][0]
+        assert call['method'] == 'POST' and call['url'].endswith(f'/v2/payments/captures/{r.payment_transaction.gateway_reference}/refund')
+        assert call['headers']['PayPal-Request-Id'] == f'refund-{r.pk}'
+        assert call['json'] == {'amount': {'value': '9.00', 'currency_code': 'USD'}, 'note_to_payer': 'Refund from Sharon Online',
+                                'invoice_id': str(r.pk)}
+        r = fresh(r)
+        assert r.status == RS.PROCESSED and r.gateway_reference == 'RFDONE12345' and journals(r) == 2
+        assert net(r.booking, ACC.ASSET_GATEWAY_PAYPAL) == 0
+
+    def test_pending_then_the_poll_completes_it(self, teacher_user, student_user, wire, clock):
+        wire['queue'].extend([FakeHttpResponse(201, {'id': 'RFPEND12345', 'status': 'PENDING'}),
+                              FakeHttpResponse(200, {'id': 'RFPEND12345', 'status': 'COMPLETED'})])
+        r = new_refund(teacher_user, student_user)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, submitted=1)
+        assert fresh(r).status == RS.SUBMITTED and fresh(r).gateway_reference == 'RFPEND12345' and journals(r) == 0
+        clock.advance(61 * MIN)
+        assert refunds.process_pending_refunds() == result_dict(polled=1, completed=1)
+        assert wire['calls'][1]['method'] == 'GET' and wire['calls'][1]['url'].endswith('/v2/payments/refunds/RFPEND12345')
+        assert fresh(r).status == RS.PROCESSED and journals(r) == 2 and len(wire['calls']) == 2          # never re-sent
+
+    def test_capture_fully_refunded_is_failed_already_refunded_with_an_alert(self, teacher_user, student_user, wire):
+        wire['queue'].append(FakeHttpResponse(422, {'name': 'UNPROCESSABLE_ENTITY', 'details': [{'issue': 'CAPTURE_FULLY_REFUNDED'}]}))
+        r = new_refund(teacher_user, student_user)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, rejected=1)
+        r = fresh(r)
+        assert r.status == RS.FAILED and r.failure_kind == 'already_refunded' and r.last_http_status == 422
+        assert r.last_error_code == 'CAPTURE_FULLY_REFUNDED' and journals(r) == 0
+        assert alerts('refund_failed_already_refunded', r.pk).count() == 1
+
+    def test_429_with_retry_after_waits_and_replays_the_same_request_id(self, teacher_user, student_user, wire, clock):
+        wire['queue'].extend([FakeHttpResponse(429, {'name': 'RATE_LIMIT_REACHED'}, {'Retry-After': '7200'}),
+                              FakeHttpResponse(201, {'id': 'RFLATER1234', 'status': 'COMPLETED'})])
+        r = new_refund(teacher_user, student_user)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, transient=1)
+        assert fresh(r).next_attempt_at == clock.now + 2 * HOUR and fresh(r).status == RS.PENDING_GATEWAY and fresh(r).attempts == 1
+        clock.advance(HOUR)
+        assert refunds.process_pending_refunds() == result_dict() and len(wire['calls']) == 1          # honoured: not asked again early
+        clock.advance(HOUR + MIN)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, completed=1)
+        assert [c['headers']['PayPal-Request-Id'] for c in wire['calls']] == [f'refund-{r.pk}'] * 2
+        assert fresh(r).status == RS.PROCESSED
+
+    def test_a_malformed_capture_id_is_stopped_by_the_guard_before_any_http(self, teacher_user, student_user, wire):
+        r = new_refund(teacher_user, student_user)
+        PaymentTransaction.objects.filter(pk=r.payment_transaction_id).update(gateway_reference='bad id/../x')
+        assert refunds.process_pending_refunds() == result_dict()
+        assert wire['calls'] == [] and fresh(r).status == RS.FAILED and fresh(r).failure_kind == 'guard'
+
+    def test_payfast_stays_manual_through_the_router_without_any_http(self, teacher_user, student_user, wire, settings):
+        settings.PAYFAST_REFUNDS_ENABLED = False
+        r = new_refund(teacher_user, student_user, gateway='payfast', amount='168.75', currency='ZAR')
+        assert refunds.process_pending_refunds() == result_dict(sent=1, manual=1)
+        assert wire['calls'] == [] and fresh(r).status == RS.PENDING_GATEWAY and fresh(r).attempts == 0 and RefundAttempt.objects.count() == 0
+
+    def test_missing_paypal_credentials_stay_manual_without_any_http(self, teacher_user, student_user, wire, settings):
+        settings.PAYPAL_CLIENT_ID = settings.PAYPAL_CLIENT_SECRET = ''
+        r = new_refund(teacher_user, student_user)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, manual=1)
+        assert wire['calls'] == [] and fresh(r).status == RS.PENDING_GATEWAY
+
+
+class TestClockSeamCoversTheTimestampsTouched:
+    """QA (c): every time stamp the QA fixes touch comes from refunds._now, so tests (and replays) can walk time."""
+
+    def test_stamps_follow_the_patched_clock_not_the_wall_clock(self, teacher_user, student_user, admin_user, clock, settings):
+        clock.advance(400 * DAY)
+        settings.REFUND_FIRST_ATTEMPT_DELAY_MINUTES = 60
+        a = new_refund(teacher_user, student_user)
+        refunds.mark_processed(a.pk, 'RF-CLK-1')
+        assert fresh(a).processed_at == clock.now
+        b = new_refund(teacher_user, student_user)
+        refunds.convert_to_wallet(b.pk)
+        assert fresh(b).processed_at == clock.now
+        c = set_row(new_refund(teacher_user, student_user), status=RS.FAILED, failure_kind='exhausted', attempts=3)
+        refunds.retry_failed(c.pk, actor=admin_user, confirm_not_refunded=True)
+        assert fresh(c).first_attempt_at == clock.now
+        d = TestDeferredRefundWindow()._deferred(teacher_user, student_user, settings, clock, ref='CAP-CLK')
+        refunds.activate_deferred_refunds(d[0])
+        assert fresh(d[1]).next_attempt_at == clock.now + 60 * MIN
+
+
+class TestAuditTrailCoversEveryTransition:
+    """M5: every status transition of a refund leaves exactly one immutable RefundAttempt row, never a duplicate on a replay."""
+
+    @staticmethod
+    def rows(refund):
+        return [(a.seq, a.kind, a.result_state, a.error_code, a.actor_id) for a in RefundAttempt.objects.filter(refund=refund).order_by('seq')]
+
+    def test_the_new_kinds_exist_additively(self):
+        kinds = set(RefundAttempt.Kind.values)
+        assert {'send', 'poll', 'admin_retry', 'admin_mark_paid'} <= kinds and {'webhook', 'convert', 'guard', 'mark_failed'} <= kinds
+        assert max(len(k) for k in kinds) <= RefundAttempt._meta.get_field('kind').max_length
+
+    def test_a_guard_failure_is_audited_once(self, teacher_user, student_user, gw):
+        r = new_refund(teacher_user, student_user)
+        PaymentTransaction.objects.filter(pk=r.payment_transaction_id).update(status=PaymentTransaction.Status.FAILED)
+        refunds.process_pending_refunds()
+        refunds.process_pending_refunds()
+        assert gw.calls == [] and fresh(r).failure_kind == 'guard'
+        assert self.rows(r) == [(1, 'guard', 'failed', 'guard', None)]
+
+    def test_a_replay_window_failure_is_audited_once(self, teacher_user, student_user, gw, clock):
+        r = new_refund(teacher_user, student_user)
+        set_row(r, attempts=1, first_attempt_at=clock.now - 31 * DAY, last_attempt_at=clock.now - 31 * DAY)
+        refunds.process_pending_refunds()
+        refunds.process_pending_refunds()
+        assert gw.calls == [] and fresh(r).failure_kind == 'replay_window'
+        assert self.rows(r) == [(1, 'guard', 'failed', 'replay_window', None)]
+
+    def test_a_webhook_completion_is_audited_once_and_a_replay_adds_nothing(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        assert paypal_events.apply_refund(r.payment_transaction_id, 'RF-W1', Decimal('9.00'), 'USD', {}) == 'refund_completed'
+        assert paypal_events.apply_refund(r.payment_transaction_id, 'RF-W1', Decimal('9.00'), 'USD', {}) == 'duplicate'
+        assert self.rows(r) == [(1, 'webhook', 'completed', '', None)] and fresh(r).status == RS.PROCESSED
+
+    def test_a_webhook_that_finishes_a_submitted_refund_follows_the_send_row(self, teacher_user, student_user, gw):
+        gw.behavior = lambda order: RefundResult('submitted', reference='RF-S')
+        r = new_refund(teacher_user, student_user)
+        refunds.process_pending_refunds()
+        paypal_events.apply_refund(r.payment_transaction_id, 'RF-S', Decimal('9.00'), 'USD', {})
+        assert [(a[0], a[1], a[2]) for a in self.rows(r)] == [(1, 'send', 'submitted'), (2, 'webhook', 'completed')]
+
+    def test_a_dashboard_refund_matched_to_an_open_request_is_a_webhook_row_too(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        assert paypal_events.apply_refund(r.payment_transaction_id, 'DASH-1', Decimal('9.00'), 'USD', {}) == 'refund_completed'
+        assert [a[1] for a in self.rows(r)] == ['webhook']
+
+    def test_the_service_itself_is_idempotent_for_the_webhook_audit_row(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        refunds.mark_processed(r.pk, 'RF-W2', via_webhook=True)
+        refunds.mark_processed(r.pk, 'RF-W2', via_webhook=True)
+        assert self.rows(r) == [(1, 'webhook', 'completed', '', None)] and journals(r) == 2
+
+    def test_the_service_default_adds_no_webhook_row(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        refunds.mark_processed(r.pk, 'RF-X')
+        refunds.mark_processed(r.pk, 'RF-X')
+        assert self.rows(r) == []
+
+    def test_a_conversion_is_audited_once_with_the_actor(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        refunds.convert_to_wallet(r.pk, actor=student_user)
+        with pytest.raises(refunds.RefundStateError):
+            refunds.convert_to_wallet(r.pk, actor=student_user)
+        assert self.rows(r) == [(1, 'convert', 'converted', '', student_user.pk)]
+
+    def test_the_student_api_records_the_student_as_the_actor(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        client = APIClient()
+        client.force_authenticate(student_user)
+        assert client.post(f'/api/v1/refunds/{r.pk}/convert-to-wallet/').status_code == 200
+        assert self.rows(r) == [(1, 'convert', 'converted', '', student_user.pk)]
+
+    def test_marking_a_refund_failed_is_audited_once(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        refunds.mark_failed(r.pk, 'a person looked', kind='rejected')
+        with pytest.raises(refunds.RefundStateError):
+            refunds.mark_failed(r.pk, 'again', kind='rejected')
+        assert self.rows(r) == [(1, 'mark_failed', 'failed', 'rejected', None)]
+
+    def test_a_whole_life_is_one_row_per_transition_in_order(self, teacher_user, student_user, gw, clock, admin_user):
+        answers = iter([RefundResult('transient', http_status=503), RefundResult('rejected', code='INSTRUMENT_DECLINED')])
+        gw.behavior = lambda order: next(answers)
+        r = new_refund(teacher_user, student_user)
+        for _ in range(2):
+            refunds.process_pending_refunds()
+            clock.advance(DAY)
+        refunds.retry_failed(r.pk, actor=admin_user, confirm_not_refunded=True)
+        gw.behavior = lambda order: RefundResult('completed', reference='RF-FINAL')
+        refunds.process_pending_refunds()
+        assert [(a[0], a[1], a[2]) for a in self.rows(r)] == [(1, 'send', 'transient'), (2, 'send', 'rejected'), (3, 'admin_retry', 'retry'),
+                                                              (4, 'send', 'completed')]
+
+    def test_the_rows_stay_immutable(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        refunds.convert_to_wallet(r.pk)
+        row = RefundAttempt.objects.get(refund=r)
+        with pytest.raises(LedgerImmutabilityError):
+            row.error_code = 'x'
+            row.save()
+        with pytest.raises(LedgerImmutabilityError):
+            row.delete()
+
+
+class TestDeferredRefundWindow:
+    """M3: a deferred (grace) refund becomes owed when the money ARRIVES: the student's wallet-conversion window restarts then."""
+
+    def _deferred(self, teacher_user, student_user, settings, clock, *, ref='CAP-DEF'):
+        settings.REFUND_FIRST_ATTEMPT_DELAY_MINUTES = 60
+        b = captured(teacher_user, student_user, 1700, gateway='paypal', amount='9.00', currency='USD', ref=ref)
+        with connection.cursor() as cur:
+            cur.execute("UPDATE payments_bookingfunding SET source_type = 'gateway_pending' WHERE booking_id = %s", [str(b.pk).replace('-', '')])
+        refund = refunds.request_refund(b, RefundRequest.Reason.STUDENT_CANCEL).refund
+        assert refund.status == RS.AWAITING_CLEARANCE
+        set_row(refund, created_at=clock.now - 3 * DAY)                    # decided long ago, while the payment was still pending
+        return b, refund
+
+    def test_activation_restarts_the_first_attempt_delay_from_now(self, teacher_user, student_user, settings, clock, gw):
+        b, refund = self._deferred(teacher_user, student_user, settings, clock)
+        assert refunds.activate_deferred_refunds(b) == 1
+        refund = fresh(refund)
+        assert refund.status == RS.PENDING_GATEWAY and refund.next_attempt_at == clock.now + 60 * MIN
+        assert refunds.process_pending_refunds() == result_dict() and gw.calls == []
+        clock.advance(59 * MIN)
+        assert refunds.process_pending_refunds() == result_dict() and gw.calls == []
+        clock.advance(2 * MIN)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, completed=1)
+
+    def test_the_student_can_still_convert_to_wallet_in_that_window(self, teacher_user, student_user, settings, clock, gw):
+        b, refund = self._deferred(teacher_user, student_user, settings, clock)
+        refunds.activate_deferred_refunds(b)
+        clock.advance(30 * MIN)
+        lot = refunds.convert_to_wallet(refund.pk)
+        assert lot.remaining_credits == 1 and fresh(refund).status == RS.CONVERTED
+        clock.advance(2 * HOUR)
+        assert refunds.process_pending_refunds() == result_dict() and gw.calls == []
+
+    def test_the_delay_is_the_setting(self, teacher_user, student_user, settings, clock):
+        b, refund = self._deferred(teacher_user, student_user, settings, clock, ref='CAP-DEF2')
+        settings.REFUND_FIRST_ATTEMPT_DELAY_MINUTES = 5
+        refunds.activate_deferred_refunds(b)
+        assert fresh(refund).next_attempt_at == clock.now + 5 * MIN
+
+    def test_a_second_activation_does_nothing_and_keeps_the_stamp(self, teacher_user, student_user, settings, clock):
+        b, refund = self._deferred(teacher_user, student_user, settings, clock, ref='CAP-DEF3')
+        refunds.activate_deferred_refunds(b)
+        stamp = fresh(refund).next_attempt_at
+        clock.advance(10 * MIN)
+        assert refunds.activate_deferred_refunds(b) == 0
+        assert fresh(refund).next_attempt_at == stamp
+
+
+class TestRetryAfterAmbiguity:
+    """M2: a `rejected` / `provider_failed` failure is only 'certain' when it followed a single definitive answer. If an earlier
+    attempt of the same request id was transient/manual (or several attempts were made), the provider may have refunded unseen."""
+
+    def _walk(self, gw, clock, answers, teacher_user, student_user):
+        seq = iter(answers)
+        gw.behavior = lambda order: next(seq)
+        r = new_refund(teacher_user, student_user)
+        for _ in answers:
+            refunds.process_pending_refunds()
+            clock.advance(25 * HOUR)
+        return fresh(r)
+
+    def test_transient_then_rejected_needs_the_confirmation_to_retry(self, teacher_user, student_user, admin_user, gw, clock):
+        r = self._walk(gw, clock, [RefundResult('transient', http_status=503), RefundResult('rejected', code='INSTRUMENT_DECLINED')],
+                       teacher_user, student_user)
+        assert r.status == RS.FAILED and r.failure_kind == 'rejected' and r.attempts == 2
+        with pytest.raises(refunds.RefundConfirmationRequired):
+            refunds.retry_failed(r.pk, actor=admin_user)
+        with pytest.raises(refunds.RefundConfirmationRequired):
+            refunds.retry_failed(r.pk, actor=admin_user, confirm_not_refunded=False)
+        assert fresh(r).status == RS.FAILED and fresh(r).request_epoch == 0
+        refunds.retry_failed(r.pk, actor=admin_user, confirm_not_refunded=True)
+        r = fresh(r)
+        assert r.status == RS.PENDING_GATEWAY and r.request_epoch == 1 and r.gateway_request_id == '' and r.attempts == 0
+
+    def test_a_single_definitive_rejection_keeps_the_no_confirm_retry(self, teacher_user, student_user, admin_user, gw, clock):
+        r = self._walk(gw, clock, [RefundResult('rejected', code='INSTRUMENT_DECLINED')], teacher_user, student_user)
+        assert r.status == RS.FAILED and r.attempts == 1
+        refunds.retry_failed(r.pk, actor=admin_user)
+        assert fresh(r).status == RS.PENDING_GATEWAY and fresh(r).request_epoch == 1
+
+    def test_the_new_round_starts_clean_so_a_single_rejection_after_the_confirmed_retry_needs_no_confirmation(
+            self, teacher_user, student_user, admin_user, gw, clock):
+        r = self._walk(gw, clock, [RefundResult('transient'), RefundResult('rejected', code='X')], teacher_user, student_user)
+        refunds.retry_failed(r.pk, actor=admin_user, confirm_not_refunded=True)
+        gw.behavior = lambda order: RefundResult('rejected', code='X')
+        refunds.process_pending_refunds()
+        r = fresh(r)
+        assert r.status == RS.FAILED and r.attempts == 1 and r.request_epoch == 1
+        refunds.retry_failed(r.pk, actor=admin_user)                       # only a definitive answer in this request id
+        assert fresh(r).request_epoch == 2
+
+    def test_several_attempts_alone_are_ambiguous_even_without_a_transient_row(self, teacher_user, student_user, admin_user):
+        r = new_refund(teacher_user, student_user)
+        r = set_row(r, status=RS.FAILED, failure_kind='rejected', attempts=2, gateway_request_id=f'refund-{r.pk}')
+        RefundAttempt.objects.create(refund=r, seq=1, kind='send', request_id=f'refund-{r.pk}', result_state='rejected', http_status=422)
+        with pytest.raises(refunds.RefundConfirmationRequired):
+            refunds.retry_failed(r.pk, actor=admin_user)
+
+    def test_a_manual_row_in_the_same_request_id_is_ambiguous(self, teacher_user, student_user, admin_user):
+        r = new_refund(teacher_user, student_user)
+        r = set_row(r, status=RS.FAILED, failure_kind='rejected', attempts=1, gateway_request_id=f'refund-{r.pk}')
+        RefundAttempt.objects.create(refund=r, seq=1, kind='send', request_id=f'refund-{r.pk}', result_state='manual')
+        RefundAttempt.objects.create(refund=r, seq=2, kind='send', request_id=f'refund-{r.pk}', result_state='rejected', http_status=422)
+        with pytest.raises(refunds.RefundConfirmationRequired):
+            refunds.retry_failed(r.pk, actor=admin_user)
+
+    def test_a_transient_row_alone_is_ambiguous_even_when_the_attempt_counter_says_one(self, teacher_user, student_user, admin_user):
+        r = new_refund(teacher_user, student_user)
+        r = set_row(r, status=RS.FAILED, failure_kind='rejected', attempts=1, gateway_request_id=f'refund-{r.pk}')
+        RefundAttempt.objects.create(refund=r, seq=1, kind='send', request_id=f'refund-{r.pk}', result_state='transient', http_status=503)
+        RefundAttempt.objects.create(refund=r, seq=2, kind='send', request_id=f'refund-{r.pk}', result_state='rejected', http_status=422)
+        with pytest.raises(refunds.RefundConfirmationRequired):
+            refunds.retry_failed(r.pk, actor=admin_user)
+
+    def test_a_poll_that_could_not_tell_before_the_provider_failure_is_ambiguous(self, teacher_user, student_user, admin_user, gw, clock):
+        answers = iter([RefundResult('transient', http_status=503), RefundResult('rejected', code='CANCELLED')])
+        gw.behavior = lambda order: RefundResult('submitted', reference='RF-S')
+        gw.lookup_behavior = lambda order: next(answers)
+        r = new_refund(teacher_user, student_user)
+        for _ in range(3):
+            refunds.process_pending_refunds()
+            clock.advance(2 * HOUR)
+        r = fresh(r)
+        assert r.status == RS.FAILED and r.failure_kind == 'provider_failed' and r.attempts == 1
+        with pytest.raises(refunds.RefundConfirmationRequired):
+            refunds.retry_failed(r.pk, actor=admin_user)
+
+    def test_an_ambiguous_row_of_an_older_request_id_does_not_count(self, teacher_user, student_user, admin_user):
+        r = new_refund(teacher_user, student_user)
+        r = set_row(r, status=RS.FAILED, failure_kind='rejected', attempts=1, request_epoch=1, gateway_request_id=f'refund-{r.pk}-r1')
+        RefundAttempt.objects.create(refund=r, seq=1, kind='send', request_id=f'refund-{r.pk}', result_state='transient')
+        RefundAttempt.objects.create(refund=r, seq=2, kind='send', request_id=f'refund-{r.pk}-r1', result_state='rejected', http_status=422)
+        refunds.retry_failed(r.pk, actor=admin_user)
+        assert fresh(r).request_epoch == 2
+
+    def test_provider_failed_after_ambiguity_needs_the_confirmation(self, teacher_user, student_user, admin_user, gw, clock):
+        answers = iter([RefundResult('transient', http_status=503), RefundResult('submitted', reference='RF-S')])
+        gw.behavior = lambda order: next(answers)
+        gw.lookup_behavior = lambda order: RefundResult('rejected', code='CANCELLED')
+        r = new_refund(teacher_user, student_user)
+        for _ in range(3):
+            refunds.process_pending_refunds()
+            clock.advance(25 * HOUR)
+        r = fresh(r)
+        assert r.status == RS.FAILED and r.failure_kind == 'provider_failed' and r.attempts == 2
+        with pytest.raises(refunds.RefundConfirmationRequired):
+            refunds.retry_failed(r.pk, actor=admin_user)
+        refunds.retry_failed(r.pk, actor=admin_user, confirm_not_refunded=True)
+        r = fresh(r)
+        assert r.request_epoch == 1 and r.gateway_reference == '' and r.status == RS.PENDING_GATEWAY
+
+    def test_provider_failed_after_a_single_clean_submission_keeps_the_no_confirm_retry(self, teacher_user, student_user, admin_user, gw, clock):
+        gw.behavior = lambda order: RefundResult('submitted', reference='RF-S')
+        gw.lookup_behavior = lambda order: RefundResult('rejected', code='CANCELLED')
+        r = new_refund(teacher_user, student_user)
+        for _ in range(2):
+            refunds.process_pending_refunds()
+            clock.advance(2 * HOUR)
+        r = fresh(r)
+        assert r.status == RS.FAILED and r.failure_kind == 'provider_failed' and r.attempts == 1
+        refunds.retry_failed(r.pk, actor=admin_user)
+        assert fresh(r).request_epoch == 1
+
+    def test_the_guard_failure_never_needed_the_confirmation_and_still_does_not(self, teacher_user, student_user, admin_user):
+        r = new_refund(teacher_user, student_user)
+        r = set_row(r, status=RS.FAILED, failure_kind='guard', attempts=3, gateway_request_id=f'refund-{r.pk}')
+        RefundAttempt.objects.create(refund=r, seq=1, kind='send', request_id=f'refund-{r.pk}', result_state='transient')
+        refunds.retry_failed(r.pk, actor=admin_user)
+        assert fresh(r).status == RS.PENDING_GATEWAY and fresh(r).request_epoch == 0

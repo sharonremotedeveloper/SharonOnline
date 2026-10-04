@@ -247,7 +247,7 @@ def send_refund_processed_email_task(self, refund_id: str):
     if refund is None or refund.status != RefundRequest.Status.PROCESSED or not refund.user.email:
         return
     key = f'refund-processed-email:{refund.pk}'
-    if cache.get(key):
+    if not cache.add(key, 1, timeout=60 * 86400):         # atomic claim BEFORE sending: a duplicate delivery during the send finds it taken
         return
     name = refund.user.first_name or refund.user.username
     amount = f"{money_str(refund.amount, refund.currency)} {refund.currency}"
@@ -256,5 +256,8 @@ def send_refund_processed_email_task(self, refund_id: str):
              "If you do not see it after that, reply to this e-mail and we will look into it."]
     text = f"Hi {name},\n\n" + "\n\n".join(lines) + "\n\nSharon Online"
     html = f"<p>Hi {escape(name)},</p>" + "".join(f"<p>{escape(line)}</p>" for line in lines) + "<p>Sharon Online</p>"
-    send_email(refund.user.email, "Your refund has been sent", html, text)
-    cache.set(key, 1, timeout=60 * 86400)
+    try:
+        send_email(refund.user.email, "Your refund has been sent", html, text)
+    except Exception:
+        cache.delete(key)                                  # nothing was delivered: release the claim so the retry can send
+        raise

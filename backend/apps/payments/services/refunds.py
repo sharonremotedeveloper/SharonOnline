@@ -45,7 +45,7 @@ from apps.payments.models import (BookingFunding, CreditBundle, CreditWalletEntr
 from apps.payments.services.alerts import alert_admin, resolve_alert
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.funding import funding_for_settlement
-from apps.payments.services.ledger_service import record_journal_entries
+from apps.payments.services.ledger_service import gateway_cash_account, record_journal_entries
 from apps.payments.services.pricing import quantize_money
 from apps.payments.services.refund_gateways import ManualSandboxRefundGateway, RefundOrder, RefundResult  # noqa: F401  (re-exported: the old import path keeps resolving)
 from apps.payments.services.settlement import is_settled
@@ -86,10 +86,8 @@ class RefundOutcome:
 
 
 def _gateway_cash_account(tx: PaymentTransaction) -> str:
-    """The cash account the capture was booked to: it follows the gateway, never the currency (PayPal can take ZAR)."""
-    if tx.gateway == PaymentTransaction.Gateway.PAYFAST:
-        return LedgerAccount.ASSET_GATEWAY_PAYFAST
-    return LedgerAccount.ASSET_GATEWAY_PAYPAL
+    """The cash account the capture was booked to: the one shared rule in ledger_service (gateway, never currency)."""
+    return gateway_cash_account(tx)
 
 
 def request_refund(booking, reason: str, *, event_type: str = EV.REFUND_ISSUED, dispute_case=None,
@@ -170,12 +168,15 @@ _EVENT_FOR_REASON = {
 def activate_deferred_refunds(booking) -> int:
     """
     The pending payment cleared (its capture journal is already posted, so escrow holds the money): turn every refund that
-    was waiting on it into a real one (DR 2010, CR 2050), exactly as `request_refund` would have. Idempotent.
+    was waiting on it into a real one (DR 2010, CR 2050), exactly as `request_refund` would have. Idempotent. The first gateway
+    attempt is not due before `REFUND_FIRST_ATTEMPT_DELAY_MINUTES` from NOW (the refund was decided long ago, but the money only
+    arrived now), so the student's window to take wallet credit instead restarts when the money is really there.
     """
     funding = BookingFunding.objects.get(booking=booking)
     fx = dict(fx_rate_to_zar=funding.fx_rate_to_zar, fx_source=funding.fx_source)
     done = 0
     with transaction.atomic():
+        first_attempt_at = _now() + _first_attempt_delay()
         waiting = (RefundRequest.objects.select_for_update()
                    .filter(booking=booking, status=RefundRequest.Status.AWAITING_CLEARANCE))
         for refund in waiting:
@@ -191,7 +192,8 @@ def activate_deferred_refunds(booking) -> int:
                 booking=booking, payment_transaction=refund.payment_transaction, user=booking.student,
                 currency=refund.currency, **fx)
             refund.status = RefundRequest.Status.PENDING_GATEWAY
-            refund.save(update_fields=['status', 'updated_at'])
+            refund.next_attempt_at = first_attempt_at
+            refund.save(update_fields=['status', 'next_attempt_at', 'updated_at'])
             done += 1
     return done
 
@@ -218,7 +220,9 @@ SUBMITTED_STALE_AFTER = timedelta(days=14)
 CANDIDATE_CAP = 1000
 AMBIGUOUS_KINDS = (FK.EXHAUSTED, FK.REPLAY_WINDOW, FK.ALREADY_REFUNDED, '')     # the provider may already have refunded: a human must confirm
 SEND, POLL = 'send', 'poll'
-_REFUND_ALERT_CODES = tuple(f'refund_failed_{kind}' for kind in FK.values) + ('refund_manual_waiting', 'refund_submitted_stale')
+_REFUND_ALERT_CODES = tuple(f'refund_failed_{kind}' for kind in FK.values) + ('refund_manual_waiting', 'refund_submitted_stale',
+                                                                                'refund_capture_not_found')
+NOT_FOUND_ALERT_AFTER = 3                                     # straight 404 answers from the provider before a person is told about THAT refund
 
 
 def _now():
@@ -279,6 +283,10 @@ def _write_attempt(refund, kind: str, result_state: str, *, actor=None, http_sta
     last = RefundAttempt.objects.filter(refund=refund).aggregate(m=Max('seq'))['m'] or 0
     RefundAttempt.objects.create(refund=refund, seq=last + 1, kind=kind, actor=actor, request_id=request_id or refund.gateway_request_id,
                                  result_state=result_state, http_status=http_status or None, error_code=(error_code or '')[:64])
+
+
+def _request_id_of(refund) -> str:
+    return refund.gateway_request_id or _derive_request_id(refund)
 
 
 def _log(refund, tx, *, state: str, outcome: str, http_status=None, error_code: str = '') -> None:
@@ -378,8 +386,11 @@ def _submit_locked(refund, provider_ref: str, now) -> None:
                                'claim_token', 'claimed_until', 'updated_at'])
 
 
-def mark_processed(refund_id, gateway_reference: str) -> RefundRequest:
-    """The gateway returned the money: post the cash movement. Safe to repeat (webhook, poll, sweeper and admin all end here)."""
+def mark_processed(refund_id, gateway_reference: str, *, via_webhook: bool = False) -> RefundRequest:
+    """
+    The gateway returned the money: post the cash movement. Safe to repeat (webhook, poll, sweeper and admin all end here); the
+    repeat posts nothing and writes no row. `via_webhook` records the completion in the audit trail (the PayPal handler passes it).
+    """
     with transaction.atomic():
         tx, refund = _lock_pair(refund_id)
         if refund.status == RS.PROCESSED:
@@ -387,6 +398,8 @@ def mark_processed(refund_id, gateway_reference: str) -> RefundRequest:
         if refund.status not in (RS.PENDING_GATEWAY, RS.SUBMITTED, RS.FAILED):
             raise RefundStateError(f"Refund {refund.pk} is {refund.status}; it cannot be paid out.")
         _complete_locked(tx, refund, gateway_reference)
+        if via_webhook:
+            _write_attempt(refund, 'webhook', 'completed', request_id=_request_id_of(refund))
         return refund
 
 
@@ -400,7 +413,7 @@ def mark_submitted(refund_id, provider_ref: str, *, token: str) -> RefundRequest
         return refund
 
 
-def mark_failed(refund_id, detail: str, *, kind: str, token: Optional[str] = None) -> RefundRequest:
+def mark_failed(refund_id, detail: str, *, kind: str, token: Optional[str] = None, actor=None) -> RefundRequest:
     """A person must look at this refund. Accepts a pending or submitted refund; with a token it also fences a stale worker."""
     with transaction.atomic():
         tx, refund = _lock_pair(refund_id)
@@ -409,6 +422,7 @@ def mark_failed(refund_id, detail: str, *, kind: str, token: Optional[str] = Non
         if token is not None and (not token or refund.claim_token != token):
             raise RefundStateError(f"Refund {refund.pk} is no longer held by that claim.")
         _fail_locked(tx, refund, detail, kind)
+        _write_attempt(refund, 'mark_failed', 'failed', actor=actor, error_code=kind, request_id=_request_id_of(refund))
         return refund
 
 
@@ -428,21 +442,38 @@ def mark_paid_manually(refund_id, *, actor, reference: str) -> RefundRequest:
         return refund
 
 
+def _may_have_refunded_unseen(refund) -> bool:
+    """
+    Could the provider have refunded this request id without us seeing it? True when more than one attempt was made, or an earlier
+    attempt of the SAME request id ended in a non-definitive answer (transient, manual): a later 'rejected' then says nothing about
+    whether an earlier call went through (a crash or timeout after PayPal accepted it). A single definitive answer is certain.
+    """
+    if refund.attempts > 1:
+        return True
+    return RefundAttempt.objects.filter(refund=refund, kind__in=(SEND, POLL), request_id=refund.gateway_request_id,
+                                        result_state__in=('transient', 'manual')).exists()
+
+
 def retry_failed(refund_id, *, actor, confirm_not_refunded: bool = False) -> RefundRequest:
     """
     An admin sends a failed refund back to the gateway. Failures the provider certainly refused (`rejected`,
-    `provider_failed`) get a NEW request id (epoch bump); `guard` keeps its id; ambiguous ones (the provider may have refunded)
-    need `confirm_not_refunded` and keep the old id, so a replay can never refund twice. The guards run again first.
+    `provider_failed` after ONE definitive answer) get a NEW request id (epoch bump); `guard` keeps its id; ambiguous ones (the
+    provider may have refunded: exhausted, replay window, already refunded, or a rejection that followed a transient/manual/repeated
+    attempt) need `confirm_not_refunded` and `exhausted`/`replay_window` keep the old id, so a replay can never refund twice. The
+    guards run again first. An admin action: `actor` is required (system code never retries a failed refund).
     """
+    if actor is None:
+        raise ValueError("retry_failed needs the admin who asked for it (actor): the retry is audited.")
     with transaction.atomic():
         tx, refund = _lock_pair(refund_id)
         if refund.status != RS.FAILED:
             raise RefundStateError(f"Refund {refund.pk} is {refund.status}; only a failed refund can be retried.")
         kind = refund.failure_kind
-        if kind in AMBIGUOUS_KINDS and not confirm_not_refunded:
+        ambiguous = kind in AMBIGUOUS_KINDS or (kind in (FK.REJECTED, FK.PROVIDER_FAILED) and _may_have_refunded_unseen(refund))
+        if ambiguous and not confirm_not_refunded:
             raise RefundConfirmationRequired(
-                f"Refund {refund.pk} failed as '{kind or 'unknown'}': the provider may already have refunded it. Check the gateway, "
-                f"then retry with confirm_not_refunded=True.")
+                f"Refund {refund.pk} failed as '{kind or 'unknown'}': the provider may already have refunded it (an earlier attempt was "
+                f"not answered clearly). Check the gateway, then retry with confirm_not_refunded=True.")
         problem = _guard_problem(tx, refund)
         if problem:
             raise RefundGuardFailed(f"Refund {refund.pk} still fails a safety check: {problem}")
@@ -469,7 +500,7 @@ def retry_failed(refund_id, *, actor, confirm_not_refunded: bool = False) -> Ref
         return refund
 
 
-def convert_to_wallet(refund_id) -> CreditBundle:
+def convert_to_wallet(refund_id, *, actor=None) -> CreditBundle:
     """
     The student prefers lesson credit to waiting for the gateway. Allowed ONLY before the gateway has been (or may have been)
     asked: attempts == 0, no live claim, never attempted. Afterwards the money may already be on its way, and converting would
@@ -505,6 +536,7 @@ def convert_to_wallet(refund_id) -> CreditBundle:
         _clear_claim(refund)
         refund.save(update_fields=['status', 'processed_at', 'next_attempt_at', 'claim_token', 'claimed_until', 'updated_at'])
         _resolve_refund_alerts(refund)
+        _write_attempt(refund, 'convert', 'converted', actor=actor, request_id=_request_id_of(refund))
         return lot
 
 
@@ -576,10 +608,12 @@ def _try_claim(refund_id, status, now_fn: Callable) -> Optional[RefundClaim]:
             if refund.attempts > 0 and not refund.gateway_reference and refund.first_attempt_at and now - refund.first_attempt_at > replay_window:
                 _fail_locked(tx, refund, f"The first attempt was more than {settings.REFUND_REPLAY_WINDOW_DAYS} days ago and no refund id "
                                          f"was recorded: check the gateway before sending it again.", FK.REPLAY_WINDOW)
+                _write_attempt(refund, 'guard', 'failed', error_code=FK.REPLAY_WINDOW, request_id=_request_id_of(refund))
                 return None
             problem = _guard_problem(tx, refund)
             if problem:
                 _fail_locked(tx, refund, problem, FK.GUARD)
+                _write_attempt(refund, 'guard', 'failed', error_code=FK.GUARD, request_id=_request_id_of(refund))
                 return None
         token = uuid.uuid4().hex
         won = _cas_claim(refund.pk, now=now, lease=timedelta(minutes=settings.REFUND_ATTEMPT_LEASE_MINUTES), token=token,
@@ -622,6 +656,22 @@ def _next_backoff(attempts: int, result: RefundResult) -> timedelta:
 def _retry_later(refund, delay: timedelta, now) -> None:
     refund.next_attempt_at = now + delay
     _clear_claim(refund)
+
+
+def _alert_if_capture_unknown(tx, refund) -> None:
+    """
+    This send was answered 404. When the last NOT_FOUND_ALERT_AFTER sends of this request id (this one included, its row is not
+    written yet) all ended in 404, the capture is probably unknown to this PayPal environment: tell a person about THIS refund
+    (the gateway breaker only sees several refunds failing together).
+    """
+    earlier = list(RefundAttempt.objects.filter(refund=refund, kind=SEND, request_id=refund.gateway_request_id)
+                   .order_by('-seq').values_list('http_status', flat=True)[:NOT_FOUND_ALERT_AFTER - 1])
+    if len(earlier) == NOT_FOUND_ALERT_AFTER - 1 and all(status == 404 for status in earlier):
+        alert_admin('refund_capture_not_found', f"Refund {refund.pk}: PayPal does not know its capture",
+                    f"PayPal answered 404 to the last {NOT_FOUND_ALERT_AFTER} attempts to refund {refund.amount} {refund.currency} "
+                    f"(capture {tx.gateway_reference}). Check that the capture exists in this PayPal environment (sandbox versus "
+                    f"live) and that the payment really was captured. The refund keeps retrying with backoff.",
+                    key=str(refund.pk), tx=tx, booking=refund.booking)
 
 
 def apply_result(refund_id, token: str, result: RefundResult, *, kind: str) -> str:
@@ -698,11 +748,14 @@ def apply_result(refund_id, token: str, result: RefundResult, *, kind: str) -> s
             else:
                 _retry_later(refund, _next_backoff(refund.attempts, result), now)
                 refund.failure_detail = (result.detail or '')[:2000]
+                if result.http_status == 404:
+                    _alert_if_capture_unknown(tx, refund)
                 refund.save(update_fields=['next_attempt_at', 'failure_detail', 'claim_token', 'claimed_until', 'last_http_status',
                                            'last_error_code', 'updated_at'])
                 outcome = 'retry'
 
-        _write_attempt(refund, kind, result.state, http_status=result.http_status, error_code=result.code)
+        if state != 'manual':                                # a manual answer asked nothing of the provider: it is not an attempt, so no audit row
+            _write_attempt(refund, kind, result.state, http_status=result.http_status, error_code=result.code)
         _log(refund, tx, state=result.state, outcome=outcome, http_status=result.http_status, error_code=result.code)
         return outcome
 
@@ -747,7 +800,9 @@ def process_pending_refunds() -> dict:
     """
     One sweep (beat, every 15 minutes): claim due refunds one at a time, call the configured gateway outside any lock, apply
     the answer. Bounded by REFUND_SWEEP_LIMIT rows and REFUND_SWEEP_BUDGET_SECONDS. A gateway that fails three times in a row is
-    left alone for the rest of the sweep (its other rows burn no attempt) and raises ONE admin alert per trip.
+    left alone for the rest of the sweep (its other rows burn no attempt) and raises ONE admin alert per trip. Rows that only wait
+    for a person (a `manual` answer: no money moved, no provider asked) are cheap and do not count against REFUND_SWEEP_LIMIT, so
+    they can never starve real PayPal rows; the time budget still bounds the whole run.
     """
     gateway = import_string(settings.REFUND_GATEWAY_BACKEND)()
     done = dict.fromkeys(_COUNTERS, 0)
@@ -757,19 +812,23 @@ def process_pending_refunds() -> dict:
     def skipped(refund_id, gateway_name):
         done['skipped_breaker'] += 1
 
-    claims = claim_due_refunds(limit=settings.REFUND_SWEEP_LIMIT, skip_gateways=tripped, on_skip=skipped)
+    real = 0                                                  # rows that really went to a provider; manual answers do not count
+    claims = claim_due_refunds(limit=CANDIDATE_CAP, skip_gateways=tripped, on_skip=skipped)
     try:
-        while _monotonic() - started < settings.REFUND_SWEEP_BUDGET_SECONDS:
+        while real < settings.REFUND_SWEEP_LIMIT and _monotonic() - started < settings.REFUND_SWEEP_BUDGET_SECONDS:
             claim = next(claims, None)
             if claim is None:
                 break
             done['polled' if claim.kind == POLL else 'sent'] += 1
             result = _ask_gateway(gateway, claim)
+            if result.state != 'manual':
+                real += 1
             try:
                 outcome = apply_result(claim.refund_id, claim.token, result, kind=claim.kind)
-            except Exception:                                 # one bad row never stops the sweep; its lease expires and it is replayed
-                logger.exception("[REFUND] refund=%s could not apply a %s result; it will be replayed with the same request id",
-                                 claim.refund_id, result.state)
+            except Exception as exc:                          # one bad row never stops the sweep; its lease expires and it is replayed
+                # Type and ids only: the exception text / traceback can carry a provider body, a URL or a token (plan section 2b).
+                logger.error("[REFUND] refund=%s gateway=%s request_id=%s could not apply a %s result (%s); it will be replayed with the same request id",
+                             claim.refund_id, claim.order.gateway, claim.order.request_id, result.state, type(exc).__name__)
                 done['transient'] += 1
                 continue
             if outcome in _OUTCOME_COUNTER and not (outcome == 'submitted' and claim.kind == POLL):    # a poll that is still pending is only 'polled'

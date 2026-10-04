@@ -92,14 +92,17 @@ def _from_unavailable(exc) -> RefundResult:
                         retry_after_s=exc.retry_after_s, provider_level=status in _CONFIG_STATUSES)
 
 
-def _from_rejected(exc) -> RefundResult:
+def _from_rejected(exc, *, sending: bool) -> RefundResult:
     status = exc.status_code
     code = _error_code(exc)
     if status in _RETRYABLE_STATUSES:
         return RefundResult('transient', detail=f'PayPal answered {status}', code=code, http_status=status)
     if status == 404 and (exc.name in _MISMATCH_404 or exc.issue in _MISMATCH_404):
+        # Sending: an ordinary per-row transient, so this refund's own attempts and the exhaustion rule apply (one bad capture must
+        # not retry forever); the per-gateway breaker still trips when several refunds in a sweep see it, which is the real
+        # sandbox/live-mismatch signal. A lookup of a refund id we were given stays provider-level.
         return RefundResult('transient', detail='PayPal does not know this id (sandbox/live mismatch?)', code=code,
-                            http_status=status, provider_level=True)
+                            http_status=status, provider_level=not sending)
     if status in (400, 404, 422):
         return RefundResult('rejected', detail=f'PayPal refused the refund ({status} {code})'.strip(), code=code, http_status=status)
     # Any other 4xx (405, 415, ...) means our request is wrong, not that this refund is refused: provider-level, retry later.
@@ -133,7 +136,7 @@ class PayPalRefundGateway:
         except paypal.PayPalUnavailable as exc:
             return _from_unavailable(exc)
         except paypal.PayPalRejected as exc:
-            return _from_rejected(exc)
+            return _from_rejected(exc, sending=True)
         except paypal.PayPalError:
             return RefundResult('transient', detail='PayPal transport error')
         return _from_refund_json(body)
@@ -148,7 +151,7 @@ class PayPalRefundGateway:
         except paypal.PayPalUnavailable as exc:
             return _from_unavailable(exc)
         except paypal.PayPalRejected as exc:
-            return _from_rejected(exc)
+            return _from_rejected(exc, sending=False)
         except paypal.PayPalError:
             return RefundResult('transient', detail='PayPal transport error')
         return _from_refund_json(body, fallback_reference=order.provider_refund_id)

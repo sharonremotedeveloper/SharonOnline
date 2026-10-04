@@ -39,7 +39,7 @@ class ConvertRefundToWalletView(APIView):
     def post(self, request, refund_id):
         refund = get_object_or_404(RefundRequest, pk=refund_id, user=request.user)
         try:
-            refunds.convert_to_wallet(refund.pk)
+            refunds.convert_to_wallet(refund.pk, actor=request.user)
         except refunds.RefundInProgress as exc:
             return Response({"error": str(exc), "code": "refund_in_progress"}, status=status.HTTP_409_CONFLICT)
         except refunds.RefundStateError as exc:

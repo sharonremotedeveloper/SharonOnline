@@ -23,6 +23,16 @@ def _snapshot(payment_transaction, fx_rate_to_zar, fx_source):
     return fx_rate_to_zar, fx_source
 
 
+def gateway_cash_account(payment_transaction) -> str:
+    """
+    The cash account a payment's money sits in. It follows the GATEWAY, never the currency (PayPal can take ZAR): the capture and
+    the refund of one payment must always hit the same account, so 1010 / 1020 reconcile to the provider's own balance.
+    """
+    if payment_transaction.gateway == PaymentTransaction.Gateway.PAYFAST:
+        return LedgerAccount.ASSET_GATEWAY_PAYFAST
+    return LedgerAccount.ASSET_GATEWAY_PAYPAL
+
+
 class UnbalancedJournalEntryError(ValueError):
     """Raised when journal debits do not equal credits for a transaction batch."""
     pass
@@ -171,10 +181,7 @@ def record_payment_capture_entry(
     currency = payment_transaction.currency.upper()
     fx_rate_to_zar, fx_source = _snapshot(payment_transaction, fx_rate_to_zar, fx_source)
     
-    if payment_transaction.gateway == PaymentTransaction.Gateway.PAYFAST or currency == 'ZAR':
-        asset_account = LedgerAccount.ASSET_GATEWAY_PAYFAST
-    else:
-        asset_account = LedgerAccount.ASSET_GATEWAY_PAYPAL
+    asset_account = gateway_cash_account(payment_transaction)
 
     fee = payment_transaction.provider_fee_amount or Decimal('0.00')
     if fee and (payment_transaction.provider_fee_currency or currency).upper() != currency:
@@ -222,11 +229,7 @@ def record_credit_purchase_capture_entry(payment_transaction, purchase) -> List[
     """Record verified pack-sale cash against the student's wallet liability."""
     amount = Decimal(str(payment_transaction.amount)).quantize(Decimal('0.01'))
     currency = payment_transaction.currency.upper()
-    asset_account = (
-        LedgerAccount.ASSET_GATEWAY_PAYFAST
-        if payment_transaction.gateway == PaymentTransaction.Gateway.PAYFAST or currency == 'ZAR'
-        else LedgerAccount.ASSET_GATEWAY_PAYPAL
-    )
+    asset_account = gateway_cash_account(payment_transaction)
     fee = payment_transaction.provider_fee_amount or Decimal('0.00')
     if fee and (payment_transaction.provider_fee_currency or currency).upper() != currency:
         raise ValueError('Provider fee currency must match the captured transaction currency.')
@@ -626,7 +629,7 @@ def record_def501_quarantine_entry(
     amount = Decimal(str(payment_transaction.amount)).quantize(Decimal('0.01'))
     currency = payment_transaction.currency.upper()
     fx_rate_to_zar, fx_source = _snapshot(payment_transaction, fx_rate_to_zar, fx_source)
-    asset_account = LedgerAccount.ASSET_GATEWAY_PAYFAST if (payment_transaction.gateway == PaymentTransaction.Gateway.PAYFAST or currency == 'ZAR') else LedgerAccount.ASSET_GATEWAY_PAYPAL
+    asset_account = gateway_cash_account(payment_transaction)
 
     entries = [
         # Ingestion into quarantine
@@ -690,7 +693,7 @@ def record_unallocated_payment_entry(
     amount = Decimal(str(payment_transaction.amount)).quantize(Decimal('0.01'))
     currency = payment_transaction.currency.upper()
     fx_rate_to_zar, fx_source = _snapshot(payment_transaction, fx_rate_to_zar, fx_source)
-    asset_account = LedgerAccount.ASSET_GATEWAY_PAYFAST if (payment_transaction.gateway == PaymentTransaction.Gateway.PAYFAST or currency == 'ZAR') else LedgerAccount.ASSET_GATEWAY_PAYPAL
+    asset_account = gateway_cash_account(payment_transaction)
     ref = payment_transaction.gateway_reference
     entries = [
         {'account': asset_account, 'entry_type': LedgerEntry.EntryType.DEBIT, 'amount': amount, 'currency': currency,

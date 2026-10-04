@@ -1,4 +1,9 @@
-from django.contrib import admin
+import re
+
+from django import forms
+from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
+from django.template.response import TemplateResponse
 from .models import (
     BookingFunding, CreditBundle, FxRate, CreditPack, CreditPurchase, CreditWalletEntry,
     LedgerEntry, PaymentTransaction, RefundAttempt, RefundRequest, SettlementAnomaly,
@@ -19,6 +24,33 @@ class CreditBundleAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'pack_name')
 
 
+PROVIDER_REFUND_ID_RE = re.compile(r'[A-Za-z0-9_-]{5,64}')        # the shape of a PayPal refund id; fullmatch(), no newline loophole
+
+
+class ProviderRefundIdsForm(forms.Form):
+    """One required, well-formed gateway refund id per selected refund (field `ref_<refund pk>`)."""
+
+    def __init__(self, refunds_, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.refunds = list(refunds_)
+        for refund in self.refunds:
+            self.fields[f'ref_{refund.pk}'] = forms.CharField(
+                label='Gateway refund id', max_length=64, strip=True,
+                widget=forms.TextInput(attrs={'size': 40, 'autocomplete': 'off'}))
+
+    def clean(self):
+        cleaned = super().clean()
+        for refund in self.refunds:
+            name = f'ref_{refund.pk}'
+            value = cleaned.get(name)
+            if value is not None and not PROVIDER_REFUND_ID_RE.fullmatch(value):
+                self.add_error(name, 'Use the refund id shown by the gateway: 5 to 64 letters, digits, "-" or "_".')
+        return cleaned
+
+    def rows(self):
+        return [(refund, self[f'ref_{refund.pk}']) for refund in self.refunds]
+
+
 @admin.register(RefundRequest)
 class RefundRequestAdmin(admin.ModelAdmin):
     """Refunds owed to students. The sweeper sends them to the gateway; a person marks one paid here only after paying it in the gateway's console."""
@@ -27,6 +59,7 @@ class RefundRequestAdmin(admin.ModelAdmin):
     search_fields = ('id', 'booking__id', 'user__username', 'gateway_reference')
     readonly_fields = [f.name for f in RefundRequest._meta.fields]
     actions = ['mark_paid_in_gateway']
+    mark_paid_template = 'admin/payments/refundrequest/mark_paid.html'
 
     def has_add_permission(self, request):
         return False
@@ -34,13 +67,36 @@ class RefundRequestAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
-    @admin.action(description='Mark as paid in the gateway (posts the cash movement)')
+    def has_mark_paid_permission(self, request):
+        """Posting cash by hand is for superusers and platform admins (role), on top of Django's change permission."""
+        user = request.user
+        return bool(user.is_active and (user.is_superuser or getattr(user, 'role', None) == 'admin'))
+
+    @admin.action(description='Mark as paid in the gateway (posts the cash movement)', permissions=['change', 'mark_paid'])
     def mark_paid_in_gateway(self, request, queryset):
-        done = 0
-        for refund in queryset.filter(status__in=[RefundRequest.Status.PENDING_GATEWAY, RefundRequest.Status.FAILED]):
-            refunds.mark_paid_manually(refund.pk, actor=request.user, reference=f'MANUAL-{refund.pk}')    # audited (RefundAttempt)
-            done += 1
-        self.message_user(request, f'{done} refund(s) marked as paid.')
+        if not (self.has_change_permission(request) and self.has_mark_paid_permission(request)):
+            raise PermissionDenied
+        selected = list(queryset.order_by('created_at'))
+        form = ProviderRefundIdsForm(selected, request.POST) if 'apply' in request.POST else ProviderRefundIdsForm(selected)
+        if 'apply' in request.POST and form.is_valid():
+            done = 0
+            for refund in selected:
+                if refund.status == RefundRequest.Status.PROCESSED:
+                    self.message_user(request, f'Refund {refund.pk} was already paid ({refund.gateway_reference}); left unchanged.',
+                                      messages.INFO)
+                    continue
+                try:
+                    refunds.mark_paid_manually(refund.pk, actor=request.user, reference=form.cleaned_data[f'ref_{refund.pk}'])   # audited (RefundAttempt)
+                except (refunds.RefundStateError, ValueError) as exc:
+                    self.message_user(request, f'Refund {refund.pk} was not marked as paid: {exc}', messages.ERROR)
+                else:
+                    done += 1
+            self.message_user(request, f'{done} refund(s) marked as paid.')
+            return None
+        context = {**self.admin_site.each_context(request), 'title': 'Mark refunds as paid in the gateway', 'opts': self.model._meta,
+                   'form': form, 'rows': form.rows(), 'selected': [str(r.pk) for r in selected]}
+        return TemplateResponse(request, self.mark_paid_template, context)
+
 
 @admin.register(LedgerEntry)
 class LedgerEntryAdmin(admin.ModelAdmin):

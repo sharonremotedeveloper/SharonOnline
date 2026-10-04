@@ -7,6 +7,8 @@ from django.core.exceptions import ImproperlyConfigured
 
 _DEV_SECRET_PREFIX = 'django-insecure'
 SANDBOX_PAYFAST_MERCHANT_ID = '10000100'
+_DEFAULT_REFUND_BACKEND = 'apps.payments.services.refunds.ManualSandboxRefundGateway'    # what settings/base.py uses when the env is unset
+_ROUTING_REFUND_BACKEND = 'apps.payments.services.refund_gateways.RoutingRefundGateway'
 _LOCAL_HOSTS = {'localhost', '127.0.0.1', '0.0.0.0', 'backend', '::1'}
 
 
@@ -105,6 +107,13 @@ def validate_production_settings(env=os.environ):
         for name in ('PAYPAL_CLIENT_SECRET', 'PAYPAL_WEBHOOK_ID'):
             if not env.get(name):
                 errors.append(f'{name} is required when PayPal is configured')
+
+    # Refunds: the manual backend moves no money, so a production process left on it (the base default) would queue every refund
+    # forever while the ledger says "owed". Unset or blank resolves to that default, so it is refused too.
+    refund_backend = (env.get('REFUND_GATEWAY_BACKEND', '') or '').strip() or _DEFAULT_REFUND_BACKEND
+    if refund_backend.rsplit('.', 1)[-1] == 'ManualSandboxRefundGateway' and env.get('ALLOW_MANUAL_REFUNDS_IN_PROD', '').lower() not in truthy:
+        errors.append(f'REFUND_GATEWAY_BACKEND is the manual refund backend, which never returns money to students; set it to '
+                      f'{_ROUTING_REFUND_BACKEND}, or set ALLOW_MANUAL_REFUNDS_IN_PROD=1 only for a deliberate staging deploy')
 
     if errors:
         raise ImproperlyConfigured('Unsafe production configuration: ' + '; '.join(errors))

@@ -196,7 +196,7 @@ def apply_refund(tx_pk, refund_id: str, amount: Decimal, currency: str, event: d
         known = requests.filter(gateway_reference=refund_id).first()
         if known is not None:
             if known.status in (RefundRequest.Status.SUBMITTED, RefundRequest.Status.FAILED):
-                refunds.mark_processed(known.pk, refund_id)         # the provider finished it: post the cash leg once
+                refunds.mark_processed(known.pk, refund_id, via_webhook=True)     # the provider finished it: post the cash leg once
                 return 'refund_completed'
             return 'duplicate'
         amount = quantize_money(amount, currency or tx.currency)
@@ -204,18 +204,16 @@ def apply_refund(tx_pk, refund_id: str, amount: Decimal, currency: str, event: d
         ours = [r for r in requests.filter(status__in=open_states).order_by('created_at')
                 if r.currency.upper() == currency and quantize_money(r.amount, r.currency) == amount]
         if ours:
-            try:
-                refunds.mark_processed(ours[0].pk, refund_id)       # idempotent: posts the cash leg once
-            except refunds.RefundStateError:
-                settled_elsewhere = RefundRequest.objects.get(pk=ours[0].pk)
-                if settled_elsewhere.status not in (RefundRequest.Status.CONVERTED, RefundRequest.Status.VOID):
-                    raise
-                return _refund_after_convert(tx, settled_elsewhere, refund_id, amount, currency, event)
+            # Only states mark_processed accepts are matched and the rows are locked above, so no RefundStateError is expected here;
+            # if one ever happens it propagates (the transaction rolls back and PayPal's retry meets the converted row below).
+            refunds.mark_processed(ours[0].pk, refund_id, via_webhook=True)   # idempotent: posts the cash leg once
             return 'refund_completed'
         paid_twice = [r for r in requests.filter(status__in=(RefundRequest.Status.CONVERTED, RefundRequest.Status.VOID))
                       .order_by('created_at') if r.currency.upper() == currency and quantize_money(r.amount, r.currency) == amount]
         if paid_twice:
-            _refund_after_convert(tx, paid_twice[0], refund_id, amount, currency, event)
+            # Money moved twice: raise the CRITICAL alert and STOP. Falling through to _external_refund would file a second,
+            # blocking anomaly (and could post) for the same money.
+            return _refund_after_convert(tx, paid_twice[0], refund_id, amount, currency, event)
         return _external_refund(tx, requests, refund_id, amount, currency, event)
 
 
@@ -247,7 +245,7 @@ def _external_refund(tx, requests, refund_id, amount, currency, event) -> str:
         except (refunds.AlreadySettled, refunds.MissingFunding) as exc:
             notes.append(str(exc))
         else:
-            refunds.mark_processed(outcome.refund.pk, refund_id)
+            refunds.mark_processed(outcome.refund.pk, refund_id, via_webhook=True)
             posted = True
     record_anomaly('paypal', refund_id, 'external_refund',
                    f"refund {refund_id} of {amount} {currency} on capture {tx.gateway_reference} was not initiated by "
