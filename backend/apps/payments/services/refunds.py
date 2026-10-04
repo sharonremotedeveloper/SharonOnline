@@ -739,7 +739,8 @@ def apply_result(refund_id, token: str, result: RefundResult, *, kind: str) -> s
                                            'last_error_code', 'updated_at'])
                 outcome = 'retry'
 
-        _write_attempt(refund, kind, result.state, http_status=result.http_status, error_code=result.code)
+        if state != 'manual':                                # a manual answer asked nothing of the provider: it is not an attempt, so no audit row
+            _write_attempt(refund, kind, result.state, http_status=result.http_status, error_code=result.code)
         _log(refund, tx, state=result.state, outcome=outcome, http_status=result.http_status, error_code=result.code)
         return outcome
 
@@ -784,7 +785,9 @@ def process_pending_refunds() -> dict:
     """
     One sweep (beat, every 15 minutes): claim due refunds one at a time, call the configured gateway outside any lock, apply
     the answer. Bounded by REFUND_SWEEP_LIMIT rows and REFUND_SWEEP_BUDGET_SECONDS. A gateway that fails three times in a row is
-    left alone for the rest of the sweep (its other rows burn no attempt) and raises ONE admin alert per trip.
+    left alone for the rest of the sweep (its other rows burn no attempt) and raises ONE admin alert per trip. Rows that only wait
+    for a person (a `manual` answer: no money moved, no provider asked) are cheap and do not count against REFUND_SWEEP_LIMIT, so
+    they can never starve real PayPal rows; the time budget still bounds the whole run.
     """
     gateway = import_string(settings.REFUND_GATEWAY_BACKEND)()
     done = dict.fromkeys(_COUNTERS, 0)
@@ -794,14 +797,17 @@ def process_pending_refunds() -> dict:
     def skipped(refund_id, gateway_name):
         done['skipped_breaker'] += 1
 
-    claims = claim_due_refunds(limit=settings.REFUND_SWEEP_LIMIT, skip_gateways=tripped, on_skip=skipped)
+    real = 0                                                  # rows that really went to a provider; manual answers do not count
+    claims = claim_due_refunds(limit=CANDIDATE_CAP, skip_gateways=tripped, on_skip=skipped)
     try:
-        while _monotonic() - started < settings.REFUND_SWEEP_BUDGET_SECONDS:
+        while real < settings.REFUND_SWEEP_LIMIT and _monotonic() - started < settings.REFUND_SWEEP_BUDGET_SECONDS:
             claim = next(claims, None)
             if claim is None:
                 break
             done['polled' if claim.kind == POLL else 'sent'] += 1
             result = _ask_gateway(gateway, claim)
+            if result.state != 'manual':
+                real += 1
             try:
                 outcome = apply_result(claim.refund_id, claim.token, result, kind=claim.kind)
             except Exception:                                 # one bad row never stops the sweep; its lease expires and it is replayed

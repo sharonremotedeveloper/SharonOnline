@@ -465,6 +465,28 @@ class TestCrashAndConcurrency:
         assert refunds.process_pending_refunds()['sent'] == 2
         assert refunds.process_pending_refunds()['sent'] == 1
 
+    def test_waiting_manual_rows_do_not_starve_real_rows_of_the_sweep_limit(self, teacher_user, student_user, gw):
+        """QA L1: 30 due PayFast rows that only wait for a person must not use up the 25-row limit and keep a PayPal row from being sent."""
+        gw.behavior = lambda order: RefundResult('manual') if order.gateway == 'payfast' else RefundResult('completed', reference=f'RF-{order.request_id}')
+        manual = [new_refund(teacher_user, student_user, gateway='payfast', amount='168.75', currency='ZAR') for _ in range(30)]
+        real = new_refund(teacher_user, student_user)                      # the newest row: behind all 30 manual rows
+        done = refunds.process_pending_refunds()
+        assert fresh(real).status == RS.PROCESSED
+        assert done['completed'] == 1 and done['manual'] == 30
+        assert RefundAttempt.objects.count() == 1                           # only the real send is audited
+        assert all(fresh(r).status == RS.PENDING_GATEWAY and fresh(r).attempts == 0 for r in manual)
+
+    def test_the_limit_still_bounds_real_work_when_manual_rows_are_mixed_in(self, teacher_user, student_user, settings, gw):
+        settings.REFUND_SWEEP_LIMIT = 2
+        gw.behavior = lambda order: RefundResult('manual') if order.gateway == 'payfast' else RefundResult('completed', reference=f'RF-{order.request_id}')
+        for _ in range(3):
+            new_refund(teacher_user, student_user, gateway='payfast', amount='168.75', currency='ZAR')
+        for _ in range(3):
+            new_refund(teacher_user, student_user)
+        done = refunds.process_pending_refunds()
+        assert done['completed'] == 2 and done['manual'] == 3
+        assert refunds.process_pending_refunds()['completed'] == 1
+
     def test_the_sweep_budget_stops_the_run_before_the_next_claim(self, teacher_user, student_user, settings, monkeypatch):
         settings.REFUND_SWEEP_BUDGET_SECONDS = 600
         times = iter([0, 0, 700, 700, 700, 700, 700, 700])
@@ -852,7 +874,7 @@ class TestManual:
         row = fresh(r)
         assert (row.attempts, row.last_attempt_at, row.first_attempt_at) == (0, None, None)
         assert row.next_attempt_at == clock.now + 6 * HOUR and row.status == RS.PENDING_GATEWAY and row.claim_token == ''
-        assert RefundAttempt.objects.get().result_state == 'manual'
+        assert RefundAttempt.objects.count() == 0                   # QA L1: a manual answer is not an attempt, so it leaves no audit row
 
     def test_many_manual_rounds_never_exhaust_or_fail(self, teacher_user, student_user, gw, clock, settings):
         settings.REFUND_MAX_ATTEMPTS = 1
@@ -1691,7 +1713,7 @@ class TestRefundAfterConvert:
 class TestAttemptRows:
     @pytest.mark.parametrize('result,outcome', [
         (RefundResult('completed', reference='R'), 'processed'), (RefundResult('submitted', reference='R'), 'submitted'),
-        (RefundResult('transient'), 'retry'), (RefundResult('rejected', code='X'), 'failed'), (RefundResult('manual'), 'manual'),
+        (RefundResult('transient'), 'retry'), (RefundResult('rejected', code='X'), 'failed'),
     ])
     def test_exactly_one_row_per_apply(self, teacher_user, student_user, result, outcome):
         r = new_refund(teacher_user, student_user)
@@ -1699,6 +1721,22 @@ class TestAttemptRows:
         assert refunds.apply_result(r.pk, claim.token, result, kind='send') == outcome
         assert RefundAttempt.objects.filter(refund=r).count() == 1
         assert RefundAttempt.objects.get().result_state == result.state
+
+    def test_a_manual_result_writes_no_row(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        claim = claim_one()
+        assert refunds.apply_result(r.pk, claim.token, RefundResult('manual'), kind='send') == 'manual'
+        assert RefundAttempt.objects.filter(refund=r).count() == 0
+
+    def test_a_manual_round_between_real_attempts_does_not_gap_or_duplicate_the_sequence(self, teacher_user, student_user, gw, clock):
+        answers = iter([RefundResult('transient'), RefundResult('manual'), RefundResult('manual'), RefundResult('transient')])
+        gw.behavior = lambda order: next(answers)
+        r = new_refund(teacher_user, student_user)
+        for _ in range(4):
+            refunds.process_pending_refunds()
+            clock.advance(DAY)
+        assert [(a.seq, a.result_state) for a in RefundAttempt.objects.filter(refund=r).order_by('seq')] == [(1, 'transient'), (2, 'transient')]
+        assert fresh(r).attempts == 2
 
     def test_a_noop_writes_nothing_and_seq_increments(self, teacher_user, student_user, clock, gw):
         gw.behavior = lambda order: RefundResult('transient')
