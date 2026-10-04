@@ -98,7 +98,7 @@ SQLite, and several guard/audit gaps. The design below resolves all 12 required 
 ### Decisions recorded for Anesu (provisional, ADR in docs)
 - **Wallet conversion window.** A student may convert a pending gateway refund to wallet credit only **before the first gateway call or live claim**
   (`attempts == 0`, no live claim). To keep a usable window, the first gateway attempt is delayed by `REFUND_FIRST_ATTEMPT_DELAY_MINUTES` (default **60**,
-  provisional). Anesu to confirm 60 minutes or another value. PayFast-disabled / manual rows stay convertible (they are never attempted).
+  confirmed by Anesu 2026-10-04). PayFast-disabled / manual rows stay convertible (they are never attempted).
 - **PayFast** ships as a stub that returns `manual` plus a doc listing what is UNVERIFIED; `PAYFAST_REFUNDS_ENABLED` defaults False. Live PayFast refunds are deferred.
 - **Admin UI page deferred**: ship the admin API + Django admin only. The student "On its way" label rides with the API change.
 
