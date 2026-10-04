@@ -76,11 +76,10 @@ class TestReserve:
     def test_unverified_or_inactive_tutor_not_bookable(self, teacher_user, student_user):
         slot = _open_slots(teacher_user)[0]
         body = {'teacher_id': str(teacher_user.id), 'start_time_utc': slot['start_time_utc']}
-        teacher_user.is_verified = False
-        teacher_user.save()
+        from factories import advance_teacher
+        advance_teacher(teacher_user, 'in_review')              # re-vet: no longer verified
         assert _client(student_user).post(RESERVE, body, format='json').status_code == 404
-        teacher_user.is_verified, teacher_user.is_active = True, False
-        teacher_user.save()
+        advance_teacher(teacher_user, 'approved', 'suspended')  # verified but inactive
         assert _client(student_user).post(RESERVE, body, format='json').status_code == 404
 
     def test_unknown_tutor_is_404_not_500(self, student_user):

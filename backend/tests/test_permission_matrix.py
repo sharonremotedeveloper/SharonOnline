@@ -35,7 +35,7 @@ def other_student(db):
 @pytest.fixture
 def other_teacher(db):
     u = User.objects.create_user(username='other_t', email='ot@test.com', password='x', role='teacher')
-    return TeacherProfile.objects.create(user=u, headline='x', price_per_25min_usd=9, is_verified=True, is_active=True)
+    return TeacherProfile.objects.create(user=u, headline='x', price_per_25min_usd=9, status='approved')
 
 
 @pytest.mark.django_db
@@ -120,8 +120,8 @@ class TestCrmAuthorization:
 @pytest.mark.django_db
 class TestTeacherVisibility:
     def test_unverified_teacher_detail_404(self, other_teacher):
-        other_teacher.is_verified = False
-        other_teacher.save()
+        from factories import advance_teacher
+        advance_teacher(other_teacher, 'in_review')
         assert _client().get(f'/api/v1/teachers/{other_teacher.id}/').status_code == 404
 
     def test_tefl_url_has_no_hardcoded_default(self, other_teacher):

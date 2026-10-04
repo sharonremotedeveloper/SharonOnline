@@ -47,8 +47,13 @@
 - `intro_video_url`: URLField (Cloudflare Stream HLS URL)
 - `price_per_25min_usd`: DecimalField (Default: `9.00`)
 - `specialties`: JSONField (e.g. `['FreeTalk', 'Business', 'TOEIC']`)
-- `is_verified`: BooleanField (Admin vetting status)
+- `status`: CharField Enum (`applied`, `submitted`, `in_review`, `approved`, `changes_requested`, `rejected`, `suspended`; default `applied`, DB CHECK constraint). The only stored lifecycle column, written only by `teachers/vetting.py` (slice T1a, `docs/TUTOR_STATUS_MACHINE.md`)
+- `is_verified` / `is_active`: Django 5.2 `GeneratedField`s of `status` (stored, indexed, read-only): verified = `approved|suspended`, active = everything but `rejected|suspended`
+- `training_completed_at`: DateTimeField, nullable (live tutors grandfathered by migration 0007)
 - `bio`: TextField
+
+#### `TeacherStatusChange` Model (T1a, append-only audit)
+- `teacher` FK, `from_status` ('' for the baseline row), `to_status`, `actor` (`user:<name>` / `system:<source>`), `actor_user` FK (SET_NULL), `reason` (500), `rubric` JSON, `reviewed_assets` JSON, `created_at`
 
 #### `TeacherAvailability` Model
 - `teacher`: ForeignKey (`TeacherProfile`)

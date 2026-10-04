@@ -347,3 +347,48 @@ def configure_test_settings(settings):
 - **Symptom:** after merging N1c: 6 errors in `test_q0_fakes.py` (`module 'apps.integrations.email' has no attribute 'requests'`), `test_guard_pii_logging` ("integrations/email.py: allowlist says 1 but only 0 remain"), ruff F811 x14 + F401 in `test_send_email_qa.py`.
 - **Root cause:** Q0's `FakeResend` patched the old sender module and set `RESEND_API_KEY` in the environment, but N1c moved the only Resend call into `apps/integrations/services/email.py`, which reads settings (and tests pin `EMAIL_BACKEND_MODE='console'`); N1c removed the PII log line (shrink-only allowlist); N1c's QA file imported the `resend` fixture by name and reused it as a parameter (never linted on its branch, which predated Q0's ruff gate).
 - **Fix:** `FakeResend.install` patches `services.email.requests` and sets `RESEND_API_KEY` / `EMAIL_BACKEND_MODE='resend'` through settings; the Q0 fake test expects the returned `EmailResult`; PII allowlist entry removed; the `resend` fixture moved to `conftest.py`. New `tests/test_layer0_contract.py` drives the fulfilment e-mail step through the real sender and real `EmailPermanentError` / Retry-After (F0 re-review m5).
+
+### ERR-150: migration round-trip test failed with `NOT NULL constraint failed: users_user.email_verified` (slice T1a)
+- **Symptom:** `tests/test_tutor_status_migrations.py::test_migration_round_trip` failed while building tutors on the 0006 schema.
+- **Root cause:** the test migrated to `[('teachers', '0006_teacherstrike')]` only; `MigrationExecutor.loader.project_state(targets)` then builds the historical `users.User` from the users migrations that teachers 0006 depends on (before `email_verified` existed), while the real table (users left at its leaf) has the NOT NULL column.
+- **Fix:** the test's targets keep every other app on its latest leaf and only move teachers (`_targets(...)`), so the historical User matches the table. No product change.
+
+### ERR-151: Django admin change page 500 in a test (`Missing staticfiles manifest entry for 'admin/css/base.css'`) (slice T1a)
+- **Symptom:** the new admin change-page test for `TeacherProfile` returned 500.
+- **Root cause:** settings use whitenoise `CompressedManifestStaticFilesStorage`, which needs `collectstatic` output; tests never run it.
+- **Fix:** the test overrides `STORAGES['staticfiles']` with `StaticFilesStorage` (the pattern `tests/test_refund_processing.py` already uses). No product change.
+
+### ERR-152: committed OpenAPI stale after the read-only pin; a view docstring leaked into the schema (slice T1a)
+- **Symptom:** `test_api_contract.py::test_committed_schema_is_current` failed; the regenerated schema also gained a `description` for `PATCH /admin/teachers/{id}/verify/`.
+- **Root cause:** `TeacherListSerializer.is_verified` is now an explicit `BooleanField(read_only=True)` (readOnly + required in the response schema); drf-spectacular publishes a view's class docstring as the operation description.
+- **Fix:** regenerated `docs/api/openapi.yaml` and `frontend/src/types/api.generated.ts` (`is_verified?: boolean` -> `readonly is_verified: boolean`, two schemas); the legacy-verify note became a comment so the contract diff is read-only only.
+
+### ERR-153: ruff baseline entry went stale (`seed_data.py` F401) (slice T1a)
+- **Symptom:** `test_guard_ruff_baseline` failed: "Fixed - delete these from [lint.extend-per-file-ignores]: seed_data.py F401".
+- **Root cause:** the seed now uses the previously unused `timezone` import (`training_completed_at=timezone.now()`).
+- **Fix:** removed the entry from `ruff.toml` and lowered `BASELINE_MAX_PAIRS` to 68 (the ratchet working as intended).
+
+### ERR-154: `tsc` failed after the TS contract regeneration (`Property 'is_verified' is missing`) (slice T1a)
+- **Symptom:** `npx tsc --noEmit` in `frontend/`: `src/lib/api.ts(492,7): error TS2322 ... Property 'is_verified' is missing`.
+- **Root cause:** the read-only pin makes `is_verified` required in the response schema; the dev-mock booking fixture in `getBooking` (only reached with `NEXT_PUBLIC_USE_MOCKS=true`) builds a teacher object without it. `check:api-types` and `lint` do not type-check that file.
+- **Fix:** the fixture sets `is_verified: true` (the API always returns the field). tsc, lint, `check:api-types` and `npm test` (152) green.
+
+### ERR-155: `npm run build` cannot run in an agent worktree through a `node_modules` junction (slice T1a)
+- **Symptom:** Turbopack: "Symlink [project]/node_modules is invalid, it points out of the filesystem root".
+- **Root cause:** the worktree has no `node_modules`; agents may only junction the main checkout's, and Turbopack refuses a link that leaves the project root. Environment limitation, not a code defect.
+- **Fix:** none in code; the build gate is verified after the merge on the integration checkout (or CI). Type-check (`tsc --noEmit`), lint and unit tests were run through the junction instead.
+
+### ERR-156: a stale full-row save could silently undo a tutor suspension (slice T1a, Architect review M1)
+- **Symptom:** a tutor whose profile was loaded while `approved` (e.g. `request.user.teacher_profile` in `TeacherPowerBackupView`), then suspended by a strike, PATCHed the power-backup settings: the DRF serializer's `instance.save()` wrote every column, so `status='approved'` (and the old `sla_strikes`) went back with no audit row. Red test: `test_tutor_status_signoff.py::test_power_backup_patch_after_a_strike_suspension_keeps_the_suspension`.
+- **Root cause:** Django's default `save()` writes all concrete columns from the in-memory copy; the service-owned columns were not protected against stale copies, and instance assignment of the generated flags was accepted then ignored.
+- **Fix:** `TeacherProfile.save()` on an existing row without `update_fields` now writes every concrete non-generated column except `status` and `sla_strikes` (written only with explicit `update_fields` by `vetting.py` / `strikes.py`); changing either on the instance before such a save raises `ValueError` (values remembered in `from_db` / `refresh_from_db` / `save`); `__setattr__` raises `AttributeError` for `is_verified` / `is_active` outside Django's own loading/saving (`_internal_write`, also used by `bulk_create`).
+
+### ERR-157: legacy verify shim recorded a fake reinstatement when rejecting a suspended tutor (slice T1a, Architect review M2)
+- **Symptom:** `PATCH /admin/teachers/<id>/verify/ {is_verified: false}` on a suspended tutor walked `suspended -> approved -> in_review -> rejected`: an "approved" audit row (and, once N1a lands, an "approved" notification) for a tutor nobody reinstated. The 409 path also used a pre-lock read of the status.
+- **Root cause:** the shortest-path search used every staff edge, including the reinstatement edge, and the view read the profile before taking the row lock.
+- **Fix:** a path to `rejected` may not pass through `approved` (suspended -> reject is now 409; no new edge, open question for Anesu in `TUTOR_STATUS_MACHINE.md`); the view reads the tutor once with `select_for_update()` and builds the 409 from that row.
+
+### ERR-158: admin "add teacher profile" test posted an empty JSON list (slice T1a)
+- **Symptom:** the new admin-add test got 200 with `{'specialties': ['This field is required.']}`.
+- **Root cause:** Django's form `JSONField` treats `[]` as empty and the model field is not `blank=True`.
+- **Fix:** the test posts `["FreeTalk"]` (the field's documented shape). No product change; whether `specialties` should be optional is a T1c question.

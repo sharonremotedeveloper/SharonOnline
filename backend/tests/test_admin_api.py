@@ -55,8 +55,7 @@ def test_pending_teachers_and_verification(admin_user):
         user=applicant_user,
         headline="Applicant Tutor",
         price_per_25min_usd=9.00,
-        is_verified=False,
-        is_active=True
+        status=TeacherProfile.Status.SUBMITTED,
     )
 
     client = APIClient()

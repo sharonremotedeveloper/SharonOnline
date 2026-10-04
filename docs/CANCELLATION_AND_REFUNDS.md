@@ -18,7 +18,7 @@ policy change is an environment variable, not a code change. Anesu should still 
 | Tutor cancels >= 24 h ahead | full refund, no bonus, no strike (but the 4th such cancel inside 30 days is 1 strike) | `TUTOR_CANCEL_NO_PENALTY_HOURS=24`, `TUTOR_EARLY_CANCELS_PER_30D=3` |
 | Tutor cancels < 24 h ahead | full refund **+ 1 bonus credit** + 1 strike | `TUTOR_CANCEL_BONUS_CREDITS=1` |
 | Tutor no-show (T+10) | full refund + 1 bonus credit + 1 strike (refund now goes via the gateway) | - |
-| Strikes | each counts 90 days; 3 inside the window deactivate the tutor; only an admin reactivates | `STRIKE_LIMIT=3`, `STRIKE_WINDOW_DAYS=90` |
+| Strikes | each counts 90 days; 3 inside the window suspend an `approved` tutor (`approved -> suspended` via `transition_teacher`, actor `system:strikes`, see `TUTOR_STATUS_MACHINE.md`); a tutor in any other status only gets the strike recorded; only an admin reinstates | `STRIKE_LIMIT=3`, `STRIKE_WINDOW_DAYS=90` |
 | Power outage | the lesson's **tutor or staff** can always report it, inside the existing window; a **student only when the provider confirms an active outage in the tutor's area** (409 `outage_unconfirmed` otherwise; their own power or internet problem is a dispute). Student gets a full gateway refund; tutor unpaid, no strike. If the tutor already taught >= 20 min it is a delivered lesson (409 `lesson_delivered`) | `LESSON_DELIVERED_MIN_TEACHER_MINUTES=20` |
 | Refund route (all of the above + arbitration "full refund") | gateway refund; while still pending the student may convert it to wallet credit | `REFUND_GATEWAY_BACKEND` |
 | Wallet credit | each grant is its own lot that expires **30 days** after it is granted; spent soonest-expiry first; expired lots are written off to breakage revenue | `CREDIT_EXPIRY_DAYS_REFUND/BONUS/BUNDLE=30` |
@@ -131,6 +131,6 @@ the Phase 15 student/tutor screen work**; the contract is ready.
 * The expiry **warning e-mail** (7 days before) is not built; it belongs with the Phase 12 notifications work.
 * Credit-funded bookings (Task 10.6) are not modelled yet: when credits can pay for a lesson, a refund must restore the lot instead
   of calling the gateway. `spend_credit()` already spends soonest-expiry first.
-* A deactivated tutor's future confirmed lessons are not auto-cancelled; an admin routine is needed.
+* A suspended tutor's future confirmed lessons are not auto-cancelled; an admin routine is needed (T1b: admin-initiated cancel plan). Since T1a the suspension's `TeacherTransitionResult.affected_booking_ids` lists them (read only).
 * `PLATFORM_COMMISSION_RATE` is still the literal 0.80/0.20 in `ledger_service` and the release job.
 * Reschedule into a slot that overlaps the lesson's own old time is refused as "taken".

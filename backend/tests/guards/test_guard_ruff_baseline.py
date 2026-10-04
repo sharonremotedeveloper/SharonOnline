@@ -24,7 +24,7 @@ import pytest
 from guards._scan import BACKEND
 
 RUFF_TOML = BACKEND / 'ruff.toml'
-BASELINE_MAX_PAIRS = 67          # (file, code) pairs; 69 on 2026-10-04, 67 after F0 (bookings/tasks.py C901/F841 fixed)
+BASELINE_MAX_PAIRS = 66          # (file, code) pairs: 69 on 2026-10-04; -2 F0 (bookings/tasks.py), -1 T1a (seed_data F401)
 # Baseline 2026-10-04: violations per (file, code) for the counted codes (42 violations, 26 pairs). Only ever lower.
 RUFF_COUNTS = {
     ('apps/admin_api/views.py', 'C901'): 1,

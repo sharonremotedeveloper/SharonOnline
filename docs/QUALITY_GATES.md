@@ -9,7 +9,7 @@ Source scans (AST, not regex) with a **baseline allowlist** at the top of each f
 
 | Guard | File | What fails | Baseline (2026-10-04) |
 | :--- | :--- | :--- | :--- |
-| (a) tutor status writes | `test_guard_teacher_status_writes.py` | `is_verified` / `is_active` / `status` written on a TeacherProfile (attribute incl. tuple targets, `setattr`, `update(...)` kwargs and `**{...}`, `bulk_update` field lists, TeacherProfile `create/get_or_create/update_or_create` kwargs or `defaults`) outside `teachers/vetting.py`. Receiver heuristic below. | 4 files, 8 writes (`admin_api/views.py` 2, `teachers/strikes.py` 2, two seed commands 2+2). **T1a empties it.** |
+| (a) tutor status writes | `test_guard_teacher_status_writes.py` | `is_verified` / `is_active` / `status` written on a TeacherProfile (attribute incl. tuple targets, `setattr`, `update(...)` kwargs and `**{...}`, `bulk_update` field lists, TeacherProfile `create/get_or_create/update_or_create` kwargs or `defaults`) outside `teachers/vetting.py`. Receiver heuristic below. | Was 4 files, 8 writes (`admin_api/views.py` 2, `teachers/strikes.py` 2, two seed commands 2+2). **Empty since T1a** (2026-10-04); T1a also added a strict detector over `apps/teachers/` (any `status` write outside `vetting.py`). |
 | (b) row locks over joins | `test_guard_select_for_update.py` | a queryset chain with `select_for_update()` whose `of=` is missing or does not name `'self'`, plus `select_related(...)`; either order, multi-line, and split across two statements in one function (`qs = X.select_related(...)` then `qs.select_for_update()`) | 4 files, 9 sites (`credits.py` 3, `grace.py` 3, `webhook_handler.py` 2, `integrations/views.py` 1). PaymentTransaction is zero-tolerance (supersedes the Task 10.7 scan). |
 | (c) HTTP timeouts | `test_guard_http_timeouts.py` | `requests` / `httpx` verb calls (also through `import requests as r` and `from requests import post`) without `timeout=`, or with `timeout=None` | empty |
 | (d) PII in logs | `test_guard_pii_logging.py` | a logging call (`logger`, `log`, `logging`, or any name/attribute ending in `logger` / `_log`, e.g. `self.logger`) that interpolates (f-string, `%`, `.format`, `+` concatenation, lazy `%s` arg, `extra={...}`) an expression whose name ENDS in email / token / password / phone / secret (snake_case and camelCase split into words; `phone_number`, `email_address` too; `token_count` is not flagged) | 3 files, 8 calls (`bookings/tasks.py` 5, `integrations/email.py` 1, `integrations/services/attendance.py` 2) |
@@ -85,7 +85,8 @@ FakeResend / FakeZoom / FakeGoogle replace in `integrations/{email,zoom,google_c
 
 `import factories as f`: `make_user(role=...)`, `make_student()`, `make_admin()`, `make_student_profile()`,
 `make_teacher_profile(status='approved', availability=True, **fields)` (plan §3.1 truth table; refuses `is_verified=` /
-`is_active=`; passes `status=` itself once T1a adds the field), `make_booking(teacher, student, status=..., funded=False)`,
+`is_active=`, which are GeneratedFields since T1a; writes `status=` directly, test-only), `advance_teacher(profile, *statuses,
+actor=admin)` (real `transition_teacher`, audit rows; use it to change an existing tutor's status in a test), `make_booking(teacher, student, status=..., funded=False)`,
 `advance_booking(booking, *statuses)` (real `transition_booking`, audit rows), `make_payment_transaction(...)`.
 
 `make_booking(status=...)` writes the status directly: the documented test-only path (the booking-status guard scans

@@ -289,8 +289,8 @@ class TestStrikes:
         assert TeacherStrike.objects.count() == 1
 
     def test_a_strike_never_reactivates_a_deactivated_tutor(self, teacher_user):
-        teacher_user.is_active = False
-        teacher_user.save(update_fields=['is_active'])
+        from factories import advance_teacher
+        advance_teacher(teacher_user, 'suspended')
         add_strike(teacher_user, TeacherStrike.Kind.NO_SHOW)
         teacher_user.refresh_from_db()
         assert teacher_user.is_active is False

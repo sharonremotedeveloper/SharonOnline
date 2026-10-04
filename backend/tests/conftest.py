@@ -49,8 +49,7 @@ def teacher_user(db):
         headline="TEFL Tutor",
         accent=TeacherProfile.Accent.SOUTH_AFRICAN,
         price_per_25min_usd=9.00,
-        is_verified=True,
-        is_active=True
+        status=TeacherProfile.Status.APPROVED,      # is_verified / is_active are generated from it (T1a)
     )
     # Give availability on Monday from 09:00 to 12:00 SAST
     TeacherAvailability.objects.create(

@@ -153,7 +153,7 @@ class TestCloudflareR2StorageIntegration:
             avatar_url="https://assets.sharonesl.com/teachers/avatars/sharon.jpg",
             intro_audio_file=uploaded_audio,
             tefl_certificate_url="https://assets.sharonesl.com/private/vetting/certs/sharon_tefl.pdf",
-            is_verified=True
+            status=TeacherProfile.Status.APPROVED,
         )
 
         assert teacher.resolved_avatar_url == "https://assets.sharonesl.com/teachers/avatars/sharon.jpg"

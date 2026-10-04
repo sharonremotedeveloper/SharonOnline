@@ -499,6 +499,7 @@ export const api = {
         intro_audio_url: "",
         country: "ZA",
         accent: "ZA",
+        is_verified: true,
       },
       student: {
         id: "usr-student-01",

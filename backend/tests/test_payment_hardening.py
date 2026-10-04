@@ -134,13 +134,13 @@ class TestCheckoutValidation:
         assert self._post(student_user, ['x']).status_code == 400
 
     def test_unverified_teacher_not_payable(self, student_user, pending_booking):
-        pending_booking.teacher.is_verified = False
-        pending_booking.teacher.save()
+        from factories import advance_teacher
+        advance_teacher(pending_booking.teacher, 'in_review')
         assert self._post(student_user, {'booking_id': str(pending_booking.id)}).status_code == 409
 
     def test_inactive_teacher_not_payable(self, student_user, pending_booking):
-        pending_booking.teacher.is_active = False
-        pending_booking.teacher.save()
+        from factories import advance_teacher
+        advance_teacher(pending_booking.teacher, 'suspended')
         assert self._post(student_user, {'booking_id': str(pending_booking.id)}).status_code == 409
 
     def test_started_slot_not_payable(self, student_user, pending_booking):
