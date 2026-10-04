@@ -2088,6 +2088,83 @@ class TestCaptureNotFound404:
 FK_EXHAUSTED = RefundRequest.FailureKind.EXHAUSTED
 
 
+class TestLogSafetyEmailDedupeAndActor:
+    SECRET = 'secret-token-abc123-DO-NOT-LOG'
+
+    def test_an_exception_while_applying_logs_only_its_type_and_ids(self, teacher_user, student_user, gw, monkeypatch, caplog):
+        """QA L2: the exception text (could carry a provider body, a URL or a token) and the traceback must never reach the log."""
+        r = new_refund(teacher_user, student_user)
+
+        def boom(refund_id, token, result, *, kind):
+            raise RuntimeError(self.SECRET)
+        monkeypatch.setattr(refunds, 'apply_result', boom)
+        with caplog.at_level(logging.DEBUG):
+            refunds.process_pending_refunds()
+        assert self.SECRET not in caplog.text
+        assert all(rec.exc_info is None and self.SECRET not in rec.getMessage() for rec in caplog.records)
+        line = next(rec.getMessage() for rec in caplog.records if 'could not apply' in rec.getMessage())
+        assert 'RuntimeError' in line and str(r.pk) in line
+
+    def test_the_email_is_sent_once_even_if_the_task_is_redelivered_while_it_is_sending(self, teacher_user, student_user, monkeypatch):
+        """QA L3: the dedupe key is taken BEFORE sending (cache.add), so a redelivery that overlaps the send cannot send a second mail."""
+        from apps.payments import tasks
+        r = fresh(new_refund(teacher_user, student_user))
+        refunds.mark_processed(r.pk, 'RF-1')
+        sent = []
+
+        def reentrant_send(to, subject, html, text=''):
+            sent.append(to)
+            if len(sent) == 1:
+                tasks.send_refund_processed_email_task(str(r.pk))        # the broker delivers the same message again, mid-send
+        monkeypatch.setattr(tasks, 'send_email', reentrant_send)
+        tasks.send_refund_processed_email_task(str(r.pk))
+        assert sent == [student_user.email]
+
+    def test_a_failed_send_releases_the_key_so_the_retry_can_send(self, teacher_user, student_user, monkeypatch):
+        from django.core.cache import cache
+        from apps.integrations.email import EmailDeliveryError
+        from apps.payments import tasks
+        r = fresh(new_refund(teacher_user, student_user))
+        refunds.mark_processed(r.pk, 'RF-1')
+        attempts = []
+
+        def flaky(to, subject, html, text=''):
+            attempts.append(to)
+            if len(attempts) == 1:
+                raise EmailDeliveryError('resend is down')
+        monkeypatch.setattr(tasks, 'send_email', flaky)
+        with pytest.raises(EmailDeliveryError):
+            tasks.send_refund_processed_email_task(str(r.pk))
+        assert cache.get(f'refund-processed-email:{r.pk}') is None
+        tasks.send_refund_processed_email_task(str(r.pk))               # the retry
+        tasks.send_refund_processed_email_task(str(r.pk))               # a later duplicate
+        assert len(attempts) == 2                                       # one failed try, one delivery, then silence
+
+    def test_a_non_delivery_error_also_releases_the_key(self, teacher_user, student_user, monkeypatch):
+        from django.core.cache import cache
+        from apps.payments import tasks
+        r = fresh(new_refund(teacher_user, student_user))
+        refunds.mark_processed(r.pk, 'RF-1')
+        monkeypatch.setattr(tasks, 'send_email', lambda *a, **k: (_ for _ in ()).throw(RuntimeError('bug')))
+        with pytest.raises(RuntimeError):
+            tasks.send_refund_processed_email_task(str(r.pk))
+        assert cache.get(f'refund-processed-email:{r.pk}') is None
+
+    def test_retry_failed_requires_an_actor(self, teacher_user, student_user, admin_user):
+        """QA L4: an audited admin action; system code never retries a failed refund."""
+        r = set_row(new_refund(teacher_user, student_user), status=RS.FAILED, failure_kind='guard')
+        with pytest.raises(ValueError, match='actor'):
+            refunds.retry_failed(r.pk, actor=None)
+        assert fresh(r).status == RS.FAILED and RefundAttempt.objects.count() == 0
+        refunds.retry_failed(r.pk, actor=admin_user)
+        assert fresh(r).status == RS.PENDING_GATEWAY and RefundAttempt.objects.get().actor_id == admin_user.pk
+
+    def test_mark_paid_manually_already_requires_a_reference_and_retry_requires_an_actor_keyword(self, teacher_user, student_user, admin_user):
+        r = set_row(new_refund(teacher_user, student_user), status=RS.FAILED, failure_kind='guard')
+        with pytest.raises(TypeError):
+            refunds.retry_failed(r.pk)                                  # the keyword is mandatory: there is no system default
+
+
 class TestDeferredRefundWindow:
     """M3: a deferred (grace) refund becomes owed when the money ARRIVES: the student's wallet-conversion window restarts then."""
 

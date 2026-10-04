@@ -450,8 +450,10 @@ def retry_failed(refund_id, *, actor, confirm_not_refunded: bool = False) -> Ref
     `provider_failed` after ONE definitive answer) get a NEW request id (epoch bump); `guard` keeps its id; ambiguous ones (the
     provider may have refunded: exhausted, replay window, already refunded, or a rejection that followed a transient/manual/repeated
     attempt) need `confirm_not_refunded` and `exhausted`/`replay_window` keep the old id, so a replay can never refund twice. The
-    guards run again first.
+    guards run again first. An admin action: `actor` is required (system code never retries a failed refund).
     """
+    if actor is None:
+        raise ValueError("retry_failed needs the admin who asked for it (actor): the retry is audited.")
     with transaction.atomic():
         tx, refund = _lock_pair(refund_id)
         if refund.status != RS.FAILED:
@@ -810,9 +812,10 @@ def process_pending_refunds() -> dict:
                 real += 1
             try:
                 outcome = apply_result(claim.refund_id, claim.token, result, kind=claim.kind)
-            except Exception:                                 # one bad row never stops the sweep; its lease expires and it is replayed
-                logger.exception("[REFUND] refund=%s could not apply a %s result; it will be replayed with the same request id",
-                                 claim.refund_id, result.state)
+            except Exception as exc:                          # one bad row never stops the sweep; its lease expires and it is replayed
+                # Type and ids only: the exception text / traceback can carry a provider body, a URL or a token (plan section 2b).
+                logger.error("[REFUND] refund=%s gateway=%s request_id=%s could not apply a %s result (%s); it will be replayed with the same request id",
+                             claim.refund_id, claim.order.gateway, claim.order.request_id, result.state, type(exc).__name__)
                 done['transient'] += 1
                 continue
             if outcome in _OUTCOME_COUNTER and not (outcome == 'submitted' and claim.kind == POLL):    # a poll that is still pending is only 'polled'
