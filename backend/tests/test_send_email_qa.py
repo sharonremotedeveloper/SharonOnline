@@ -1,6 +1,5 @@
 """Slice N1c QA conditions: permanent vs transient failures, Retry-After, key charset, console backend scope,
 2xx without id, address separators, cancellation e-mail escaping."""
-from types import SimpleNamespace
 from unittest import mock
 
 import pytest
@@ -12,7 +11,7 @@ from apps.integrations.email import EmailDeliveryError, EmailPermanentError
 from apps.integrations.services import email as svc
 from apps.integrations.services.email import InvalidEmailError, send_email
 from payment_helpers import lesson
-from test_send_email import ADDRESS, FakeResponse, fake_booking, resend  # noqa: F401  (resend is a fixture)
+from test_send_email import ADDRESS, FakeResponse, fake_booking   # the `resend` fixture comes from conftest.py
 
 
 def send(**overrides):

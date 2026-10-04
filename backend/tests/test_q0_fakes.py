@@ -8,7 +8,7 @@ import pytest
 from botocore.exceptions import ClientError
 from django.utils import timezone
 
-from apps.integrations import email as email_module
+from apps.integrations.services import email as email_module      # the only module that calls Resend (N1c)
 from apps.integrations.email import EmailDeliveryError, send_booking_confirmation_email, send_email
 from apps.integrations.google_calendar import delete_teacher_gcal_event, sync_booking_to_teacher_gcal
 from apps.integrations.zoom import ZoomError, zoom_client
@@ -43,7 +43,7 @@ def test_fake_resend_network_error(fake_resend):
 @pytest.mark.django_db
 def test_fake_resend_with_attachments(fake_resend):
     booking = f.make_booking(status='confirmed')
-    assert send_booking_confirmation_email(booking) is True
+    assert send_booking_confirmation_email(booking).status == 'sent'     # N1c returns the EmailResult
     assert fake_resend.sent[0]['attachments'][0]['filename'] == 'lesson-invite.ics'
 
 

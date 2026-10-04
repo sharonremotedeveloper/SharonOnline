@@ -34,7 +34,6 @@ def is_pii_name(identifier):
 # Baseline 2026-10-04: {file: number of logging calls with PII}. Only ever lower these numbers.
 ALLOWLIST = {
     'bookings/tasks.py': 5,                       # reminder / late-alert logs print e-mail addresses (N2a moves them)
-    'integrations/email.py': 1,                   # dev-mock confirmation log (N1c rewrites send_email)
     'integrations/services/attendance.py': 2,     # Zoom participant e-mail in attendance logs
 }
 

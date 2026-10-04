@@ -36,22 +36,7 @@ class FakeResponse:
         return self._body
 
 
-@pytest.fixture
-def resend(settings, monkeypatch):
-    """Resend mode with a fake key and a recording `requests.post` (no network)."""
-    settings.EMAIL_BACKEND_MODE = 'resend'
-    settings.RESEND_API_KEY = 're_test_not_a_real_key'
-    settings.DEFAULT_FROM_EMAIL = 'Sharon ESL <bookings@sharonesl.com>'
-    state = SimpleNamespace(calls=[], response=FakeResponse(200, {'id': 'msg_123'}), raises=None)
-
-    def fake_post(url, **kwargs):
-        state.calls.append(SimpleNamespace(url=url, **kwargs))
-        if state.raises is not None:
-            raise state.raises
-        return state.response
-
-    monkeypatch.setattr(svc.requests, 'post', fake_post)
-    return state
+# The `resend` fixture (Resend mode + recording `requests.post`) lives in conftest.py so other files use it without an import.
 
 
 def send(**overrides):

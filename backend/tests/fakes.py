@@ -140,8 +140,11 @@ class FakeResend:
         return FakeResponse(200, {'id': f'fake-email-{next(self._ids)}'})
 
     def install(self, monkeypatch):
-        monkeypatch.setenv('RESEND_API_KEY', 're_test_fake_key')
-        monkeypatch.setattr('apps.integrations.email.requests', FakeRequestsModule(self.handle))
+        # Since N1c the only module that talks to Resend is apps.integrations.services.email; it reads settings, not env.
+        from django.conf import settings
+        monkeypatch.setattr(settings, 'RESEND_API_KEY', 're_test_fake_key', raising=False)
+        monkeypatch.setattr(settings, 'EMAIL_BACKEND_MODE', 'resend', raising=False)
+        monkeypatch.setattr('apps.integrations.services.email.requests', FakeRequestsModule(self.handle))
         return self
 
 
