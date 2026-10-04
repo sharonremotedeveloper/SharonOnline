@@ -148,6 +148,7 @@ REST_FRAMEWORK = {
         'email_verify_confirm': '20/hour',
         'inquiry': '5/hour',
         'webhook': '120/min',
+        'admin_refund_retry': '30/hour',   # staff retrying failed refunds (Task 10.7)
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
     # NEVER map 0 to None: DRF treats None as "trust the whole client-supplied X-Forwarded-For header", which lets
