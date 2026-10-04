@@ -20,13 +20,24 @@ FAILED tests/guards/test_guard_teacher_status_writes.py::test_the_service_itself
 Baseline before the slice: full suite 1934 passed, 6 skipped.
 
 ## Done
-- [x] red tests (service, integration, migrations + Postgres lock tests, guard (a) emptied + strict teachers-app guard)
+- [x] `cbd1aa8` red tests (service, integration, migrations + Postgres lock tests, guard (a) emptied + strict teachers-app guard)
+- [x] `009e21a` status + training_completed_at + TeacherStatusChange + 0007 + vetting.py (flags still booleans)
+- [x] `5978db0` ONE green commit: 0008 GeneratedFields + tripwires + admin + serializer pin + strikes + verify shim + seeds +
+      every test site + OpenAPI/TS regenerated (suite 2069 passed)
+- [x] `24c9fd3` merge of `feature/q0-quality-infra` @ `e62016e` (Q0 QA fixes; conflicts in two guard files resolved)
+- [x] `e8f4ca5` three extra tests after the first mutation run (a5, l1, m4 survived -> killed)
+- [x] docs commit: mutation table (47/47 KILLED), ERR-150..155, TUTOR_STATUS_MACHINE.md, ARCHITECTURE §2.1, roadmap,
+      PRP 11.4 note, QUALITY_GATES, CANCELLATION_AND_REFUNDS, docs/README; frontend mock fixture `is_verified: true`
 
-## Remaining (brief's commit order)
-- [ ] status + training_completed_at + TeacherStatusChange + 0007 + vetting.py
-- [ ] ONE green commit: 0008 GeneratedFields + tripwires + admin + serializer pin + strikes + verify shim + seeds + all test sites
-- [ ] guard/migration/PG tests green
-- [ ] mutation table `docs/mutation/T1a.md`, ERR entries, docs (TUTOR_STATUS_MACHINE.md, ARCHITECTURE §2.1, roadmap), OpenAPI/TS
+## Final gates (2026-10-04)
+- backend `pytest -q`: 2084 passed, 10 skipped (Postgres/Redis-marked); `manage.py check` clean; `makemigrations --check
+  --dry-run` no changes; `ruff check .` all passed
+- frontend (through a temporary node_modules junction, removed): `check:api-types` ok, `lint` 0 warnings, `tsc --noEmit` ok,
+  `npm test` 152/152; `npm run build` not runnable through the junction (ERR-155)
 
-## Next command
+## Remaining
+- Nothing in T1a scope. Postgres-marked tests (round trip on Postgres, concurrent suspensions, FOR UPDATE SQL, booking-lock
+  ordering) run only in CI (`-m postgres`). Follow-ups for T1b/T1c: `docs/TUTOR_STATUS_MACHINE.md` §7.
+
+## Next command (re-verify)
 `cd backend; venv python -m pytest -q tests/test_tutor_status_machine.py tests/test_tutor_status_integration.py tests/test_tutor_status_migrations.py tests/guards/test_guard_teacher_status_writes.py`

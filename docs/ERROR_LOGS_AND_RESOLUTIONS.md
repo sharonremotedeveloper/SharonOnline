@@ -273,3 +273,33 @@ def configure_test_settings(settings):
 - **Symptom:** `test_guard_ruff_baseline` failed with `B905` (`zip()` without `strict=`) in `tests/test_booking_state_machine.py` after the create/defaults extension.
 - **Root cause:** `zip(dict.keys, dict.values)` written without `strict`.
 - **Fix:** `strict=True` (keys and values of an AST dict always have the same length). The ruff guard working as intended.
+
+### ERR-150: migration round-trip test failed with `NOT NULL constraint failed: users_user.email_verified` (slice T1a)
+- **Symptom:** `tests/test_tutor_status_migrations.py::test_migration_round_trip` failed while building tutors on the 0006 schema.
+- **Root cause:** the test migrated to `[('teachers', '0006_teacherstrike')]` only; `MigrationExecutor.loader.project_state(targets)` then builds the historical `users.User` from the users migrations that teachers 0006 depends on (before `email_verified` existed), while the real table (users left at its leaf) has the NOT NULL column.
+- **Fix:** the test's targets keep every other app on its latest leaf and only move teachers (`_targets(...)`), so the historical User matches the table. No product change.
+
+### ERR-151: Django admin change page 500 in a test (`Missing staticfiles manifest entry for 'admin/css/base.css'`) (slice T1a)
+- **Symptom:** the new admin change-page test for `TeacherProfile` returned 500.
+- **Root cause:** settings use whitenoise `CompressedManifestStaticFilesStorage`, which needs `collectstatic` output; tests never run it.
+- **Fix:** the test overrides `STORAGES['staticfiles']` with `StaticFilesStorage` (the pattern `tests/test_refund_processing.py` already uses). No product change.
+
+### ERR-152: committed OpenAPI stale after the read-only pin; a view docstring leaked into the schema (slice T1a)
+- **Symptom:** `test_api_contract.py::test_committed_schema_is_current` failed; the regenerated schema also gained a `description` for `PATCH /admin/teachers/{id}/verify/`.
+- **Root cause:** `TeacherListSerializer.is_verified` is now an explicit `BooleanField(read_only=True)` (readOnly + required in the response schema); drf-spectacular publishes a view's class docstring as the operation description.
+- **Fix:** regenerated `docs/api/openapi.yaml` and `frontend/src/types/api.generated.ts` (`is_verified?: boolean` -> `readonly is_verified: boolean`, two schemas); the legacy-verify note became a comment so the contract diff is read-only only.
+
+### ERR-153: ruff baseline entry went stale (`seed_data.py` F401) (slice T1a)
+- **Symptom:** `test_guard_ruff_baseline` failed: "Fixed - delete these from [lint.extend-per-file-ignores]: seed_data.py F401".
+- **Root cause:** the seed now uses the previously unused `timezone` import (`training_completed_at=timezone.now()`).
+- **Fix:** removed the entry from `ruff.toml` and lowered `BASELINE_MAX_PAIRS` to 68 (the ratchet working as intended).
+
+### ERR-154: `tsc` failed after the TS contract regeneration (`Property 'is_verified' is missing`) (slice T1a)
+- **Symptom:** `npx tsc --noEmit` in `frontend/`: `src/lib/api.ts(492,7): error TS2322 ... Property 'is_verified' is missing`.
+- **Root cause:** the read-only pin makes `is_verified` required in the response schema; the dev-mock booking fixture in `getBooking` (only reached with `NEXT_PUBLIC_USE_MOCKS=true`) builds a teacher object without it. `check:api-types` and `lint` do not type-check that file.
+- **Fix:** the fixture sets `is_verified: true` (the API always returns the field). tsc, lint, `check:api-types` and `npm test` (152) green.
+
+### ERR-155: `npm run build` cannot run in an agent worktree through a `node_modules` junction (slice T1a)
+- **Symptom:** Turbopack: "Symlink [project]/node_modules is invalid, it points out of the filesystem root".
+- **Root cause:** the worktree has no `node_modules`; agents may only junction the main checkout's, and Turbopack refuses a link that leaves the project root. Environment limitation, not a code defect.
+- **Fix:** none in code; the build gate is verified after the merge on the integration checkout (or CI). Type-check (`tsc --noEmit`), lint and unit tests were run through the junction instead.
