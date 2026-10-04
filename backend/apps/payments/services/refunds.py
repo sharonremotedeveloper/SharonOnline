@@ -168,12 +168,15 @@ _EVENT_FOR_REASON = {
 def activate_deferred_refunds(booking) -> int:
     """
     The pending payment cleared (its capture journal is already posted, so escrow holds the money): turn every refund that
-    was waiting on it into a real one (DR 2010, CR 2050), exactly as `request_refund` would have. Idempotent.
+    was waiting on it into a real one (DR 2010, CR 2050), exactly as `request_refund` would have. Idempotent. The first gateway
+    attempt is not due before `REFUND_FIRST_ATTEMPT_DELAY_MINUTES` from NOW (the refund was decided long ago, but the money only
+    arrived now), so the student's window to take wallet credit instead restarts when the money is really there.
     """
     funding = BookingFunding.objects.get(booking=booking)
     fx = dict(fx_rate_to_zar=funding.fx_rate_to_zar, fx_source=funding.fx_source)
     done = 0
     with transaction.atomic():
+        first_attempt_at = _now() + _first_attempt_delay()
         waiting = (RefundRequest.objects.select_for_update()
                    .filter(booking=booking, status=RefundRequest.Status.AWAITING_CLEARANCE))
         for refund in waiting:
@@ -189,7 +192,8 @@ def activate_deferred_refunds(booking) -> int:
                 booking=booking, payment_transaction=refund.payment_transaction, user=booking.student,
                 currency=refund.currency, **fx)
             refund.status = RefundRequest.Status.PENDING_GATEWAY
-            refund.save(update_fields=['status', 'updated_at'])
+            refund.next_attempt_at = first_attempt_at
+            refund.save(update_fields=['status', 'next_attempt_at', 'updated_at'])
             done += 1
     return done
 

@@ -1918,6 +1918,54 @@ class TestCaptureNotFound404:
 FK_EXHAUSTED = RefundRequest.FailureKind.EXHAUSTED
 
 
+class TestDeferredRefundWindow:
+    """M3: a deferred (grace) refund becomes owed when the money ARRIVES: the student's wallet-conversion window restarts then."""
+
+    def _deferred(self, teacher_user, student_user, settings, clock, *, ref='CAP-DEF'):
+        settings.REFUND_FIRST_ATTEMPT_DELAY_MINUTES = 60
+        b = captured(teacher_user, student_user, 1700, gateway='paypal', amount='9.00', currency='USD', ref=ref)
+        with connection.cursor() as cur:
+            cur.execute("UPDATE payments_bookingfunding SET source_type = 'gateway_pending' WHERE booking_id = %s", [str(b.pk).replace('-', '')])
+        refund = refunds.request_refund(b, RefundRequest.Reason.STUDENT_CANCEL).refund
+        assert refund.status == RS.AWAITING_CLEARANCE
+        set_row(refund, created_at=clock.now - 3 * DAY)                    # decided long ago, while the payment was still pending
+        return b, refund
+
+    def test_activation_restarts_the_first_attempt_delay_from_now(self, teacher_user, student_user, settings, clock, gw):
+        b, refund = self._deferred(teacher_user, student_user, settings, clock)
+        assert refunds.activate_deferred_refunds(b) == 1
+        refund = fresh(refund)
+        assert refund.status == RS.PENDING_GATEWAY and refund.next_attempt_at == clock.now + 60 * MIN
+        assert refunds.process_pending_refunds() == result_dict() and gw.calls == []
+        clock.advance(59 * MIN)
+        assert refunds.process_pending_refunds() == result_dict() and gw.calls == []
+        clock.advance(2 * MIN)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, completed=1)
+
+    def test_the_student_can_still_convert_to_wallet_in_that_window(self, teacher_user, student_user, settings, clock, gw):
+        b, refund = self._deferred(teacher_user, student_user, settings, clock)
+        refunds.activate_deferred_refunds(b)
+        clock.advance(30 * MIN)
+        lot = refunds.convert_to_wallet(refund.pk)
+        assert lot.remaining_credits == 1 and fresh(refund).status == RS.CONVERTED
+        clock.advance(2 * HOUR)
+        assert refunds.process_pending_refunds() == result_dict() and gw.calls == []
+
+    def test_the_delay_is_the_setting(self, teacher_user, student_user, settings, clock):
+        b, refund = self._deferred(teacher_user, student_user, settings, clock, ref='CAP-DEF2')
+        settings.REFUND_FIRST_ATTEMPT_DELAY_MINUTES = 5
+        refunds.activate_deferred_refunds(b)
+        assert fresh(refund).next_attempt_at == clock.now + 5 * MIN
+
+    def test_a_second_activation_does_nothing_and_keeps_the_stamp(self, teacher_user, student_user, settings, clock):
+        b, refund = self._deferred(teacher_user, student_user, settings, clock, ref='CAP-DEF3')
+        refunds.activate_deferred_refunds(b)
+        stamp = fresh(refund).next_attempt_at
+        clock.advance(10 * MIN)
+        assert refunds.activate_deferred_refunds(b) == 0
+        assert fresh(refund).next_attempt_at == stamp
+
+
 class TestRetryAfterAmbiguity:
     """M2: a `rejected` / `provider_failed` failure is only 'certain' when it followed a single definitive answer. If an earlier
     attempt of the same request id was transient/manual (or several attempts were made), the provider may have refunded unseen."""
