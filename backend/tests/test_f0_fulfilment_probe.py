@@ -534,6 +534,77 @@ class TestFulfilmentRun:
         assert retry_fulfillment_dispatches_task()['redispatched_count'] == 0
 
 
+@pytest.mark.django_db
+class TestMutationGuards:
+    """Tests added after the F0 mutation run (docs/mutation/F0.md) to pin lines no behaviour test exercised."""
+
+    def test_a_claim_taken_over_by_another_worker_keeps_nothing(self, teacher_user, student_user, side_tasks):
+        zoom_cleanup, _ = side_tasks
+        b = confirmed(teacher_user, student_user)
+
+        def create_while_reclaimed(**kwargs):        # lease expired, another worker now holds RUNNING with its own token
+            FulfillmentDispatch.objects.filter(booking=b).update(claim_token='other-worker')
+            return NEW_MEETING
+
+        with mock.patch.object(zoom_client, 'create_meeting', side_effect=create_while_reclaimed):
+            assert dispatch_booking_fulfillment(str(b.id)) is False
+        b.refresh_from_db()
+        assert b.zoom_meeting_id == ''
+        zoom_cleanup.assert_called_once_with(NEW_MEETING['meeting_id'])
+        assert FulfillmentDispatch.objects.get(booking=b).claim_token == 'other-worker'
+
+    def test_the_meeting_is_saved_with_update_fields(self, teacher_user, student_user):
+        b = confirmed(teacher_user, student_user)
+        with mock.patch.object(zoom_client, 'create_meeting', return_value=NEW_MEETING), \
+                mock.patch.object(Booking, 'save', autospec=True, side_effect=Booking.save) as save:
+            assert dispatch_booking_fulfillment(str(b.id)) is True
+        assert save.call_args_list and all(c.kwargs.get('update_fields') for c in save.call_args_list)
+
+    def test_a_room_stored_meanwhile_wins_and_ours_is_deleted(self, teacher_user, student_user, side_tasks):
+        zoom_cleanup, _ = side_tasks
+        b = confirmed(teacher_user, student_user)
+
+        def create_while_room_appears(**kwargs):
+            Booking.objects.filter(pk=b.pk).update(zoom_meeting_id='EXISTING')
+            return NEW_MEETING
+
+        with mock.patch.object(zoom_client, 'create_meeting', side_effect=create_while_room_appears):
+            assert dispatch_booking_fulfillment(str(b.id)) is True
+        b.refresh_from_db()
+        assert b.zoom_meeting_id == 'EXISTING'
+        zoom_cleanup.assert_called_once_with(NEW_MEETING['meeting_id'])
+
+    def test_a_retry_does_not_resync_a_finished_calendar_step(self, teacher_user, student_user):
+        teacher_user.user.google_calendar_token = {'access_token': 'tok'}
+        teacher_user.user.save(update_fields=['google_calendar_token'])
+        b = confirmed(teacher_user, student_user)
+        with mock.patch.object(zoom_client, 'create_meeting', return_value=NEW_MEETING), \
+                mock.patch('apps.bookings.services.fulfillment.sync_booking_to_teacher_gcal', return_value='evt') as sync, \
+                mock.patch('apps.bookings.services.fulfillment.send_booking_confirmation_email', side_effect=[False, True]):
+            dispatch_booking_fulfillment(str(b.id))
+            assert dispatch_booking_fulfillment(str(b.id)) is True
+        assert sync.call_count == 1
+
+    def test_adjudication_rechecks_the_status_under_the_lock(self, teacher_user, student_user):
+        """Race between the candidate query and the row lock: a lesson cancelled in between is left alone."""
+        b = at_t10(teacher_user, student_user)
+        Booking.objects.filter(pk=b.pk).update(status=S.CANCELLED_BY_TEACHER)
+        module = probe_module()
+        results = {'teacher_no_shows': 0, 'student_no_shows': 0}
+        with mock.patch.object(module, '_t10_candidates', lambda now: Booking.objects.filter(pk=b.pk)):
+            module.adjudicate_t10(timezone.now(), {b.id: (MEETING, module.NOT_STARTED)}, results)
+        b.refresh_from_db()
+        assert b.status == S.CANCELLED_BY_TEACHER and results['teacher_no_shows'] == 0
+        assert not TeacherStrike.objects.filter(booking=b).exists()
+
+    def test_an_in_progress_lesson_is_not_probed(self, teacher_user, student_user):
+        b = at_t10(teacher_user, student_user)
+        Booking.objects.filter(pk=b.pk).update(status=S.IN_PROGRESS)
+        with mock.patch.object(zoom_client, 'get_meeting_status') as probe:
+            probe_module().probe_t10_candidates(timezone.now())
+        probe.assert_not_called()
+
+
 def _email_error(status=None, retry_after=None):
     """Shaped like N1c's EmailDeliveryError(.result=EmailResult) / EmailPermanentError, built from today's class."""
     from types import SimpleNamespace
