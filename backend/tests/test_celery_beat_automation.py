@@ -1,6 +1,7 @@
 import pytest
 from datetime import timedelta
 from decimal import Decimal
+from unittest.mock import patch
 from django.utils import timezone
 from django.core.cache import cache
 
@@ -22,6 +23,7 @@ from apps.payments.tasks import (
     reconcile_pending_transactions_task,
 )
 from apps.integrations.tasks import sync_eskom_stages_task
+from apps.integrations.zoom import zoom_client
 from apps.common.locks import distributed_task_lock
 
 
@@ -319,6 +321,7 @@ class TestCeleryBeatAutomation:
             start_time_utc=start_time,
             end_time_utc=end_time,
             status=Booking.Status.CONFIRMED,
+            zoom_meeting_id='98765432101',    # a lesson without a room is disputed, never a no-show (Slice F0)
         )
         tx = PaymentTransaction.objects.create(
             booking=booking,
@@ -333,7 +336,9 @@ class TestCeleryBeatAutomation:
         teacher_user.sla_strikes = 0
         teacher_user.save()
 
-        res = audit_attendance_and_noshows_task()
+        # Zoom positively reports the room never started (only then is the tutor scored absent)
+        with patch.object(zoom_client, 'get_meeting_status', return_value={'status': 'waiting', 'participant_count': 0}):
+            res = audit_attendance_and_noshows_task()
         assert res["teacher_no_shows"] >= 1
 
         booking.refresh_from_db()

@@ -289,8 +289,17 @@ class TestProbeUnknownDefers:
         assert b.status == S.CONFIRMED
 
 
+@pytest.fixture
+def price_catalog(db):
+    """Transactional tests run after another transactional test may find the migration-seeded catalog flushed."""
+    from decimal import Decimal
+    from apps.payments.models import LessonPrice
+    for currency, amount in (('USD', '9.00'), ('EUR', '8.50'), ('ZAR', '162.00'), ('JPY', '1350.00')):
+        LessonPrice.objects.get_or_create(currency=currency, defaults={'amount': Decimal(amount)})
+
+
 @pytest.mark.django_db(transaction=True)
-def test_the_http_probe_runs_outside_any_transaction(teacher_user, student_user):
+def test_the_http_probe_runs_outside_any_transaction(price_catalog, teacher_user, student_user):
     b = at_t10(teacher_user, student_user)
     seen = []
 
@@ -525,6 +534,104 @@ class TestFulfilmentRun:
         assert retry_fulfillment_dispatches_task()['redispatched_count'] == 0
 
 
+def _email_error(status=None, retry_after=None):
+    """Shaped like N1c's EmailDeliveryError(.result=EmailResult) / EmailPermanentError, built from today's class."""
+    from types import SimpleNamespace
+    from apps.integrations.email import EmailDeliveryError
+    exc = EmailDeliveryError('provider said no to student@test.com')
+    if status is not None:
+        exc.result = SimpleNamespace(status=status, retry_after_seconds=retry_after)
+    return exc
+
+
+@pytest.mark.django_db
+class TestEmailFailureContract:
+    """QA merge requirement (N1c integration): e-mail failures never mark the step done, never re-provision Zoom,
+    and a permanent failure is terminal (no endless 5-minute re-queue)."""
+
+    def test_permanent_email_failure_is_terminal_and_alerted(self, teacher_user, student_user, caplog):
+        b = confirmed(teacher_user, student_user)
+        with mock.patch.object(zoom_client, 'create_meeting', return_value=NEW_MEETING) as create, \
+                mock.patch('apps.bookings.services.fulfillment.send_booking_confirmation_email',
+                           side_effect=_email_error('failed')) as mail, caplog.at_level(logging.ERROR):
+            assert dispatch_booking_fulfillment(str(b.id)) is False
+            d = FulfillmentDispatch.objects.get(booking=b)
+            St = FulfillmentDispatch.StepState
+            assert (d.status, d.zoom_state, d.email_state, d.next_retry_at) == (FD.FAILED, St.DONE, St.FAILED, None)
+            assert d.attempts == 1 and d.last_error == 'email: EmailDeliveryError'
+            assert f'FULFILMENT FAILED booking={b.id}' in caplog.text and 'student@test.com' not in caplog.text
+            assert retry_fulfillment_dispatches_task()['redispatched_count'] == 0
+            dispatch_fulfillment(str(b.id))                          # a duplicate webhook does not revive it either
+        assert FulfillmentDispatch.objects.get(booking=b).status == FD.FAILED
+        assert create.call_count == 1 and mail.call_count == 1
+
+    def test_transient_email_failure_retries_without_reprovisioning_zoom(self, teacher_user, student_user):
+        b = confirmed(teacher_user, student_user)
+        with mock.patch.object(zoom_client, 'create_meeting', return_value=NEW_MEETING) as create, \
+                mock.patch('apps.bookings.services.fulfillment.send_booking_confirmation_email',
+                           side_effect=[_email_error('retryable'), True]) as mail:
+            assert dispatch_booking_fulfillment(str(b.id)) is False
+            d = FulfillmentDispatch.objects.get(booking=b)
+            assert (d.status, d.email_state) == (FD.RETRYABLE, FulfillmentDispatch.StepState.FAILED)
+            assert not d.email_completed
+            FulfillmentDispatch.objects.filter(booking=b).update(next_retry_at=timezone.now() - timedelta(seconds=1))
+            assert retry_fulfillment_dispatches_task()['redispatched_count'] == 1
+        d = FulfillmentDispatch.objects.get(booking=b)
+        assert (d.status, d.email_state) == (FD.SUCCEEDED, FulfillmentDispatch.StepState.DONE)
+        assert create.call_count == 1 and mail.call_count == 2
+
+    def test_retry_after_is_honoured(self, teacher_user, student_user, settings):
+        settings.FULFILLMENT_RETRY_SECONDS = 60
+        b = confirmed(teacher_user, student_user)
+        before = timezone.now()
+        with mock.patch.object(zoom_client, 'create_meeting', return_value=NEW_MEETING), \
+                mock.patch('apps.bookings.services.fulfillment.send_booking_confirmation_email',
+                           side_effect=_email_error('in_flight', retry_after=900)):
+            dispatch_booking_fulfillment(str(b.id))
+        d = FulfillmentDispatch.objects.get(booking=b)
+        assert d.status == FD.RETRYABLE
+        assert before + timedelta(seconds=899) <= d.next_retry_at <= timezone.now() + timedelta(seconds=901)
+
+    def test_a_transient_error_without_a_result_uses_the_default_delay(self, teacher_user, student_user, settings):
+        settings.FULFILLMENT_RETRY_SECONDS = 60
+        b = confirmed(teacher_user, student_user)
+        with mock.patch.object(zoom_client, 'create_meeting', return_value=NEW_MEETING), \
+                mock.patch('apps.bookings.services.fulfillment.send_booking_confirmation_email',
+                           side_effect=_email_error()):
+            dispatch_booking_fulfillment(str(b.id))
+        d = FulfillmentDispatch.objects.get(booking=b)
+        assert d.status == FD.RETRYABLE
+        assert d.next_retry_at <= timezone.now() + timedelta(seconds=61)
+
+    def test_transient_failures_end_terminal_at_the_cap(self, teacher_user, student_user, settings):
+        settings.FULFILLMENT_MAX_ATTEMPTS = 2
+        b = confirmed(teacher_user, student_user)
+        with mock.patch.object(zoom_client, 'create_meeting', return_value=NEW_MEETING) as create, \
+                mock.patch('apps.bookings.services.fulfillment.send_booking_confirmation_email',
+                           side_effect=_email_error('retryable')):
+            dispatch_booking_fulfillment(str(b.id))
+            dispatch_booking_fulfillment(str(b.id))
+            assert retry_fulfillment_dispatches_task()['redispatched_count'] == 0
+        assert FulfillmentDispatch.objects.get(booking=b).status == FD.FAILED
+        assert create.call_count == 1
+
+
+@pytest.mark.django_db
+def test_migration_backfills_step_states_from_the_legacy_flags(teacher_user, student_user):
+    from importlib import import_module
+    from django.apps import apps as registry
+    migration = import_module('apps.payments.migrations.0022_fulfillment_dispatch_claim_and_step_states')
+    done = FulfillmentDispatch.objects.create(booking=confirmed(teacher_user, student_user), zoom_completed=True,
+                                              email_completed=True)
+    fresh = FulfillmentDispatch.objects.create(booking=confirmed(teacher_user, student_user, 31 * H))
+    migration.backfill_step_states(registry, None)
+    done.refresh_from_db()
+    fresh.refresh_from_db()
+    St = FulfillmentDispatch.StepState
+    assert (done.zoom_state, done.calendar_state, done.email_state) == (St.DONE, St.PENDING, St.DONE)
+    assert (fresh.zoom_state, fresh.calendar_state, fresh.email_state) == (St.PENDING, St.PENDING, St.PENDING)
+
+
 # ====================================================================== Postgres-only (CI job)
 def _postgres_only():
     if connection.vendor != 'postgresql':
@@ -533,7 +640,7 @@ def _postgres_only():
 
 @pytest.mark.postgres
 @pytest.mark.django_db(transaction=True)
-def test_postgres_concurrent_claims_have_exactly_one_winner(teacher_user, student_user):
+def test_postgres_concurrent_claims_have_exactly_one_winner(price_catalog, teacher_user, student_user):
     _postgres_only()
     b = confirmed(teacher_user, student_user)
     FulfillmentDispatch.objects.create(booking=b, status=FD.QUEUED)
@@ -557,7 +664,7 @@ def test_postgres_concurrent_claims_have_exactly_one_winner(teacher_user, studen
 
 @pytest.mark.postgres
 @pytest.mark.django_db(transaction=True)
-def test_postgres_new_row_locks_run(teacher_user, student_user):
+def test_postgres_new_row_locks_run(price_catalog, teacher_user, student_user):
     """The new select_for_update sites (fulfilment save, T+10 adjudication, no-meeting dispute) are valid SQL on Postgres."""
     _postgres_only()
     b = confirmed(teacher_user, student_user)

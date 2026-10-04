@@ -7,6 +7,8 @@ RESCHEDULE_MAX_DAYS_AHEAD days out. Tutors cannot move a student's lesson: they 
 
 The same Booking row moves, so its payment, escrow and id stay put and the 24-hour release simply counts from the new end time.
 The Zoom room is replaced (the old one deleted, a new one provisioned by the usual fulfilment task) and reminders re-arm.
+The fulfilment row is reset inside the move transaction (services/fulfillment.py::reset_for_reprovision), so every step runs
+again for the new time and any run still working on the old time loses its claim.
 """
 from datetime import timedelta, timezone as dt_timezone
 
@@ -15,6 +17,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.bookings.models import Booking, BookingReschedule
+from apps.bookings.services.fulfillment import reset_for_reprovision
 from apps.bookings.services.holds import live_hold_q
 from apps.bookings.services.lock_service import acquire_slot_lock, new_slot_lock_token, release_slot_lock
 from apps.bookings.services.slot_generator import LESSON_DURATION_MINUTES, generate_teacher_slots
@@ -22,6 +25,9 @@ from apps.integrations.tasks import cleanup_gcal_event, cleanup_zoom_meeting, di
 from django.db.models import Q
 
 S = Booking.Status
+MOVED_FIELDS = ['original_start_time_utc', 'start_time_utc', 'end_time_utc', 'reschedule_count', 'reminder_24h_sent',
+                'reminder_1h_sent', 'reminder_10m_sent', 'tutor_late_alert_sent', 'zoom_meeting_id', 'zoom_join_url',
+                'zoom_start_url', 'zoom_password', 'slot_lock_token', 'teacher_gcal_event_id', 'updated_at']
 
 
 class RescheduleError(Exception):
@@ -89,9 +95,11 @@ def reschedule_booking(booking_id, student, new_start, now=None) -> Booking:
                 booking.zoom_meeting_id = booking.zoom_join_url = booking.zoom_start_url = booking.zoom_password = ''
                 booking.slot_lock_token = token
                 booking.teacher_gcal_event_id = ''
-                booking.save()
+                booking.save(update_fields=MOVED_FIELDS)
                 BookingReschedule.objects.create(booking=booking, old_start_time_utc=old_start, new_start_time_utc=new_start,
                                                  actor=f'user:{student.username}')
+                # The completed fulfilment row would otherwise be skipped: no new room, and a T+10 "no-show" (Slice F0).
+                reset_for_reprovision(booking)
         except IntegrityError:
             release_slot_lock(*lock_args, token=token)
             raise taken

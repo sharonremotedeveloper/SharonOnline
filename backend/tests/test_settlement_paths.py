@@ -198,9 +198,13 @@ class TestStudentNoShowSettlement:
 @pytest.mark.django_db
 def test_teacher_no_show_refund_drains_the_escrow_in_the_captured_currency(teacher_user, student_user):
     from apps.bookings.tasks import audit_attendance_and_noshows_task
+    from unittest.mock import patch
+    from apps.integrations.zoom import zoom_client
     booking = captured(teacher_user, student_user, 10)
     force(booking, S.CONFIRMED, start_in_min=-12)           # T+12m, nobody joined
-    audit_attendance_and_noshows_task()
+    Booking.objects.filter(pk=booking.pk).update(zoom_meeting_id='98765432101')   # no room = disputed, not scored (F0)
+    with patch.object(zoom_client, 'get_meeting_status', return_value={'status': 'waiting', 'participant_count': 0}):
+        audit_attendance_and_noshows_task()
     booking.refresh_from_db()
     assert booking.status == S.TEACHER_NO_SHOW
     assert net(booking, LedgerAccount.LIABILITY_STUDENT_ESCROW) == 0

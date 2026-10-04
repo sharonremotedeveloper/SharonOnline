@@ -194,6 +194,11 @@ CREDIT_EXPIRY_DAYS_REFUND = int(os.environ.get('CREDIT_EXPIRY_DAYS_REFUND', '30'
 CREDIT_EXPIRY_DAYS_BONUS = int(os.environ.get('CREDIT_EXPIRY_DAYS_BONUS', '30'))
 CREDIT_EXPIRY_DAYS_BUNDLE = int(os.environ.get('CREDIT_EXPIRY_DAYS_BUNDLE', '30'))       # purchased packs (Task 10.6); legal review D-12 may extend this
 LESSON_DELIVERED_MIN_TEACHER_MINUTES = int(os.environ.get('LESSON_DELIVERED_MIN_TEACHER_MINUTES', '20'))
+# Lesson fulfilment (Zoom room, tutor calendar, confirmation e-mail) and the T+10 Zoom probe (Slice F0, docs/ZOOM_ATTENDANCE.md).
+FULFILLMENT_MAX_ATTEMPTS = int(os.environ.get('FULFILLMENT_MAX_ATTEMPTS', '5'))        # then terminal FAILED + admin alert
+FULFILLMENT_LEASE_SECONDS = int(os.environ.get('FULFILLMENT_LEASE_SECONDS', '600'))    # a RUNNING claim older than this is reclaimable
+FULFILLMENT_RETRY_SECONDS = int(os.environ.get('FULFILLMENT_RETRY_SECONDS', '60'))     # earliest retry after a failed step
+ATTENDANCE_PROBE_BUDGET_SECONDS = int(os.environ.get('ATTENDANCE_PROBE_BUDGET_SECONDS', '25'))  # wall clock for Zoom probes per T+10 run (beat lock TTL 50 s)
 # Dotted path of the object that talks to PayPal / PayFast to return money (Task 10.7). The default moves no money: requests
 # wait for a person (sandbox / dev / CI). Production selects the routing backend through the environment, and
 # scripts/check_deploy.py fails a production check while this is still the manual backend.
