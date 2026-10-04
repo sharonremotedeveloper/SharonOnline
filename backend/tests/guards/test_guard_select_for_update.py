@@ -85,6 +85,35 @@ def test_detector_catches_both_orders_and_multiline_chains(tmp_path):
     assert len(unsafe_lock_joins(bad)) == 3
 
 
+def test_detector_requires_self_inside_of_and_follows_a_split_chain(tmp_path):
+    """QA review item 4: `of=` without 'self', and a queryset built in one statement and locked in the next."""
+    bad = tmp_path / 'bad.py'
+    bad.write_text(
+        "a = Booking.objects.select_for_update(of=('teacher',)).select_related('teacher').get(pk=1)\n"
+        "def f():\n"
+        "    qs = Booking.objects.select_related('teacher')\n"
+        "    return qs.select_for_update().get(pk=1)\n"
+        "def g():\n"
+        "    locked = Booking.objects.select_for_update().filter(pk=1)\n"
+        "    return locked.select_related('teacher').first()\n",
+        encoding='utf-8')
+    assert len(unsafe_lock_joins(bad)) == 3
+
+
+def test_detector_split_chain_with_of_self_is_fine(tmp_path):
+    ok = tmp_path / 'ok.py'
+    ok.write_text(
+        "def f():\n"
+        "    qs = Booking.objects.select_related('teacher')\n"
+        "    return qs.select_for_update(of=('self',)).get(pk=1)\n"
+        "def g():\n"
+        "    qs = Booking.objects.select_related('teacher')\n"
+        "def h():\n"
+        "    return qs.select_for_update().get(pk=1)\n",                # different function: not followed
+        encoding='utf-8')
+    assert unsafe_lock_joins(ok) == []
+
+
 def test_detector_accepts_of_self_and_plain_locks(tmp_path):
     ok = tmp_path / 'ok.py'
     ok.write_text(

@@ -128,6 +128,44 @@ def test_detector_ignores_reads_and_other_models(tmp_path):
     assert teacher_status_writes(ok) == []
 
 
+def test_detector_catches_the_qa_probes(tmp_path):
+    """QA review of Q0 (MAJOR 1): shapes the first detector missed."""
+    bad = tmp_path / 'bad.py'
+    bad.write_text(
+        "request.user.teacher_profile.is_active = False\n"          # 'user' in the chain, but it ends in a tutor
+        "qs.update(is_verified=True)\n"                              # update on any receiver
+        "TeacherProfile.objects.filter(pk=1).update(**{'is_active': False})\n"
+        "TeacherProfile.objects.bulk_update(ps, ['is_active'])\n"
+        "TeacherProfile.objects.bulk_update(ps, fields=['status'])\n"
+        "qs.update(is_active=False)\n"                               # unknown receiver: is_active is assumed a tutor
+        "class TeacherProfile(models.Model):\n"
+        "    def suspend(self):\n"
+        "        self.status = 'suspended'\n"
+        "        self.is_active = False\n",
+        encoding='utf-8')
+    assert len(teacher_status_writes(bad)) == 8
+
+
+def test_detector_ignores_other_models_writing_the_same_names(tmp_path):
+    ok = tmp_path / 'ok.py'
+    ok.write_text(
+        "TeacherAvailability.objects.filter(teacher=t).update(is_active=False)\n"
+        "teacher.availabilities.update(is_active=False)\n"
+        "User.objects.bulk_update(users, ['is_active'])\n"
+        "CreditPack.objects.update(is_active=False)\n"
+        "LessonPrice.objects.filter(currency='USD').update(is_active=False)\n"
+        "Booking.objects.filter(pk=1).update(status='x')\n"
+        "qs.update(status='x')\n"                                    # status on an unknown receiver: not a tutor
+        "class Booking(models.Model):\n"
+        "    def x(self):\n"
+        "        self.status = 'y'\n"
+        "class TeacherAvailability(models.Model):\n"
+        "    def off(self):\n"
+        "        self.is_active = False\n",
+        encoding='utf-8')
+    assert teacher_status_writes(ok) == []
+
+
 def test_ratchet_fails_on_a_new_offending_file(tmp_path):
     (tmp_path / 'teachers').mkdir()
     (tmp_path / 'teachers' / 'new_view.py').write_text('profile.is_verified = True\n', encoding='utf-8')

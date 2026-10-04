@@ -348,3 +348,16 @@ class TestNoDirectStatusWrites:
         bad.write_text("b.status = Booking.Status.COMPLETED\nBooking.objects.filter().update(status=Booking.Status.CANCELLED)\n"
                        "tx.status = PaymentTransaction.Status.SUCCESS\n")
         assert len(_status_writes(bad)) == 2
+
+    def test_the_detector_sees_creates_in_a_non_initial_status(self, tmp_path):
+        """QA review of Q0 item 7: create / get_or_create / update_or_create can also write a status."""
+        bad = tmp_path / 'bad.py'
+        bad.write_text(
+            "Booking.objects.create(teacher=t, status=Booking.Status.CONFIRMED)\n"
+            "Booking.objects.get_or_create(teacher=t, defaults={'status': Booking.Status.DISPUTED})\n"
+            "Booking.objects.update_or_create(pk=1, defaults={'status': 'completed'})\n"
+            "Booking.objects.create(teacher=t, status=Booking.Status.PENDING_PAYMENT)\n"     # the initial state: fine
+            "Booking.objects.create(teacher=t)\n"
+            "BookingStatusChange.objects.create(from_status='a', to_status='b')\n"
+            "DisputeCase.objects.create(status=DisputeCase.Status.OPEN)\n")
+        assert len(_status_writes(bad)) == 3

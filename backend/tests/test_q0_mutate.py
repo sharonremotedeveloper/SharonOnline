@@ -51,6 +51,7 @@ def test_a_killed_mutant_is_reported_and_the_file_restored(repo, tmp_path):
                  observe=observed)
     assert result.returncode == 0, result.stdout + result.stderr
     assert 'KILLED' in result.stdout
+    assert 'backup: ' in result.stdout                     # QA item 9: where to recover from if the process is killed
     assert (repo / 'calc.py').read_bytes() == SOURCE
     # exactly one line changed during the run, line endings untouched
     assert observed.read_bytes() == SOURCE.replace(b'return a + b', b'return a - b')

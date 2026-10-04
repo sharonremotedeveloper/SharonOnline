@@ -47,3 +47,26 @@ def test_detector(tmp_path):
         "session.get(url)\n",                              # sessions are out of scope (none exist today)
         encoding='utf-8')
     assert len(calls_without_timeout(bad)) == 3
+
+
+def test_detector_resolves_aliases_and_rejects_timeout_none(tmp_path):
+    """QA review item 5."""
+    bad = tmp_path / 'bad.py'
+    bad.write_text(
+        "import requests as r\n"
+        "import httpx as hx\n"
+        "from requests import post, get as fetch\n"
+        "r.post(url)\n"
+        "hx.get(url)\n"
+        "post(url, json={})\n"
+        "fetch(url)\n"
+        "requests.get(url, timeout=None)\n"
+        "fetch(url, timeout=5)\n",                         # fine
+        encoding='utf-8')
+    assert len(calls_without_timeout(bad)) == 5
+
+
+def test_detector_ignores_unrelated_bare_names(tmp_path):
+    ok = tmp_path / 'ok.py'
+    ok.write_text("def post(x):\n    return x\npost(1)\nget(2)\n", encoding='utf-8')
+    assert calls_without_timeout(ok) == []

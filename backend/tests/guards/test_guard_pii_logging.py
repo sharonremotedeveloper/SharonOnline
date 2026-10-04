@@ -95,6 +95,31 @@ def test_detector(tmp_path):
     assert len(pii_log_calls(bad)) == 5
 
 
+def test_detector_catches_extra_concatenation_and_attribute_loggers(tmp_path):
+    """QA review item 6."""
+    bad = tmp_path / 'bad.py'
+    bad.write_text(
+        "logger.info('sent', extra={'to': user.email})\n"
+        "logger.info('sent to ' + user.email)\n"
+        "self.logger.warning('token %s', refresh_token)\n"
+        "self._log.error(f'{payload[\"password\"]}')\n"
+        "audit_logger.info('%s', phone_number)\n"
+        "log.info('%s', data.get('clientSecret'))\n",
+        encoding='utf-8')
+    assert len(pii_log_calls(bad)) == 6
+
+
+def test_detector_matches_word_segments_not_substrings(tmp_path):
+    ok = tmp_path / 'ok.py'
+    ok.write_text(
+        "logger.info('used %s tokens', token_count)\n"
+        "logger.info(f'{emailed_at} {password_reset_sent}')\n"
+        "catalog.info(user.email)\n"                                      # not a logger
+        "logger.info('x', extra={'booking': booking.id})\n",
+        encoding='utf-8')
+    assert pii_log_calls(ok) == []
+
+
 def test_detector_ignores_ids_and_error_types(tmp_path):
     ok = tmp_path / 'ok.py'
     ok.write_text(
