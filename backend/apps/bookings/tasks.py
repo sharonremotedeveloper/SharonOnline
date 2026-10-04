@@ -6,7 +6,10 @@ from django.db import transaction
 from django.db.models import Sum
 from celery import shared_task
 
-from apps.bookings.models import Booking, AttendanceAudit, LessonMemo
+from apps.bookings.models import Booking, LessonMemo
+from apps.bookings.services.attendance_probe import (
+    adjudicate_t10, dispute_without_verdict, end_of_window_reason, probe_t10_candidates,
+)
 from apps.bookings.services.holds import live_hold_q
 from apps.bookings.services.lock_service import release_slot_lock
 from apps.bookings.services.state_machine import InvalidTransition, transition_booking
@@ -18,7 +21,7 @@ from apps.payments.services.funding import funding_for_settlement
 from apps.payments.models import CreditWalletEntry
 from apps.common.locks import distributed_task_lock
 from apps.integrations.services.attendance import (
-    STUDENT, TEACHER, credited_attendance_minutes, present_with_disconnect_grace,
+    TEACHER, credited_attendance_minutes, present_with_disconnect_grace,
 )
 
 logger = logging.getLogger(__name__)
@@ -68,24 +71,37 @@ def purge_expired_reservations_task():
 
 
 @shared_task(name='apps.bookings.tasks.audit_attendance_and_noshows_task')
-@distributed_task_lock('lock:beat:audit_attendance_and_noshows', timeout_seconds=50)
 def audit_attendance_and_noshows_task():
     """
     Periodic task running every 60s:
     1. At T+5m: Evaluates teacher presence. If tutor hasn't joined, flags an alert.
-    2. At T+10m: Adjudicates no-show conditions:
-       - Teacher absent: Sets TEACHER_NO_SHOW, grants student 100% refund + 1 bonus credit, records strike.
+    2. At T+10m: Adjudicates no-show conditions (services/attendance_probe.py):
+       - Teacher absent and Zoom says the room never started: TEACHER_NO_SHOW, 100% refund + 1 bonus credit, strike.
+       - Zoom status unknown: deferred to the next run; no meeting id at all: DISPUTED (never a no-show).
        - Student absent (tutor present): Sets STUDENT_NO_SHOW, tutor gets full lesson fee, student credit forfeited.
     3. At T+25m+: Verifies lesson completion based on attendance minutes (>=20m).
+    The Zoom HTTP probes run first, holding no database lock and no task lock (bounded by ATTENDANCE_PROBE_BUDGET_SECONDS).
     """
     now = timezone.now()
+    return _audit_attendance_locked(now, probe_t10_candidates(now))
+
+
+@distributed_task_lock('lock:beat:audit_attendance_and_noshows', timeout_seconds=50)
+def _audit_attendance_locked(now, probes):
     results = {
         "late_alerts": 0,
         "teacher_no_shows": 0,
         "student_no_shows": 0,
         "completed_sessions": 0,
     }
+    _flag_late_tutors(now, results)                 # 1. T+5m
+    # 2. T+10m No-Show Adjudication (row lock + status re-check per booking; the probes ran before, lock-free)
+    adjudicate_t10(now, probes, results)
+    _close_ended_lessons(now, results)              # 3. lesson end
+    return results
 
+
+def _flag_late_tutors(now, results):
     # 1. T+5m Tutor Lateness Check
     t5_window_start = now - timedelta(minutes=10)
     t5_window_end = now - timedelta(minutes=5)
@@ -108,110 +124,8 @@ def audit_attendance_and_noshows_task():
                 f"[RADAR ALERT] Tutor {teacher_email} is 5+ minutes late for booking {booking.id}!"
             )
 
-    # 2. T+10m No-Show Adjudication
-    t10_cutoff = now - timedelta(minutes=10)
-    # CONFIRMED (nobody verified yet) and IN_PROGRESS (the tutor is in; the student may never have come).
-    t10_candidates = Booking.objects.filter(
-        status__in=[Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS],
-        start_time_utc__lte=t10_cutoff,
-        end_time_utc__gt=now
-    ).select_related('teacher__user', 'student')
 
-    for candidate in t10_candidates:
-        with transaction.atomic():
-            booking = Booking.objects.select_for_update().filter(id=candidate.id).first()
-            if not booking or booking.status not in (Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS):
-                continue
-
-            teacher_email = booking.teacher.user.email
-            student_email = booking.student.email
-
-            teacher_attended = present_with_disconnect_grace(booking, TEACHER, now)
-            student_attended = present_with_disconnect_grace(booking, STUDENT, now)
-
-            if booking.status == Booking.Status.IN_PROGRESS and not teacher_attended:
-                continue    # inconsistent data (room open, no tutor record): the end-of-lesson check disputes it
-
-            # Active Zoom Probe Guard (Pillar 1)
-            # Before issuing no-show penalties, query live Zoom status
-            if not teacher_attended and booking.zoom_meeting_id:
-                try:
-                    from apps.integrations.zoom import zoom_client
-                    z_telemetry = zoom_client.get_meeting_status(booking.zoom_meeting_id)
-                    if z_telemetry.get('status') == 'started':
-                        AttendanceAudit.objects.get_or_create(
-                            booking=booking,
-                            zoom_session_id='active_zoom_probe',
-                            defaults={
-                                "participant_email": teacher_email,
-                                "classification": AttendanceAudit.Classification.TEACHER,
-                                "identity": "active_zoom_probe",
-                                "join_time_utc": booking.start_time_utc,
-                                "raw_payload": {"source": "active_zoom_probe"}
-                            }
-                        )
-                        teacher_attended = True
-                        transition_booking(booking, Booking.Status.IN_PROGRESS,
-                                           actor='system:zoom_probe', reason='active Zoom meeting detected before no-show verdict')
-                        logger.warning(
-                            f"[ACTIVE ZOOM PROBE GUARD] Active meeting detected for booking {booking.id}. "
-                            f"Prevented false teacher no-show penalty."
-                        )
-                except Exception as probe_err:
-                    logger.error(f"[ACTIVE ZOOM PROBE ERROR] Error probing Zoom meeting {booking.zoom_meeting_id}: {probe_err}")
-
-            # Scenario A: Teacher is Absent at T+10m
-            if not teacher_attended:
-                transition_booking(booking, Booking.Status.TEACHER_NO_SHOW,
-                                   actor='system:attendance_audit', reason='teacher absent at T+10m')
-
-                # Strike against the tutor (counted for 90 days; 3 inside the window deactivate them)
-                teacher = booking.teacher
-                add_strike(teacher, TeacherStrike.Kind.NO_SHOW, booking=booking)
-
-                funding = funding_for_settlement(booking, context='teacher_no_show_restitution')
-                if funding is None:
-                    logger.error('Teacher no-show restitution stopped for booking %s: missing funding.', booking.id)
-                    continue
-                # Student restitution (D-6): the full captured amount goes back through the gateway (or, for a credit-funded
-                # lesson, as a restored credit), plus 1 bonus credit as an apology, booked as a platform expense. All valued
-                # from the booking's immutable funding record - never from the current list price.
-                from apps.payments.models import CreditBundle, RefundRequest
-                from apps.payments.services.ledger_service import record_compensation_entry
-                from apps.payments.services.refunds import request_refund
-                request_refund(booking, RefundRequest.Reason.TEACHER_NO_SHOW)
-                grant_credit(
-                    booking.student, source=CreditBundle.Source.BONUS, pack_name='Teacher no-show apology',
-                    unit_amount=funding.captured_amount, currency=funding.currency,
-                    fx_rate_to_zar=funding.fx_rate_to_zar, fx_source=funding.fx_source,
-                    booking=booking, idempotency_key=f'teacher-no-show-bonus:{booking.id}',
-                )
-                record_compensation_entry(
-                    user=booking.student,
-                    booking=booking,
-                    amount_usd=funding.captured_amount,
-                    currency=funding.currency,
-                    fx_rate_to_zar=funding.fx_rate_to_zar,
-                    fx_source=funding.fx_source,
-                    reason="Teacher no-show bonus compensation"
-                )
-
-                results["teacher_no_shows"] += 1
-                logger.error(
-                    f"[NO-SHOW] Teacher {teacher.user.username} absent at T+10m on booking {booking.id}. "
-                    f"Student {booking.student.username} refunded and given 1 bonus credit."
-                )
-
-            # Scenario B: Student Absent at T+10m, but Teacher is Present
-            elif not student_attended:
-                transition_booking(booking, Booking.Status.STUDENT_NO_SHOW,
-                                   actor='system:attendance_audit', reason='student absent at T+10m, teacher present')
-                results["student_no_shows"] += 1
-                logger.info(
-                    f"[NO-SHOW] Student {booking.student.username} absent at T+10m on booking {booking.id}. "
-                    f"Teacher {booking.teacher.user.username} will be credited full fee."
-                )
-
+def _close_ended_lessons(now, results):
     # 3. Lesson End Dwell-Time Evaluation (T+25m)
     ended_candidates = Booking.objects.filter(
         status__in=[Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS],
@@ -233,6 +147,9 @@ def audit_attendance_and_noshows_task():
                 logger.info(
                     f"Booking {booking.id} verified with {teacher_minutes}m attendance -> COMPLETED_PENDING_MEMO."
                 )
+            elif booking.status == Booking.Status.CONFIRMED:
+                # Never adjudicated (no meeting, or the Zoom probe stayed unknown): a human decides, nobody is scored.
+                dispute_without_verdict(booking, end_of_window_reason(booking))
             else:
                 # Less than 20 minutes without prior excused power outage report
                 transition_booking(booking, Booking.Status.DISPUTED,
@@ -240,8 +157,6 @@ def audit_attendance_and_noshows_task():
                 logger.warning(
                     f"Booking {booking.id} held in DISPUTED: teacher only logged {teacher_minutes}m (required: 20m)."
                 )
-
-    return results
 
 
 @shared_task(name='apps.bookings.tasks.dispatch_pre_lesson_reminders_task')

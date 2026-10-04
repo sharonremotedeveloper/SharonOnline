@@ -36,7 +36,20 @@ def throwaway_environment() -> dict:
         'REDIS_URL': 'rediss://cache.invalid:6379/0',
         # Production must route refunds to the real gateways; the manual backend moves no money (Task 10.7).
         'REFUND_GATEWAY_BACKEND': 'apps.payments.services.refund_gateways.RoutingRefundGateway',
+        # Zoom Server-to-Server OAuth (read from the environment by apps/integrations/zoom.py; no call is made here).
+        'ZOOM_ACCOUNT_ID': 'ci-' + secrets.token_hex(6),
+        'ZOOM_CLIENT_ID': 'ci-' + secrets.token_hex(6),
+        'ZOOM_CLIENT_SECRET': secrets.token_hex(16),
     }
+
+
+ZOOM_CREDENTIALS = ('ZOOM_ACCOUNT_ID', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET')
+
+
+def zoom_credentials_problems(env) -> list:
+    """Without Zoom S2S credentials production cannot create lesson rooms or probe attendance (Slice F0: no simulation there)."""
+    return [f'{name} is not set: Zoom lesson rooms cannot be created and attendance cannot be probed.'
+            for name in ZOOM_CREDENTIALS if not (env.get(name) or '').strip()]
 
 
 def refund_backend_problems(backend: str) -> list:
@@ -51,7 +64,7 @@ def main() -> int:
     os.chdir(BACKEND_DIR)
     sys.path.insert(0, BACKEND_DIR)
     environment = throwaway_environment()
-    for name in ('REFUND_GATEWAY_BACKEND',):               # the one throwaway value a caller may override, to prove the check bites
+    for name in ('REFUND_GATEWAY_BACKEND', *ZOOM_CREDENTIALS):    # throwaway values a caller may override, to prove a check bites
         if name in os.environ:
             environment[name] = os.environ[name]
     os.environ.update(environment)
@@ -62,7 +75,7 @@ def main() -> int:
     django.setup()
     from django.conf import settings
 
-    problems = refund_backend_problems(getattr(settings, 'REFUND_GATEWAY_BACKEND', ''))
+    problems = refund_backend_problems(getattr(settings, 'REFUND_GATEWAY_BACKEND', '')) + zoom_credentials_problems(os.environ)
     for problem in problems:
         print(f'check --deploy: {problem}', file=sys.stderr)
     if problems:

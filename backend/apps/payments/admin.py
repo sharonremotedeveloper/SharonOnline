@@ -5,7 +5,7 @@ from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
 from django.template.response import TemplateResponse
 from .models import (
-    BookingFunding, CreditBundle, FxRate, CreditPack, CreditPurchase, CreditWalletEntry,
+    BookingFunding, CreditBundle, FxRate, CreditPack, CreditPurchase, CreditWalletEntry, FulfillmentDispatch,
     LedgerEntry, PaymentTransaction, RefundAttempt, RefundRequest, SettlementAnomaly,
 )
 from .services import refunds
@@ -113,6 +113,35 @@ class LedgerEntryAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(FulfillmentDispatch)
+class FulfillmentDispatchAdmin(admin.ModelAdmin):
+    """Lesson provisioning (Zoom room, tutor calendar, confirmation e-mail). Read-only; FAILED rows can be re-queued."""
+    list_display = ('booking', 'status', 'attempts', 'zoom_state', 'calendar_state', 'email_state', 'last_error',
+                    'next_retry_at', 'updated_at')
+    list_filter = ('status', 'zoom_state', 'calendar_state', 'email_state')
+    search_fields = ('booking__id',)
+    readonly_fields = [f.name for f in FulfillmentDispatch._meta.fields]
+    actions = ['requeue_failed']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_requeue_permission(self, request):
+        user = request.user
+        return bool(user.is_active and user.is_staff and (user.is_superuser or getattr(user, 'role', None) == 'admin'))
+
+    @admin.action(description='Re-queue FAILED fulfilment (fresh attempts)', permissions=['requeue'])
+    def requeue_failed(self, request, queryset):
+        if not self.has_requeue_permission(request):
+            raise PermissionDenied
+        from apps.bookings.services.fulfillment import admin_requeue
+        requeued = admin_requeue(queryset, actor=request.user)          # audited: one log line per booking with the actor id
+        self.message_user(request, f'{len(requeued)} fulfilment(s) re-queued; rows that were not FAILED were left unchanged.')
 
 
 admin.site.register(CreditPack)

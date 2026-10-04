@@ -508,13 +508,27 @@ class FulfillmentDispatch(models.Model):
         RETRYABLE = 'retryable', 'Retryable failure'
         SUCCEEDED = 'succeeded', 'Succeeded'
         FAILED = 'failed', 'Terminal failure'
+        ABANDONED = 'abandoned', 'Abandoned: booking no longer confirmed'
+
+    class StepState(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        DONE = 'done', 'Done'
+        SKIPPED = 'skipped', 'Skipped (nothing to do, e.g. no Google Calendar connected)'
+        FAILED = 'failed', 'Failed (retried)'
 
     booking = models.OneToOneField('bookings.Booking', on_delete=models.PROTECT, related_name='fulfillment_dispatch')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
     attempts = models.PositiveIntegerField(default=0)
+    # Per-step truth (Slice F0). The *_completed booleans are a legacy mirror (True when the step is done or skipped).
+    zoom_state = models.CharField(max_length=10, choices=StepState.choices, default=StepState.PENDING)
+    calendar_state = models.CharField(max_length=10, choices=StepState.choices, default=StepState.PENDING)
+    email_state = models.CharField(max_length=10, choices=StepState.choices, default=StepState.PENDING)
     zoom_completed = models.BooleanField(default=False)
     calendar_completed = models.BooleanField(default=False)
     email_completed = models.BooleanField(default=False)
+    # Compare-and-swap claim: the worker that set RUNNING owns the row while claim_token matches and the lease is fresh.
+    claim_token = models.CharField(max_length=32, blank=True, default='')
+    claimed_at = models.DateTimeField(null=True, blank=True)
     last_error = models.TextField(blank=True)
     next_retry_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -164,3 +164,18 @@ def fake_google(monkeypatch):
 @pytest.fixture
 def fake_r2(monkeypatch):
     return fakes.FakeR2().install(monkeypatch)
+
+
+@pytest.fixture
+def zoom_never_held(monkeypatch):
+    """Zoom reports no past instance for the lesson's meeting: together with a `waiting` status the tutor never opened it.
+    (Slice F0: `waiting` alone is not proof, a scheduled meeting reverts to `waiting` after it ends.)"""
+    from apps.integrations.zoom import zoom_client
+    monkeypatch.setattr(zoom_client, 'get_past_instances', lambda meeting_id: [])
+
+
+@pytest.fixture
+def simulated_zoom(settings):
+    """Explicit opt-in to the local simulated Zoom rooms (no credentials): needs both the local flag and DEBUG (Slice F0 C1)."""
+    settings.DEBUG = True
+    settings.ZOOM_SIMULATE_WITHOUT_CREDENTIALS = True

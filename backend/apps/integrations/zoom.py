@@ -16,9 +16,13 @@ class ZoomClient:
         self.client_id = os.environ.get('ZOOM_CLIENT_ID')
         self.client_secret = os.environ.get('ZOOM_CLIENT_SECRET')
 
+    def credentials_configured(self) -> bool:
+        return bool(self.account_id and self.client_id and self.client_secret)
+
     def get_access_token(self) -> str:
-        if not (self.account_id and self.client_id and self.client_secret):
-            logger.warning("Zoom API credentials not configured. Using simulated room URLs.")
+        """'' only when no credentials are configured. With credentials, any failure RAISES ZoomError (Slice F0 review B1):
+        an OAuth outage must never look like "no credentials" and fall into the simulated path."""
+        if not self.credentials_configured():
             return ""
 
         url = f"https://zoom.us/oauth/token?grant_type=account_credentials&account_id={self.account_id}"
@@ -28,15 +32,34 @@ class ZoomClient:
             'Authorization': f'Basic {auth_header}'
         }, timeout=10)
 
+        token = None
         if response.status_code == 200:
-            return response.json().get('access_token')
-        logger.error(f"Zoom OAuth token request failed: {response.text}")
-        return ""
+            try:
+                token = response.json().get('access_token')
+            except (ValueError, AttributeError):
+                token = None
+        if token:
+            return token
+        logger.error("Zoom OAuth token request failed: HTTP %s", response.status_code)    # never the provider body
+        raise ZoomError(f"Zoom OAuth token request failed (HTTP {response.status_code})")
+
+    def _token(self):
+        """A bearer token, or None when simulation is allowed: no credentials AND settings.ZOOM_SIMULATE_WITHOUT_CREDENTIALS
+        (only local settings enable it; production inherits False) AND settings.DEBUG (docker compose also runs the local
+        settings, so a shared/staging stack with DEBUG off never fabricates rooms or a 'waiting' status). Otherwise ZoomError."""
+        token = self.get_access_token()
+        if token:
+            return token
+        from django.conf import settings
+        if settings.DEBUG and getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False):
+            logger.warning("Zoom API credentials not configured. Using simulated rooms (local settings only).")
+            return None
+        raise ZoomError("Zoom credentials are not configured and simulation is disabled")
 
     def create_meeting(self, topic: str, start_time_iso: str, duration_minutes: int = 25) -> dict:
-        token = self.get_access_token()
-        if not token:
-            # Fallback mock for development/sandbox
+        token = self._token()
+        if token is None:
+            # Simulated room: local development / tests only (see _token)
             import uuid
             meeting_num = f"{uuid.uuid4().int % 10000000000:010d}"
             return {
@@ -78,9 +101,10 @@ class ZoomClient:
         raise ZoomError(f"Zoom refused to create the meeting (HTTP {resp.status_code}): {resp.text[:300]}")
 
     def get_meeting_status(self, meeting_id: str) -> dict:
-        token = self.get_access_token()
-        if not token:
-            # Fallback mock for development/sandbox
+        """{'status': <Zoom's status or None>}. A non-200 raises ZoomError; a missing status is None (the caller's 'unknown')."""
+        token = self._token()
+        if token is None:
+            # Simulated status: local development / tests only (see _token)
             return {
                 "meeting_id": str(meeting_id),
                 "status": "waiting",
@@ -97,21 +121,33 @@ class ZoomClient:
             res_data = resp.json()
             return {
                 "meeting_id": str(res_data.get('id')),
-                "status": res_data.get('status', 'waiting'),  # 'waiting', 'started', 'finished'
+                "status": res_data.get('status'),  # 'waiting' | 'started'; anything else / absent = unknown to the caller
                 "participant_count": res_data.get('participant_count', 0)
             }
-        logger.error(f"Failed to fetch Zoom meeting status for {meeting_id}: {resp.text}")
-        return {
-            "meeting_id": str(meeting_id),
-            "status": "error",
-            "participant_count": 0
-        }
+        logger.error("Failed to fetch Zoom meeting status for %s: HTTP %s", meeting_id, resp.status_code)
+        raise ZoomError(f"Zoom meeting status request failed (HTTP {resp.status_code})")
+
+    def get_past_instances(self, meeting_id: str) -> list:
+        """Ended instances of a meeting (`GET /past_meetings/{id}/instances`). A scheduled meeting goes back to `waiting` after
+        it ends, so `waiting` + a past instance means the lesson DID take place. Only a 200 with a list is an answer;
+        anything else raises ZoomError (the probe then says 'unknown')."""
+        token = self._token()
+        if token is None:
+            return []          # simulated rooms never ran
+        resp = requests.get(f"https://api.zoom.us/v2/past_meetings/{meeting_id}/instances",
+                            headers={'Authorization': f'Bearer {token}'}, timeout=10)
+        if resp.status_code == 200:
+            meetings = resp.json().get('meetings')
+            if isinstance(meetings, list):
+                return meetings
+        logger.error("Zoom past-instances request inconclusive for %s: HTTP %s", meeting_id, resp.status_code)
+        raise ZoomError(f"Zoom past-instances request inconclusive (HTTP {resp.status_code})")
 
     def delete_meeting(self, meeting_id: str) -> bool:
         """Remove a meeting (cancelled or rescheduled lesson). A meeting Zoom no longer has counts as deleted."""
-        token = self.get_access_token()
-        if not token:
-            return True        # simulated rooms (no credentials) have nothing to delete
+        token = self._token()
+        if token is None:
+            return True        # simulated rooms (no credentials, local settings) have nothing to delete
         resp = requests.delete(f"https://api.zoom.us/v2/meetings/{meeting_id}", headers={'Authorization': f'Bearer {token}'}, timeout=10)
         if resp.status_code in (204, 404):
             return True

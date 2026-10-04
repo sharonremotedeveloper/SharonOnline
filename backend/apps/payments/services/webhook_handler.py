@@ -1,4 +1,5 @@
 from django.db import transaction, IntegrityError
+from django.db.models import F
 from django.utils import timezone
 from decimal import Decimal
 from datetime import timedelta
@@ -56,23 +57,21 @@ def record_unallocated_payment(*, booking, gateway: str, transaction_id: str, am
 
 
 def dispatch_fulfillment(booking_id: str) -> None:
-    dispatch, _ = FulfillmentDispatch.objects.get_or_create(booking_id=booking_id)
-    if dispatch.status == FulfillmentDispatch.Status.SUCCEEDED:
+    """Queue lesson fulfilment. A conditional UPDATE (bookings/services/fulfillment.py::requeue) never re-queues a dispatch that
+    succeeded, failed for good, or is held by a live worker, so a duplicate webhook or sweep cannot start a second run."""
+    from apps.bookings.services.fulfillment import requeue
+    if not requeue(booking_id):
         return
-    dispatch.status = FulfillmentDispatch.Status.QUEUED
-    dispatch.last_error = ''
-    dispatch.next_retry_at = None
-    dispatch.save(update_fields=['status', 'last_error', 'next_retry_at', 'updated_at'])
     try:
         from apps.integrations.tasks import dispatch_booking_fulfillment
         dispatch_booking_fulfillment.delay(booking_id)
     except Exception as exc:
-        dispatch.status = FulfillmentDispatch.Status.RETRYABLE
-        dispatch.attempts += 1
-        dispatch.last_error = str(exc)[:2000]
-        dispatch.next_retry_at = timezone.now() + timedelta(minutes=1)
-        dispatch.save(update_fields=['status', 'attempts', 'last_error', 'next_retry_at', 'updated_at'])
-        logger.exception("Could not dispatch fulfillment for booking %s - needs manual or reconcile re-dispatch", booking_id)
+        now = timezone.now()
+        FulfillmentDispatch.objects.filter(booking_id=booking_id, status=FulfillmentDispatch.Status.QUEUED).update(
+            status=FulfillmentDispatch.Status.RETRYABLE, attempts=F('attempts') + 1, last_error=str(exc)[:2000],
+            next_retry_at=now + timedelta(minutes=1), updated_at=now)
+        logger.error("Could not dispatch fulfillment for booking %s (%s) - the retry sweep will re-dispatch it",
+                     booking_id, type(exc).__name__)
         return
 
 

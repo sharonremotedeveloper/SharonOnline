@@ -273,3 +273,42 @@ def configure_test_settings(settings):
 - **Symptom:** `test_guard_ruff_baseline` failed with `B905` (`zip()` without `strict=`) in `tests/test_booking_state_machine.py` after the create/defaults extension.
 - **Root cause:** `zip(dict.keys, dict.values)` written without `strict`.
 - **Fix:** `strict=True` (keys and values of an AST dict always have the same length). The ruff guard working as intended.
+
+### ERR-130: a rescheduled lesson had no Zoom room and its tutor was scored a no-show (Slice F0, defect A)
+- **Symptom (code trace + red test):** after a reschedule the booking kept `zoom_meeting_id=''`; the T+10 job skipped the probe for an empty id and applied TEACHER_NO_SHOW (strike, refund, bonus credit).
+- **Root cause:** `rescheduling.py` blanked the `zoom_*` fields, but the booking's `FulfillmentDispatch` still had `zoom/calendar/email_completed=True`, so `dispatch_booking_fulfillment` skipped every step; the no-show branch never checked that a room existed.
+- **Fix:** `fulfillment.reset_for_reprovision` inside the reschedule transaction; a lesson without a meeting id goes to DISPUTED + open DisputeCase (`attendance_probe.dispute_without_verdict`), never a no-show. Tests: `TestRescheduleReprovisions`, `TestNoMeetingIsNeverANoShow`.
+
+### ERR-131: a Zoom API error during the T+10 probe counted as "tutor absent" (Slice F0, defect B)
+- **Symptom:** `get_meeting_status` returned `{'status': 'error'}` on any non-200 and the caller's blanket `except` only logged; `teacher_attended` stayed False and the tutor was scored a no-show. A status change during the probe also crashed the run (`InvalidTransition`).
+- **Root cause:** a two-state reading of a three-state fact, and the HTTP call made under the booking row lock.
+- **Fix:** `attendance_probe.probe_meeting` -> `started | not_started | unknown`; `unknown` defers to the next run and an unresolved lesson is DISPUTED at its end; probes run before any lock, then lock + re-check status/meeting id. Tests: `TestProbeMapping`, `TestProbeUnknownDefers`, `test_the_http_probe_runs_outside_any_transaction`.
+
+### ERR-132: fulfilment could run twice, overwrite a cancellation, and never stop retrying (Slice F0, defect C)
+- **Root cause:** `RUNNING` was set with a read-modify-save (no compare-and-swap), the booking was saved in full from a stale instance, its status never re-checked, "no Google token" counted as completed, and failures retried forever.
+- **Fix:** `bookings/services/fulfillment.py` (CAS claim + lease, row-locked status re-check, `update_fields`, per-step states, terminal FAILED + alert, orphan deletion; migration `payments/0022`). Tests: `TestClaim`, `TestFulfilmentRun`, `TestEmailFailureContract`.
+
+### ERR-133: transactional F0 tests failed only in the full suite (`PriceNotConfigured: No active lesson price for ZAR`)
+- **Symptom:** `test_the_http_probe_runs_outside_any_transaction` passed alone and failed after another `transaction=True` test; switching to `serialized_rollback=True` then failed with `IntegrityError: UNIQUE constraint failed: django_content_type...` on SQLite.
+- **Root cause:** a transactional test flushes the database afterwards, deleting the migration-seeded `LessonPrice` catalog for the next transactional test; serialized rollback re-inserts content types that the flush keeps.
+- **Fix:** a `price_catalog` fixture that re-creates the four seeded prices with `get_or_create` for the transactional F0 tests.
+
+### ERR-134: a Zoom OAuth failure was still scored as a teacher no-show (F0 review B1)
+- **Symptom (red tests patching `requests`):** token endpoint 401/429/500 -> `get_access_token()` returned `""` -> `get_meeting_status` returned the simulated `waiting` -> `not_started` -> TEACHER_NO_SHOW; `create_meeting` fabricated a room (step `done`, dead link to the student); a 200 without `status` defaulted to `waiting`.
+- **Root cause:** "no token" meant both "no credentials" and "OAuth failed", and the simulation was a global fallback.
+- **Fix:** with credentials a token failure raises `ZoomError` (status code logged, never the body); simulation only without credentials and with `ZOOM_SIMULATE_WITHOUT_CREDENTIALS` (local settings only, base/production `False`); missing status -> `None` -> `unknown`; `waiting` additionally needs no past instance (`get_past_instances`). Tests: `test_f0_review.py::TestOAuthFailureIsUnknown`, `TestPastInstances`.
+
+### ERR-135: the calendar step wrote the booking from an unlocked instance (F0 review M1)
+- **Root cause:** `sync_booking_to_teacher_gcal` saved `teacher_gcal_event_id` itself, outside the fence the Zoom step had.
+- **Fix:** the sync only returns the id; `fulfillment._store_event` stores it under the row lock (`update_fields`), and deletes the event (`cleanup_gcal_event`) when the lesson was cancelled/moved, the claim lost, or an event already stored. Tests: `TestCalendarFence`.
+
+### ERR-136: fulfilment liveness gaps (F0 review M3, M4, m1)
+- **Root cause:** a lost broker message left a QUEUED row forever; retries only every 5 minutes with no backoff; a replayed webhook re-queued a RETRYABLE row and bypassed a provider `retry_after`; the cap ended in FAILED even weeks before the lesson.
+- **Fix:** sweep re-dispatches PENDING/QUEUED rows untouched for 120 s; jittered exponential backoff + `apply_async(countdown)`; RETRYABLE claimed/requeued only when due; terminal after the cap only once the lesson started (alert at the cap); Django-admin re-queue action. Tests: `TestStaleQueued`, `TestRetryCadence`, `TestAdminRequeue`, `TestRetryAfterFence`.
+
+### ERR-138: a compose stack without Zoom credentials could still simulate rooms and score fake no-shows (F0 re-review C1)
+- **Root cause:** simulation was gated only by `ZOOM_SIMULATE_WITHOUT_CREDENTIALS`, which `config/settings/local.py` sets, and docker compose runs those settings, so a shared/staging compose stack would get `waiting` + no past instance for every room; `check_deploy.py` did not check the Zoom credentials.
+- **Fix:** simulation also requires `DEBUG`; tests opt in with the explicit `simulated_zoom` / `zoom_never_held` fixtures; `check_deploy.py::zoom_credentials_problems` fails a production check without `ZOOM_ACCOUNT_ID` / `ZOOM_CLIENT_ID` / `ZOOM_CLIENT_SECRET`. Tests: `test_f0_review_c1.py`.
+
+### ERR-137: probe-only tutor presence produced a student no-show; a resolved DisputeCase hid a new dispute (F0 review M2, m7)
+- **Fix:** after a `started` probe without tutor attendance rows the T+10 job records presence only and leaves the verdict to the lesson-end check; `dispute_without_verdict` reopens a RESOLVED case (history kept in `admin_notes`). Tests: `test_probe_only_presence_never_scores_a_student_no_show`, `test_a_resolved_dispute_case_is_reopened_for_a_new_verdictless_dispute`.
