@@ -25,12 +25,13 @@ as `reason`. Provisional/unverified: all of this has run only against mocked HTT
 ## Alert codes
 | Code (key) | Meaning | What to do |
 | :--- | :--- | :--- |
-| `refund_failed_rejected` (refund id) | PayPal refused it (declined instrument, time limit, amount over the remaining, capture not completed) | Read `last_error_code`. If the time limit passed or the instrument is closed, pay the student another way, then mark paid manually with your reference, or convert the amount to a goodwill credit via finance. If the cause is fixed, retry |
+| `refund_failed_rejected` (refund id) | PayPal refused it (declined instrument, time limit, amount over the remaining, capture not completed) | Read `last_error_code`. If the time limit passed or the instrument is closed, pay the student another way (for example from the PayPal dashboard), then mark paid manually with the real provider refund id. If the cause is fixed, retry |
 | `refund_failed_already_refunded` | PayPal says the capture is already fully refunded | Look in PayPal: if the refund went to this student, mark paid manually with its id (do NOT retry). If it was a different refund, find out why (dashboard refund?) |
 | `refund_failed_guard` | A pre-flight safety check refused it (payment not `SUCCESS`, no real capture id, currency mismatch, non-whole JPY amount, unresolved external refund anomaly, cumulative cap) | The alert text names the check. Resolve the anomaly or data problem, then retry |
 | `refund_failed_exhausted` | Transient errors continued for `REFUND_MAX_ATTEMPTS` attempts over `REFUND_TRANSIENT_WINDOW_HOURS` (default 8 attempts, 7 days) | Check PayPal for a refund that may have gone through; if none, retry with confirmation |
 | `refund_failed_replay_window` | First attempt more than 30 days ago and no provider id was recorded: we cannot tell whether PayPal refunded | Check PayPal as above; mark paid or retry with confirmation |
 | `refund_failed_provider_failed` | PayPal accepted it, then failed it later | Retry (new request id); check the capture is still refundable |
+| `refund_capture_not_found` (refund id) | PayPal answered 404 (unknown capture) to three sends of the same refund in a row | One refund points at a capture PayPal does not know: check the capture id in the PayPal dashboard and the sandbox/live mode. The row keeps retrying with backoff and fails as `exhausted` after about 7 days; fix the data or pay it manually and mark paid with the real refund id |
 | `refund_manual_waiting` | A refund sat `pending_gateway` for 72 h because the backend answers `manual` (credentials missing, PayFast, or Manual backend in production) | Fix the configuration (PayPal credentials, `REFUND_GATEWAY_BACKEND`) - the next sweep sends it - or pay it in the console and mark paid manually |
 | `refund_submitted_stale` | A `submitted` refund is still unfinished 14 days after PayPal accepted it | Open it in PayPal; if completed, the webhook was missed: mark paid is blocked for `submitted`, so ask engineering to run the poll / replay the webhook; if failed, the poll will move it to `failed(provider_failed)` |
 | `refund_provider_outage` (key = gateway) | Three refund calls in a row to that gateway failed transiently or with a config error (401/403/sandbox-live mismatch) in one sweep | Check the provider status page and credentials. Nothing is lost: affected rows stay `pending_gateway` with backoff and burn no attempts. The alert resolves itself on the next successful call |
@@ -38,7 +39,7 @@ as `reason`. Provisional/unverified: all of this has run only against mocked HTT
 
 ## What a three-day PayPal outage looks like
 Day 1: the first sweep trips the breaker after three failures, raises ONE `refund_provider_outage`, and skips the rest of PayPal's rows for that
-run (`skipped_breaker` in the sweep counters). Each later sweep tries one row at a time until three more fail. Rows back off 15 min, 1 h,
+run (`skipped_breaker` in the sweep counters). Each later sweep tries again, one row at a time, and stops after three more consecutive failures (so up to three PayPal calls per gateway per sweep while the outage lasts). Rows back off 15 min, 1 h,
 4 h, 12 h, then daily; provider-level answers (outage, 401/403) never count towards `exhausted`. Days 2-3: refunds keep their
 `pending_gateway` status, students still see "Waiting to be sent" (they can no longer convert once a first attempt was made). When PayPal
 returns, the next successful call resolves the alert and rows drain at `REFUND_SWEEP_LIMIT` per 15 minutes (25 rows -> 100 per hour). No

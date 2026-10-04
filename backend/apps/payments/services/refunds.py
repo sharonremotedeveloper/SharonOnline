@@ -542,11 +542,21 @@ def convert_to_wallet(refund_id, *, actor=None) -> CreditBundle:
 
 
 # ================================================================================================ claim
+def _alert_submitted_stale(tx: PaymentTransaction, refund: RefundRequest, now) -> None:
+    if refund.submitted_at and now - refund.submitted_at >= SUBMITTED_STALE_AFTER:
+        alert_admin('refund_submitted_stale', f"Refund {refund.pk} has been on its way for over 14 days",
+                    f"Refund {refund.pk} ({refund.amount} {refund.currency}) was accepted by {tx.gateway} on "
+                    f"{refund.submitted_at:%Y-%m-%d} and is still not finished. Check it in the gateway.",
+                    key=str(refund.pk), tx=tx, booking=refund.booking)
+
+
 def _build_order(tx: PaymentTransaction, refund: RefundRequest, request_id: str) -> RefundOrder:
     return RefundOrder(
         refund_id=str(refund.pk), request_id=request_id, gateway=tx.gateway, capture_ref=tx.gateway_reference,
         provider_refund_id=refund.gateway_reference, amount=refund.amount, currency=refund.currency.upper(),
-        invoice_id=str(refund.pk), note=getattr(settings, 'PAYPAL_REFUND_NOTE', 'Refund from Sharon Online'))
+        # PayPal may reject a reused invoice_id on a retry under a new request id: suffix it with the epoch (epoch 0 keeps the plain id)
+        invoice_id=f'{refund.pk}-r{refund.request_epoch}' if refund.request_epoch else str(refund.pk),
+        note=getattr(settings, 'PAYPAL_REFUND_NOTE', 'Refund from Sharon Online'))
 
 
 def _first_attempt_delay() -> timedelta:
@@ -704,11 +714,8 @@ def apply_result(refund_id, token: str, result: RefundResult, *, kind: str) -> s
             outcome = 'processed'
         elif state == 'submitted':
             _submit_locked(refund, result.reference or refund.gateway_reference, now)
-            if kind == POLL and now - refund.submitted_at >= SUBMITTED_STALE_AFTER:
-                alert_admin('refund_submitted_stale', f"Refund {refund.pk} has been on its way for over 14 days",
-                            f"Refund {refund.pk} ({refund.amount} {refund.currency}) was accepted by {tx.gateway} on "
-                            f"{refund.submitted_at:%Y-%m-%d} and is still not finished. Check it in the gateway.",
-                            key=str(refund.pk), tx=tx, booking=refund.booking)
+            if kind == POLL:
+                _alert_submitted_stale(tx, refund, now)
             outcome = 'submitted'
         elif state == 'rejected':
             if kind == POLL:
@@ -736,6 +743,7 @@ def apply_result(refund_id, token: str, result: RefundResult, *, kind: str) -> s
                             key=str(refund.pk), tx=tx, booking=refund.booking)
             outcome = 'manual'
         elif kind == POLL:                                   # transient (or manual) poll: look again at the next interval
+            _alert_submitted_stale(tx, refund, now)          # lookups that only ever fail must not hide a refund stuck for weeks
             _retry_later(refund, timedelta(minutes=settings.REFUND_POLL_INTERVAL_MINUTES), now)
             refund.save(update_fields=['next_attempt_at', 'claim_token', 'claimed_until', 'last_http_status', 'last_error_code', 'updated_at'])
             outcome = 'retry'

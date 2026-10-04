@@ -191,7 +191,7 @@ def apply_refund(tx_pk, refund_id: str, amount: Decimal, currency: str, event: d
     (4) a refund made outside our flow.
     """
     with transaction.atomic():
-        tx = PaymentTransaction.objects.select_for_update().select_related('booking').get(pk=tx_pk)
+        tx = PaymentTransaction.objects.select_for_update(of=('self',)).select_related('booking').get(pk=tx_pk)
         requests = RefundRequest.objects.select_for_update().filter(payment_transaction=tx)
         known = requests.filter(gateway_reference=refund_id).first()
         if known is not None:
@@ -260,7 +260,7 @@ def _external_refund(tx, requests, refund_id, amount, currency, event) -> str:
 def flag_chargeback(tx, *, reference: str, reason: str, detail: str, event: dict) -> None:
     """Durable anomaly + DisputeCase for an admin. Deliberately posts nothing to the ledger and changes no status."""
     with transaction.atomic():
-        tx = PaymentTransaction.objects.select_for_update().select_related('booking__student', 'booking__teacher').get(pk=tx.pk)
+        tx = PaymentTransaction.objects.select_for_update(of=('self',)).select_related('booking__student', 'booking__teacher').get(pk=tx.pk)
         record_anomaly('paypal', reference, reason, detail, tx=tx, payload=event)
         if not tx.booking_id:
             return                                  # a credit-pack purchase: the anomaly is the flag

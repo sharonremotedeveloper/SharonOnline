@@ -75,5 +75,6 @@ confirming in the gateway that nothing was refunded.
 - A call that succeeds at PayPal but whose lease expires before we apply it is replayed with the same request id; this relies on
   PayPal honouring `PayPal-Request-Id` for the replay window (30 days, enforced by `REFUND_REPLAY_WINDOW_DAYS`). **Unverified until the
   sandbox run** (mocked HTTP only so far).
-- Open follow-ups: the ledger capture side still keys cash accounts 1010/1020 on currency (ERR-092); a single PayPal 404
-  `RESOURCE_NOT_FOUND` is treated as provider-level and could trip the per-gateway breaker for one bad row.
+- Follow-ups resolved by the QA fixes (2026-10-04): the ledger capture side now keys the cash account on the gateway through one helper (ERR-110); a PayPal
+  404 on the send path is a per-row transient with its own alert (`refund_capture_not_found`), so one bad capture cannot be mistaken for a provider outage.
+- Still open: PayPal's `PayPal-Request-Id` retention versus the 30-day replay window is UNVERIFIED (needs the sandbox); `refunds.py` (about 850 lines) should be split into claim/sweep and request/convert modules.

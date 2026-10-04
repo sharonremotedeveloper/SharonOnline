@@ -174,8 +174,8 @@ Match by `gateway_reference` first; found and `SUBMITTED` -> `mark_processed`, e
 | ARCH | final diff review | all |
 
 ### Open follow-ups (recorded at slice R-C, 2026-10-04)
-- [ ] **ERR-092 capture side**: `ledger_service.py` capture-side postings (`record_escrow_capture_entry`, unallocated/quarantine entries, credit-pack capture) still choose cash account 1010/1020 on `gateway == PAYFAST or currency == 'ZAR'`; the refund side now follows `tx.gateway` only. A PayPal payment in ZAR (not offered today) would be captured to 1010 and refunded from 1020. Align before PayPal ZAR is enabled.
-- [ ] **PayPal 404 `RESOURCE_NOT_FOUND` is provider-level**: the adapter treats it as a sandbox/live mismatch (`provider_level=True`), so a single bad row (an unknown capture id) counts towards the per-gateway breaker and could pause refunds for the rest of a sweep. Decide whether a 404 on a specific capture should fail that row (`rejected`) while a 404 on every row trips the breaker.
+- [x] **ERR-092 capture side** (fixed by QA H1): `ledger_service.py` capture-side postings (`record_escrow_capture_entry`, unallocated/quarantine entries, credit-pack capture) still choose cash account 1010/1020 on `gateway == PAYFAST or currency == 'ZAR'`; the refund side now follows `tx.gateway` only. A PayPal payment in ZAR (not offered today) would be captured to 1010 and refunded from 1020. Align before PayPal ZAR is enabled.
+- [x] **PayPal 404 `RESOURCE_NOT_FOUND` is provider-level** (fixed by QA M1): the adapter treats it as a sandbox/live mismatch (`provider_level=True`), so a single bad row (an unknown capture id) counts towards the per-gateway breaker and could pause refunds for the rest of a sweep. Decide whether a 404 on a specific capture should fail that row (`rejected`) while a 404 on every row trips the breaker.
 - [ ] **Sandbox verification** of everything in slices R-A..R-C (request-id replay, `PENDING` refunds, webhook after poll, invoice_id reuse, `lookup`) and a decision on `REFUND_FIRST_ATTEMPT_DELAY_MINUTES` (provisional 60).
 - [ ] **Admin page** for the refund queue (API and typed client `getAdminRefunds` / `retryAdminRefund` exist; UI deferred by the Architect).
 
@@ -205,3 +205,22 @@ Deviations / notes: a fourth new kind `mark_failed` was added (the brief listed 
 **UNVERIFIED:** how long PayPal retains a `PayPal-Request-Id` versus `REFUND_REPLAY_WINDOW_DAYS=30` (the plan assumes ~45 days). Confirm in the PayPal sandbox/docs before go-live; if retention is shorter, lower the replay window.
 
 Follow-up (not done here): split `refunds.py` (about 850 lines).
+
+
+## Final Architect review (2026-10-04) - APPROVE WITH CONDITIONS
+
+All 12 required changes of the design review were verified in code (file:line in the review). No blocking defect. Conditions and their status:
+
+| # | Condition | Status |
+| :--- | :--- | :--- |
+| 1 | `select_for_update().select_related()` on `PaymentTransaction` (nullable `booking` / `credit_purchase`) is refused by PostgreSQL ("FOR UPDATE cannot be applied to the nullable side of an outer join") and invisible on SQLite | **Fixed**: the 6 sites in `views.py`, `grace.py`, `paypal_capture.py`, `paypal_events.py` now use `select_for_update(of=('self',))`; a source-scan test forbids the old pattern. **Verify on the Postgres CI job.** Some sites predate this task |
+| 2 | `invoice_id` reuse after an epoch-bumped retry might be rejected by PayPal | **Mitigated**: the invoice id is suffixed `-r<epoch>` after a bump; real behaviour UNVERIFIED until the sandbox |
+| 3 | Sandbox pass for PENDING refunds, webhook after poll, lookup; confirm `REFUND_FIRST_ATTEMPT_DELAY_MINUTES=60` | Open (needs PayPal sandbox credentials and Anesu) |
+| 4 | Tests must never reach a gateway through a developer `.env` | **Fixed**: `tests/conftest.py` pins the Manual refund backend; a test asserts it |
+| 5 | Production on Routing with blank PayPal credentials answers `manual` silently | **Fixed (warning)**: the boot guard logs a warning; first alert otherwise comes after 72 h |
+| 6 | Runbook/ADR/plan drift | **Fixed**: `refund_capture_not_found` documented, outage and goodwill wording corrected, ERR-092 and the 404 item closed |
+| 7 | `refund_submitted_stale` never fired when polls only fail transiently | **Fixed** (shared helper, tests incl. the young-refund negative case) |
+| 8 | Payment marked REFUNDED on any completed refund, not only a full one | Follow-up (safe today: every refund is the full captured amount) |
+| 9 | Student UI learns that convert is no longer valid only from a 409; split `refunds.py` | Follow-up |
+
+UNVERIFIED because only mocked HTTP and SQLite were available: real PayPal behaviour (Request-Id replay and retention, PENDING refund lifecycle, error names, Retry-After, webhook ordering), real Postgres behaviour (row locks, concurrent claims, FOR UPDATE with joins, migrations 0020-0021 SQL), multi-worker concurrency, PayFast refunds (nothing is called), email delivery, Celery beat.
