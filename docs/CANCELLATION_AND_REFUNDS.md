@@ -91,8 +91,8 @@ the Phase 15 student/tutor screen work**; the contract is ready.
 * **Wallet-conversion rule.** A student may turn a pending gateway refund into wallet credit **only before the gateway has been
   asked**: `attempts == 0`, no live claim, never attempted. Afterwards the money may already be on its way and converting would pay
   the student twice, so the answer is 409 `refund_in_progress`; a `submitted` refund ("On its way") cannot be converted. To keep a
-  usable window the first attempt is delayed by `REFUND_FIRST_ATTEMPT_DELAY_MINUTES` (default **60 - PROVISIONAL, Anesu to
-  confirm 60 minutes or another value**). Refunds the manual backend is holding stay convertible (they were never attempted). If PayPal
+  usable window the first attempt is delayed by `REFUND_FIRST_ATTEMPT_DELAY_MINUTES` (default **60 - confirmed by Anesu 2026-10-04**).
+  Refunds the manual backend is holding stay convertible (they were never attempted). If PayPal
   pays a refund that was already converted or voided, the webhook raises a critical `refund_after_convert` alert and posts nothing.
 * **Settings** (all environment-driven; `config/settings/base.py`):
 
