@@ -54,6 +54,14 @@ def test_changing_status_on_an_instance_and_saving_the_row_raises():
         tutor.save()
 
 
+def test_a_loaded_instance_with_a_changed_status_raises_on_a_full_save():
+    tutor = f.make_teacher_profile(status='approved')
+    loaded = TeacherProfile.objects.get(pk=tutor.pk)             # from_db remembers the loaded status
+    loaded.status = 'rejected'
+    with pytest.raises(ValueError):
+        loaded.save()
+
+
 def test_a_full_save_after_the_service_refreshed_the_instance_is_fine():
     tutor = f.make_teacher_profile(status='approved')
     transition_teacher(tutor, 'suspended', actor='system:test')
