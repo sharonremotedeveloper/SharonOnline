@@ -11,6 +11,7 @@
 | D-2 ✅ | 80/20 split; platform bears gateway fees | Matches the ledger. PROJECT_CONTEXT's fixed R75 is superseded. Gateway fees post to 5030 out of the 20%. |
 | D-5 ✅ | Tutor and student no-show at T+10; 5 min disconnect grace | Matches the current T+10 probe. Add the 5 min grace in Phase 9. |
 | D-6 ✔ | **Gateway refund only; student cancel >2h free, <=2h forfeits; credits expire in 30 days; the rest as recommended in `CANCELLATION_AND_REFUNDS.md`** | Decided 2026-10-03 (Anesu: the 2 h window, 30-day expiry and "best recommendation" for reschedule / tutor cancel / late-cancel pay / outage). Implemented in Task 9.6. Open for confirmation: 30-day expiry on purchased packs, zero outage pay, breakage accounting. |
+| D-8 ✅ (2026-10-04) | Recording: **lessons are not recorded in the MVP**. Sharon signed this off in writing, so the SOW M3 "7-day video purge" deliverable moves to after the MVP launch (if recording is ever added: 7-day retention, explicit consent) | Zoom meetings are created with `auto_recording: "none"` (slice Z1). No recording purge is built now; only the 90-day attendance-payload purge (slice R1). |
 
 > **D-6 conflict (resolved: gateway refund everywhere; the student may convert a pending refund to wallet credit).** "Gateway refund only" contradicts what the code does today: the Eskom outage and DEF-501 paths refund a *credit*, and D-7 (credit bundles) implies a wallet. Either (a) bundles are bought but only *unused* credits are refundable to the card, and operational failures (outage, DEF-501, tutor cancel) are refunded to the card too, or (b) wallet credit is allowed for operational failures. **Recommendation: (b)**, because partial card refunds are costly and slow, but it needs your call. Phase 10 task 10.7 depends on this.
 
@@ -21,7 +22,6 @@
 | D-3 | Payout cadence + rail + maker-checker | Bi-weekly (matches code); bank EFT/ACB CSV export for MVP (no API cost); maker-checker **yes**, since one person should not both build and approve a payout batch. |
 | D-4 | Memo SLA | 12h reminder, 24h deadline; late memo forfeits the tutor's pay for that lesson (code behaviour); memo does **not** block student escrow clearing; platform funds any apology credit. |
 | D-7 | Credit bundles | Bundles of 5 / 10 / 20 at 0 / 5 / 10 % off; **no subscriptions in MVP**. |
-| D-8 | Recording | Do **not** record in MVP (avoids consent/POPIA/APPI exposure and storage cost). If recorded later: 7-day retention, explicit consent. |
 | D-9 | Zoom licensing | One licensed host per ~3 concurrent tutors with alternative hosts, to avoid per-tutor licence cost. Confirm with Zoom account limits. |
 | D-10 | Stack | Backend Railway or Render (Docker), frontend Vercel, R2 for files, Django JWT (no Neon Auth). Domain `sharonesl.com` (already used in the R2 CDN config). |
 | D-11 | Tutor vetting | Sharon interviews; TEFL certificate + SA ID document uploaded to the private vault and verified by an admin; background check done outside the platform for launch. |

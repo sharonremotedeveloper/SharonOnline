@@ -1,6 +1,6 @@
 # Phases 11 and 12 - Execution plan v2 (tutor lifecycle + integrations/notifications), decision-free scope
 
-**Created:** 2026-10-04 · **Revised:** 2026-10-04 (v2, after four independent reviews) · **Author:** Claude (lead architect) · **Parents:** `PRODUCTION_READINESS_PLAN.md` (PRP) Phases 11-12, `PHASE_10_EXECUTION_PLAN.md` (P10) §3 #7-8 · **Status:** PLAN, awaiting Anesu's approval. Nothing here is built.
+**Created:** 2026-10-04 · **Revised:** 2026-10-04 (v2, after four independent reviews) · **Author:** Claude (lead architect) · **Parents:** `PRODUCTION_READINESS_PLAN.md` (PRP) Phases 11-12, `PHASE_10_EXECUTION_PLAN.md` (P10) §3 #7-8 · **Status:** APPROVED by Anesu 2026-10-04 (plan and layer order). Layer 0 started in the order Q0 -> F0 -> N1c -> T1a. D-8 answered (no recording in the MVP, Sharon's written sign-off; video purge after launch). Decisions 2, 3, 4, 6, 7, 8 of §9 still open.
 
 Goal: finish everything in Phases 11 and 12 that does **not** wait on an open decision, on mocked HTTP, so that when Anesu answers D-3/D-4/D-8/D-9/D-10/D-11/D-12 only thin, well-isolated pieces remain. Working rule of *this* plan (stricter than P10 §4, which only says "proceed on the recommended default and mark it PROVISIONAL"): we build open-decision work **only if it is isolated and reversible**, we never encode an unconfirmed money-policy change, and **P1 (payout batches) is a deliberate deviation from P10 §3** ("payout execution waits on D-3") that needs Anesu's explicit go.
 
@@ -35,7 +35,7 @@ Four reviewers (tutor-stream logic, integrations-stream logic, docs alignment, Q
 | 12.4 Google Calendar | DECISION-FREE (live check needs credentials) | G1, G2 | Google Cloud project |
 | 12.5 Eskom | done | N4 wraps its notifications | outage windows in public slot projection (policy) |
 | 12.6 Zoom join frontend | DECISION-FREE | F1 | - |
-| 12.9 purges | PARTLY | 90-day Zoom-attendance payload purge (R1) | recording purge (D-8; changes an SOW M3 deliverable: needs Sharon's sign-off) |
+| 12.9 purges | PARTLY | 90-day Zoom-attendance payload purge (R1) | recording purge: after the MVP launch (D-8 answered 2026-10-04: no recording, Sharon signed off) |
 | 11.7, 12.8 | done | reuse | - |
 
 ## 2. Existing defects found during review (become slice F0, first in line)
@@ -186,7 +186,7 @@ T1: `ARCHITECTURE_AND_SCHEMA` §2.1, `PROJECT_CONTEXT` §6, UI slice 2/3/7/8 (re
 
 ## 9. Provisional register and decisions for Anesu
 Provisional (each marked in code/docs with its unblocking D-number): `LATE_WARNING_MINUTES=5` (SOW says 3), `ADMIN_CANCEL_BONUS_CREDITS=0`, `CREDIT_EXPIRY_WARNING_DAYS=7`, `TELEMETRY_RETENTION_DAYS=90`, `TUTOR_MIN_NOTICE_MINUTES`, `BOOKING_HORIZON_DAYS=14`, `PAYOUT_MIN_ZAR=100`, training gate OFF until content exists.
-**Please decide:** (1) approve this plan and the layer order; (2) **P1 payout batches**: go-ahead as a deliberate deviation from "execution waits on D-3", with no self-approval (with one admin, payouts stay blocked until a second admin exists or a TOTP step-up is built); (3) confirm the status enum + truth table + `approved -> in_review` re-vet edge; (4) the training gate must be ON before launch; (5) the SOW M3 "7-day video purge" deliverable vs D-8 "do not record": needs Sharon's written sign-off; (6) a second R2 bucket for private vetting documents (Cloudflare account action by you); (7) PDF tooling shared by receipts, payslips and memo PDFs; (8) D-4: we ship only the 12 h reminder; the pay-forfeiture policy (3-way document conflict; code pays 80 % today) waits for you.
+**Please decide:** (1) approve this plan and the layer order; (2) **P1 payout batches**: go-ahead as a deliberate deviation from "execution waits on D-3", with no self-approval (with one admin, payouts stay blocked until a second admin exists or a TOTP step-up is built); (3) confirm the status enum + truth table + `approved -> in_review` re-vet edge; (4) the training gate must be ON before launch; (5) ~~the SOW M3 "7-day video purge" deliverable vs D-8 "do not record"~~ **answered 2026-10-04: no recording in the MVP, Sharon signed off in writing, the purge comes after launch**; (6) a second R2 bucket for private vetting documents (Cloudflare account action by you); (7) PDF tooling shared by receipts, payslips and memo PDFs; (8) D-4: we ship only the 12 h reminder; the pay-forfeiture policy (3-way document conflict; code pays 80 % today) waits for you.
 
 ## 10. Deferred, with owner
 TEA-02 memo-deadline modal, TEA-06 roster, TEA-12 performance, TEA-08 OTP (15.3); STU-10/STU-06 (15.2); ADM-07/08/09/12 incl. impersonation and webhook DLQ (15.4); DSR/erasure/retention of documents, `Notification`, `CalendarCredential`, `TeacherStatusChange`, bank snapshots (14.3/14.4: register the new models there); marketing consent (14.2); LINE/websocket presence (15.12); Cloudflare Stream video and its webhook (gap G1: separate slice after the funnel, needs a decision); backup Zoom room (aspirational); Zoom registrant links (needs a Zoom plan decision, not planned); Wise/SARS summary (D-3/D-12); gateway-to-bank cash movement (gap G2) and tutor tax identity (gap G11/D-12); Eskom slot hiding (PRP 12.5 approval).
