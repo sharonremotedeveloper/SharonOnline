@@ -1,37 +1,49 @@
-import os
-import requests
-from icalendar import Calendar, Event
+"""E-mail helpers built on the one sender, `apps.integrations.services.email.send_email` (slice N1c).
+
+`send_email` here is the older raising interface the Celery tasks use (account mails, refunds, alerts, Eskom, cancellations):
+it delegates to the service and raises `EmailDeliveryError` for anything but `sent`, so those tasks keep retrying exactly as
+before. N4 moves them onto `notify()`; see docs/slices/N1c.md for the inventory.
+"""
 import logging
+
+from icalendar import Calendar, Event
+
+from .services import email as email_service
+from .services.email import Attachment, render_html
 
 logger = logging.getLogger(__name__)
 
 
 class EmailDeliveryError(Exception):
-    """The provider refused or could not be reached; callers (Celery tasks) retry."""
+    """Not sent, but worth retrying (`in_flight` / `retryable`); `.result` is the `EmailResult` when there is one."""
+
+    def __init__(self, message: str = '', result=None):
+        super().__init__(message)
+        self.result = result
+
+
+class EmailPermanentError(EmailDeliveryError):
+    """Not sent and retrying cannot help (`failed`: 4xx validation/auth, not configured). Celery callers do not retry it."""
+
+
+def raise_for_result(result, label: str) -> None:
+    """Raise the right error for a result that is not `sent`. The message holds status and code only (no address)."""
+    if result.ok:
+        return
+    error = EmailPermanentError if result.status == email_service.FAILED else EmailDeliveryError
+    raise error(f'{label} {result.status} ({result.error_code})', result=result)
+
+
+def log_permanent_failure(task_name: str, ref_id, exc: EmailPermanentError) -> None:
+    """One line for a human: which task and record, and the provider's short code. Never the address or body."""
+    code = exc.result.error_code if exc.result is not None else ''
+    logger.error('email.permanent_failure task=%s ref=%s error_code=%s (not retried)', task_name, ref_id, code)
 
 
 def send_email(to: str, subject: str, html: str, text: str = '') -> None:
-    """
-    Generic transactional send through Resend. Raises EmailDeliveryError on failure (never swallows it).
-    Without a real key (dev/test) it logs instead of sending; the body (which holds links) is only logged when DEBUG.
-    """
-    from django.conf import settings
-    api_key = os.environ.get('RESEND_API_KEY')
-    if not api_key or api_key.startswith('re_dev'):
-        logger.info("[DEV EMAIL MOCK] to=%s subject=%r%s", to, subject, f"\n{text}" if (settings.DEBUG and text) else "")
-        return
-    try:
-        resp = requests.post(
-            "https://api.resend.com/emails",
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json={"from": os.environ.get('DEFAULT_FROM_EMAIL', 'Sharon ESL <bookings@sharonesl.com>'),
-                  "to": [to], "subject": subject, "html": html, **({"text": text} if text else {})},
-            timeout=10,
-        )
-    except requests.RequestException as exc:
-        raise EmailDeliveryError(str(exc)) from exc
-    if resp.status_code >= 300:
-        raise EmailDeliveryError(f"Resend returned {resp.status_code}")
+    """Raising wrapper over the unified sender: `EmailPermanentError` for `failed`, `EmailDeliveryError` otherwise."""
+    raise_for_result(email_service.send_email(to, subject, html, text), 'e-mail')
+
 
 def generate_ics_content(booking) -> bytes:
     """
@@ -52,48 +64,48 @@ def generate_ics_content(booking) -> bytes:
     cal.add_component(event)
     return cal.to_ical()
 
+
+_CONFIRMATION_HTML = (
+    '<h2>Your Lesson is Confirmed!</h2>'
+    '<p>Hi {student},</p>'
+    '<p>Your 25-minute lesson with <strong>{tutor}</strong> is locked in.</p>'
+    '<p><strong>Time:</strong> {when}</p>'
+    '<p><a href="{join_url}" style="background-color: #0D4440; color: white; padding: 10px 20px; '
+    'text-decoration: none; border-radius: 6px;">Launch Classroom (Zoom)</a></p>'
+    "<p>We've attached your calendar invite (.ics). See you in class!</p>"
+)
+
+
+def booking_confirmation_key(booking) -> str:
+    """Resend idempotency key: one confirmation per booking generation (a reschedule bumps `reschedule_count`)."""
+    return f'booking-confirmed:{booking.id}:{booking.reschedule_count}:student'
+
+
+def build_booking_confirmation(booking):
+    """(subject, html, text) for the student's confirmation; every interpolated value is escaped."""
+    when = booking.start_time_utc.strftime('%Y-%m-%d %H:%M UTC')
+    student = booking.student.first_name or booking.student.username
+    tutor = booking.teacher.user.first_name or booking.teacher.user.username
+    join_url = booking.zoom_join_url or ''
+    subject = f'Confirmed: Your English Lesson on Sharon ESL ({when})'
+    html = render_html(_CONFIRMATION_HTML, student=student, tutor=tutor, when=when, join_url=join_url)
+    text = (f'Hi {student},\n\nYour 25-minute lesson with {tutor} is locked in.\nTime: {when}\n'
+            f'Join: {join_url}\n\nYour calendar invite (.ics) is attached. See you in class!')
+    return subject, html, text
+
+
 def send_booking_confirmation_email(booking):
     """
-    Sends transactional confirmation email with attached .ics calendar file via Resend API.
+    Sends the student's confirmation with the .ics invite through the unified sender. Returns the `EmailResult`;
+    raises `EmailPermanentError` for `failed` and `EmailDeliveryError` for `in_flight` / `retryable`, so the fulfilment
+    task (F0) can stop on the first and retry the second (before N1c a provider error returned False and the step was
+    marked done anyway).
     """
-    api_key = os.environ.get('RESEND_API_KEY')
-    if not api_key or api_key.startswith('re_dev'):
-        logger.info(f"[DEV EMAIL MOCK] Booking confirmation email dispatched for booking={booking.id} to student={booking.student.email}")
-        return True
-
-    ics_bytes = generate_ics_content(booking)
-    import base64
-    ics_base64 = base64.b64encode(ics_bytes).decode()
-
-    url = "https://api.resend.com/emails"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-
-    data = {
-        "from": os.environ.get('DEFAULT_FROM_EMAIL', 'Sharon ESL <bookings@sharonesl.com>'),
-        "to": [booking.student.email],
-        "subject": f"Confirmed: Your English Lesson on Sharon ESL ({booking.start_time_utc.strftime('%Y-%m-%d %H:%M UTC')})",
-        "html": f"""
-        <h2>Your Lesson is Confirmed!</h2>
-        <p>Hi {booking.student.first_name or booking.student.username},</p>
-        <p>Your 25-minute lesson with <strong>{booking.teacher.user.first_name or booking.teacher.user.username}</strong> is locked in.</p>
-        <p><strong>Time:</strong> {booking.start_time_utc.strftime('%Y-%m-%d %H:%M UTC')}</p>
-        <p><a href="{booking.zoom_join_url}" style="background-color: #0D4440; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px;">Launch Classroom (Zoom)</a></p>
-        <p>We've attached your calendar invite (.ics). See you in class!</p>
-        """,
-        "attachments": [
-            {
-                "filename": "lesson-invite.ics",
-                "content": ics_base64
-            }
-        ]
-    }
-
-    resp = requests.post(url, headers=headers, json=data, timeout=10)
-    if resp.status_code == 200:
-        logger.info(f"Resend email sent successfully for booking={booking.id}")
-        return True
-    logger.error(f"Resend email error: {resp.text}")
-    return False
+    subject, html, text = build_booking_confirmation(booking)
+    invite = Attachment('lesson-invite.ics', generate_ics_content(booking), 'text/calendar')
+    result = email_service.send_email(booking.student.email, subject, html, text,
+                                      idempotency_key=booking_confirmation_key(booking), attachments=[invite],
+                                      tags={'kind': 'booking_confirmed'})
+    raise_for_result(result, 'booking confirmation')
+    logger.info('Booking confirmation e-mail sent for booking=%s provider_id=%s', booking.id, result.provider_message_id)
+    return result

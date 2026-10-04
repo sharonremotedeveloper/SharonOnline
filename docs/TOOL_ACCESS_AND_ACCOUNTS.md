@@ -125,6 +125,7 @@ One line per confirmation or change. Newest last. Do not delete entries.
 | 2026-10-03 | Claude | GitHub CLI (push of Task 10.1 to `develop`) | `sharonremotedeveloper` (`gh auth status` active; `gh api user/emails` primary `sharonremotedeveloper@gmail.com`) | - | Matches registry; remote `sharonremotedeveloper/SharonOnline`. No account switch. |
 | 2026-10-04 | Claude | GitHub CLI (push of Task 10.2 to `develop`) | `sharonremotedeveloper` (`gh auth status` active; `gh api user/emails` primary `sharonremotedeveloper@gmail.com`) | - | Matches registry; remote `sharonremotedeveloper/SharonOnline`. No account switch. PayPal sandbox NOT used (no credentials yet; all PayPal code verified against mocked HTTP only). |
 | 2026-10-04 | Claude | GitHub CLI (push of Task 10.7 to `develop`) | `sharonremotedeveloper` (`gh auth status` active; `gh api user/emails` primary `sharonremotedeveloper@gmail.com`) | - | Matches registry; remote `sharonremotedeveloper/SharonOnline`. No account switch. PayPal/PayFast sandboxes NOT used (no credentials yet; refund code verified against mocked HTTP only). |
+| 2026-10-04 | Claude | Slice N1c (unified `send_email`) local implementation | - | dev | Resend NOT called: every test replaces `requests.post` in `apps/integrations/services/email.py`, the test fixture pins `EMAIL_BACKEND_MODE=console`. No account used, no key read or written, no push. 409 / 24 h idempotency semantics taken from Resend docs, unverified live. |
 
 ---
 

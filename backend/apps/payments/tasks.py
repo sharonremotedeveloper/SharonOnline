@@ -16,7 +16,7 @@ from apps.payments.services.reconciliation import reconcile_initialized_transact
 from apps.payments.services.funding import funding_for_settlement
 from apps.admin_api.models import DisputeCase
 from apps.common.locks import distributed_task_lock
-from apps.integrations.email import EmailDeliveryError, send_email
+from apps.integrations.email import EmailDeliveryError, EmailPermanentError, log_permanent_failure, send_email
 from apps.integrations.services.attendance import TEACHER, credited_attendance_minutes
 
 logger = logging.getLogger(__name__)
@@ -26,14 +26,20 @@ PENDING_ALERT_AFTER = timedelta(days=7)
 PENDING_CRITICAL_AFTER = timedelta(days=35)
 
 
-@shared_task(bind=True, autoretry_for=(EmailDeliveryError,), retry_backoff=30, retry_backoff_max=900, max_retries=8)
+@shared_task(bind=True, autoretry_for=(EmailDeliveryError,), dont_autoretry_for=(EmailPermanentError,),
+             retry_backoff=30, retry_backoff_max=900, max_retries=8)
 def send_admin_alert_email_task(self, subject: str, detail: str):
     """One e-mail to the support inbox for an admin alert (the durable record is the GatewayAnomaly row)."""
     from django.conf import settings
-    send_email(settings.SUPPORT_TO_EMAIL, f"[Sharon Online alert] {subject}", f"<p>{escape(detail)}</p>", detail)
+    try:
+        send_email(settings.SUPPORT_TO_EMAIL, f"[Sharon Online alert] {subject}", f"<p>{escape(detail)}</p>", detail)
+    except EmailPermanentError as exc:
+        log_permanent_failure('send_admin_alert_email_task', self.request.id, exc)
+        raise
 
 
-@shared_task(bind=True, autoretry_for=(EmailDeliveryError,), retry_backoff=30, retry_backoff_max=900, max_retries=5)
+@shared_task(bind=True, autoretry_for=(EmailDeliveryError,), dont_autoretry_for=(EmailPermanentError,),
+             retry_backoff=30, retry_backoff_max=900, max_retries=5)
 def send_payment_failure_email_task(self, transaction_id: str, kind: str, ticket_id: str):
     """Tell the student, in plain words, that a pending payment did not go through."""
     from apps.payments.services.notices import student_email
@@ -44,7 +50,11 @@ def send_payment_failure_email_task(self, transaction_id: str, kind: str, ticket
     if not student.email:
         return
     subject, html, text = student_email(student, tx, kind, ticket_id)
-    send_email(student.email, subject, html, text)
+    try:
+        send_email(student.email, subject, html, text)
+    except EmailPermanentError as exc:
+        log_permanent_failure('send_payment_failure_email_task', transaction_id, exc)
+        raise
 
 
 def _flag_payment_still_pending(booking, funding) -> None:
@@ -235,7 +245,8 @@ def process_pending_refunds_task():
     return process_pending_refunds()
 
 
-@shared_task(bind=True, autoretry_for=(EmailDeliveryError,), retry_backoff=30, retry_backoff_max=900, max_retries=5)
+@shared_task(bind=True, autoretry_for=(EmailDeliveryError,), dont_autoretry_for=(EmailPermanentError,),
+             retry_backoff=30, retry_backoff_max=900, max_retries=5)
 def send_refund_processed_email_task(self, refund_id: str):
     """
     Tell the student, once, that their refund has been sent. Queued exactly when the refund becomes `processed` (that transition
@@ -258,6 +269,8 @@ def send_refund_processed_email_task(self, refund_id: str):
     html = f"<p>Hi {escape(name)},</p>" + "".join(f"<p>{escape(line)}</p>" for line in lines) + "<p>Sharon Online</p>"
     try:
         send_email(refund.user.email, "Your refund has been sent", html, text)
-    except Exception:
+    except Exception as exc:
         cache.delete(key)                                  # nothing was delivered: release the claim so the retry can send
+        if isinstance(exc, EmailPermanentError):
+            log_permanent_failure('send_refund_processed_email_task', refund_id, exc)
         raise

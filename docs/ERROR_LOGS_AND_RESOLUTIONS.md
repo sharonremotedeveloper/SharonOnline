@@ -313,6 +313,31 @@ def configure_test_settings(settings):
 ### ERR-137: probe-only tutor presence produced a student no-show; a resolved DisputeCase hid a new dispute (F0 review M2, m7)
 - **Fix:** after a `started` probe without tutor attendance rows the T+10 job records presence only and leaves the verdict to the lesson-end check; `dispute_without_verdict` reopens a RESOLVED case (history kept in `admin_notes`). Tests: `test_probe_only_presence_never_scores_a_student_no_show`, `test_a_resolved_dispute_case_is_reopened_for_a_new_verdictless_dispute`.
 
+### ERR-180: `render_html` test expected a plain `str` (slice N1c)
+- **Symptom:** `tests/test_send_email.py::TestEscapingHelper::test_result_is_a_plain_string` failed: `assert <class 'SafeString'> is str` after `str(format_html(...))`.
+- **Root cause:** `SafeString.__str__` returns the object itself, so `str()` cannot strip the safe marker; the test's expectation was the wrong contract, not a code bug.
+- **Fix:** `render_html` returns the `SafeString` from `format_html` (it is a `str`, already escaped, so a Django template will not escape it twice); the test now asserts `isinstance(..., SafeString)`. Documented in `docs/NOTIFICATIONS.md`.
+
+### ERR-181: provider id / error-name filters let a trailing newline through (slice N1c)
+- **Symptom:** found while writing the mutation table: `re.compile(r'^[a-z_]+$').match('validation_error\n')` matches, so a provider error name (or message id) ending in a newline would reach `error_code` and the log line.
+- **Root cause:** Python's `$` also matches just before a final `\n`.
+- **Fix:** both filters in `apps/integrations/services/email.py` use `fullmatch` without anchors.
+
+### ERR-182: permanent e-mail failures were retried like transient ones (slice N1c QA, MAJOR)
+- **Symptom:** a 422 / 403 / not-configured send raised the same `EmailDeliveryError` as a 503, so every caller retried it (up to 5-8 times with backoff) and F0 could not tell "stop" from "later".
+- **Root cause:** the raising wrapper collapsed the `EmailResult` into one exception type and dropped the result.
+- **Fix:** `EmailDeliveryError(.result)` and the subclass `EmailPermanentError` for `failed`; autoretry tasks declare `dont_autoretry_for=(EmailPermanentError,)` (supported by the installed Celery 5.6.3, `celery/app/autoretry.py`), manual-retry tasks re-raise without `self.retry`; `log_permanent_failure` logs ids + error code. Tests: `tests/test_send_email_qa.py` (`TestPermanentVersusTransient`, `TestAutoretryBehaviour`, `TestManualRetryCallers`).
+
+### ERR-183: student first name was raw HTML in the tutor's cancellation e-mail (slice N1c QA)
+- **Symptom:** `send_cancellation_emails` built `f"<p>{line}</p>"` with the student's first name inside `line`; a name like `<script>...` went into the tutor's mail unescaped.
+- **Root cause:** the body was assembled with an f-string instead of an escaping helper.
+- **Fix:** `render_html('<p>{line}</p>', line=line)`. Test: `test_cancellation_mail_escapes_the_student_name`.
+
+### ERR-184: console mail backend set in base settings (slice N1c QA)
+- **Symptom:** `EMAIL_BACKEND` = console backend lived in `settings/base.py`, so any non-local, non-production settings module running in console mode would print password-reset / verification links to stdout.
+- **Root cause:** the dev convenience was placed in the shared base module.
+- **Fix:** moved to `settings/local.py` only (docker compose uses local settings); elsewhere Django's SMTP default makes console mode fail loudly. Test: `test_console_mail_backend_is_set_by_local_settings_only`. Tests: `test_a_provider_name_with_a_trailing_newline_is_dropped`, `test_an_odd_provider_id_is_not_kept` (mutants 16 and 17 in `docs/mutation/N1c.md`).
+
 ### ERR-190: layer-0 integration, Q0 guards failed after merging F0 (integrator block 190-199)
 - **Symptom:** on `integration/layer-0` after merging F0: `test_guard_integrations_silent_failures` ("zoom.py: allowlist says 2 but only 1 remain"), `test_guard_ruff_baseline` (new S311 in `fulfillment.py`, unused imports in `test_f0_review*.py`; then "Fixed - delete ... bookings/tasks.py C901/F841"), `test_q0_fakes::test_fake_zoom_create_status_delete` (`ZoomError` on a fake 500).
 - **Root cause:** F0 and Q0 were built in parallel. F0 removed one silent `return ""` and two old lint violations (shrink-only baselines must be lowered), added unused test imports and a `random.uniform` jitter, and made a non-200 Zoom status raise, which Q0's fake test still expected as a returned `error` status.

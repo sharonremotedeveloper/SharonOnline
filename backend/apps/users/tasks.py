@@ -7,7 +7,7 @@ from django.db.models import F
 from django.utils import timezone
 from django.utils.html import escape
 
-from apps.integrations.email import EmailDeliveryError, send_email
+from apps.integrations.email import EmailDeliveryError, EmailPermanentError, log_permanent_failure, send_email
 from .models import SupportInquiry, User
 from .tokens import encode_uid, make_reset_token, make_verify_token
 
@@ -51,7 +51,8 @@ def build_message(user: User, kind: str):
     raise ValueError(f'unknown account e-mail kind: {kind}')
 
 
-@shared_task(bind=True, autoretry_for=(EmailDeliveryError,), retry_backoff=30, retry_backoff_max=900, max_retries=5)
+@shared_task(bind=True, autoretry_for=(EmailDeliveryError,), dont_autoretry_for=(EmailPermanentError,),
+             retry_backoff=30, retry_backoff_max=900, max_retries=5)
 def send_account_email_task(self, user_id: str, kind: str):
     user = User.objects.filter(pk=user_id, is_active=True).first()
     if user is None or not user.email:
@@ -59,7 +60,11 @@ def send_account_email_task(self, user_id: str, kind: str):
     if kind == KIND_VERIFY_EMAIL and user.email_verified:
         return
     subject, html, text = build_message(user, kind)
-    send_email(user.email, subject, html, text)
+    try:
+        send_email(user.email, subject, html, text)
+    except EmailPermanentError as exc:
+        log_permanent_failure('send_account_email_task', user_id, exc)
+        raise
 
 
 @shared_task(bind=True, max_retries=8)
@@ -82,6 +87,10 @@ def send_support_inquiry_notification(self, inquiry_id: str):
     )
     try:
         send_email(settings.SUPPORT_TO_EMAIL, subject, html, text)
+    except EmailPermanentError as exc:                      # retrying cannot help: record it, do not retry
+        SupportInquiry.objects.filter(pk=inquiry.pk).update(last_delivery_error=f'permanent: {exc}'[:500])
+        log_permanent_failure('send_support_inquiry_notification', inquiry.pk, exc)
+        raise
     except EmailDeliveryError as exc:
         SupportInquiry.objects.filter(pk=inquiry.pk).update(
             delivery_state=SupportInquiry.DeliveryState.RETRYABLE,

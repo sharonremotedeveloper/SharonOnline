@@ -4,6 +4,7 @@ from unittest import mock
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+from django.core import mail
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -362,25 +363,28 @@ class TestMailPlumbing:
             _, html, _ = build_message(evil, kind)
             assert '<script>' not in html and '&lt;script&gt;' in html
 
-    def test_dev_mode_never_logs_links_unless_debug(self, caplog, settings, monkeypatch):
-        monkeypatch.delenv('RESEND_API_KEY', raising=False)
+    def test_console_mode_never_logs_links_or_addresses(self, caplog, settings):
+        # Slice N1c: dev/test mail goes to Django's mail backend (console / test outbox), never into the log.
+        settings.EMAIL_BACKEND_MODE = 'console'
         settings.DEBUG = False
         with caplog.at_level('INFO'):
             send_email('a@example.com', 'subj', '<p>x</p>', 'https://site/reset?token=SECRET')
-        assert 'SECRET' not in caplog.text and 'a@example.com' in caplog.text
+        assert 'SECRET' not in caplog.text and 'a@example.com' not in caplog.text
+        assert mail.outbox[-1].to == ['a@example.com']
 
-    def test_provider_failure_raises_instead_of_being_swallowed(self, monkeypatch):
-        monkeypatch.setenv('RESEND_API_KEY', 're_live_real')
-        with mock.patch('apps.integrations.email.requests.post', return_value=mock.Mock(status_code=500)):
+    def test_provider_failure_raises_instead_of_being_swallowed(self, settings):
+        settings.EMAIL_BACKEND_MODE, settings.RESEND_API_KEY = 'resend', 're_live_real'
+        with mock.patch('apps.integrations.services.email.requests.post', return_value=mock.Mock(status_code=500)):
             with pytest.raises(EmailDeliveryError):
                 send_email('a@example.com', 's', '<p>x</p>')
         import requests
-        with mock.patch('apps.integrations.email.requests.post', side_effect=requests.ConnectionError('down')):
+        with mock.patch('apps.integrations.services.email.requests.post', side_effect=requests.ConnectionError('down')):
             with pytest.raises(EmailDeliveryError):
                 send_email('a@example.com', 's', '<p>x</p>')
 
-    def test_success_sends_to_the_given_address_only(self, monkeypatch):
-        monkeypatch.setenv('RESEND_API_KEY', 're_live_real')
-        with mock.patch('apps.integrations.email.requests.post', return_value=mock.Mock(status_code=200)) as post:
+    def test_success_sends_to_the_given_address_only(self, settings):
+        settings.EMAIL_BACKEND_MODE, settings.RESEND_API_KEY = 'resend', 're_live_real'
+        ok = mock.Mock(status_code=200, json=lambda: {'id': 'msg_1'})
+        with mock.patch('apps.integrations.services.email.requests.post', return_value=ok) as post:
             send_email('a@example.com', 'subj', '<p>x</p>', 'txt')
         assert post.call_args.kwargs['json']['to'] == ['a@example.com']

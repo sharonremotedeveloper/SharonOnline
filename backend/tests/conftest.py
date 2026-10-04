@@ -23,6 +23,9 @@ def test_environment_settings(settings):
     settings.CELERY_TASK_ALWAYS_EAGER = True
     # A developer .env may select the real refund router; no test may reach a payment gateway by accident.
     settings.REFUND_GATEWAY_BACKEND = 'apps.payments.services.refund_gateways.ManualSandboxRefundGateway'
+    # Same for e-mail (slice N1c): a developer .env with a real RESEND_API_KEY must never make a test send real mail.
+    # Console mode hands every message to Django's test mail backend (`django.core.mail.outbox`).
+    settings.EMAIL_BACKEND_MODE = 'console'
     settings.CELERY_TASK_EAGER_PROPAGATES = True
     settings.CELERY_BROKER_URL = 'memory://'
     settings.CELERY_RESULT_BACKEND = 'cache+memory://'
