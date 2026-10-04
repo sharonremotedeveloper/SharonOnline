@@ -54,30 +54,40 @@ def _attribute_write(target):
     return target.attr == 'status' and _is_teacher_receiver(src(target.value))
 
 
+def _assignment_hits(node):
+    targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+    return [f'{node.lineno}: {src(attr)} = ...' for target in targets for attr in _attr_targets(target) if _attribute_write(attr)]
+
+
+def _setattr_hits(node):
+    if not (isinstance(node.func, ast.Name) and node.func.id == 'setattr' and len(node.args) >= 2):
+        return []
+    name = node.args[1]
+    if isinstance(name, ast.Constant) and name.value in FIELDS and (
+            name.value == 'is_verified' or _is_teacher_receiver(src(node.args[0]))):
+        return [f'{node.lineno}: setattr({src(node.args[0])}, {name.value!r}, ...)']
+    return []
+
+
+def _orm_write_hits(node):
+    func = node.func
+    if not (isinstance(func, ast.Attribute) and func.attr in WRITE_METHODS and 'TeacherProfile' in src(func.value)):
+        return []
+    hits = [f'{node.lineno}: {func.attr}({kw.arg}=...)' for kw in node.keywords if kw.arg in FIELDS]
+    for kw in node.keywords:
+        if kw.arg in ('defaults', 'create_defaults') and isinstance(kw.value, ast.Dict):
+            hits += [f'{node.lineno}: {func.attr}({kw.arg}={{{key.value!r}: ...}})' for key in kw.value.keys
+                     if isinstance(key, ast.Constant) and key.value in FIELDS]
+    return hits
+
+
 def teacher_status_writes(path):
     hits = []
     for node in ast.walk(parse(path)):
         if isinstance(node, (ast.Assign, ast.AugAssign, ast.AnnAssign)):
-            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            for target in targets:
-                for attr in _attr_targets(target):
-                    if _attribute_write(attr):
-                        hits.append(f'{node.lineno}: {src(attr)} = ...')
+            hits += _assignment_hits(node)
         elif isinstance(node, ast.Call):
-            func = node.func
-            if isinstance(func, ast.Name) and func.id == 'setattr' and len(node.args) >= 2:
-                name = node.args[1]
-                if isinstance(name, ast.Constant) and name.value in FIELDS and (
-                        name.value == 'is_verified' or _is_teacher_receiver(src(node.args[0]))):
-                    hits.append(f'{node.lineno}: setattr({src(node.args[0])}, {name.value!r}, ...)')
-            if isinstance(func, ast.Attribute) and func.attr in WRITE_METHODS and 'TeacherProfile' in src(func.value):
-                for kw in node.keywords:
-                    if kw.arg in FIELDS:
-                        hits.append(f'{node.lineno}: {func.attr}({kw.arg}=...)')
-                    if kw.arg in ('defaults', 'create_defaults') and isinstance(kw.value, ast.Dict):
-                        for key in kw.value.keys:
-                            if isinstance(key, ast.Constant) and key.value in FIELDS:
-                                hits.append(f'{node.lineno}: {func.attr}({kw.arg}={{{key.value!r}: ...}})')
+            hits += _setattr_hits(node) + _orm_write_hits(node)
     return hits
 
 

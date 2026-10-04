@@ -43,5 +43,5 @@ def test_allow_network_marker_restores_real_sockets():
 
 def test_is_local_address():
     assert network_guard.is_local(('127.0.0.1', 5432)) and network_guard.is_local(('::1', 6379, 0, 0))
-    assert network_guard.is_local(('localhost', 6379)) and network_guard.is_local('/tmp/.s.PGSQL.5432')
+    assert network_guard.is_local(('localhost', 6379)) and network_guard.is_local('/run/postgresql/.s.PGSQL.5432')
     assert not network_guard.is_local(('10.0.0.5', 5432)) and not network_guard.is_local(('example.com', 80))

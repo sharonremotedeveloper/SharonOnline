@@ -251,13 +251,7 @@ class FakeGoogle(_FailureQueue):
     def handle(self, req):
         self.requests.append(req)
         if req.url.startswith(self.TOKEN_URL):
-            failure = self.pop('token')
-            if failure:
-                return FakeResponse(*failure)
-            if self.revoked:
-                return FakeResponse(400, {'error': 'invalid_grant', 'error_description': 'Token has been expired or revoked.'})
-            return FakeResponse(200, {'access_token': self.access_token, 'expires_in': 3599, 'token_type': 'Bearer',
-                                      'scope': 'https://www.googleapis.com/auth/calendar.events'})
+            return self._token()
         if req.headers.get('Authorization') != f'Bearer {self.access_token}':
             return FakeResponse(401, {'error': {'code': 401, 'message': 'Invalid Credentials'}})
         if not req.url.startswith(self.CALENDAR):
@@ -265,19 +259,24 @@ class FakeGoogle(_FailureQueue):
         path = urlparse(req.url).path.removeprefix('/calendar/v3')
         if path == '/freeBusy' and req.method == 'POST':
             return self.pop_response('freebusy') or self._freebusy(req.json or {})
-        listing = re.fullmatch(r'/calendars/([^/]+)/events', path)
-        if listing and req.method == 'POST':
+        if re.fullmatch(r'/calendars/([^/]+)/events', path) and req.method == 'POST':
             return self.pop_response('insert') or self._insert(req.json or {})
         one = re.fullmatch(r'/calendars/([^/]+)/events/([^/]+)', path)
-        if not one:
-            _unexpected(req)
-        event_id = one.group(2)
         op = {'PATCH': 'update', 'PUT': 'update', 'DELETE': 'delete', 'GET': 'get'}.get(req.method)
-        if op is None:
+        if not one or op is None:
             _unexpected(req)
-        failure = self.pop_response(op)
+        return self.pop_response(op) or self._event(op, one.group(2), req)
+
+    def _token(self):
+        failure = self.pop('token')
         if failure:
-            return failure
+            return FakeResponse(*failure)
+        if self.revoked:
+            return FakeResponse(400, {'error': 'invalid_grant', 'error_description': 'Token has been expired or revoked.'})
+        return FakeResponse(200, {'access_token': self.access_token, 'expires_in': 3599, 'token_type': 'Bearer',
+                                  'scope': 'https://www.googleapis.com/auth/calendar.events'})
+
+    def _event(self, op, event_id, req):
         if event_id not in self.events:
             return FakeResponse(410 if event_id in self.deleted else 404, {'error': {'code': 404, 'message': 'Not Found'}})
         if op == 'delete':

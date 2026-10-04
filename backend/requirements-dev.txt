@@ -1,0 +1,5 @@
+# Development / CI tooling on top of the runtime requirements (Q0, docs/QUALITY_GATES.md).
+-r requirements.txt
+
+ruff==0.14.14
+pytest-cov==7.1.0
