@@ -17,9 +17,10 @@ def test_rows_built_on_the_old_schema_survive_the_forward_migration():
         assert 'booking_blocked_reason' not in {f.name for f in User._meta.get_fields()}
         User.objects.create(username='historical', email='h@example.test', password='!')
 
-    new_apps = migrate_and_build(BEFORE, AFTER, build)
-    user = new_apps.get_model('users', 'User').objects.get(username='historical')
-    assert user.booking_blocked_reason == ''
+    def verify(new_apps):
+        return new_apps.get_model('users', 'User').objects.get(username='historical').booking_blocked_reason
+
+    assert migrate_and_build(BEFORE, AFTER, build, verify) == ''
 
 
 @pytest.mark.django_db(transaction=True)
