@@ -20,7 +20,7 @@ from apps.payments.models import (FxRate, GatewayAnomaly, LedgerAccount, LedgerE
                                   RefundAttempt, RefundRequest)
 from apps.payments.services import paypal_events, refund_gateways, refunds
 from apps.payments.services.refund_gateways import RefundResult
-from test_settlement_paths import captured, net
+from payment_helpers import captured, net
 
 ACC = LedgerAccount
 EV = LedgerEntry.EventType
