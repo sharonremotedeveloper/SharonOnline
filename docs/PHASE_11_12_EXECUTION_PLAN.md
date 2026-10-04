@@ -107,7 +107,7 @@ Extend the existing `admin_api.PayoutBatch` **additively** (it has `batch_refere
 
 ## 4. Slices, layers, merge train
 
-Naming: branch `feature/11-1a-tutor-status` style (PRP id + letter), ERR block pre-allocated per slice (**ERR-120 + 10 x index**, listed in the slice table), commits end with the Co-Authored-By line, no push. Concurrency cap: **4 agents**. Migration numbers reserved at dispatch (teachers 0005-0006 -> T1a; notifications 0001 -> N1a; integrations -> G1; `Booking.zoom_host_user_id` is its own tiny migration merged first); `MigrationLoader.detect_conflicts()` guard test catches a forked leaf.
+Naming: branch `feature/11-1a-tutor-status` style (PRP id + letter), ERR block pre-allocated per slice (**ERR-120 + 10 x index**, listed in the slice table), commits end with the Co-Authored-By line, no push. Concurrency cap: **4 agents**. Migration numbers reserved at dispatch (teachers 0007-0008 -> T1a (0005/0006 already exist); teachers 0009 -> T1c; notifications 0001 -> N1a; integrations -> G1; `Booking.zoom_host_user_id` is its own tiny migration merged first); `MigrationLoader.detect_conflicts()` guard test catches a forked leaf.
 
 | ID | PRP task | Scope (one agent, one worktree) | Depends | Size |
 | :--- | :--- | :--- | :--- | :--- |
