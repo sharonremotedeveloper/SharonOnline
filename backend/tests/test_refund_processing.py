@@ -1634,10 +1634,12 @@ class TestRefundAfterConvert:
         r = new_refund(teacher_user, student_user)
         set_row(r, status=status)
         out = paypal_events.apply_refund(r.payment_transaction_id, 'LATE-1', Decimal('9.00'), 'USD', {'event_type': 'x'})
-        assert out in ('refund_after_convert', 'external_refund')
+        assert out == 'refund_after_convert'                          # QA M6: it stops there, it never falls through to the external-refund path
         a = alerts('refund_after_convert', r.pk)
         assert a.count() == 1 and 'LATE-1' in a.first().detail
         assert LedgerEntry.objects.filter(event_type=EV.GATEWAY_REFUND_PAID).count() == 0
+        assert not GatewayAnomaly.objects.filter(reason='external_refund').exists()      # no second, blocking anomaly for the same money
+        assert alerts('refund_after_convert').count() == 1
 
     def test_the_critical_alert_is_a_distinct_code_once_per_request(self, teacher_user, student_user):
         r = new_refund(teacher_user, student_user)
@@ -1646,20 +1648,34 @@ class TestRefundAfterConvert:
         paypal_events.apply_refund(r.payment_transaction_id, 'LATE-2', Decimal('9.00'), 'USD', {})
         assert alerts('refund_after_convert', r.pk).count() == 1
 
-    def test_the_state_error_is_caught_and_filed_as_the_anomaly(self, teacher_user, student_user, monkeypatch):
+    def test_a_state_error_from_the_service_is_never_swallowed_even_if_the_row_became_converted(self, teacher_user, student_user, monkeypatch):
+        """QA M6: the old except-branch was unreachable (the row is locked and only open states are matched); the error now simply
+        propagates, the webhook transaction rolls back and PayPal's retry meets the converted row in the paid-twice branch."""
         r = new_refund(teacher_user, student_user)
 
-        def boom(refund_id, ref):
+        def boom(refund_id, ref, **kw):
             set_row(r, status=RS.CONVERTED)
             raise refunds.RefundStateError('converted')
         monkeypatch.setattr(refunds, 'mark_processed', boom)
-        out = paypal_events.apply_refund(r.payment_transaction_id, 'LATE-9', Decimal('9.00'), 'USD', {})
-        assert out == 'refund_after_convert' and alerts('refund_after_convert', r.pk).count() == 1
+        with pytest.raises(refunds.RefundStateError):
+            paypal_events.apply_refund(r.payment_transaction_id, 'LATE-9', Decimal('9.00'), 'USD', {})
+
+    def test_the_retry_after_that_rollback_files_the_critical_anomaly(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        set_row(r, status=RS.CONVERTED)
+        assert paypal_events.apply_refund(r.payment_transaction_id, 'LATE-9', Decimal('9.00'), 'USD', {}) == 'refund_after_convert'
+        assert alerts('refund_after_convert', r.pk).count() == 1
+
+    def test_the_paid_twice_branch_does_not_run_the_external_refund_path(self, teacher_user, student_user, monkeypatch):
+        r = new_refund(teacher_user, student_user)
+        set_row(r, status=RS.VOID)
+        monkeypatch.setattr(paypal_events, '_external_refund', lambda *a, **k: pytest.fail('fell through to _external_refund'))
+        assert paypal_events.apply_refund(r.payment_transaction_id, 'LATE-1', Decimal('9.00'), 'USD', {}) == 'refund_after_convert'
 
     def test_a_state_error_for_any_other_status_is_not_swallowed(self, teacher_user, student_user, monkeypatch):
         r = new_refund(teacher_user, student_user)
 
-        def boom(refund_id, ref):
+        def boom(refund_id, ref, **kw):
             raise refunds.RefundStateError('weird')
         monkeypatch.setattr(refunds, 'mark_processed', boom)
         with pytest.raises(refunds.RefundStateError):

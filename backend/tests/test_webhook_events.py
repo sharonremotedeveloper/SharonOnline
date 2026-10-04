@@ -322,7 +322,9 @@ class TestCaptureRefunded:
         state['refunds']['REF-9'] = refund_json(rid='REF-9')
         assert hook('PAYMENT.CAPTURE.REFUNDED', {'id': 'REF-9'}).status_code == 200
         assert LedgerEntry.objects.count() == entries              # nothing further is posted
-        assert GatewayAnomaly.objects.filter(reason='external_refund').count() == 1
+        # QA M6: money moved twice is ONE critical alert and stops there; it no longer also files an `external_refund` anomaly
+        assert GatewayAnomaly.objects.filter(reason='refund_after_convert', reference=str(outcome.refund.pk)).count() == 1
+        assert not GatewayAnomaly.objects.filter(reason='external_refund').exists()
 
 
 # ======================================================================================= chargebacks

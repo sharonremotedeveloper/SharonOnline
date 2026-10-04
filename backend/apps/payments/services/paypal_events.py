@@ -204,18 +204,16 @@ def apply_refund(tx_pk, refund_id: str, amount: Decimal, currency: str, event: d
         ours = [r for r in requests.filter(status__in=open_states).order_by('created_at')
                 if r.currency.upper() == currency and quantize_money(r.amount, r.currency) == amount]
         if ours:
-            try:
-                refunds.mark_processed(ours[0].pk, refund_id)       # idempotent: posts the cash leg once
-            except refunds.RefundStateError:
-                settled_elsewhere = RefundRequest.objects.get(pk=ours[0].pk)
-                if settled_elsewhere.status not in (RefundRequest.Status.CONVERTED, RefundRequest.Status.VOID):
-                    raise
-                return _refund_after_convert(tx, settled_elsewhere, refund_id, amount, currency, event)
+            # Only states mark_processed accepts are matched and the rows are locked above, so no RefundStateError is expected here;
+            # if one ever happens it propagates (the transaction rolls back and PayPal's retry meets the converted row below).
+            refunds.mark_processed(ours[0].pk, refund_id)           # idempotent: posts the cash leg once
             return 'refund_completed'
         paid_twice = [r for r in requests.filter(status__in=(RefundRequest.Status.CONVERTED, RefundRequest.Status.VOID))
                       .order_by('created_at') if r.currency.upper() == currency and quantize_money(r.amount, r.currency) == amount]
         if paid_twice:
-            _refund_after_convert(tx, paid_twice[0], refund_id, amount, currency, event)
+            # Money moved twice: raise the CRITICAL alert and STOP. Falling through to _external_refund would file a second,
+            # blocking anomaly (and could post) for the same money.
+            return _refund_after_convert(tx, paid_twice[0], refund_id, amount, currency, event)
         return _external_refund(tx, requests, refund_id, amount, currency, event)
 
 
