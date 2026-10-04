@@ -77,8 +77,41 @@ the Phase 15 student/tutor screen work**; the contract is ready.
 ## Operations
 
 * `expire_credits_task` (daily 02:10 UTC) and `process_pending_refunds_task` (every 15 min) on the `financial_escrow` queue.
-* Until Task 10.7 the default `ManualSandboxRefundGateway` leaves refunds pending. In sandbox, pay them in the gateway dashboard and
-  use the Django admin action **Refund requests -> Mark as paid in the gateway**.
+* **Refund backend (Task 10.7).** `REFUND_GATEWAY_BACKEND` selects the gateway. The code default stays `ManualSandboxRefundGateway`
+  (it moves no money: refunds wait for a person); production sets `apps.payments.services.refund_gateways.RoutingRefundGateway`, which
+  sends PayPal refunds through the PayPal Payments API and answers `manual` for PayFast (`PAYFAST_REFUNDS_ENABLED` is False until
+  `PAYFAST_REFUNDS_UNVERIFIED.md` is cleared) and whenever PayPal credentials are empty. `scripts/check_deploy.py` fails a production
+  check while the backend is Manual. A `manual` answer burns no attempt and re-checks every 6 hours; after
+  `REFUND_MANUAL_ALERT_AFTER_HOURS` an admin alert fires. Pay such refunds in the gateway console and use the Django admin action
+  **Refund requests -> Mark as paid in the gateway** (it goes through `mark_paid_manually` and leaves a `RefundAttempt` audit row).
+* **Staff API.** `GET /api/v1/admin/refunds/` (filters `status`, `failure_kind`, `gateway`, `in_flight`, `waiting_manual`; oldest first;
+  `buckets` counts for a banner) and `POST /api/v1/admin/refunds/<id>/retry/` `{confirm_not_refunded_in_gateway?}` (admin only,
+  throttled `admin_refund_retry`, audited, 409 `not_failed` / `confirmation_required` / `guard_failed`). An admin page is deferred;
+  see `RUNBOOK_REFUNDS.md` for what each alert means and what to do.
+* **Wallet-conversion rule.** A student may turn a pending gateway refund into wallet credit **only before the gateway has been
+  asked**: `attempts == 0`, no live claim, never attempted. Afterwards the money may already be on its way and converting would pay
+  the student twice, so the answer is 409 `refund_in_progress`; a `submitted` refund ("On its way") cannot be converted. To keep a
+  usable window the first attempt is delayed by `REFUND_FIRST_ATTEMPT_DELAY_MINUTES` (default **60 - PROVISIONAL, Anesu to
+  confirm 60 minutes or another value**). Refunds the manual backend is holding stay convertible (they were never attempted). If PayPal
+  pays a refund that was already converted or voided, the webhook raises a critical `refund_after_convert` alert and posts nothing.
+* **Settings** (all environment-driven; `config/settings/base.py`):
+
+| Setting | Default | Meaning |
+| :--- | :--- | :--- |
+| `REFUND_GATEWAY_BACKEND` | `...refunds.ManualSandboxRefundGateway` | Dotted path of the gateway; production: `...refund_gateways.RoutingRefundGateway` |
+| `REFUND_MAX_ATTEMPTS` | 8 | Transient send attempts before a person is asked (and only once the window below has also passed) |
+| `REFUND_TRANSIENT_WINDOW_HOURS` | 168 | Retries continue at least this long after the first attempt, so a multi-day provider outage fails no refund |
+| `REFUND_ATTEMPT_LEASE_MINUTES` | 10 | How long a worker owns a claimed refund; a crashed worker's row is replayed (same request id) after this |
+| `REFUND_MANUAL_ALERT_AFTER_HOURS` | 72 | A refund waiting for a manual payment this long raises `refund_manual_waiting` |
+| `REFUND_REPLAY_WINDOW_DAYS` | 30 | A claimed refund with no recorded provider id is never replayed blind after this; it fails `replay_window` for a human |
+| `REFUND_SWEEP_LIMIT` | 25 | Refunds claimed per 15-minute sweep |
+| `REFUND_SWEEP_BUDGET_SECONDS` | 600 | Wall-clock budget per sweep (beat lock TTL is 800 s) |
+| `REFUND_POLL_INTERVAL_MINUTES` | 60 | How often a `submitted` refund is looked up at the provider |
+| `REFUND_FIRST_ATTEMPT_DELAY_MINUTES` | 60 | **Provisional.** Student's window to convert to wallet credit before the first gateway call |
+| `PAYFAST_REFUNDS_ENABLED` | False | PayFast refunds answer `manual` until this is true (adapter is an unverified stub) |
+| `PAYPAL_REFUND_NOTE` | `Refund from Sharon Online` | Note shown to the payer on the PayPal refund |
+
+  Backoff between transient attempts is fixed in code: 15 min, 1 h, 4 h, 12 h, then 24 h (a provider `Retry-After` is honoured).
 * Dispute resolution: a booking whose money already left escrow (e.g. a refunded tutor no-show later disputed) can no longer be
   released to the tutor (409 `already_settled`); "full refund" just closes it without paying again.
 

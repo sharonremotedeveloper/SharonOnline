@@ -159,6 +159,7 @@ import { MaterialDetail } from "@/types/material";
 import type { CreditPackPrice, LessonPrice } from "@/lib/prices";
 import type { FxCurrency, FxRateRow, FxRatesResponse } from "@/lib/fx";
 import type { CaptureResponse } from "@/lib/paypalOutcome";
+import { adminRefundQuery, type AdminRefund, type AdminRefundPage, type AdminRefundParams } from "@/lib/adminRefunds";
 
 export const FALLBACK_MATERIALS: MaterialDetail[] = [
   {
@@ -988,6 +989,23 @@ export const api = {
     });
     if (live !== MOCK) return live as FxRateRow;
     throw new Error("Saving FX rates is unavailable in mock mode.");
+  },
+
+  /** Staff refund queue (Task 10.7): oldest first, with banner bucket counts. No fixtures: money state is never faked. */
+  async getAdminRefunds(params: AdminRefundParams = {}): Promise<AdminRefundPage> {
+    const live = await liveRequest(`${API_BASE}/admin/refunds/${adminRefundQuery(params)}`, {});
+    if (live !== MOCK) return live as AdminRefundPage;
+    throw new Error("The refund queue is unavailable in mock mode.");
+  },
+
+  /** Send a failed refund back to the gateway. `confirmNotRefunded` is the admin's attestation for ambiguous failures. */
+  async retryAdminRefund(id: string, confirmNotRefunded = false): Promise<AdminRefund> {
+    const live = await liveRequest(`${API_BASE}/admin/refunds/${encodeURIComponent(id)}/retry/`, {
+      method: "POST",
+      body: JSON.stringify({ confirm_not_refunded_in_gateway: confirmNotRefunded }),
+    });
+    if (live !== MOCK) return live as AdminRefund;
+    throw new Error("Retrying refunds is unavailable in mock mode.");
   },
 
 };

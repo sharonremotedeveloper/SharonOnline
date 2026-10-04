@@ -172,3 +172,9 @@ Match by `gateway_reference` first; found and `SUBMITTED` -> `mark_processed`, e
 | R-C | admin API list/retry + OpenAPI + generated TS + student "On its way" label; docs (CANCELLATION_AND_REFUNDS, SETTLEMENT_PATHS, ADR, ops runbook); roadmap | R-B |
 | QA | independent review + mutation checks | R-A, R-B, R-C |
 | ARCH | final diff review | all |
+
+### Open follow-ups (recorded at slice R-C, 2026-10-04)
+- [ ] **ERR-092 capture side**: `ledger_service.py` capture-side postings (`record_escrow_capture_entry`, unallocated/quarantine entries, credit-pack capture) still choose cash account 1010/1020 on `gateway == PAYFAST or currency == 'ZAR'`; the refund side now follows `tx.gateway` only. A PayPal payment in ZAR (not offered today) would be captured to 1010 and refunded from 1020. Align before PayPal ZAR is enabled.
+- [ ] **PayPal 404 `RESOURCE_NOT_FOUND` is provider-level**: the adapter treats it as a sandbox/live mismatch (`provider_level=True`), so a single bad row (an unknown capture id) counts towards the per-gateway breaker and could pause refunds for the rest of a sweep. Decide whether a 404 on a specific capture should fail that row (`rejected`) while a 404 on every row trips the breaker.
+- [ ] **Sandbox verification** of everything in slices R-A..R-C (request-id replay, `PENDING` refunds, webhook after poll, invoice_id reuse, `lookup`) and a decision on `REFUND_FIRST_ATTEMPT_DELAY_MINUTES` (provisional 60).
+- [ ] **Admin page** for the refund queue (API and typed client `getAdminRefunds` / `retryAdminRefund` exist; UI deferred by the Architect).

@@ -67,6 +67,27 @@ Handlers live in `payments/services/paypal_events.py`; PayFast in `PayFastWebhoo
 | PayFast `PENDING` / unknown status | - | acknowledged; unknown statuses logged at WARNING | none |
 | Reconciliation (hourly) of an INITIALIZED PayPal order | `paypal.get_order` | captured -> settled once; pending capture -> PENDING_CAPTURE; declined / VOIDED / unpaid past the hold -> FAILED; PayPal unreachable -> left INITIALIZED + anomaly | as COMPLETED |
 
+## Refund states (Task 10.7)
+
+A gateway refund is one `RefundRequest`. The decision to refund posts `DR 2010 escrow / CR 2050 refunds payable` (see
+`CANCELLATION_AND_REFUNDS.md`); everything below is about returning that 2050 liability. `Gateway cash` = 1010 PayFast or 1020 PayPal
+(chosen by the payment's gateway, never its currency). Full design: `TASK_10_7_REFUND_GATEWAYS_PLAN.md` section 2b; claim protocol:
+`adr/ADR-0001-refund-claim-protocol.md`; operations: `RUNBOOK_REFUNDS.md`.
+
+| Status | Meaning | Moved to it / out of it by | Ledger effect of entering |
+| :--- | :--- | :--- | :--- |
+| `awaiting_clearance` | Cancelled while the PayPal payment was still pending: nothing owed yet | created by `request_refund`; -> `pending_gateway` (payment cleared) or `void` (payment failed), both system | none (no money has arrived) |
+| `pending_gateway` | Owed, not yet sent or being retried | -> in from `awaiting_clearance`, from admin retry; the sweeper claims it (stays `pending_gateway`), student may convert it before the first attempt | `DR 2010 / CR 2050` when activated (already posted for ordinary refunds at decision time) |
+| `submitted` | The provider accepted it but has not finished it (PayPal `PENDING`) | sweeper send result; out by the sweeper's poll, the `PAYMENT.CAPTURE.REFUNDED` webhook, or `failed(provider_failed)`; **never** convertible or admin-paid | none |
+| `processed` | Money returned to the original payment method | sweeper (send or poll result `completed`), the webhook, or an admin "mark paid" (reference required, audited); from `pending_gateway`, `submitted` or `failed` | `DR 2050 / CR gateway cash`; payment -> `REFUNDED`; student e-mail |
+| `converted` | Student took wallet credit instead | the student, only while `attempts == 0`, no live claim, never attempted | `DR 2050 / CR 2040 student wallet` + a 30-day credit lot |
+| `failed` | A person must look at it; `failure_kind` says why | sweeper (`rejected`, `already_refunded`, `guard`, `exhausted`, `replay_window`) or poll (`provider_failed`); out by admin retry (back to `pending_gateway`) or admin mark-paid / webhook (-> `processed`) | none (2050 stays owed) |
+| `void` | The payment never cleared; nothing was owed | system | none |
+
+Transitions that move no status: a `transient` or `manual` answer only schedules the next attempt (`manual` also restores the attempt
+count and does not close the student's conversion window). Every claim result and every admin action writes one immutable
+`RefundAttempt` row (retries have the admin as `actor`). Terminal rows (`processed`, `converted`, `void`) ignore any later apply.
+
 ## Outage reports
 
 * Allowed from **60 min before** the lesson until **30 min after it ends** (`OUTAGE_REPORT_BEFORE_START_SECONDS`, `OUTAGE_REPORT_AFTER_END_SECONDS`). Outside the window: 409. Previously any future booking could be "interrupted" for an instant refund.
