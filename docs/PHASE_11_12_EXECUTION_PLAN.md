@@ -1,143 +1,192 @@
-# Phases 11 and 12 - Execution plan (tutor lifecycle + integrations/notifications), decision-free scope
+# Phases 11 and 12 - Execution plan v2 (tutor lifecycle + integrations/notifications), decision-free scope
 
-**Created:** 2026-10-04 · **Author:** Claude (lead architect) · **Parents:** `PRODUCTION_READINESS_PLAN.md` Phases 11-12, `PHASE_10_EXECUTION_PLAN.md` §3 #7-8 · **Status:** DRAFT for review (logic review, docs-alignment review, QA review), then Anesu's approval. Nothing here is built yet.
+**Created:** 2026-10-04 · **Revised:** 2026-10-04 (v2, after four independent reviews) · **Author:** Claude (lead architect) · **Parents:** `PRODUCTION_READINESS_PLAN.md` (PRP) Phases 11-12, `PHASE_10_EXECUTION_PLAN.md` (P10) §3 #7-8 · **Status:** PLAN, awaiting Anesu's approval. Nothing here is built.
 
-Goal: finish everything in Phases 11 and 12 that does **not** wait on an open decision, on mocked HTTP, so that when Anesu answers D-3/D-4/D-8/D-9/D-10/D-11/D-12 only thin, well-isolated pieces remain. Rule from `PHASE_10_EXECUTION_PLAN.md` §4: where a decision is open we proceed on the recommended default **only when the work is reversible and isolated**, and mark it PROVISIONAL; we never encode an unconfirmed money-policy change.
+Goal: finish everything in Phases 11 and 12 that does **not** wait on an open decision, on mocked HTTP, so that when Anesu answers D-3/D-4/D-8/D-9/D-10/D-11/D-12 only thin, well-isolated pieces remain. Working rule of *this* plan (stricter than P10 §4, which only says "proceed on the recommended default and mark it PROVISIONAL"): we build open-decision work **only if it is isolated and reversible**, we never encode an unconfirmed money-policy change, and **P1 (payout batches) is a deliberate deviation from P10 §3** ("payout execution waits on D-3") that needs Anesu's explicit go.
 
-## 1. Classification (from the docs-alignment audit)
+## 0. What the reviews changed (v1 -> v2)
+Four reviewers (tutor-stream logic, integrations-stream logic, docs alignment, QA) attacked v1. Headline outcomes:
+1. **Three money-affecting defects already in the code** were found (they are not plan flaws) and become the first slice, **F0**: a reschedule leaves the lesson with *no Zoom room* (the fulfilment row stays "completed" and is skipped) and the T+10 probe then scores the tutor as a **no-show** (strike + refund + credit); a Zoom error during that probe does the same to an innocent tutor; fulfilment can overwrite a student's cancellation with a stale save and can run twice concurrently (two meetings, one orphaned).
+2. The status machine's legacy-boolean mapping was self-contradictory; v2 publishes one truth table and makes `status` the only stored value.
+3. Payout batches could **double-pay** (two open batches snapshot the same cleared balance) and maker-checker was toggleable by its own subject; v2 adds a DB-enforced open-line rule and real two-person control.
+4. Tutor ID documents may sit in the same bucket as publicly served assets; v2 requires a private bucket + quarantine prefix.
+5. Idempotency keys suppressed every notification after a reschedule; Resend's idempotency window is 24 h; v2 specifies generation-token keys and a delivery lease.
+6. A confirmed-slot DST bug in `slot_generator` (reproduced) and scattered horizon/notice constants.
+7. v1's "six call sites" is really **twelve**; v1 cited non-existent files and an unsuitable "tutor-cancel path"; v2 corrects each.
+8. QA: five slices were too big; v2 splits them, adds a quality-infrastructure slice **Q0**, guard tests, a definition of done, a merge train and wave-end integration slices.
 
-| Task | State today | Class | What is built now | What waits |
+## 1. Classification
+
+| PRP task | Class | Built now | Waits |
+| :--- | :--- | :--- | :--- |
+| 11.1 profile at signup, `/teachers/me/` | DECISION-FREE | all (T1a-c) | - |
+| 11.3 upload commit (teacher + admin material PDFs/audio) | DECISION-FREE | all (T3, T3b) | Cloudflare Stream video (gap G1 below) |
+| 11.4 vetting | PARTLY | status machine, rubric (4 criteria x 1-5), reasons, audit, suspend/reactivate, admin screens (T4a/b) | extra approval stages / interview (D-11) |
+| 11.2 funnel | PARTLY | funnel, server-side draft, uploads, power-backup declaration, speed test (10/5 Mbps) on the D-11 default (T5a/b) | final mandatory-document list |
+| 11.5 training hub | DECISION-FREE (infra) | models, progress, gate (T6) | module content (Sharon) |
+| 11.6 availability | DECISION-FREE | all (T2) | - |
+| 11.8 payout batches | PARTLY, **needs Anesu's go (deviation)** | persistence, state machine, audited CSV, ledger posting on PROCESSED (P1a-c) | D-3 cadence/rail; G2/G3; bank-change OTP precondition |
+| 11.9 statements | PARTLY | CSV (P2) | PDF tooling + tax wording (D-12, D-11) |
+| 11.10 memo SLA | **BLOCKED on D-4 policy** | only: 12 h reminder e-mail, per-row failure isolation (merged into N2a) | whether late memo forfeits pay (code pays 80 % today; D-4 is a 3-way document conflict) |
+| 11.11 teacher frontend on real data | DECISION-FREE | T7a-c | - |
+| 12.1 Zoom | PARTLY | F0 + Z1: no-mock-in-prod, token cache, backoff, fresh host link, `auto_recording: none`, `HostPicker` | host allocation (D-9): **single host account is a launch blocker** |
+| 12.2 / 12.7 notifications | PARTLY | N1a-c, N2a-c, N4, F2 | memo-forfeit/apology wording (D-4) |
+| 12.3 Resend | PARTLY | webhook + suppression (N3) | SPF/DKIM + domain (D-10, DNS by Anesu) |
+| 12.4 Google Calendar | DECISION-FREE (live check needs credentials) | G1, G2 | Google Cloud project |
+| 12.5 Eskom | done | N4 wraps its notifications | outage windows in public slot projection (policy) |
+| 12.6 Zoom join frontend | DECISION-FREE | F1 | - |
+| 12.9 purges | PARTLY | 90-day Zoom-attendance payload purge (R1) | recording purge (D-8; changes an SOW M3 deliverable: needs Sharon's sign-off) |
+| 11.7, 12.8 | done | reuse | - |
+
+## 2. Existing defects found during review (become slice F0, first in line)
+All verified by code trace (file:line in the reviews); F0 fixes them **with red tests first**.
+- **Reschedule -> no Zoom room.** `rescheduling.py:89` blanks `zoom_*`; `dispatch_booking_fulfillment` re-uses the existing `FulfillmentDispatch` row whose `*_completed` flags are already true, so it skips Zoom, calendar and e-mail. `bookings/tasks.py:137` then skips the probe when `zoom_meeting_id` is empty and the booking falls to **TEACHER_NO_SHOW**. Fix: reset the dispatch inside the reschedule transaction, re-provision, and **forbid a no-show verdict when the booking has no meeting id** (it goes to a human-visible state instead).
+- **Probe error = no-show.** `get_meeting_status` returns `error` on any non-200; the caller's blanket `except` leaves `teacher_attended=False` and the booking is scored no-show. Fix: tri-state probe (`started | not_started | unknown`); **`unknown` defers** (retry next minute, window to end of lesson, then DISPUTED); the HTTP probe runs outside the row lock and the 50 s task lock.
+- **Fulfilment races.** Full `booking.save()` of a stale instance can overwrite a cancellation; no status re-check; `RUNNING` has no compare-and-swap (two meetings, one orphaned); retries never reach a terminal state. Fix: row-lock + claim (QUEUED->RUNNING CAS), re-check `status == CONFIRMED`, `update_fields` saves, per-step states (`done|skipped|failed`; "no tutor Google token" is `skipped`, not `completed`), terminal `FAILED` + admin alert after N attempts, orphaned-meeting cleanup.
+Plus the plan-level fixes in Z1: failed OAuth must **raise** (today it returns "" and falls into the mock path, i.e. a fake meeting in production), no mock in production for create/status/delete, `auto_recording: "none"` set explicitly.
+
+## 3. Design (revised)
+
+### 3.1 Tutor status machine and the single bookable predicate (T1a/T1b)
+- `TeacherProfile.status`: `applied -> submitted -> in_review -> approved | changes_requested | rejected`; `changes_requested -> submitted`; `approved <-> suspended`; `approved -> in_review` only through an explicit "re-vet" (INV TEA-11: edits to video/accent require re-vetting before public display; `/teachers/me/` PATCH of those fields triggers it). `rejected` has an onward edge `rejected -> applied` by admin (re-application).
+- **Truth table (the only one):** `applied|submitted|in_review|changes_requested` = `is_verified False / is_active True`; `rejected` = `False / False`; `approved` = `True / True`; `suspended` = `True / False`. `status` is the only stored column; `is_verified` and `is_active` become Django 5.2 `GeneratedField`s of `status`, so every existing `.filter(is_verified=..., is_active=...)` keeps working, admin shows them read-only, and **nothing can set them directly** (tests/seeds use a profile factory with `status=`). Strikes map to `suspended`, not a separate flag.
+- **One writer:** `teachers/vetting.py::transition_teacher(teacher, to, *, actor, reason='', rubric=None, reviewed_assets=None)`: `select_for_update`, allowed-transition table (like `bookings/services/state_machine.py`), immutable `TeacherStatusChange` audit row, notification hook (no-op shim until N1a lands), **never takes a booking lock** (lock order: booking -> teacher exists in cancel/memo/no-show paths). Guard test: no assignment of `status` outside the service and the migration.
+- `is_bookable` / `TeacherProfile.objects.bookable()` = `is_verified and is_active and training_ok` (`training_ok` true when `TUTOR_TRAINING_GATE_ENABLED` is off or `training_completed_at` is set). **Twelve call sites**, decided per site: public list/detail `teachers/views.py:17,59`; `bookings/views.py:55`; `reservation.py:42`; `rescheduling.py:56`; `payments/views.py:215` **and the payment-webhook path** (a hold can outlive a suspension); admin pending list/count `admin_api/views.py:69,111` (must select `submitted|in_review`, not `is_verified=False`); payout preview `:374` (**must not** use bookable: a suspended tutor still gets paid what they earned); Eskom sync and GCal reconcile (`integrations/tasks.py:139,~247`: **include suspended** tutors with confirmed lessons, exclude applicants); `users/serializers.py:74` + `teachers/serializers.py:31` + `admin_api/serializers.py:57-62` (derive from `status`); seeds. Operations on **existing** lessons (cancel, reschedule, memo, attendance, escrow release, strikes) **never** consult `bookable()`.
+- `add_strike` on a tutor that is not `approved` is a **no-op for the status** (still records the strike); it never raises (`suspended -> suspended` is not an error).
+- **Suspension with future lessons:** `transition_teacher` returns the affected bookings read-only; cancelling is a separate transaction per booking through a **new admin-initiated cancel plan** (full gateway refund, **no strike, no bonus credit by default**, `ADMIN_CANCEL_BONUS_CREDITS=0` provisional; the current tutor-cancel path is unusable: `party_of` returns None for staff and a late tutor cancel strikes the very tutor being suspended). An automatic strike-suspension has no admin present: it creates a staff work-queue item "suspended tutors with future lessons" and an admin alert; students are notified when their lesson is cancelled, never silently left.
+- Migration: `is_verified&is_active -> approved`; `!is_verified&!is_active -> rejected`; `!is_verified&is_active -> applied`; `is_verified&!is_active -> suspended`; reverse maps `submitted|in_review|changes_requested -> (False, True)`. Historical models only. Existing `role=teacher` users without a profile get one (`applied`). Existing approved tutors are **grandfathered** (`training_completed_at = migration time`) so turning the training gate on never blocks live holds.
+- **Training gate:** default OFF *only until real content exists*; **must be ON before launch** (16.x checklist item + production guard warning while off). It gates **bookability and opening slots**, per SOW 2.4.
+- Vetting-asset integrity: document/audio/video commits are **rejected unless `status in (applied, changes_requested)`**; approval records `reviewed_asset_hashes` (ETags) so content swapped after review invalidates it; `/teachers/me/` writable fields after approval are limited to non-vetted ones.
+- `price_per_25min_usd`: deprecate (stop exposing; `?max_price=` removed from the public filter) while keeping the generated TS contract compatible for one release (Slice 3 contract preservation); drop later.
+
+### 3.2 Notifications (N1a-c, N2-N4, F2)
+New app `apps/notifications`.
+- `Notification(id, user, kind, title, body, payload JSON ids-only, booking FK null, idempotency_key UNIQUE, created_at, read_at, email_state pending|sending|sent|retryable|failed|skipped|bounced, email_attempts, email_claimed_at, email_sent_at, provider_message_id, rendered_subject/html/text, email_last_error)`; index `(user, read_at, -created_at)`.
+- `notify(user, kind, *, key, payload, booking=None)`: insert in **its own savepoint** (`ignore_conflicts` semantics) so a duplicate never poisons the caller's transaction; `transaction.on_commit` enqueue; a **beat sweep** every 2 min picks `pending|retryable` rows older than 2 min (broker outage safety).
+- **Idempotency keys carry a generation token** for booking-bound events: `{bid}:{reschedule_count}` (or the reschedule record id) so a reschedule re-arms reminders and confirmations; strike keys use the `TeacherStrike` id; bank/calendar keys use the change-record id, never a timestamp.
+- **Delivery state machine:** single-UPDATE CAS `pending|retryable -> sending (claimed_at)`; lease 15 min then reclaim; the rendered subject/html/text are **persisted at creation** and re-sent byte-identical (Resend `Idempotency-Key` = notification key; retention is **24 h**, a different payload under the same key returns **409**); 409 = "in flight, retry later"; refuse a resend after 20 h without human review; attempts capped (8) then `failed` + staff alert; retries jittered; log provider id only.
+- Preferences: `NotificationPreference(user, email_by_kind, in_app_by_kind)`; the **mandatory set lives in code** (security, payment, cancellation, refund, bank change, strike, suspension, vetting outcome) and is enforced on the PATCH endpoint; a bounced address still gets the in-app item; password-reset/security mails are never stored in the in-app table.
+- Retention of the table itself: read in-app items 180 days, e-mail-only rows 90 days; delete the row but keep an anonymised key row for 25 h.
+- Admin recipients: define `ADMIN_ALERT_RECIPIENTS` (setting); `payments/services/alerts.py::alert_admin` stays payment-bound and is **not** reused for tutor-late/suspension/vetting-submitted.
+- Queues: new `notifications.*` routes to the `notifications` queue (explicit entries in `config/celery_schedule.py`, imported by `settings/base.py`); account e-mail stays on its own queue; the worker concurrency for `notifications` is separate from the 60 s attendance beat; every retry has jitter and a cap.
+- Wrapping existing senders: refund-processed and payment-failure e-mails move to `notify()` (the old task body is **replaced** and `cache.add` removed, else duplicates); Eskom's durable outbox is wrapped by routing `send_eskom_notification_task` through `notify()` **using its existing key string verbatim**; `SupportInquiry` stays as is.
+- Event inventory §6; templates are refund-state-aware (a cancel e-mail for a grace booking shows **no refund amount**); every interpolated field `escape()`d; times rendered in the recipient's timezone (blank/invalid -> UTC with a visible label); payloads never contain `student_review` or CRM dossier text (test renders every template with such data).
+- API (typed serializers, paginated, owner-only, 404 for others' rows): `GET /notifications/`, `/unread-count/`, `POST /<id>/read/`, `/read-all/`, `GET|PATCH /preferences/`.
+
+### 3.3 Zoom (F0 + Z1)
+- Settings `ZOOM_ACCOUNT_ID/CLIENT_ID/CLIENT_SECRET` (not `os.environ` reads), required by the production boot guard and `scripts/check_deploy.py`; `ZOOM_MOCK=1` only outside production and via an explicit **test fixture**, no global fallback; failed OAuth raises; status/delete never mock-succeed in production.
+- Token cache (key by account id) for `expires_in - 60 s`, single-flight with waiters polling, failures never cached, invalidated on 401; retry only 429 (honour a capped `Retry-After`) and 5xx with jitter, never other 4xx; **no `create_meeting` retry after a timeout without first searching for an existing meeting**.
+- **Host link:** the host `start_url` (ZAK) expires (about 2 h for regular users; verify in sandbox). We **stop storing it and stop copying it into calendar events**; an authenticated endpoint fetches a fresh one when the classroom opens; Google Calendar events carry only the join URL.
+- `HostPicker.pick_host(booking)` (default `'me'`) and `Booking.zoom_host_user_id` (nullable, own tiny migration merged first). **Single host account = concurrent lessons collide on one licence: documented launch blocker pending D-9.**
+- `auto_recording: "none"` explicit (account defaults could record; D-8 recommends no recording).
+
+### 3.4 Google Calendar (G1/G2)
+- `CalendarCredential(user, refresh_token_enc, scopes, connected_at, revoked_at, block_busy, last_error)`; encryption with a **generic `common/crypto` keyring and a separate `INTEGRATION_DATA_KEYS`** (not `PAYOUT_DATA_KEYS`; guard + check_deploy entries). The legacy plaintext `User.google_calendar_token` holds only an access token (no refresh token): the migration **nulls it and requires reconnect**; `UserAdmin` stops showing it.
+- OAuth: `state` = server-stored random nonce bound to the user, single-use, short TTL; `access_type=offline` + `prompt=consent`; callback user must equal the state user; scopes `calendar.events` + `calendar.freebusy`; callback URL `code` never logged; `invalid_grant` marks revoked **once**, stops pushes and notifies the tutor once.
+- G2: freebusy/`events.list` with a private extended property so **our own lesson events are not counted as busy**; fails **open** on error (degrade to "no hiding", not "no slots"); one fan-out task per tutor (not one 1600 s loop); busy data is a **hint, never a booking authority**: `generate_teacher_slots(..., include_external_busy=True)` for the public list only, **False** for reserve/reschedule/checkout (the DB constraint stays authoritative). Respect the tutor's opt-in toggle (`block_busy`, INV TEA-03). Design the busy filter as a generic blocked-interval hook so Eskom outage windows can plug in later. Reschedule updates the event (keep the event id through the reschedule), with a deterministic client-supplied id for idempotency.
+
+### 3.5 Availability (T2)
+`PATCH|DELETE /teachers/availability/manage/<id>/`, `PUT /teachers/availability/replace/` (atomic weekly matrix; the overlap validator excludes the edited row so legacy overlapping pairs can be fixed), `TeacherTimeOff`, specific-date overrides (INV TEA-03), validators. **Fix the DST bug**: unify `slot_generator` on `zoneinfo` (build each slot from naive local time, skip nonexistent, first fold for ambiguous); unknown timezone rejected at save (no Johannesburg fallback). One `BOOKING_HORIZON_DAYS` replaces `MAX_SLOT_DAYS` / `SLOT_HORIZON_DAYS` / `RESCHEDULE_MAX_DAYS_AHEAD`; `TUTOR_MIN_NOTICE_MINUTES` replaces the literal 10 and is **enforced at pay time** (hold + notice). Time-off or availability edits that conflict with confirmed lessons **return the conflict list**; the tutor must acknowledge or cancel through the penalty path (otherwise a no-show strike follows). Editing availability never cancels bookings.
+
+### 3.6 Uploads (T3)
+Presign into a **quarantine prefix** `incoming/{uid}/` (lifecycle expiry, single PUT, content-type normalised e.g. `audio/webm;codecs=opus`); `POST /teachers/me/assets/commit/ {kind, key}`: prefix/ownership, `head_object` (note ETag), ranged GET `IfMatch=etag` for magic bytes (JPEG/PNG/WEBP/PDF/MP3/RIFF/MP4/WebM), then server-side `CopySourceIfMatch=etag` to a **random final key**, delete the quarantine object, defer deletion of the replaced object past the 900 s presigned-GET TTL; idempotent on `(user, kind, etag)`; **private vetting material in a separate private bucket** (the current single bucket serves everything through the public CDN domain), explicit `storage=` on the private fields, boot guard; fail **closed** in production (the fake `/api/v1/upload/<key>` URL is also returned on any exception today and must go); admin material PDFs/audio use the same commit (T3b). Access to private vetting documents writes an audit row (who/which/when).
+
+### 3.7 Retention (R1)
+Daily batched purge of **`AttendanceAudit.raw_payload` (Zoom attendance payloads incl. IPs) older than 90 days only** (no webhook-event model exists; payment payloads and `PaymentTransaction.raw_webhook_payload` belong to the 7-year tax archive, task 14.4). Keep every verdict column (classification, identity, participant_email, join/leave times, total_minutes, session ids, host id). Exclude bookings that are `DISPUTED`, have an unresolved `DisputeCase`, an unreleased escrow/refund request, or are `*_NO_SHOW` inside the dispute window. Id-range chunks of 1000, `@distributed_task_lock`, idempotent. Recording purge dormant until D-8.
+
+### 3.8 Payout batches (P1a-c) - needs Anesu's go; builds on what exists
+Extend the existing `admin_api.PayoutBatch` **additively** (it has `batch_reference`, `total_payout_zar` (float default -> Decimal), `recipients_count`, `status pending|exported|processed`, `executed_by`; unused; `LedgerEntry.payout_batch` FK and `ledger_service.record_payout_batch_entry(user=)` exist; keep `ExecutePayoutBatchView` at 503 until the go). Add `PayoutBatchLine` and `PayoutAttempt` (immutable), statuses `pending -> approved -> exported -> processed` (+ `cancelled` only before export; a bank return after processing is a `paid -> returned` line transition with a new ledger `EventType` and a **reversing** entry).
+- **No double-pay:** `PayoutBatchLine.is_open` + a partial `UniqueConstraint(teacher, condition=is_open)`; available balance = ledger balance minus open lines, computed under a lock on the teacher; re-checked at approve and at processed.
+- **Real maker-checker:** `approve` and `mark_processed` need distinct actors from the creator; with one admin the system **refuses** (or requires a step-up: TOTP + delay window + notice on a second channel). Not a toggleable setting; "platform owner as second approver" is **off** and needs Anesu's explicit approval.
+- Snapshot of the bank account **re-compared with the live account** at approve and export; **payout hold of 72 h after any bank-details change** (+ the mandatory e-mail; bank-change OTP is a P1 precondition, REMEDIATION follow-up 1).
+- CSV is the **only decrypt path** (guard: no other module imports it), admin + fresh re-auth, `Cache-Control: no-store`, **formula-injection sanitising** (`= + - @`), one audit row per download, never logged.
+- Ledger: one outer `transaction.atomic()`, one journal per line (DR 2020 / CR 1030, ZAR, user = the tutor), batch selected `for update`, `mark_processed` no-ops when already processed, DB backstop unique `(payout_batch, user, account, event_type)`; payout = sum of `amount_zar` snapshots; `PAYOUT_MIN_ZAR` setting with carry-over; un-decryptable accounts become **visible skipped lines with a reason** (today dropped silently). Account 1030 has no inflow from gateway cash (gap G2): documented, not solved here. The aggregation behind the preview moves into a service shared with `tutor_wallet.py`.
+
+### 3.9 Teacher application funnel and training (T5a/b, T6)
+`TeacherApplication` (profile 1:1, step progress, `speed_test_result`, power-backup declaration (existing fields), document keys (vault), `declaration_accepted_at`, `submitted_at`); the SA ID **number** is not stored as text unless encrypted and masked (document only by default). Submit moves `applied -> submitted` after completeness validation. `proxy.ts` routes unverified tutors to `/teacher/apply`; `/auth/me` exposes `status`. Training: `TrainingModule`, `TrainingProgress`, `training_completed_at` set by a service; content is Sharon's.
+
+## 4. Slices, layers, merge train
+
+Naming: branch `feature/11-1a-tutor-status` style (PRP id + letter), ERR block pre-allocated per slice (**ERR-120 + 10 x index**, listed in the slice table), commits end with the Co-Authored-By line, no push. Concurrency cap: **4 agents**. Migration numbers reserved at dispatch (teachers 0005-0006 -> T1a; notifications 0001 -> N1a; integrations -> G1; `Booking.zoom_host_user_id` is its own tiny migration merged first); `MigrationLoader.detect_conflicts()` guard test catches a forked leaf.
+
+| ID | PRP task | Scope (one agent, one worktree) | Depends | Size |
 | :--- | :--- | :--- | :--- | :--- |
-| 11.1 profile at signup + `/teachers/me/` | absent (registration creates no `TeacherProfile`; tutors get 403 everywhere) | DECISION-FREE | all | - |
-| 11.3 upload commit | absent (presign works, nothing records/validates the key) | DECISION-FREE | all | Cloudflare Stream video (gap G1, separate) |
-| 11.4 vetting workflow | minimal boolean approve/reject, reason discarded, no audit, no e-mail | PARTLY | status enum, rubric, reason storage, audit rows, suspend/reactivate, admin screens | e-mail content (needs 12.2), training gate term (11.5), sign-off beyond one admin (D-11) |
-| 11.2 application funnel | absent | PARTLY | funnel + server-side draft + uploads on the D-11 default (TEFL + SA ID + intro media) | final mandatory-document list, interview stage |
-| 11.5 training hub | absent | DECISION-FREE for infrastructure | models, progress, gate predicate | real module content (Sharon supplies) |
-| 11.6 availability CRUD | create/list only; UI save is broken | DECISION-FREE | all (min-notice / horizon as provisional settings) | - |
-| 11.8 payout batches | read-only preview, execution disabled (503), `PayoutBatch` model unused | PARTLY | persisted batch + lines, state machine, CSV behind a bank-format interface, ledger posting on PROCESSED, idempotency | **D-3**: cadence, rail (Wise has no account), maker-checker rule; gap G2/G3 (gateway-to-bank cash, currency/FX/threshold) |
-| 11.9 statements | absent | PARTLY | CSV/PDF of lessons, commission, net | tax wording / SARS format (D-12, D-11); needs 11.8 |
-| 11.10 memo SLA | reminder only logs; forfeiture still pays the tutor 80 %; DEC D-4 text is contradictory | **BLOCKED on D-4 meaning** | only non-policy fixes: send the 12 h reminder e-mail, per-row failure isolation | whether a late memo forfeits pay (a money-policy change: not built without Anesu) |
-| 11.11 teacher frontend on real data | wallet/payout settings real; profile static, schedule save broken, mock fallbacks remain | DECISION-FREE | after 11.1 and 11.6 | - |
-| 12.1 Zoom hardening | `create_meeting` no longer returns None; but fake meetings when unconfigured, **a failed OAuth returns "" and then fabricates a mock meeting even in production**, token not cached, no 429/5xx handling | PARTLY | production guard, no-mock-in-prod, token cache, backoff, surfaced errors, `HostPicker` abstraction | host allocation (D-9) |
-| 12.2 notification system | email transport exists; **no Notification model, no in-app, no preferences; T-24h/T-1h/T-10m only flip flags; late alert, memo warning, apology credit, tutor booking mail are log-only or absent** | PARTLY | model, dispatcher, preferences, templates + escaping, retry, all events except memo/apology wording | memo/apology wording (D-4), real domain (D-10) |
-| 12.3 Resend | prod refuses `re_dev` at boot; no delivery webhook; two sender code paths | PARTLY | delivery webhook, bounce suppression, unified sender | SPF/DKIM and domain (D-10, DNS by Anesu) |
-| 12.4 Google Calendar | outbound push only, token plain JSON on `User`, never refreshed, errors swallowed, reconcile is a stub | DECISION-FREE (live check needs Google credentials) | OAuth, encrypted storage, refresh, freebusy, slot-generator honours busy | Google Cloud project (client provides) |
-| 12.5 Eskom | done by Codex | policy item blocked | migrate its notifications to `notify()` | outage windows in public slot projection (product approval) |
-| 12.6 Zoom join frontend | absent (`joinUrl` ignored, `window.confirm`, fake latency) | DECISION-FREE (deep link default per SOW 3) | all | - |
-| 12.7 notification centre | absent | DECISION-FREE | all, after 12.2 contract | - |
-| 12.9 purges | absent | PARTLY | 90-day telemetry purge | recording purge (D-8 recommends no recording) |
-| 11.7, 12.5 core, 12.8 | done | - | reuse, do not rebuild | - |
+| **Q0** | quality | guard tests with baseline allowlists, ruff (F,B,S,C90) blocking CI job with baseline, no-network autouse fixture, shared fakes (`FakeResend/FakeZoom/FakeGoogle`, R2 stub), `tests/factories.py` (profile factory), `common/clock.py`, `scripts/mutate.py` (copy-based, refuses a dirty tree), migration-test helper, per-agent scratchpad rules | - | M |
+| **F0** | 12.1 (existing bugs) | reschedule re-provision + dispatch reset, no-room guard, tri-state probe, fulfilment claim/status-check/per-step/terminal-FAILED/alert, orphan cleanup | - | M |
+| **Z1** | 12.1a | client hardening, no-mock-in-prod, token cache, backoff, fresh host link endpoint, `auto_recording none`, `HostPicker`, `zoom_host_user_id` | F0 (probe contract) | M |
+| **T1a** | 11.1/11.4 core | `status`, GeneratedField booleans, `transition_teacher`, `TeacherStatusChange`, data migration + reverse, guard, test/seed migration to `status=` | Q0 factory | L |
+| **T1b** | 11.1/11.4 | `bookable()` + 12 call sites, strike hook idempotency, legacy `VerifyTeacherView` rewrite onto the service, admin-initiated cancel plan | T1a | M |
+| **T1c** | 11.1 | registration auto-profile, `/teachers/me/` (field whitelist), admin serializer fake-data removal, `/auth/me` status, price deprecation | T1a | M |
+| **N1c** | 12.2/12.3 | unified `send_email` (provider id, attachments, escaping, error mapping, no silent mock), confirmation e-mail on it | - | S |
+| **N1a** | 12.2 | notifications app: models, `notify()`, delivery state machine, sweep, template registry, queues/routes/beat placeholders, retention | N1c | L |
+| **N1b** | 12.2/12.7 | API + preferences + OpenAPI | N1a | M |
+| **T2** | 11.6 | availability CRUD, time-off, overrides, DST/zoneinfo, horizon/notice settings | T1a | L |
+| **T3** | 11.3 | quarantine presign, commit, private bucket, sniff, ETag pin, audit | T1a | L |
+| **T3b** | 11.3 | admin material PDFs/audio commit | T3 | S |
+| **T4a** | 11.4 | vetting backend: rubric, reasons, suspend/reactivate + bookings decision, audit, work queue | T1b, N1a | L |
+| **T4b** | 11.4 | admin vetting FE (extend `/admin/teachers/vetting`) | T4a, OpenAPI freeze | M |
+| **N2a** | 12.2/11.10-lite | reminders T-24h/T-1h/T-10m, late warning (`LATE_WARNING_MINUTES`, provisional), no-show, memo 12 h reminder, per-row isolation; new `bookings/services/reminders.py` (tasks stay thin) | N1a | M |
+| **N2b** | 12.2 | confirmed/cancelled/rescheduled (generation keys), tutor booking mail, credit granted/expiring (7 d, `CREDIT_EXPIRY_WARNING_DAYS`) | N1a, F0 | M |
+| **N2c** | 12.2 | strikes/suspension/vetting outcome/bank-change/calendar-revoked | N1a, T1b | S |
+| **N3** | 12.3 | Resend webhook (Svix), bounce suppression | N1a | M |
+| **G1** | 12.4a | OAuth, `CalendarCredential`, generic crypto, plaintext wipe | Q0 | L |
+| **G2** | 12.4b | freebusy/events.list, `include_external_busy`, event update, fan-out | G1, T2 | M |
+| **R1** | 12.9a | attendance-payload purge | Q0 | S |
+| **F1** | 12.6 | join gating helper + launcher (no `window.confirm`, no fake latency in `HardwareCheckModal`), fresh host link | Z1 | M |
+| **F2** | 12.7 | notification centre (bell, list, prefs, jittered/visibility-aware polling, a11y) | N1b + contract freeze | M |
+| **N4** | 12.5 | wrap Eskom, refund, payment-failure senders | N1a | M |
+| **T5a/T5b** | 11.2 | funnel backend / FE | T3, T4a | L / L |
+| **T6** | 11.5 | training infra + gate flag + backfill | T1b | M |
+| **T7a/b/c** | 11.11 | profile / schedule / dashboard + mock-fallback removal, per page group | T1c, T2, T3, T4 | M each |
+| **P1a/b/c** | 11.8 | model+state machine / CSV+audit / ledger posting | T1a, N1a, **Anesu's go** | L each |
+| **P2** | 11.9 | statements CSV | P1c | M |
+| **I0-I3** | integration | after each layer: merge the layer's branches in merge-train order on a scratch branch, run the full gate + stream E2E tests (`tests/integration/test_stream_*.py`); owner is the QA agent | layer done | S |
 
-Out of scope until answered: **11.10 policy** (D-4), **11.8 execution/rail/cadence scheduling** (D-3, G2, G3), **12.1 host allocation** (D-9), **12.3 domain verification** (D-10), **12.9 recording purge** (D-8), **11.9 tax content** (D-12).
+**Layers:** L0 = Q0, F0, N1c, T1a (+Z1 after F0); L1 = Z1, T1b, T1c, N1a, T2, T3, G1, R1; L2 = N1b, N2a-c, N3, T4a, G2, T6, F1; L3 = T4b, F2, N4, T3b, T5a, T7*; L4 = T5b, P1*, P2. Merge train: Q0 -> F0 -> T1a -> N1c -> Z1 -> T1b/T1c -> N1a -> ... in dependency order; **one integrator** owns `config/celery_schedule.py`, `settings/base.py`, `urls.py`, `docs/api/openapi.yaml`, `frontend/src/types/api.generated.ts` (generated artifacts are regenerated after each merge, never hand-merged; slices ship registrations as snippets in the hand-off). **Contract freeze** after N1b + T1c: tag `contract-freeze-<layer>`; frontend slices branch from it and may not change a backend response shape.
 
-## 2. Design decisions (architect proposals; the reviewers attack these)
+## 5. Definition of done, standards, gates (all slices)
+- **Done =** rebased on current `develop`; first commit on the branch contains **only red tests** (hand-off includes the red `pytest` output); mutation table committed at `docs/mutation/<slice>.md` (file:line, mutant, killing test) for every authorization, state-transition, idempotency and money line (reviewer reruns three random mutants); full suite + the §5 gates green with counts in the hand-off; Postgres-marked tests for every new `select_for_update`, uniqueness constraint and data migration; ERR/roadmap/docs updated (§8); QA sign-off; Architect sign-off on T1a, T3, G1, P1.
+- **Standards:** TDD; no `float` in money code; no PII/tokens/exception text in logs (ids and error types only); every new endpoint has a permission class, throttle, typed serializer (no `OpenApiTypes.OBJECT`) and pagination; every state change through one service with a row lock and an audit row; every async side effect idempotent with a durable key; migrations additive/defaulted/reversible, populated-DB tested on Postgres; clock seam (`common/clock.py`, no `datetime.now()` in new code); size budgets: new module <= 400 lines, function <= 60 lines / complexity 12, **no Phase 11/12 code in `refunds.py` or `ledger_service.py`**, `bookings/tasks.py` grows <= 60 lines (new bodies go to services modules).
+- **Guard tests (Q0, with baseline allowlists):** status/`is_verified`/`is_active` written only via the service; `select_for_update()` + `select_related()` across a nullable FK without `of=('self',)` (nine existing sites on the baseline list); no PII/f-string logging; `requests` always with `timeout=`; no bare `except ... pass`/`return ""` in `integrations/`; every view has permission+throttle+typed schema; list endpoints paginated; one migration leaf per app; every notification kind has a template, golden snapshot and mandatory/optional flag; `.env.example` lists every new setting.
+- **CI additions:** ruff blocking job, `pytest-cov` + diff coverage on changed lines (services/state machines/crypto/webhooks 95 %, views 85 %, tasks 90 %), `pytest-xdist` after an order-dependence check, `--durations` report (no new test > 2 s), no-network fixture, generated-OpenAPI-not-stale check.
+- **Process rules for agents (verbatim in every prompt):** write files with the Write/Edit tools only (no heredocs/shell one-liners for code), run `compileall` after multi-file edits; use `scratchpad/<slice-id>/` for scripts and mutate **copies** in a worktree, never run a script you did not write, never mutate a shared checkout; commit WIP after every green step and keep `docs/slices/<id>.md` (done/remaining/next command) so a replacement agent can resume after a rate-limit death; run the **full** suite before hand-off; hand-offs contain command output counts, not "tests pass".
+- **Tool gate (collaboration Rule 8):** before R2 `head_object`/copy (T3), Resend (N1c/N3), Zoom (Z1), Google Cloud (G1) verify the account against `TOOL_ACCESS_AND_ACCOUNTS.md`, state it, log in §4; all are AUTHORIZED with ids TBD; Wise stays N/A.
 
-### 2.1 Tutor status machine and the single bookable predicate (11.1 + 11.4)
-Today status is two booleans (`is_verified`, `is_active`) with "rejected" inferred as both false. Six call sites filter on them (public list/detail, slots/reserve, reservation, rescheduling, checkout) plus strikes auto-deactivation and the admin serializer.
-- `TeacherProfile.status` enum: `applied` (registered, funnel incomplete) -> `submitted` -> `in_review` -> `approved` | `changes_requested` (back to `submitted` on resubmit) | `rejected`; `approved` <-> `suspended`. `training_completed_at` (nullable) is separate from status.
-- **One writer**: `teachers/services/vetting.py::transition_teacher(teacher, to, *, actor, reason='', rubric=None)`: row lock, allowed-transition map (mirrors `bookings/services/state_machine.py`), writes an immutable `TeacherStatusChange` audit row, keeps the legacy columns in sync (`is_verified = status in (approved, suspended)`? **No**: `is_verified` = vetted (approved or suspended), `is_active` = bookable switch: `status == approved and not strikes-deactivated`), and calls the notification hook. Nothing else may assign `status`, `is_verified` or `is_active` (a test fails the build if a view or task does, like the booking-status guard).
-- `TeacherProfile.is_bookable` property and `TeacherProfile.objects.bookable()` queryset (`is_verified and is_active and training_ok`, where `training_ok` is true when `settings.TUTOR_TRAINING_GATE_ENABLED` is false or `training_completed_at` is set). **All six call sites use it**; strikes call `transition_teacher(..., 'suspended', reason='strikes')`.
-- Data migration: `is_verified and is_active -> approved`; `not is_verified and not is_active -> rejected`; `not is_verified and is_active -> applied`; `is_verified and not is_active -> suspended`.
-- Suspending a tutor with confirmed future lessons: the transition returns the affected bookings and the **admin chooses** (cancel through the existing tutor-cancel path with refund + credit, or leave); never silent. (Reuse `bookings/services/cancellation.py`.)
-- `price_per_25min_usd`: stop exposing it (D-1/10.1); deprecate the field now, drop in a later migration.
-
-### 2.2 Notifications foundation (12.2/12.7/12.3)
-New app `apps/notifications` (keeps `integrations` clean):
-- `Notification(id, user FK, kind, title, body, payload JSON, booking FK null, idempotency_key UNIQUE, created_at, read_at null, email_state pending|sent|retryable|skipped|bounced, email_attempts, email_last_error (staff only), email_sent_at, provider_message_id)`; index `(user, read_at, -created_at)`.
-- `NotificationPreference(user 1:1, email_by_kind JSON, in_app_by_kind JSON)`; **mandatory kinds cannot be turned off** (security, payment, cancellation, refund).
-- Single entry `notify(user, kind, *, key, payload, booking=None)`: `get_or_create` on the key, then `transaction.on_commit(deliver_notification_task.delay)`. Delivery task: compare-and-swap claim of `email_state`, template registry per kind with `escape()` on every interpolated field, **recipient-timezone rendering**, `send_email(..., idempotency_key=key)` (Resend supports an Idempotency-Key header) returning the provider message id, retry with jitter and a cap, bounded sweep per run.
-- `integrations/email.py::send_email` is unified: returns the provider id, accepts `attachments`, never silently mocks in non-DEBUG production (`ERROR` log; the boot guard remains), maps 4xx/5xx/429/timeout to `EmailDeliveryError`. `send_booking_confirmation_email` becomes a thin caller (its second `requests.post` path and the HTML-unescaped names go away).
-- **Fulfilment must stop masking failures** (`integrations/tasks.py` marks `calendar_completed`/`email_completed` True when the calendar returns "" or the email returns False): fixed in the same wave.
-- Existing durable outboxes (`EskomNotificationAttempt`, `SupportInquiry.delivery_state`) stay until a later slice wraps them in `notify()`; refund/payment-failure emails already use `cache.add` dedupe and are wrapped, not rewritten.
-- API (IsAuthenticated, owner-only): `GET /notifications/?unread=1&cursor=`, `GET /notifications/unread-count/`, `POST /notifications/<id>/read/`, `POST /notifications/read-all/`, `GET|PATCH /notifications/preferences/`; user throttle; `email_last_error` never returned to non-staff.
-- Event inventory (recipient, hook, idempotency key) is §4; existing `Booking.reminder_*_sent`, `tutor_late_alert_sent`, `memo_reminder_sent` flags **stay** (tests assert them) but are now set **after** a successful `notify`, or replaced by the notification key as the dedupe (flag kept in sync).
-
-### 2.3 Zoom hardening (12.1a)
-- `ZOOM_ACCOUNT_ID/CLIENT_ID/CLIENT_SECRET` become settings and are **required by the production boot guard** (today only the webhook secret is).
-- No mock path unless `DEBUG` or an explicit `ZOOM_MOCK=1` in non-production; a failed OAuth **raises** `ZoomError` (the root-cause bug: it returned "" and then fell into the mock branch).
-- Token cached in the Django cache for `expires_in - 60 s`, single-flight via `cache.add` lock, invalidated on a 401; 429 honours `Retry-After`; 5xx bounded retries with jitter; a probe that sees `error` is **not** treated as "no-show" (the attendance probe in `bookings/tasks.py` must distinguish "Zoom said waiting/ended" from "Zoom unreachable").
-- `HostPicker` interface (`pick_host(booking) -> host_user_id`, default returns `'me'`) so D-9 is a one-class change; the chosen host id is stored on the booking (`zoom_host_user_id`, nullable) so attendance classification can use it later.
-
-### 2.4 Google Calendar (12.4)
-- `CalendarCredential(user 1:1, refresh_token_enc, scopes, connected_at, revoked_at, last_error)` encrypted with the existing versioned keyring pattern (`payments/services/payout_crypto.py`); data migration moves the plain `User.google_calendar_token` and the admin stops showing it.
-- Endpoints (tutor only): `GET /integrations/google/connect/` (signed `state` bound to the user and expiring), `GET /integrations/google/callback/`, `DELETE /integrations/google/`. Scopes `calendar.events` + `calendar.freebusy` only. A refresh failure (`invalid_grant`) marks the credential revoked, stops pushes and **notifies the tutor**; it never retries forever.
-- `reconcile_teacher_gcal_task` calls freebusy and caches busy spans (TTL 30 min); the slot generator **hides** overlapping slots but the DB uniqueness constraint stays the authority (busy data is a hint, never a booking decision). Event update (not delete+recreate) on reschedule.
-
-### 2.5 Availability (11.6)
-`PATCH|DELETE /teachers/availability/manage/<id>/`, `PUT /teachers/availability/replace/` (atomic weekly matrix: fixes the frontend contract), `TeacherTimeOff` (start/end UTC, reason), validators (`end > start`, `day_of_week` 0-6, no overlap within a day), settings `TUTOR_MIN_NOTICE_MINUTES` (replaces the hard-coded 10) and `BOOKING_HORIZON_DAYS` (14). Existing overlapping rows are tolerated by the migration (reported, not failed). Editing availability **never** cancels existing bookings. Unknown timezone no longer silently falls back to Johannesburg: it is rejected at profile save.
-
-### 2.6 Upload commit (11.3)
-`POST /teachers/me/assets/commit/ {kind, key}`: caller's prefix check, `head_object` (size, content-type) against `common/upload_policy.py`, magic-byte sniff (ranged GET of the first bytes), then record the key (private TEFL/ID keys go to the private storage field, never a public URL), delete the replaced object, fail **closed** when R2 is not configured (the fake `/api/v1/upload/<key>` URL is removed in production). TOCTOU: the committed object is **copied to a final key** and the presigned key discarded, so the tutor cannot overwrite an approved asset through a still-valid presign.
-
-### 2.7 Retention (12.9a)
-`apps/integrations/retention.py::purge_old_telemetry_task` (daily, queue `scheduler_beat`, `@distributed_task_lock`, batches): clears `AttendanceAudit.raw_payload` and webhook event rows older than `TELEMETRY_RETENTION_DAYS` (90) **except** bookings that are `DISPUTED` or have an unresolved `DisputeCase` (and keeps verdict columns: classification, join/leave times). Registered in `celery_schedule.py` by the notification owner (one editor of that file per wave).
-
-### 2.8 Payout batches (11.8, PROVISIONAL on D-3 defaults, wave 3, needs Anesu's go)
-`PayoutBatch` (reference unique, period, status `pending -> approved -> exported -> processed | cancelled`, `created_by`, `approved_by`, Decimal totals) + `PayoutBatchLine` (teacher, `amount_zar` Decimal, bank snapshot ciphertext + last4, status `pending|paid|failed`, ledger journal ref, **unique (teacher, batch)** and a guard that a teacher's cleared balance cannot sit in two open batches). Maker-checker: `approved_by != created_by`; the platform owner can act as second approver until staff exist (setting). CSV export is the **only** decrypt path, admin-only, audited (`PayoutAttempt`/audit row per download). Ledger: posting only on `mark_processed` (DR 2020 / CR 1030 per line inside one transaction, immutable; failed lines are reversed by reversing entries, never edited). Payout = the sum of the `amount_zar` snapshots in ZAR, minimum payout threshold as a setting. Payout preview stops filtering on `is_verified` (a suspended tutor must still get paid what they earned).
-
-## 3. Slices, waves, parallelism
-
-Each slice = one branch `feature/<id>`, one agent in its own worktree, **tests first**, mutation checks on load-bearing lines, own migration numbered at merge time (linearised per app), docs + ERR log + roadmap, commits ending with the Co-Authored-By line, no push. Slice reviews: QA agent on every slice; Architect on money/security slices (T1, T3, T4, G1, P1).
-
-**Wave 0 (disjoint files, run in parallel):**
-- **T1** status machine + auto profile + `/teachers/me/` + `is_bookable` refactor of the six call sites + data migration (11.1). Files: `teachers/*`, `users/serializers.py`, admin serializer fake-data removal, strikes hook. *Everything in the tutor stream depends on it.*
-- **N1** notifications foundation + unified `send_email` + fulfilment-masking fix (12.2a). Files: `apps/notifications/*`, `integrations/email.py`, `integrations/tasks.py` (fulfilment only), `config/settings/base.py` (apps, task routes), `config/urls.py`.
-- **Z1** Zoom hardening (12.1a). Files: `integrations/zoom.py`, `config/settings/{base,guard}.py`, `bookings/tasks.py` (probe semantics only), `tests/test_zoom_client.py`.
-
-**Wave 1 (after T1 / N1 merge; parallel where files are disjoint):**
-- **T2** availability CRUD + time-off + horizon/notice (11.6): `teachers/*` (new modules), `slot_generator.py`.
-- **T3** upload commit (11.3): `common/*`, new `teachers/asset_views.py`.
-- **T4** vetting workflow + audit + admin screens + rubric (11.4): `teachers/services/vetting.py`, `admin_api/*` new modules, FE admin vetting. E-mails via `notify` (N1).
-- **N2** event wiring (12.2b): split by file - N2a `bookings/tasks.py` (reminders, late, no-show, memo 12 h *reminder only*), N2b `integrations/tasks.py` + cancellation/rescheduling (+ tutor booking notification), N2c `teachers/strikes.py` + vetting outcome hook.
-- **N3** Resend delivery webhook + bounce suppression (12.3).
-- **G1** Google OAuth + encrypted credentials + refresh (12.4a).
-- **R1** telemetry purge (12.9a).
-- **F1** Zoom join frontend (12.6). **F2** notification centre frontend (12.7, after the N1 API contract is frozen and `api.generated.ts` regenerated).
-
-**Wave 2:** **T5** application funnel (11.2, after T3 + T4), **T6** training hub infrastructure (11.5), **T7** teacher frontend on real data + removal of mock fallbacks (11.11, after T1 + T2 + T4), **G2** freebusy + slot-generator busy handling + event update (12.4b), **N4** Eskom/support/refund notifications wrapped in `notify()` (12.5 cleanup), **11.10-lite** (12 h memo reminder e-mail through `notify`, per-row failure isolation in the memo/forfeiture sweeps; **no pay-policy change**).
-
-**Wave 3 (needs Anesu's confirmation of the D-3 defaults):** **P1** payout batches (11.8, Architect + QA review mandatory), **P2** statements/payslips (11.9, CSV first, PDF after a dependency decision).
-
-Conflict hotspots and rules: `teachers/{models,views,urls,serializers}.py` (T1 owns; others add new modules and only append routes), `admin_api/*` (T4 and P1 add new modules, append routes), `config/celery_schedule.py` and `config/settings/base.py` (one owner per wave, others send a patch to the owner), migrations (linearised at merge), `lib/api.ts` (frontend slices append). OpenAPI/TS regeneration after every API-changing merge: `manage.py spectacular --file ../docs/api/openapi.yaml`, `npm run gen:api`, `npm run check:api-types`.
-
-## 4. Notification event inventory (recipient / channel / hook / idempotency key)
+## 6. Notification event inventory (recipient / channel / hook / key; `g` = generation token)
 
 | Event | Recipient | Channel | Hook | Key |
 | :--- | :--- | :--- | :--- | :--- |
-| Booking confirmed | student, tutor | e-mail + in-app | `dispatch_booking_fulfillment` (tutor mail is new) | `booking-confirmed:{bid}:{role}` |
-| Cancelled | other party | e-mail + in-app | `send_cancellation_emails` | `booking-cancelled:{bid}:{uid}` |
-| Rescheduled | both | e-mail + in-app | `rescheduling.py` | `booking-rescheduled:{bid}:{new_start}:{role}` |
-| Reminder T-24h / T-1h / T-10m | student (+tutor for 1 h, 10 m) | e-mail (+in-app) | `bookings/tasks.py` reminders | `reminder:{tier}:{bid}:{role}` |
-| Tutor late (T+5 m) | student + admin | in-app + admin mail | `bookings/tasks.py` | `tutor-late:{bid}` |
-| Tutor no-show + restitution | student, tutor (strike) | e-mail + in-app | `bookings/tasks.py` | `teacher-no-show:{bid}:{role}` |
-| Student no-show | tutor, student | in-app | `bookings/tasks.py` | `student-no-show:{bid}:{role}` |
-| Memo due (12 h) | tutor | e-mail + in-app | `bookings/tasks.py` | `memo-warn:{bid}` |
+| Booking confirmed | student, tutor | e-mail + in-app | `dispatch_booking_fulfillment` | `booking-confirmed:{bid}:{g}:{role}` |
+| Cancelled (student / tutor / admin / **payment_failed**) | affected parties; payment-failed -> student | e-mail + in-app; **refund-state-aware** (grace: no refund amount) | `send_cancellation_emails` | `booking-cancelled:{bid}:{uid}` |
+| Rescheduled | both | e-mail + in-app | `rescheduling.py` | `booking-rescheduled:{bid}:{g}:{role}` |
+| Reminder T-24h / T-1h / T-10m | student (+tutor 1 h, 10 m) | e-mail + in-app | `bookings/services/reminders.py` | `reminder:{tier}:{bid}:{g}:{role}` |
+| Tutor late (`LATE_WARNING_MINUTES`, provisional) / student late warning | student + admin / tutor | in-app + admin mail | reminders service | `late:{bid}:{g}:{who}` |
+| Tutor no-show + restitution | student; tutor (strike) | e-mail + in-app | `bookings/tasks.py` | `teacher-no-show:{bid}:{role}` |
+| Student no-show (charged, no refund) | tutor, student | e-mail (mandatory) + in-app | `bookings/tasks.py` | `student-no-show:{bid}:{role}` |
+| Memo due 12 h | tutor | e-mail + in-app | reminders service | `memo-warn:{bid}` |
 | Memo forfeited / apology credit | tutor, student | **wording waits for D-4** | - | `memo-forfeit:{bid}:{role}` |
-| Strike / deactivation | tutor, admin | e-mail + in-app | `teachers/strikes.py` -> `transition_teacher` | `strike:{tid}:{bid}`, `suspended:{tid}:{change_id}` |
-| Refund processed | student | e-mail + in-app | `send_refund_processed_email_task` (wrapped, keeps `cache.add`) | `refund-processed:{rid}` |
-| Vetting approved / changes requested / rejected | tutor | e-mail + in-app | `transition_teacher` | `vetting:{tid}:{change_id}` |
-| Credit granted / expiring (T-3 d) | student | e-mail + in-app | `grant_credit`; expiring needs a new job | `credit-granted:{lot}`, `credit-expiring:{lot}:3d` |
-| Eskom shield | tutor + student | e-mail + in-app | existing durable task (wrap later) | `eskom-shield:{bid}:{uid}:{window}` |
-| Bank details changed | tutor | e-mail (mandatory) | payout settings view | `bank-changed:{uid}:{ts}` |
-| Calendar disconnected | tutor | e-mail + in-app | Google refresh failure | `gcal-revoked:{uid}:{ts}` |
-| Admin money alerts | admin | e-mail | `alerts.py` (unchanged) | `GatewayAnomaly (code,key)` |
+| Strike / suspension | tutor, admin | e-mail (mandatory) + in-app | `transition_teacher` / `add_strike` | `strike:{strike_id}`, `suspended:{change_id}` |
+| Vetting approved / changes requested / rejected (+welcome/schedule unlock, structured re-record feedback, rejection template) | tutor | e-mail (mandatory) + in-app | `transition_teacher` | `vetting:{change_id}` |
+| Refund processed / created / converted; payment failed; grace outcome; `booking_blocked_reason` | student | e-mail + in-app | wrapped senders | `refund-processed:{rid}` etc. |
+| Credit granted / expiring (`CREDIT_EXPIRY_WARNING_DAYS`=7) | student | e-mail + in-app | `grant_credit` + job | `credit-granted:{lot}`, `credit-expiring:{lot}` |
+| Eskom shield | tutor + student | e-mail + in-app | existing durable task wrapped | `eskom-shield:{bid}:{uid}:{window}` (verbatim) |
+| Bank details changed | tutor | e-mail (mandatory) | payout settings | `bank-changed:{change_id}` |
+| Calendar disconnected | tutor | e-mail + in-app | Google refresh failure | `gcal-revoked:{cred}:{revoked_at}` |
+| Suspended-tutor lessons need action; vetting submitted; tutor late | admin | e-mail + in-app | `ADMIN_ALERT_RECIPIENTS` | `admin:{kind}:{id}` |
+| Money alerts (grace/refund/DEF-501) | admin | e-mail | `alerts.py` unchanged | `GatewayAnomaly (code,key)` |
 
-## 5. Engineering standards (apply to every slice)
+## 7. Security / privacy tests (copied into slice acceptance criteria)
+- **Tutor documents:** private bucket only; no serializer/admin list returns a public URL or raw key (OpenAPI check: no `*_url` for vault documents); presigned GET 15 min and audited; commit by user A of B's key -> 403; renamed `.exe`/SVG-with-script/polyglot rejected by the sniff; SA ID number (if stored) encrypted, masked, never in logs/e-mails; rejected/deleted tutor schedules document purge (hook for 14.3).
+- **Bank data:** CSV the only decrypt path; formula-injection test; keyring-rotation test; snapshot immutable per line; payout hold after bank change.
+- **OAuth:** refresh token encrypted at rest (raw column is not plaintext), absent from every payload/admin form/log; `state` forged/expired/other-user/replayed all fail; tutor B cannot touch tutor A's credential; disconnect revokes at Google.
+- **Notifications:** other users' rows are 404; `email_last_error` stripped for non-staff and never contains provider bodies; no student review / dossier / token in any template; hostile names are escaped; header injection impossible.
 
-TDD (red first), mutation checks on every authorization, state-transition and idempotency line, tables of mutants reported; no `float` in money code (guard test); no secrets, tokens, emails or exception text in logs (ids and error types only); every new endpoint typed in OpenAPI (no `OpenApiTypes.OBJECT`); every new list endpoint paginated; every state change through one service with a row lock and an audit row; every async side effect idempotent with a durable key; migrations additive, nullable or defaulted, reversible, safe on Postgres; PII/documents only in the private vault; frontend: real loading/error/empty states, no fabricated data, accessible components, tests for pure helpers (Vitest is blocked: Node test runner). Gates before a slice is "done": `manage.py check`, `makemigrations --check`, full pytest, `tests/test_no_float_money.py`, frontend lint (0 warnings), `npm test`, `npm run build`, `npm run check:api-types`. Merge order and CI: merge to `develop` only on Anesu's word; run `develop` CI (incl. `postgres-ledger`) after each push; anything touching row locks needs a Postgres test marker.
+## 8. Docs to update per slice (all slices also: PRP checkboxes, `PROGRESS_AND_ROADMAP` Phase 11/12 rows, ERR log, OpenAPI + TS, `.env.example`, `scripts/check_deploy.py`, TOOL_ACCESS §4)
+T1: `ARCHITECTURE_AND_SCHEMA` §2.1, `PROJECT_CONTEXT` §6, UI slice 2/3/7/8 (register creates profile, price, "hourly rate", contract changes: **keep compat or update the slice doc + OpenAPI + TS + FE**: Slice 8 `PATCH /admin/teachers/<id>/verify/`, Slice 7 availability POST, Slice 3 `price_per_25min_usd`/`?max_price=`), new `TUTOR_STATUS_MACHINE.md`, `CANCELLATION_AND_REFUNDS` (admin-cancel outcome, suspension routine), CLAUDE.md invariant. T2/T3: UI slice 7, `PHASE_7_SECURITY_CHANGES`, `ARCHITECTURE` §5, TOOL_ACCESS. T4-T6: `DECISIONS_D1_D12` D-11, `RUNBOOK_VETTING`. N*: `NOTIFICATIONS.md`, ADR-0002 (claim/idempotency protocol), `RUNBOOK_NOTIFICATIONS`, `CANCELLATION_AND_REFUNDS` ("expiry warning not built" resolved), `LESSON_REVIEWS`, CLAUDE.md (new app, **11** beat schedules). F0/Z1: `ZOOM_ATTENDANCE` (probe semantics, mock removal, host id, registrant assumption), `SETTLEMENT_PATHS` (no-show on unknown), `DECISIONS` D-9. G*: ADR, `ARCHITECTURE`, TOOL_ACCESS. R1: D-8, SOW note. P*: `SETTLEMENT_PATHS` (`PAYOUT_EXECUTED`), `DECISIONS` D-3, `RUNBOOK_PAYOUTS`, ADR (maker-checker), REMEDIATION follow-up 1. Drift fixes now: CLAUDE.md ERR numbering, "8 schedules" -> 11, `PROJECT_MASTER_CONTEXT` (Supabase, bi-weekly vs SOW monthly), UI slice "6.40 x 18.75".
 
-## 6. Questions that still change the design (defaults in brackets; none blocks wave 0-2)
+## 9. Provisional register and decisions for Anesu
+Provisional (each marked in code/docs with its unblocking D-number): `LATE_WARNING_MINUTES=5` (SOW says 3), `ADMIN_CANCEL_BONUS_CREDITS=0`, `CREDIT_EXPIRY_WARNING_DAYS=7`, `TELEMETRY_RETENTION_DAYS=90`, `TUTOR_MIN_NOTICE_MINUTES`, `BOOKING_HORIZON_DAYS=14`, `PAYOUT_MIN_ZAR=100`, training gate OFF until content exists.
+**Please decide:** (1) approve this plan and the layer order; (2) **P1 payout batches**: go-ahead as a deliberate deviation from "execution waits on D-3", with no self-approval (with one admin, payouts stay blocked until a second admin exists or a TOTP step-up is built); (3) confirm the status enum + truth table + `approved -> in_review` re-vet edge; (4) the training gate must be ON before launch; (5) the SOW M3 "7-day video purge" deliverable vs D-8 "do not record": needs Sharon's written sign-off; (6) a second R2 bucket for private vetting documents (Cloudflare account action by you); (7) PDF tooling shared by receipts, payslips and memo PDFs; (8) D-4: we ship only the 12 h reminder; the pay-forfeiture policy (3-way document conflict; code pays 80 % today) waits for you.
 
-1. D-3 payout cadence/rail/maker-checker (bi-weekly, EFT/ACB CSV, maker-checker yes) - gates wave 3 only.
-2. D-4: does a late memo forfeit the lesson's pay (DEC says yes; code pays 80 % today) - gates 11.10 policy; we ship only the reminder email and failure isolation.
-3. D-11 vetting stages / who approves (any admin approves; Sharon interviews; training gate blocks going live) - the status machine is built to absorb a later extra stage.
-4. D-9 Zoom hosts (`HostPicker` abstraction only).
-5. D-8 recording (no recording; telemetry purge only).
-6. D-10 domain/sender (`sharonesl.com`; sending stays mock-safe until verified).
-7. Tutor status enum above (replaces the two booleans) - confirm.
-8. Training gate on by default? [`TUTOR_TRAINING_GATE_ENABLED=False` until real content exists.]
-9. Cloudflare Stream video (gap G1): separate slice after the funnel; needs a Cloudflare Stream decision.
-10. Minimum payout threshold and currency handling (R100, ZAR snapshots) - wave 3.
-
-## 7. Known doc drift to fix while here
-`CLAUDE.md` says 8 beat schedules (there are 11); `PROJECT_CONTEXT.md` still says fixed R75 payout; UI slice doc hardcodes "6.40 x 18.75"; `DECISIONS_D1_D12.md` D-4 claims the code forfeits tutor pay (it does not); `ERROR_LOGS` ID blocks; Slice 7 UI still shows "hourly rate".
+## 10. Deferred, with owner
+TEA-02 memo-deadline modal, TEA-06 roster, TEA-12 performance, TEA-08 OTP (15.3); STU-10/STU-06 (15.2); ADM-07/08/09/12 incl. impersonation and webhook DLQ (15.4); DSR/erasure/retention of documents, `Notification`, `CalendarCredential`, `TeacherStatusChange`, bank snapshots (14.3/14.4: register the new models there); marketing consent (14.2); LINE/websocket presence (15.12); Cloudflare Stream video and its webhook (gap G1: separate slice after the funnel, needs a decision); backup Zoom room (aspirational); Zoom registrant links (needs a Zoom plan decision, not planned); Wise/SARS summary (D-3/D-12); gateway-to-bank cash movement (gap G2) and tutor tax identity (gap G11/D-12); Eskom slot hiding (PRP 12.5 approval).
