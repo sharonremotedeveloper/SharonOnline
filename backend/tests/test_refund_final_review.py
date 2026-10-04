@@ -5,9 +5,7 @@ a failing poll, the production boot warning for Routing without PayPal credentia
 """
 import json
 import logging
-import re
 from datetime import timedelta
-from pathlib import Path
 
 import pytest
 from cryptography.fernet import Fernet
@@ -19,25 +17,13 @@ from apps.payments.services.refund_gateways import RefundResult
 from config.settings.guard import validate_production_settings
 from payment_helpers import captured
 
-APPS = Path(__file__).resolve().parent.parent / 'apps'
 DAY = timedelta(days=1)
 
 
 # ---------- 1. Postgres: FOR UPDATE cannot lock the nullable side of an outer join ----------
 
-def test_payment_transaction_row_locks_never_join_a_nullable_foreign_key_without_of_self():
-    """
-    PaymentTransaction.booking and .credit_purchase are nullable. `select_for_update().select_related(...)` on them compiles to
-    FOR UPDATE over a LEFT OUTER JOIN, which PostgreSQL refuses ("FOR UPDATE cannot be applied to the nullable side of an outer
-    join"); SQLite ignores row locks, so only this source check (and the Postgres CI job) can see it. Use of=('self',).
-    """
-    bad = []
-    pattern = re.compile(r"PaymentTransaction\.objects\s*\.select_for_update\(\s*\)\s*\.select_related\(")
-    for path in sorted(APPS.rglob('*.py')):
-        text = path.read_text(encoding='utf-8')
-        for match in pattern.finditer(text):
-            bad.append(f"{path.relative_to(APPS)}:{text.count(chr(10), 0, match.start()) + 1}")
-    assert not bad, 'select_for_update() + select_related() on PaymentTransaction without of=("self",): ' + ', '.join(bad)
+# Superseded by the whole-tree AST guard (Q0): tests/guards/test_guard_select_for_update.py, which keeps PaymentTransaction at
+# zero tolerance (test_payment_transaction_locks_are_never_allowlisted) and also catches multi-line chains and either order.
 
 
 # ---------- 2. invoice id after an epoch bump ----------
