@@ -199,6 +199,28 @@ def test_another_tutor_or_a_student_is_not_permitted_even_on_a_self_edge():
     assert profile.status == 'applied'
 
 
+def test_a_stranger_is_refused_even_when_nothing_would_change():
+    profile = f.make_teacher_profile(status='approved')
+    with pytest.raises(TransitionNotPermitted):
+        transition_teacher(profile, 'approved', actor=f.make_student())
+
+
+def test_the_service_row_locks_the_tutor_only(monkeypatch):
+    """SQLite drops FOR UPDATE from the SQL, so spy on the queryset method (the Postgres tests check the real SQL)."""
+    from django.db.models import QuerySet
+    locked_models = []
+    original = QuerySet.select_for_update
+
+    def spy(qs, *args, **kwargs):
+        locked_models.append(qs.model.__name__)
+        return original(qs, *args, **kwargs)
+    monkeypatch.setattr(QuerySet, 'select_for_update', spy)
+    tutor = f.make_teacher_profile(status='approved')
+    f.make_booking(teacher=tutor, status=Booking.Status.CONFIRMED, offset_hours=48)
+    transition_teacher(tutor, 'suspended', actor='system:test')
+    assert locked_models == ['TeacherProfile']
+
+
 def test_missing_actor_unknown_status_and_bad_actor_string_are_value_errors():
     profile = f.make_teacher_profile(status='applied')
     with pytest.raises(ValueError):

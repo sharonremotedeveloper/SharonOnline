@@ -47,11 +47,15 @@ def _round_trip():
             change = Change.objects.get(teacher=p)
             assert (change.from_status, change.to_status, change.actor) == ('', status, 'system:migration_0007')
         Profile.objects.filter(headline='False-True').update(status='in_review')
+        expected = {'True-True': BACKWARD['approved'], 'False-False': BACKWARD['rejected'],
+                    'True-False': BACKWARD['suspended'], 'False-True': BACKWARD['in_review']}
+        middle = _targets(('teachers', '0007_teacher_status'))     # 0008 reversed alone must already restore the booleans
+        _migrate(middle)
+        at_0007 = apps_at(middle).get_model('teachers', 'TeacherProfile')
+        assert {p.headline: (p.is_verified, p.is_active) for p in at_0007.objects.all()} == expected
         _migrate(before)
         old = apps_at(before).get_model('teachers', 'TeacherProfile')
-        got = {p.headline: (p.is_verified, p.is_active) for p in old.objects.all()}
-        assert got == {'True-True': BACKWARD['approved'], 'False-False': BACKWARD['rejected'],
-                       'True-False': BACKWARD['suspended'], 'False-True': BACKWARD['in_review']}
+        assert {p.headline: (p.is_verified, p.is_active) for p in old.objects.all()} == expected
         assert 'status' not in {f.name for f in old._meta.get_fields()}
     finally:
         _migrate(latest_targets())
