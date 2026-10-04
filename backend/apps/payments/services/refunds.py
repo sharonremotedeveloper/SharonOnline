@@ -45,7 +45,7 @@ from apps.payments.models import (BookingFunding, CreditBundle, CreditWalletEntr
 from apps.payments.services.alerts import alert_admin, resolve_alert
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.funding import funding_for_settlement
-from apps.payments.services.ledger_service import record_journal_entries
+from apps.payments.services.ledger_service import gateway_cash_account, record_journal_entries
 from apps.payments.services.pricing import quantize_money
 from apps.payments.services.refund_gateways import ManualSandboxRefundGateway, RefundOrder, RefundResult  # noqa: F401  (re-exported: the old import path keeps resolving)
 from apps.payments.services.settlement import is_settled
@@ -86,10 +86,8 @@ class RefundOutcome:
 
 
 def _gateway_cash_account(tx: PaymentTransaction) -> str:
-    """The cash account the capture was booked to: it follows the gateway, never the currency (PayPal can take ZAR)."""
-    if tx.gateway == PaymentTransaction.Gateway.PAYFAST:
-        return LedgerAccount.ASSET_GATEWAY_PAYFAST
-    return LedgerAccount.ASSET_GATEWAY_PAYPAL
+    """The cash account the capture was booked to: the one shared rule in ledger_service (gateway, never currency)."""
+    return gateway_cash_account(tx)
 
 
 def request_refund(booking, reason: str, *, event_type: str = EV.REFUND_ISSUED, dispute_case=None,

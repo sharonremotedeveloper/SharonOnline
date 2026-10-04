@@ -1777,3 +1777,56 @@ class TestBoundaries:
         clock.advance(6 * MIN)
         refunds.process_pending_refunds()
         assert fresh(r).next_attempt_at == clock.now + 5 * MIN
+
+
+# ================================================================================================ QA fixes (2026-10-04)
+class TestCaptureSideCashAccountFollowsTheGateway:
+    """H1: the capture and the refund must hit the SAME cash account, which follows the gateway and never the currency."""
+
+    @pytest.mark.parametrize('gateway, currency, amount, account', [
+        ('paypal', 'ZAR', '168.75', ACC.ASSET_GATEWAY_PAYPAL),
+        ('payfast', 'ZAR', '168.75', ACC.ASSET_GATEWAY_PAYFAST),
+        ('paypal', 'USD', '9.00', ACC.ASSET_GATEWAY_PAYPAL),
+        ('paypal', 'EUR', '8.00', ACC.ASSET_GATEWAY_PAYPAL),
+        ('paypal', 'JPY', '1400', ACC.ASSET_GATEWAY_PAYPAL),
+    ])
+    def test_capture_then_refund_nets_both_cash_accounts_to_zero(self, teacher_user, student_user, gateway, currency, amount, account):
+        r = new_refund(teacher_user, student_user, gateway=gateway, amount=amount, currency=currency)
+        capture = LedgerEntry.objects.get(booking=r.booking, event_type=EV.PAYMENT_CAPTURED, account=account)
+        assert capture.entry_type == LedgerEntry.EntryType.DEBIT and capture.amount == Decimal(amount)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, completed=1)
+        for cash in (ACC.ASSET_GATEWAY_PAYFAST, ACC.ASSET_GATEWAY_PAYPAL):
+            assert net(r.booking, cash) == 0, f'{cash} did not net to zero for {gateway} {currency}'
+        other = ACC.ASSET_GATEWAY_PAYFAST if account == ACC.ASSET_GATEWAY_PAYPAL else ACC.ASSET_GATEWAY_PAYPAL
+        assert not LedgerEntry.objects.filter(booking=r.booking, account=other).exists()
+
+    def _tx(self, teacher_user, student_user, gateway, currency='ZAR', ref='H1-X'):
+        from payment_helpers import lesson
+        _START[0] += 90
+        return PaymentTransaction.objects.create(booking=lesson(teacher_user, student_user, _START[0]), gateway=gateway, gateway_reference=ref,
+                                                 amount=Decimal('168.75'), currency=currency, status='success',
+                                                 fx_rate_to_zar=Decimal('1.000000'), fx_source='test')
+
+    @pytest.mark.parametrize('gateway, account', [('paypal', ACC.ASSET_GATEWAY_PAYPAL), ('payfast', ACC.ASSET_GATEWAY_PAYFAST)])
+    def test_the_def501_quarantine_and_unallocated_postings_use_the_same_rule(self, teacher_user, student_user, gateway, account):
+        from apps.payments.services import ledger_service
+        ledger_service.record_def501_quarantine_entry(self._tx(teacher_user, student_user, gateway, ref=f'H1-A-{gateway}'), user=student_user)
+        ledger_service.record_unallocated_payment_entry(self._tx(teacher_user, student_user, gateway, ref=f'H1-B-{gateway}'), user=student_user)
+        cash = LedgerEntry.objects.filter(account__in=(ACC.ASSET_GATEWAY_PAYFAST, ACC.ASSET_GATEWAY_PAYPAL))
+        assert cash.count() == 2 and set(cash.values_list('account', flat=True)) == {account}
+
+    @pytest.mark.parametrize('gateway, account', [('paypal', ACC.ASSET_GATEWAY_PAYPAL), ('payfast', ACC.ASSET_GATEWAY_PAYFAST)])
+    def test_a_credit_pack_capture_uses_the_same_rule(self, teacher_user, student_user, gateway, account):
+        from types import SimpleNamespace
+        from apps.payments.services import ledger_service
+        purchase = SimpleNamespace(pack=SimpleNamespace(name='Pack'), user=student_user, fx_rate_to_zar=Decimal('1.000000'), fx_source='test')
+        ledger_service.record_credit_purchase_capture_entry(self._tx(teacher_user, student_user, gateway, ref=f'H1-C-{gateway}'), purchase)
+        cash = LedgerEntry.objects.filter(account__in=(ACC.ASSET_GATEWAY_PAYFAST, ACC.ASSET_GATEWAY_PAYPAL))
+        assert cash.count() == 1 and cash.get().account == account
+
+    def test_one_helper_serves_the_refund_side_too(self):
+        from apps.payments.services import ledger_service
+        paypal_zar = PaymentTransaction(gateway='paypal', currency='ZAR')
+        assert ledger_service.gateway_cash_account(paypal_zar) == ACC.ASSET_GATEWAY_PAYPAL == refunds._gateway_cash_account(paypal_zar)
+        payfast_usd = PaymentTransaction(gateway='payfast', currency='USD')
+        assert ledger_service.gateway_cash_account(payfast_usd) == ACC.ASSET_GATEWAY_PAYFAST == refunds._gateway_cash_account(payfast_usd)
