@@ -18,6 +18,7 @@ from apps.bookings.services.state_machine import (
 from apps.payments.models import CreditBundle, RefundRequest, PaymentTransaction
 from apps.payments.services.funding import ensure_gateway_funding
 from apps.payments.services.webhook_handler import process_payment_webhook
+from guards._scan import ratchet_errors
 
 S = Booking.Status
 ALL = list(Booking.Status.values)
@@ -316,10 +317,29 @@ class TestPaymentWebhook:
 # ------------------------------------------------------------------ enforcement
 APPS = Path(__file__).resolve().parents[1] / 'apps'
 ALLOWED_WRITERS = {APPS / 'bookings' / 'services' / 'state_machine.py'}
+# Dev seed commands create demo bookings directly in later states (QA review of Q0 baseline, 2026-10-04): {file: count}.
+# Only ever lower these numbers.
+SEED_ALLOWLIST = {'users/management/commands/seed_phase41_data.py': 3}
+
+
+CREATE_METHODS = {'create', 'get_or_create', 'update_or_create'}
+INITIAL_STATUS = {'Booking.Status.PENDING_PAYMENT', 'S.PENDING_PAYMENT', "'pending_payment'"}
+
+
+def _create_status_values(node):
+    """`status=` values a Booking create / get_or_create / update_or_create writes (kwarg or defaults={'status': ...})."""
+    values = [kw.value for kw in node.keywords if kw.arg == 'status']
+    for kw in node.keywords:
+        if kw.arg in ('defaults', 'create_defaults') and isinstance(kw.value, ast.Dict):
+            values += [v for k, v in zip(kw.value.keys, kw.value.values, strict=True) if isinstance(k, ast.Constant) and k.value == 'status']
+    return values
 
 
 def _status_writes(path):
-    """Assignments like `x.status = Booking.Status.Y` / `x.status = S.Y` and `.update(status=Booking.Status...)`."""
+    """
+    Assignments like `x.status = Booking.Status.Y` / `x.status = S.Y`, `.update(status=Booking.Status...)`, and (QA review
+    of Q0) a Booking create / get_or_create / update_or_create in any status other than the initial PENDING_PAYMENT.
+    """
     tree = ast.parse(path.read_text(encoding='utf-8'))
     hits = []
     for node in ast.walk(tree):
@@ -331,20 +351,42 @@ def _status_writes(path):
             for kw in node.keywords:
                 if kw.arg == 'status' and 'Booking.Status' in ast.unparse(kw.value):
                     hits.append((node.lineno, ast.unparse(node)))
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in CREATE_METHODS:
+            on_booking = ast.unparse(node.func.value).endswith('Booking.objects')
+            for value in _create_status_values(node):
+                text = ast.unparse(value)
+                if (on_booking or 'Booking.Status' in text) and text not in INITIAL_STATUS:
+                    hits.append((node.lineno, ast.unparse(node)[:120]))
     return hits
 
 
 class TestNoDirectStatusWrites:
     def test_only_the_state_machine_writes_booking_status(self):
-        offenders = []
+        found = {}
         for path in APPS.rglob('*.py'):
             if 'migrations' in path.parts or path in ALLOWED_WRITERS:
                 continue
-            offenders += [f"{path.relative_to(APPS)}:{line}: {code}" for line, code in _status_writes(path)]
-        assert not offenders, "Route these through transition_booking():\n" + "\n".join(offenders)
+            hits = [f"{line}: {code}" for line, code in _status_writes(path)]
+            if hits:
+                found[path.relative_to(APPS).as_posix()] = hits
+        errors = ratchet_errors(found, SEED_ALLOWLIST)
+        assert not errors, "Route these through transition_booking():\n" + "\n".join(errors)
 
     def test_the_detector_actually_detects(self, tmp_path):
         bad = tmp_path / 'bad.py'
         bad.write_text("b.status = Booking.Status.COMPLETED\nBooking.objects.filter().update(status=Booking.Status.CANCELLED)\n"
                        "tx.status = PaymentTransaction.Status.SUCCESS\n")
         assert len(_status_writes(bad)) == 2
+
+    def test_the_detector_sees_creates_in_a_non_initial_status(self, tmp_path):
+        """QA review of Q0 item 7: create / get_or_create / update_or_create can also write a status."""
+        bad = tmp_path / 'bad.py'
+        bad.write_text(
+            "Booking.objects.create(teacher=t, status=Booking.Status.CONFIRMED)\n"
+            "Booking.objects.get_or_create(teacher=t, defaults={'status': Booking.Status.DISPUTED})\n"
+            "Booking.objects.update_or_create(pk=1, defaults={'status': 'completed'})\n"
+            "Booking.objects.create(teacher=t, status=Booking.Status.PENDING_PAYMENT)\n"     # the initial state: fine
+            "Booking.objects.create(teacher=t)\n"
+            "BookingStatusChange.objects.create(from_status='a', to_status='b')\n"
+            "DisputeCase.objects.create(status=DisputeCase.Status.OPEN)\n")
+        assert len(_status_writes(bad)) == 3

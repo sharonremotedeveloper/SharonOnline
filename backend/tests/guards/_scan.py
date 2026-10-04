@@ -31,8 +31,21 @@ def rel(path, root=APPS):
     return Path(path).relative_to(root).as_posix()
 
 
+def _display(path):
+    path = Path(path).resolve()
+    try:
+        return path.relative_to(BACKEND).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
 def parse(path):
-    return ast.parse(Path(path).read_text(encoding='utf-8'), filename=str(path))
+    """AST of a source file (a UTF-8 BOM is accepted); a SyntaxError names the file relative to backend/."""
+    name = _display(path)
+    try:
+        return ast.parse(Path(path).read_text(encoding='utf-8-sig'), filename=name)
+    except SyntaxError as exc:
+        raise SyntaxError(f'guard scan cannot parse {name}: {exc.msg}', (name, exc.lineno, exc.offset, exc.text)) from exc
 
 
 def src(node):
