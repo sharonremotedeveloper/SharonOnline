@@ -238,3 +238,38 @@ def configure_test_settings(settings):
 - **Symptom:** `ValueError: Missing staticfiles manifest entry for 'admin/css/base.css'` when a test rendered the refund admin form.
 - **Root cause:** settings use `CompressedManifestStaticFilesStorage`; tests never run collectstatic.
 - **Fix:** the admin tests switch `STORAGES['staticfiles']` to the plain `StaticFilesStorage` (fixture `plain_static_files`); production settings untouched.
+
+### ERR-120: mutation runs "killed" by a SyntaxError instead of a test (slice Q0)
+- **Symptom:** two rows of the Q0 mutation table (`--replace 'return ""'`) reported KILLED, but the mutant on disk was `return "` (and `return None"`): the guard failed because the file no longer parsed, not because it detected the violation.
+- **Root cause:** Windows PowerShell 5.1 drops embedded double quotes when it passes arguments to a native executable; `scripts/mutate.py` applied whatever text it received without checking it. The same quoting loss broke a `ruff --config 'lint.per-file-ignores = {...}'` probe from the shell.
+- **Fix:** `mutate.py` now compiles a Python mutant before running tests and refuses one that does not compile (exit 2, "invalid mutant", test `test_a_mutant_that_does_not_compile_is_refused`); the docstring and `docs/QUALITY_GATES.md` say to escape quotes (`'return \"\"'`) in PowerShell. The two rows were rerun with escaped quotes and are genuine kills. The ruff baseline guard builds its `--config` overrides in Python (argv list), never through a shell.
+
+### ERR-121: ruff JSON report unreadable through a PowerShell pipe (slice Q0)
+- **Symptom:** `json.decoder.JSONDecodeError: Unexpected UTF-8 BOM` when the baseline generator read `ruff check --output-format json` from stdin.
+- **Root cause:** PowerShell 5.1 re-encodes piped native output with a BOM.
+- **Fix:** the (scratchpad) generator reads `--output-file` output with `utf-8-sig`; nothing in the repo depends on the pipe.
+
+### ERR-122: teacher-status guard missed a write through a neutral variable name (slice Q0)
+- **Symptom:** the first baseline run reported `teachers/strikes.py: allowlist says 2 but only 1 remain`, although `strikes.py` writes `is_active` twice.
+- **Root cause:** the detector only flagged `x.is_active = ...` when the receiver's name looked like a tutor (`teacher`, `profile`); `strikes.add_strike` writes `locked.is_active = False`.
+- **Fix:** `is_active` writes are flagged for every receiver except clearly different models (`user`, availability, packs, prices, bundles, slots); `is_verified` for every receiver; `status` still only for tutor-looking receivers (every model has a `status`; T1a adds its own stricter guard). Detector test covers `locked.is_active`.
+
+### ERR-123: tutor-status guard false negatives found by QA review (slice Q0)
+- **Symptom:** QA probes `request.user.teacher_profile.is_active = False`, `qs.update(is_verified=True)`, `.update(**{'is_active': False})`, `bulk_update(ps, ['is_active'])` and `self.status = ...` inside `class TeacherProfile` all passed the guard.
+- **Root cause:** the `user` exclusion was checked before the tutor words; ORM writes were only checked on receivers containing `TeacherProfile` and only as plain kwargs; `self` had no class context.
+- **Fix:** one documented receiver classifier (availability/strike/slot -> other, then teacher/profile/tutor -> tutor, then user/pack/price/bundle/booking/transaction/refund/purchase -> other, else unknown; `self` by enclosing class), applied to assignments, `setattr`, `update` (kwargs, `**{...}`), `bulk_update` field lists and TeacherProfile creates. Detector tests for every probe and for the look-alike models; baseline unchanged (8).
+
+### ERR-124: blocked network attempts could be swallowed by application code (slice Q0)
+- **Symptom:** QA review: `NetworkBlocked` raised inside `try: ... except Exception:` in app code disappeared and the test passed.
+- **Root cause:** the guard only raised; nothing remembered the attempt. `gethostbyname(_ex)` were not guarded.
+- **Fix:** `network_guard` records every blocked attempt; the autouse `no_network` fixture fails the test at teardown when any were recorded (`consume()` for tests that block on purpose); `gethostbyname` / `gethostbyname_ex` patched. Full suite still green (no hidden attempts existed).
+
+### ERR-125: ruff per-file baseline hid new violations of an already-baselined code (slice Q0)
+- **Symptom:** QA review: a second C901 function (or a second S/B finding) in a file already listed for that code passed `ruff check .`.
+- **Root cause:** `extend-per-file-ignores` ignores a code for the whole file.
+- **Fix:** `test_guard_ruff_baseline.py` pins the count per (file, code) for C901 and every S/B code (`RUFF_COUNTS`, 42 violations / 26 pairs) and fails when a count rises or falls without the baseline being lowered; F codes stay per-file.
+
+### ERR-126: new lint violation in the booking-status guard extension (slice Q0)
+- **Symptom:** `test_guard_ruff_baseline` failed with `B905` (`zip()` without `strict=`) in `tests/test_booking_state_machine.py` after the create/defaults extension.
+- **Root cause:** `zip(dict.keys, dict.values)` written without `strict`.
+- **Fix:** `strict=True` (keys and values of an AST dict always have the same length). The ruff guard working as intended.

@@ -23,6 +23,11 @@ wheels/
 .installed.cfg
 *.egg
 .pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.ruff_cache/
 db.sqlite3
 db.sqlite3-journal
 media/

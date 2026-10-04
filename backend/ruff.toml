@@ -1,0 +1,81 @@
+# Ruff lint gate (Q0, docs/QUALITY_GATES.md). CI runs `ruff check .` from backend/ as a blocking job.
+target-version = "py312"
+extend-exclude = ["venv", "staticfiles", "media"]
+
+[lint]
+# F = pyflakes, B = bugbear, S = bandit security, C90 = mccabe complexity.
+select = ["F", "B", "S", "C90"]
+
+[lint.mccabe]
+max-complexity = 12
+
+# ---------------------------------------------------------------- policy (permanent, reviewed)
+[lint.per-file-ignores]
+# Tests: `assert` is the point, and fixture passwords / tokens are fake by construction.
+"tests/**/*.py" = ["S101", "S105", "S106"]
+# Django settings modules layer on each other with star imports by design.
+"config/settings/local.py" = ["F403", "F405"]
+"config/settings/production.py" = ["F403", "F405"]
+# The mutation helper and its test drive git / pytest subprocesses with fixed argv lists (no shell).
+"scripts/mutate.py" = ["S603", "S607"]
+"tests/test_q0_mutate.py" = ["S603", "S607"]
+
+# ---------------------------------------------------------------- BASELINE (2026-10-04): existing violations only
+# Generated from `ruff check . --output-format json` (file -> rule codes it violated on the baseline date): 173 violations,
+# 53 files, 69 (file, code) pairs. Rules: entries may only be REMOVED or narrowed (fix the code, delete the code from the list, run
+# `ruff check .`); never add a file or a code here - new code must be clean. tests/guards/test_guard_ruff_baseline.py
+# fails when an entry no longer matches any violation, so the list cannot go stale.
+[lint.extend-per-file-ignores]
+"apps/admin_api/serializers.py" = ["F401"]
+"apps/admin_api/views.py" = ["C901", "F401", "F841"]
+"apps/bookings/serializers.py" = ["F401"]
+"apps/bookings/services/rescheduling.py" = ["B904", "C901"]
+"apps/bookings/services/reservation.py" = ["C901", "F401"]
+"apps/bookings/services/slot_generator.py" = ["F401"]
+"apps/bookings/tasks.py" = ["C901", "F401", "F841"]
+"apps/bookings/views.py" = ["F401"]
+"apps/common/storage.py" = ["F401"]
+"apps/integrations/google_calendar.py" = ["F401"]
+"apps/integrations/tasks.py" = ["B904"]
+"apps/integrations/views.py" = ["C901"]
+"apps/materials/models.py" = ["S110"]
+"apps/payments/gateways/payfast.py" = ["S324"]
+"apps/payments/gateways/paypal.py" = ["S105"]
+"apps/payments/services/credits.py" = ["C901"]
+"apps/payments/services/grace.py" = ["C901"]
+"apps/payments/services/ledger_service.py" = ["C901", "F401", "F541", "F841"]
+"apps/payments/services/refunds.py" = ["C901"]
+"apps/payments/services/settlement.py" = ["F401"]
+"apps/payments/services/webhook_handler.py" = ["C901"]
+"apps/payments/tasks.py" = ["F401"]
+"apps/payments/views.py" = ["C901", "F401"]
+"apps/srs/serializers.py" = ["F401"]
+"apps/srs/views.py" = ["F401"]
+"apps/teachers/models.py" = ["S110"]
+"apps/teachers/serializers.py" = ["F401"]
+"apps/teachers/views.py" = ["F401"]
+"apps/users/management/commands/seed_data.py" = ["F401"]
+"apps/users/management/commands/seed_phase41_data.py" = ["F401", "F841"]
+"apps/users/serializers.py" = ["B904"]
+"apps/users/tasks.py" = ["B904", "S105"]
+"config/settings/guard.py" = ["C901", "S104", "S105"]
+"tests/test_admin_refunds_api.py" = ["F841"]
+"tests/test_api_endpoints.py" = ["F401"]
+"tests/test_booking_state_machine.py" = ["F841"]
+"tests/test_celery_beat_automation.py" = ["F401"]
+"tests/test_crm_dossier.py" = ["F401"]
+"tests/test_fx_rates.py" = ["B017"]
+"tests/test_ledger_journal.py" = ["F401"]
+"tests/test_no_float_money.py" = ["F401"]
+"tests/test_payment_hardening.py" = ["F811"]
+"tests/test_payment_verification.py" = ["S324"]
+"tests/test_r2_storage.py" = ["F401", "F541"]
+"tests/test_refund_deploy_check.py" = ["S603"]
+"tests/test_refund_final_review.py" = ["F401"]
+"tests/test_refund_processing.py" = ["F841"]
+"tests/test_review_endpoint.py" = ["F401"]
+"tests/test_security_auth.py" = ["F401"]
+"tests/test_settlement_paths.py" = ["F401"]
+"tests/test_srs_flashcards.py" = ["F401"]
+"tests/test_webhook_events.py" = ["F811"]
+"tests/test_zoom_webhooks.py" = ["F401", "F841"]

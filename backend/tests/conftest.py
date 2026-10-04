@@ -1,7 +1,10 @@
 import pytest
 from apps.users.models import User
 from apps.teachers.models import TeacherProfile, TeacherAvailability
-from datetime import time
+from datetime import datetime, time, timedelta, timezone as dt_timezone
+
+import fakes
+import network_guard
 
 @pytest.fixture(autouse=True)
 def test_environment_settings(settings):
@@ -98,3 +101,66 @@ def fake_paypal_orders(monkeypatch, settings):
 
     monkeypatch.setattr('apps.payments.views.create_checkout_order', fake_create, raising=False)
     return calls
+
+
+# ------------------------------------------------------------------ Q0 quality infrastructure (docs/QUALITY_GATES.md)
+@pytest.fixture(autouse=True)
+def no_network(request, monkeypatch):
+    """No test opens a real outbound connection (localhost / CI service hosts are allowed). Opt out: @pytest.mark.allow_network."""
+    if request.node.get_closest_marker('allow_network') is not None:
+        yield
+        return
+    network_guard.install(monkeypatch)
+    yield
+    error = network_guard.teardown_error()
+    network_guard.consume()
+    if error:
+        pytest.fail(error, pytrace=False)          # also catches attempts the code under test swallowed
+
+
+class FrozenClock:
+    """Controls apps.common.clock.now() for one test."""
+
+    def __init__(self, start):
+        self.now = start
+
+    def set(self, value):
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError('frozen_clock needs an aware datetime (all timestamps are UTC)')
+        self.now = value
+
+    def advance(self, **delta):
+        self.now = self.now + timedelta(**delta)
+        return self.now
+
+    def __call__(self):
+        return self.now
+
+
+@pytest.fixture
+def frozen_clock(monkeypatch):
+    """Freeze apps.common.clock.now() at a fixed instant (`.set(dt)`, `.advance(minutes=5)`); restored after the test."""
+    from apps.common import clock
+    fake = FrozenClock(datetime(2026, 1, 5, 9, 0, tzinfo=dt_timezone.utc))
+    monkeypatch.setattr(clock, '_override', fake)
+    return fake
+
+
+@pytest.fixture
+def fake_resend(monkeypatch):
+    return fakes.FakeResend().install(monkeypatch)
+
+
+@pytest.fixture
+def fake_zoom(monkeypatch):
+    return fakes.FakeZoom().install(monkeypatch)
+
+
+@pytest.fixture
+def fake_google(monkeypatch):
+    return fakes.FakeGoogle().install(monkeypatch)
+
+
+@pytest.fixture
+def fake_r2(monkeypatch):
+    return fakes.FakeR2().install(monkeypatch)
