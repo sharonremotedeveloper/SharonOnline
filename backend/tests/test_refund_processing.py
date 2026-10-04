@@ -1097,7 +1097,8 @@ class TestGuards:
         out = refunds.process_pending_refunds()
         r = fresh(refund)
         assert r.status == RS.FAILED and r.failure_kind == 'guard', (r.status, r.failure_kind, r.failure_detail)
-        assert gw.calls == [] and r.attempts == 0 and r.claim_token == '' and RefundAttempt.objects.count() == 0
+        assert gw.calls == [] and r.attempts == 0 and r.claim_token == ''
+        assert [(a.kind, a.result_state, a.error_code) for a in RefundAttempt.objects.all()] == [('guard', 'failed', 'guard')]      # QA M5: audited
         assert alerts('refund_failed_guard', r.pk).count() == 1 and journals(r) == 0
         assert out['sent'] == 0
         if fragment:
@@ -2163,6 +2164,109 @@ class TestLogSafetyEmailDedupeAndActor:
         r = set_row(new_refund(teacher_user, student_user), status=RS.FAILED, failure_kind='guard')
         with pytest.raises(TypeError):
             refunds.retry_failed(r.pk)                                  # the keyword is mandatory: there is no system default
+
+
+class TestAuditTrailCoversEveryTransition:
+    """M5: every status transition of a refund leaves exactly one immutable RefundAttempt row, never a duplicate on a replay."""
+
+    @staticmethod
+    def rows(refund):
+        return [(a.seq, a.kind, a.result_state, a.error_code, a.actor_id) for a in RefundAttempt.objects.filter(refund=refund).order_by('seq')]
+
+    def test_the_new_kinds_exist_additively(self):
+        kinds = set(RefundAttempt.Kind.values)
+        assert {'send', 'poll', 'admin_retry', 'admin_mark_paid'} <= kinds and {'webhook', 'convert', 'guard', 'mark_failed'} <= kinds
+        assert max(len(k) for k in kinds) <= RefundAttempt._meta.get_field('kind').max_length
+
+    def test_a_guard_failure_is_audited_once(self, teacher_user, student_user, gw):
+        r = new_refund(teacher_user, student_user)
+        PaymentTransaction.objects.filter(pk=r.payment_transaction_id).update(status=PaymentTransaction.Status.FAILED)
+        refunds.process_pending_refunds()
+        refunds.process_pending_refunds()
+        assert gw.calls == [] and fresh(r).failure_kind == 'guard'
+        assert self.rows(r) == [(1, 'guard', 'failed', 'guard', None)]
+
+    def test_a_replay_window_failure_is_audited_once(self, teacher_user, student_user, gw, clock):
+        r = new_refund(teacher_user, student_user)
+        set_row(r, attempts=1, first_attempt_at=clock.now - 31 * DAY, last_attempt_at=clock.now - 31 * DAY)
+        refunds.process_pending_refunds()
+        refunds.process_pending_refunds()
+        assert gw.calls == [] and fresh(r).failure_kind == 'replay_window'
+        assert self.rows(r) == [(1, 'guard', 'failed', 'replay_window', None)]
+
+    def test_a_webhook_completion_is_audited_once_and_a_replay_adds_nothing(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        assert paypal_events.apply_refund(r.payment_transaction_id, 'RF-W1', Decimal('9.00'), 'USD', {}) == 'refund_completed'
+        assert paypal_events.apply_refund(r.payment_transaction_id, 'RF-W1', Decimal('9.00'), 'USD', {}) == 'duplicate'
+        assert self.rows(r) == [(1, 'webhook', 'completed', '', None)] and fresh(r).status == RS.PROCESSED
+
+    def test_a_webhook_that_finishes_a_submitted_refund_follows_the_send_row(self, teacher_user, student_user, gw):
+        gw.behavior = lambda order: RefundResult('submitted', reference='RF-S')
+        r = new_refund(teacher_user, student_user)
+        refunds.process_pending_refunds()
+        paypal_events.apply_refund(r.payment_transaction_id, 'RF-S', Decimal('9.00'), 'USD', {})
+        assert [(a[0], a[1], a[2]) for a in self.rows(r)] == [(1, 'send', 'submitted'), (2, 'webhook', 'completed')]
+
+    def test_a_dashboard_refund_matched_to_an_open_request_is_a_webhook_row_too(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        assert paypal_events.apply_refund(r.payment_transaction_id, 'DASH-1', Decimal('9.00'), 'USD', {}) == 'refund_completed'
+        assert [a[1] for a in self.rows(r)] == ['webhook']
+
+    def test_the_service_itself_is_idempotent_for_the_webhook_audit_row(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        refunds.mark_processed(r.pk, 'RF-W2', via_webhook=True)
+        refunds.mark_processed(r.pk, 'RF-W2', via_webhook=True)
+        assert self.rows(r) == [(1, 'webhook', 'completed', '', None)] and journals(r) == 2
+
+    def test_the_service_default_adds_no_webhook_row(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        refunds.mark_processed(r.pk, 'RF-X')
+        refunds.mark_processed(r.pk, 'RF-X')
+        assert self.rows(r) == []
+
+    def test_a_conversion_is_audited_once_with_the_actor(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        refunds.convert_to_wallet(r.pk, actor=student_user)
+        with pytest.raises(refunds.RefundStateError):
+            refunds.convert_to_wallet(r.pk, actor=student_user)
+        assert self.rows(r) == [(1, 'convert', 'converted', '', student_user.pk)]
+
+    def test_the_student_api_records_the_student_as_the_actor(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        client = APIClient()
+        client.force_authenticate(student_user)
+        assert client.post(f'/api/v1/refunds/{r.pk}/convert-to-wallet/').status_code == 200
+        assert self.rows(r) == [(1, 'convert', 'converted', '', student_user.pk)]
+
+    def test_marking_a_refund_failed_is_audited_once(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        refunds.mark_failed(r.pk, 'a person looked', kind='rejected')
+        with pytest.raises(refunds.RefundStateError):
+            refunds.mark_failed(r.pk, 'again', kind='rejected')
+        assert self.rows(r) == [(1, 'mark_failed', 'failed', 'rejected', None)]
+
+    def test_a_whole_life_is_one_row_per_transition_in_order(self, teacher_user, student_user, gw, clock, admin_user):
+        answers = iter([RefundResult('transient', http_status=503), RefundResult('rejected', code='INSTRUMENT_DECLINED')])
+        gw.behavior = lambda order: next(answers)
+        r = new_refund(teacher_user, student_user)
+        for _ in range(2):
+            refunds.process_pending_refunds()
+            clock.advance(DAY)
+        refunds.retry_failed(r.pk, actor=admin_user, confirm_not_refunded=True)
+        gw.behavior = lambda order: RefundResult('completed', reference='RF-FINAL')
+        refunds.process_pending_refunds()
+        assert [(a[0], a[1], a[2]) for a in self.rows(r)] == [(1, 'send', 'transient'), (2, 'send', 'rejected'), (3, 'admin_retry', 'retry'),
+                                                              (4, 'send', 'completed')]
+
+    def test_the_rows_stay_immutable(self, teacher_user, student_user):
+        r = new_refund(teacher_user, student_user)
+        refunds.convert_to_wallet(r.pk)
+        row = RefundAttempt.objects.get(refund=r)
+        with pytest.raises(LedgerImmutabilityError):
+            row.error_code = 'x'
+            row.save()
+        with pytest.raises(LedgerImmutabilityError):
+            row.delete()
 
 
 class TestDeferredRefundWindow:

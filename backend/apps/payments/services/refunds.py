@@ -285,6 +285,10 @@ def _write_attempt(refund, kind: str, result_state: str, *, actor=None, http_sta
                                  result_state=result_state, http_status=http_status or None, error_code=(error_code or '')[:64])
 
 
+def _request_id_of(refund) -> str:
+    return refund.gateway_request_id or _derive_request_id(refund)
+
+
 def _log(refund, tx, *, state: str, outcome: str, http_status=None, error_code: str = '') -> None:
     """One log-safe line: ids and codes only. Never headers, bodies, URLs, tokens, signatures or exception text."""
     logger.info("[REFUND] refund=%s booking=%s tx=%s gateway=%s request_id=%s attempt=%s state=%s outcome=%s http_status=%s error_code=%s",
@@ -382,8 +386,11 @@ def _submit_locked(refund, provider_ref: str, now) -> None:
                                'claim_token', 'claimed_until', 'updated_at'])
 
 
-def mark_processed(refund_id, gateway_reference: str) -> RefundRequest:
-    """The gateway returned the money: post the cash movement. Safe to repeat (webhook, poll, sweeper and admin all end here)."""
+def mark_processed(refund_id, gateway_reference: str, *, via_webhook: bool = False) -> RefundRequest:
+    """
+    The gateway returned the money: post the cash movement. Safe to repeat (webhook, poll, sweeper and admin all end here); the
+    repeat posts nothing and writes no row. `via_webhook` records the completion in the audit trail (the PayPal handler passes it).
+    """
     with transaction.atomic():
         tx, refund = _lock_pair(refund_id)
         if refund.status == RS.PROCESSED:
@@ -391,6 +398,8 @@ def mark_processed(refund_id, gateway_reference: str) -> RefundRequest:
         if refund.status not in (RS.PENDING_GATEWAY, RS.SUBMITTED, RS.FAILED):
             raise RefundStateError(f"Refund {refund.pk} is {refund.status}; it cannot be paid out.")
         _complete_locked(tx, refund, gateway_reference)
+        if via_webhook:
+            _write_attempt(refund, 'webhook', 'completed', request_id=_request_id_of(refund))
         return refund
 
 
@@ -404,7 +413,7 @@ def mark_submitted(refund_id, provider_ref: str, *, token: str) -> RefundRequest
         return refund
 
 
-def mark_failed(refund_id, detail: str, *, kind: str, token: Optional[str] = None) -> RefundRequest:
+def mark_failed(refund_id, detail: str, *, kind: str, token: Optional[str] = None, actor=None) -> RefundRequest:
     """A person must look at this refund. Accepts a pending or submitted refund; with a token it also fences a stale worker."""
     with transaction.atomic():
         tx, refund = _lock_pair(refund_id)
@@ -413,6 +422,7 @@ def mark_failed(refund_id, detail: str, *, kind: str, token: Optional[str] = Non
         if token is not None and (not token or refund.claim_token != token):
             raise RefundStateError(f"Refund {refund.pk} is no longer held by that claim.")
         _fail_locked(tx, refund, detail, kind)
+        _write_attempt(refund, 'mark_failed', 'failed', actor=actor, error_code=kind, request_id=_request_id_of(refund))
         return refund
 
 
@@ -490,7 +500,7 @@ def retry_failed(refund_id, *, actor, confirm_not_refunded: bool = False) -> Ref
         return refund
 
 
-def convert_to_wallet(refund_id) -> CreditBundle:
+def convert_to_wallet(refund_id, *, actor=None) -> CreditBundle:
     """
     The student prefers lesson credit to waiting for the gateway. Allowed ONLY before the gateway has been (or may have been)
     asked: attempts == 0, no live claim, never attempted. Afterwards the money may already be on its way, and converting would
@@ -526,6 +536,7 @@ def convert_to_wallet(refund_id) -> CreditBundle:
         _clear_claim(refund)
         refund.save(update_fields=['status', 'processed_at', 'next_attempt_at', 'claim_token', 'claimed_until', 'updated_at'])
         _resolve_refund_alerts(refund)
+        _write_attempt(refund, 'convert', 'converted', actor=actor, request_id=_request_id_of(refund))
         return lot
 
 
@@ -597,10 +608,12 @@ def _try_claim(refund_id, status, now_fn: Callable) -> Optional[RefundClaim]:
             if refund.attempts > 0 and not refund.gateway_reference and refund.first_attempt_at and now - refund.first_attempt_at > replay_window:
                 _fail_locked(tx, refund, f"The first attempt was more than {settings.REFUND_REPLAY_WINDOW_DAYS} days ago and no refund id "
                                          f"was recorded: check the gateway before sending it again.", FK.REPLAY_WINDOW)
+                _write_attempt(refund, 'guard', 'failed', error_code=FK.REPLAY_WINDOW, request_id=_request_id_of(refund))
                 return None
             problem = _guard_problem(tx, refund)
             if problem:
                 _fail_locked(tx, refund, problem, FK.GUARD)
+                _write_attempt(refund, 'guard', 'failed', error_code=FK.GUARD, request_id=_request_id_of(refund))
                 return None
         token = uuid.uuid4().hex
         won = _cas_claim(refund.pk, now=now, lease=timedelta(minutes=settings.REFUND_ATTEMPT_LEASE_MINUTES), token=token,

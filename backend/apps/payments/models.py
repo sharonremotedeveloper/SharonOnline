@@ -346,14 +346,19 @@ class RefundRequest(models.Model):
 
 class RefundAttempt(models.Model):
     """
-    Append-only audit of what was done to a refund: one row per claim result (send / poll) and per admin action, written
-    inside the transaction that applies it. Never updated or deleted.
+    Append-only audit of what was done to a refund: one row per claim result (send / poll), per admin action and per other status
+    transition (webhook completion, wallet conversion, guard / replay-window failure, marked failed), written inside the
+    transaction that applies it. Never updated or deleted. (A `manual` answer is not an attempt and leaves no row.)
     """
     class Kind(models.TextChoices):
         SEND = 'send', 'Sent to the gateway'
         POLL = 'poll', 'Polled the gateway'
         ADMIN_RETRY = 'admin_retry', 'Retried by an admin'
         ADMIN_MARK_PAID = 'admin_mark_paid', 'Marked paid by an admin'
+        WEBHOOK = 'webhook', 'Completed by a PayPal webhook'
+        CONVERT = 'convert', 'Converted to wallet credit'
+        GUARD = 'guard', 'Stopped by a safety guard before sending'
+        MARK_FAILED = 'mark_failed', 'Marked failed'
 
     id = models.BigAutoField(primary_key=True)
     refund = models.ForeignKey(RefundRequest, on_delete=models.PROTECT, related_name='attempt_log')
