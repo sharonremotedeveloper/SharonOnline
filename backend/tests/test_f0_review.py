@@ -99,6 +99,19 @@ class TestOAuthFailureIsUnknown:
                 zoom_client.delete_meeting(MEETING)
         delete.assert_not_called()
 
+    def test_the_client_reports_a_missing_status_as_none(self, zoom_configured):
+        """Pins the client contract itself (the past-instance check would otherwise mask a 'waiting' default)."""
+        with mock.patch('apps.integrations.zoom.requests.post', return_value=token_ok()), \
+                mock.patch('apps.integrations.zoom.requests.get', return_value=resp(200, {'id': 1})):
+            assert zoom_client.get_meeting_status(MEETING)['status'] is None
+
+    @pytest.mark.parametrize('status', [401, 404, 429, 500])
+    def test_the_client_raises_on_a_status_error(self, zoom_configured, status):
+        with mock.patch('apps.integrations.zoom.requests.post', return_value=token_ok()), \
+                mock.patch('apps.integrations.zoom.requests.get', return_value=resp(status)):
+            with pytest.raises(ZoomError):
+                zoom_client.get_meeting_status(MEETING)
+
     def test_the_token_failure_log_has_no_provider_body(self, zoom_configured, caplog):
         with mock.patch('apps.integrations.zoom.requests.post', return_value=resp(401)), caplog.at_level(logging.DEBUG):
             with pytest.raises(ZoomError) as err:
@@ -184,6 +197,14 @@ class TestCalendarFence:
             assert dispatch_booking_fulfillment(str(b.id)) is True
         b.refresh_from_db()
         assert b.teacher_gcal_event_id == 'evt-1'
+
+    def test_the_event_id_is_saved_with_update_fields(self, gcal_tutor, student_user):
+        b = confirmed(gcal_tutor, student_user)
+        Booking.objects.filter(pk=b.pk).update(zoom_meeting_id=MEETING)
+        with mock.patch('apps.bookings.services.fulfillment.sync_booking_to_teacher_gcal', return_value='evt-1'), \
+                mock.patch.object(Booking, 'save', autospec=True, side_effect=Booking.save) as save:
+            assert dispatch_booking_fulfillment(str(b.id)) is True
+        assert save.call_args_list and all(c.kwargs.get('update_fields') for c in save.call_args_list)
 
     @pytest.mark.parametrize('race', ['cancel', 'reschedule'])
     def test_an_event_created_for_a_lesson_that_changed_meanwhile_is_deleted(self, gcal_tutor, student_user, race):
