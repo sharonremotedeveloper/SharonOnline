@@ -163,14 +163,14 @@ EMAIL_VERIFY_MAX_AGE = 3 * 24 * 60 * 60
 SUPPORT_TO_EMAIL = os.environ.get('SUPPORT_TO_EMAIL', 'support@sharonesl.com')
 
 # Transactional e-mail (slice N1c, docs/NOTIFICATIONS.md). Only apps/integrations/services/email.py reads these.
-# 'resend' = Resend HTTP API; 'console' = Django's mail backend below (local dev prints, tests collect in mail.outbox).
+# 'resend' = Resend HTTP API; 'console' = Django's EMAIL_BACKEND (console backend only in settings/local.py, so no other
+# environment can print reset / verify links to stdout; tests collect in mail.outbox).
 # Unset mode = 'resend' with a real key, 'console' without one; production refuses anything but 'resend' (guard.py).
 from .guard import resolve_email_backend_mode  # noqa: E402
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 RESEND_TIMEOUT_SECONDS = float(os.environ.get('RESEND_TIMEOUT_SECONDS', '10'))
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Sharon ESL <bookings@sharonesl.com>')
 EMAIL_BACKEND_MODE = resolve_email_backend_mode()
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Versioned Fernet keyring for encrypted tutor payout details. Example:
 # PAYOUT_DATA_KEYS='{"v1":"<fernet-key>","v2":"<fernet-key>"}' and PAYOUT_DATA_ACTIVE_KEY='v2'.

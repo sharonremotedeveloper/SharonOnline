@@ -15,14 +15,34 @@ logger = logging.getLogger(__name__)
 
 
 class EmailDeliveryError(Exception):
-    """The provider refused or could not be reached; callers (Celery tasks) retry."""
+    """Not sent, but worth retrying (`in_flight` / `retryable`); `.result` is the `EmailResult` when there is one."""
+
+    def __init__(self, message: str = '', result=None):
+        super().__init__(message)
+        self.result = result
+
+
+class EmailPermanentError(EmailDeliveryError):
+    """Not sent and retrying cannot help (`failed`: 4xx validation/auth, not configured). Celery callers do not retry it."""
+
+
+def raise_for_result(result, label: str) -> None:
+    """Raise the right error for a result that is not `sent`. The message holds status and code only (no address)."""
+    if result.ok:
+        return
+    error = EmailPermanentError if result.status == email_service.FAILED else EmailDeliveryError
+    raise error(f'{label} {result.status} ({result.error_code})', result=result)
+
+
+def log_permanent_failure(task_name: str, ref_id, exc: EmailPermanentError) -> None:
+    """One line for a human: which task and record, and the provider's short code. Never the address or body."""
+    code = exc.result.error_code if exc.result is not None else ''
+    logger.error('email.permanent_failure task=%s ref=%s error_code=%s (not retried)', task_name, ref_id, code)
 
 
 def send_email(to: str, subject: str, html: str, text: str = '') -> None:
-    """Raising wrapper over the unified sender. The message carries the result status and code only (no address)."""
-    result = email_service.send_email(to, subject, html, text)
-    if not result.ok:
-        raise EmailDeliveryError(f'e-mail {result.status} ({result.error_code})')
+    """Raising wrapper over the unified sender: `EmailPermanentError` for `failed`, `EmailDeliveryError` otherwise."""
+    raise_for_result(email_service.send_email(to, subject, html, text), 'e-mail')
 
 
 def generate_ics_content(booking) -> bytes:
@@ -77,15 +97,15 @@ def build_booking_confirmation(booking):
 def send_booking_confirmation_email(booking):
     """
     Sends the student's confirmation with the .ics invite through the unified sender. Returns the `EmailResult`;
-    raises `EmailDeliveryError` for anything but `sent` so the fulfilment task retries (before N1c a provider error
-    returned False and the step was marked done anyway).
+    raises `EmailPermanentError` for `failed` and `EmailDeliveryError` for `in_flight` / `retryable`, so the fulfilment
+    task (F0) can stop on the first and retry the second (before N1c a provider error returned False and the step was
+    marked done anyway).
     """
     subject, html, text = build_booking_confirmation(booking)
     invite = Attachment('lesson-invite.ics', generate_ics_content(booking), 'text/calendar')
     result = email_service.send_email(booking.student.email, subject, html, text,
                                       idempotency_key=booking_confirmation_key(booking), attachments=[invite],
                                       tags={'kind': 'booking_confirmed'})
-    if not result.ok:
-        raise EmailDeliveryError(f'booking confirmation {result.status} ({result.error_code})')
+    raise_for_result(result, 'booking confirmation')
     logger.info('Booking confirmation e-mail sent for booking=%s provider_id=%s', booking.id, result.provider_message_id)
     return result

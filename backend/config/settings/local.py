@@ -49,6 +49,10 @@ CORS_ALLOW_ALL_ORIGINS = True
 if not REDIS_URL:
     CELERY_TASK_ALWAYS_EAGER = True
 
+# EMAIL_BACKEND_MODE=console prints each e-mail here (local + docker compose, which uses these settings). Set only in this
+# module, never in base.py, so a non-local deployment in console mode fails loudly instead of printing links to stdout.
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
 # E-mail send results (provider ids / error codes only) in the runserver console. With EMAIL_BACKEND_MODE=console the
 # messages themselves (including reset / verify links) are printed by Django's console mail backend, not the log.
 LOGGING = {
