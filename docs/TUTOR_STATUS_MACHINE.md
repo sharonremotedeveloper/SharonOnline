@@ -63,10 +63,13 @@ create_teacher_profile(user, *, status='applied', actor, reason='', **fields) ->
 - On a change: `save(update_fields=['status', 'updated_at'])`, one `TeacherStatusChange` row (reason truncated to 500),
   `transaction.on_commit(notify_status_change(change_id))` (a no-op log shim until N1a), and the caller's instance is
   refreshed (`status`, `is_verified`, `is_active`, `updated_at`).
-- **Never takes a booking lock.** The lock order elsewhere is booking -> tutor (cancel / memo / no-show call `add_strike`
-  while holding a booking row). On `-> suspended` the result lists the tutor's future `pending_payment` / `confirmed`
+- **Never takes a booking lock**, so it cannot join a booking/tutor lock cycle. Cancel / memo / no-show lock booking -> tutor
+  (they call `add_strike` while holding a booking row); **not everywhere**: `bookings/services/reviews.py::submit_review` locks
+  tutor -> booking (T1b aligns it, §7). On `-> suspended` the result lists the tutor's future `pending_payment` / `confirmed`
   bookings with a plain read; cancelling them is a separate, per-booking admin action (T1b), never done here.
-- `create_teacher_profile` writes the baseline audit row (`from_status=''`). Seeds use it.
+- `create_teacher_profile` writes the baseline audit row (`from_status=''`). STAFF and SYSTEM may create any status; the
+  tutor (SELF) only `applied`; anyone else gets `TransitionNotPermitted`. Seeds use it. `record_baseline(profile, actor=...)`
+  writes the same row for a profile created elsewhere (the Django admin "add" form uses it; the new profile is `applied`).
 - Logs carry ids and statuses only.
 
 ### Audit trail (`TeacherStatusChange`)
@@ -74,6 +77,10 @@ Append-only: `save()` on an existing row, `delete()`, and queryset `update()` / 
 is read-only (plus an inline on the tutor page). Deleting the tutor still cascades (the collector does not use the queryset
 `delete`). Fields: `teacher`, `from_status`, `to_status`, `actor`, `actor_user`, `reason`, `rubric` (JSON), `reviewed_assets`
 (JSON, for T3's ETag pinning), `created_at`.
+
+Consequence: **the Django admin cannot delete a tutor** (or their User): the admin's delete confirmation needs delete permission
+on every cascaded model, and `TeacherStatusChange` grants none. Deleting from code / the shell still cascades. The
+retention / erasure policy for tutor audit rows (POPIA/GDPR) is an open item for Phase 14.
 
 ## 4. Tripwires (Django silently drops writes to GeneratedFields; we refuse them)
 
@@ -83,14 +90,17 @@ is read-only (plus an inline on the tutor page). Deleting the tutor still cascad
 | `profile.save(update_fields=['is_active'])` | silent no-op | `ValueError` |
 | `TeacherProfile.objects.filter(...).update(is_active=False)` | silently dropped | `ValueError` |
 | `bulk_update(objs, ['is_active'])` | - | `ValueError` |
-| `profile.is_active = False; profile.save()` | value ignored (generated) | not writable; guard (a) fails the build on the assignment |
+| `profile.is_active = False` (instance assignment) | accepted, then ignored on save | `AttributeError` (Django's own loading / INSERT RETURNING / `bulk_create` / `refresh_from_db` are allowed) |
+| `profile.save()` on an existing row (no `update_fields`), e.g. a DRF ModelSerializer PATCH or the admin form | writes every column, so a **stale copy writes an old `status` / `sla_strikes` back** (a suspension undone with no audit row) | saves every concrete non-generated column **except `status` and `sla_strikes`** (the service-owned columns, written only with explicit `update_fields` by `vetting.py` / `strikes.py`) |
+| `profile.status = 'x'; profile.save()` (or `sla_strikes`) | written, no audit row | `ValueError` (the value differs from the one loaded / last saved) |
 
 After an UPDATE Django does not refresh generated values: the service refreshes the caller's instance; other code must call
 `refresh_from_db()`. INSERTs return them (`db_returning`).
 
 Guard (a) (`tests/guards/test_guard_teacher_status_writes.py`) has an **empty** allowlist: only `teachers/vetting.py` (and
-migrations) may write `status` / the flags; a stricter detector fails any `status` write anywhere in `apps/teachers/` outside
-the service. In tests use `factories.make_teacher_profile(status=...)` to create and `factories.advance_teacher(...)` to change.
+migrations) may write `status` / the flags; a stricter detector fails any `status` write in `apps/teachers/` outside the
+service on a possible TeacherProfile receiver (neutral names such as `locked` included; another model's `Model.objects...`
+chain, `self` in another class, and document / application / training / progress names are not flagged). In tests use `factories.make_teacher_profile(status=...)` to create and `factories.advance_teacher(...)` to change.
 
 ## 5. Callers converted in T1a
 
@@ -98,8 +108,11 @@ the service. In tests use `factories.make_teacher_profile(status=...)` to create
   `transition_teacher(locked, 'suspended', actor='system:strikes')` **only when the tutor is `approved`** (any other status:
   strike recorded, status unchanged, never raises).
 - `PATCH /api/v1/admin/teachers/<id>/verify/` (legacy, **T1b replaces it**): walks the shortest legal path to `approved` /
-  `rejected` through the service as the admin (reason = `rejection_reason` or `legacy-verify`), in one transaction. Same
-  response shape and codes (200 / 400 / 403 / 404); a target the table cannot reach is 409 (`code: invalid_transition`).
+  `rejected` through the service as the admin (reason = `rejection_reason` or `legacy-verify`), in one transaction, reading
+  the tutor once under the row lock. Same response shape and codes (200 / 400 / 403 / 404); a target the table cannot reach
+  is 409 (`code: invalid_transition`). A path to `rejected` **may not pass through `approved`** (that would write a fake
+  reinstatement into the audit trail, and a fake "approved" notification once N1a lands), so **rejecting a suspended tutor is
+  409**. Open question for Anesu: should there be a `suspended -> rejected` edge (permanent removal)? No such edge exists.
 - Django admin: `status`, the flags, `training_completed_at` and `sla_strikes` are read-only; filter by `status`.
 - Seeds: `seed_data` creates `approved` (trained) tutors, `seed_phase41_data` `submitted` applications, both through
   `create_teacher_profile`, idempotent.
@@ -112,12 +125,26 @@ the service. In tests use `factories.make_teacher_profile(status=...)` to create
 | (True, True) | `approved` + `training_completed_at = migration time` (grandfathered) | | approved | (True, True) |
 | (False, False) | `rejected` | | suspended | (True, False) |
 | (False, True) | `applied` | | rejected | (False, False) |
-| (True, False) | `suspended` | | applied, submitted, in_review, changes_requested | (False, True) |
+| (True, False) | `suspended` + `training_completed_at = migration time` (vetted and once live) | | applied, submitted, in_review, changes_requested | (False, True) |
+
+Any (True, False) row becomes `suspended`, whatever produced it: a strike deactivation, a Django-admin edit, or a rejection
+recorded that way by hand. The old booleans cannot tell these apart; staff should review the suspended list after the deploy.
 
 Every profile gets a baseline audit row (`'' -> status`, actor `system:migration_0007`). 0008 replaces the booleans with
 GeneratedFields (RemoveField + AddField; AlterField to a generated field is unsupported) and adds the CHECK constraint; its
 reverse re-adds plain booleans and recomputes them from `status` before 0007's own reverse runs. Round trip tested on SQLite
 and (CI, `-m postgres`) on Postgres: `tests/test_tutor_status_migrations.py`.
+
+### Deploying 0007 / 0008 (stop-the-world)
+There is no deploy runbook yet (Phase 16); until there is, this is the procedure for any environment with data:
+1. Stop the web process **and** every Celery worker and beat (old code writes `is_verified` / `is_active` and inserts profiles
+   without `status`; on Postgres those writes fail against the generated columns, and old code would also bypass the audit).
+2. `python manage.py migrate teachers` (0007 then 0008). On Postgres 0008 rewrites `teachers_teacherprofile` under an
+   ACCESS EXCLUSIVE lock (drop + add stored generated columns, CHECK constraint): every read of the table blocks for the
+   duration. The table is small (hundreds of rows), so expect seconds.
+3. Start the new code (web, workers, beat). Then review the `suspended` tutors (see the mapping note above).
+Rollback: stop everything, run `migrate teachers 0006_teacherstrike` while the **new** code is still deployed (the reverse
+operations live in its migration files), then deploy and start the old code. The audit table is dropped by the rollback.
 
 ## 7. Hand-off notes for T1b / T1c
 
@@ -128,9 +155,13 @@ and (CI, `-m postgres`) on Postgres: `tests/test_tutor_status_migrations.py`.
   `reservation.py`, `rescheduling.py`, `payments/views.py`, `admin_api/views.py` (pending, payout preview), `integrations/tasks.py`,
   `users/serializers.py`, `admin_api/serializers.py`. T1b replaces them with `bookable()` per the plan's per-site decisions.
 - The verify shim is temporary; T1b deletes it in favour of explicit review actions (submit / start review / approve / request
-  changes / reject / suspend / reinstate) that call `transition_teacher` with a rubric.
+  changes / reject / suspend / reinstate) that call `transition_teacher` with a rubric. **Merge-train condition: T1b must
+  delete the shim before N1a wires `notify_status_change`** (the shim walks several edges per call; each would notify).
+- **Lock order (T1b):** `bookings/services/reviews.py::submit_review` locks the tutor row, then the booking (tutor -> booking),
+  while cancel / memo / no-show lock booking -> tutor (`add_strike`). A review and a strike on the same lesson can deadlock on
+  Postgres (one is retried/aborted). T1b should lock booking -> tutor in the review path (or update the rating with an atomic
+  F-expression without a tutor lock) and add a Postgres-marked test.
 - `role=teacher` users without a profile are not given one here (T1c, registration auto-profile).
-- A full-row `save()` of a stale `TeacherProfile` copy (e.g. a DRF ModelSerializer update) still writes `status` back; with
-  writes only through the service this needs a race with a concurrent transition. T1c (`/teachers/me/` PATCH) should save with
-  explicit `update_fields` that never include `status`.
+- Full-row saves no longer write `status` / `sla_strikes` (§4); T1c's `/teachers/me/` PATCH should still save with explicit
+  `update_fields` limited to the whitelisted fields.
 - Notifications (`vetting:{change_id}`, `suspended:{change_id}`) hook into `notify_status_change` (N1a).

@@ -303,3 +303,18 @@ def configure_test_settings(settings):
 - **Symptom:** Turbopack: "Symlink [project]/node_modules is invalid, it points out of the filesystem root".
 - **Root cause:** the worktree has no `node_modules`; agents may only junction the main checkout's, and Turbopack refuses a link that leaves the project root. Environment limitation, not a code defect.
 - **Fix:** none in code; the build gate is verified after the merge on the integration checkout (or CI). Type-check (`tsc --noEmit`), lint and unit tests were run through the junction instead.
+
+### ERR-156: a stale full-row save could silently undo a tutor suspension (slice T1a, Architect review M1)
+- **Symptom:** a tutor whose profile was loaded while `approved` (e.g. `request.user.teacher_profile` in `TeacherPowerBackupView`), then suspended by a strike, PATCHed the power-backup settings: the DRF serializer's `instance.save()` wrote every column, so `status='approved'` (and the old `sla_strikes`) went back with no audit row. Red test: `test_tutor_status_signoff.py::test_power_backup_patch_after_a_strike_suspension_keeps_the_suspension`.
+- **Root cause:** Django's default `save()` writes all concrete columns from the in-memory copy; the service-owned columns were not protected against stale copies, and instance assignment of the generated flags was accepted then ignored.
+- **Fix:** `TeacherProfile.save()` on an existing row without `update_fields` now writes every concrete non-generated column except `status` and `sla_strikes` (written only with explicit `update_fields` by `vetting.py` / `strikes.py`); changing either on the instance before such a save raises `ValueError` (values remembered in `from_db` / `refresh_from_db` / `save`); `__setattr__` raises `AttributeError` for `is_verified` / `is_active` outside Django's own loading/saving (`_internal_write`, also used by `bulk_create`).
+
+### ERR-157: legacy verify shim recorded a fake reinstatement when rejecting a suspended tutor (slice T1a, Architect review M2)
+- **Symptom:** `PATCH /admin/teachers/<id>/verify/ {is_verified: false}` on a suspended tutor walked `suspended -> approved -> in_review -> rejected`: an "approved" audit row (and, once N1a lands, an "approved" notification) for a tutor nobody reinstated. The 409 path also used a pre-lock read of the status.
+- **Root cause:** the shortest-path search used every staff edge, including the reinstatement edge, and the view read the profile before taking the row lock.
+- **Fix:** a path to `rejected` may not pass through `approved` (suspended -> reject is now 409; no new edge, open question for Anesu in `TUTOR_STATUS_MACHINE.md`); the view reads the tutor once with `select_for_update()` and builds the 409 from that row.
+
+### ERR-158: admin "add teacher profile" test posted an empty JSON list (slice T1a)
+- **Symptom:** the new admin-add test got 200 with `{'specialties': ['This field is required.']}`.
+- **Root cause:** Django's form `JSONField` treats `[]` as empty and the model field is not `blank=True`.
+- **Fix:** the test posts `["FreeTalk"]` (the field's documented shape). No product change; whether `specialties` should be optional is a T1c question.

@@ -82,3 +82,31 @@ Test files: **M** = `tests/test_tutor_status_machine.py`, **I** = `tests/test_tu
 | g2 | `strikes.py:34` | adds `locked.status = 'approved'` | G `test_teachers_app_writes_status_only_in_the_service` | KILLED |
 
 Totals: 47 mutants, 47 KILLED (3 needed a new test after a first SURVIVED run: a5, l1, m4).
+
+Note: after the sign-off fixes, row m3's line became `0007:39` `if status in GRANDFATHERED` (approved and suspended); its
+replacement is row x13 below. Rows v1-v3/g1 refer to the shim before the sign-off rewrite (line numbers moved).
+
+## Architect sign-off fixes (2026-10-05, commits `cb9d8de` + `04a8cb3`; same procedure, every run restored byte-identical)
+
+**SO** = `tests/test_tutor_status_signoff.py`.
+
+| # | File:line | Mutant | Killing test | Verdict |
+| :-- | :--- | :--- | :--- | :--- |
+| x1 | `models.py:14` | `SERVICE_OWNED` loses `status` (stale full save writes it back) | SO `test_power_backup_patch_after_a_strike_suspension_keeps_the_suspension` | KILLED |
+| x2 | `models.py:14` | `SERVICE_OWNED` loses `sla_strikes` | SO `test_a_stale_full_save_writes_other_fields_but_never_status_or_strikes` | KILLED |
+| x3 | `models.py:132` | instance assignment of a generated flag allowed | SO `test_assigning_a_generated_flag_on_an_instance_raises` | KILLED |
+| x4 | `models.py:153` | full-row save writes every column again | SO power-backup race + stale full save | KILLED |
+| x5 | `models.py:166` | changed status on the instance silently dropped | SO `test_changing_status_on_an_instance_and_saving_the_row_raises` | KILLED |
+| x6 | `models.py:139` | `from_db` does not remember the loaded status | SO `test_a_loaded_instance_with_a_changed_status_raises_on_a_full_save` (added after the first run SURVIVED) | KILLED |
+| x7 | `models.py:145` | `refresh_from_db` does not remember the refreshed status | SO `test_a_full_save_after_the_service_refreshed_the_instance_is_fine` | KILLED |
+| x8 | `models.py:53` | `bulk_create` not allowed to set the returned flags | SO `test_bulk_create_still_returns_the_generated_flags` | KILLED |
+| x9 | `vetting.py:158` | SELF may create any status | SO `test_the_tutor_may_only_create_an_applied_profile` | KILLED |
+| x10 | `vetting.py:158` | a stranger may create a profile | SO `test_a_stranger_may_not_create_a_profile_for_someone_else` | KILLED |
+| x11 | `admin_api/views.py:158` | reject path may pass through `approved` | SO `test_rejecting_a_suspended_tutor_is_409_and_writes_no_fake_approval` | KILLED |
+| x12 | `teachers/admin.py:59` | admin add skips the baseline row | SO `test_admin_add_profile_records_a_baseline_audit_row` | KILLED |
+| x13 | `0007:27` | suspended tutors not grandfathered | Mig `test_migration_round_trip` | KILLED |
+| x14 | `guards/test_guard_teacher_status_writes.py:201` | strict detector flags every `Model.objects` chain | G `test_strict_detector_ignores_other_teachers_app_models_with_their_own_status` | KILLED |
+| x15 | same `:202` | strict detector flags document/application/training receivers | same | KILLED |
+| x16 | same `:198` | `self` in any class counts as a tutor | same | KILLED |
+
+Sign-off totals: 16 mutants, 16 KILLED (x6 after one added test).

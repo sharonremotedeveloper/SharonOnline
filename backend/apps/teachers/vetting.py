@@ -7,8 +7,9 @@ tests/guards/test_guard_teacher_status_writes.py fails the build on any other wr
 
 * `actor` is a User (STAFF when a platform admin, SELF when it is the tutor's own account) or a 'system:<source>' string
   (SYSTEM). STAFF may take every edge; SELF and SYSTEM only the edges listed for them in ALLOWED_TRANSITIONS.
-* The decision is made on the row re-read with SELECT ... FOR UPDATE (the tutor row only: this module NEVER locks a booking;
-  the lock order elsewhere is booking -> tutor).
+* The decision is made on the row re-read with SELECT ... FOR UPDATE (the tutor row only: this module NEVER locks a booking,
+  so it cannot join a booking/tutor lock cycle; cancel / memo / no-show lock booking -> tutor, while
+  bookings/services/reviews.py still locks tutor -> booking - T1b aligns it).
 * An illegal edge raises InvalidTeacherTransition (409); a legal edge the actor may not take raises TransitionNotPermitted
   (403); an unknown status or a missing / malformed actor is a ValueError (a programming error).
 * Re-requesting the current status is a no-op (`changed=False`, no audit row): retries and duplicate jobs are idempotent.

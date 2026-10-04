@@ -35,6 +35,16 @@ Baseline before the slice: full suite 1934 passed, 6 skipped.
 - frontend (through a temporary node_modules junction, removed): `check:api-types` ok, `lint` 0 warnings, `tsc --noEmit` ok,
   `npm test` 152/152; `npm run build` not runnable through the junction (ERR-155)
 
+## Architect sign-off (APPROVE WITH CONDITIONS, 2026-10-04) - done 2026-10-05
+- [x] `27ca791` red tests: `11 failed, 45 passed, 4 skipped` (signoff, integration, migrations, guard (a) files)
+- [x] `cb9d8de` fixes: M1 (full-row save skips status/sla_strikes, changed owned value raises, flags not assignable),
+      M2 (reject never walks through approved, one locked read), minors 2 (create actor rules), 3 (0007 grandfathers
+      suspended), 6 (admin add baseline row), 7 (strict guard limited to TeacherProfile receivers)
+- [x] `04a8cb3` extra test for mutant x6; sign-off mutants 16/16 KILLED
+- [x] docs: TUTOR_STATUS_MACHINE.md (tripwires, open question suspended->rejected, merge-train condition, deploy note,
+      admin delete blocked, lock-order correction + T1b follow-up), ERR-156..158, mutation rows x1..x16
+- Final: backend 2102 passed, 10 skipped; ruff clean; check clean; makemigrations no changes (counts in the hand-off)
+
 ## Remaining
 - Nothing in T1a scope. Postgres-marked tests (round trip on Postgres, concurrent suspensions, FOR UPDATE SQL, booking-lock
   ordering) run only in CI (`-m postgres`). Follow-ups for T1b/T1c: `docs/TUTOR_STATUS_MACHINE.md` §7.
