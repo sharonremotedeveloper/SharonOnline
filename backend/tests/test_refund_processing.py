@@ -1830,3 +1830,89 @@ class TestCaptureSideCashAccountFollowsTheGateway:
         assert ledger_service.gateway_cash_account(paypal_zar) == ACC.ASSET_GATEWAY_PAYPAL == refunds._gateway_cash_account(paypal_zar)
         payfast_usd = PaymentTransaction(gateway='payfast', currency='USD')
         assert ledger_service.gateway_cash_account(payfast_usd) == ACC.ASSET_GATEWAY_PAYFAST == refunds._gateway_cash_account(payfast_usd)
+
+
+NOT_FOUND = RefundResult('transient', detail='PayPal does not know this id', code='INVALID_RESOURCE_ID', http_status=404)
+
+
+class TestCaptureNotFound404:
+    """M1: a 404 on the send path is a per-row transient; a person is told about THAT refund after 3 straight 404s."""
+
+    def _sweep_n(self, n, clock):
+        for _ in range(n):
+            refunds.process_pending_refunds()
+            clock.advance(25 * HOUR)
+
+    def test_a_404_burns_the_rows_own_attempt_and_backs_off(self, teacher_user, student_user, gw, clock):
+        gw.behavior = lambda order: NOT_FOUND
+        r = new_refund(teacher_user, student_user)
+        assert refunds.process_pending_refunds() == result_dict(sent=1, transient=1)
+        r = fresh(r)
+        assert (r.status, r.attempts, r.last_http_status, r.last_error_code) == (RS.PENDING_GATEWAY, 1, 404, 'INVALID_RESOURCE_ID')
+        assert r.next_attempt_at == clock.now + 15 * MIN
+        assert not alerts('refund_capture_not_found').exists()
+
+    def test_the_alert_comes_after_three_attempts_that_all_ended_in_404(self, teacher_user, student_user, gw, clock):
+        gw.behavior = lambda order: NOT_FOUND
+        r = new_refund(teacher_user, student_user)
+        self._sweep_n(2, clock)
+        assert not alerts('refund_capture_not_found').exists()
+        self._sweep_n(1, clock)
+        found = alerts('refund_capture_not_found', r.pk)
+        assert found.count() == 1 and fresh(r).attempts == 3
+        self._sweep_n(2, clock)
+        assert alerts('refund_capture_not_found', r.pk).count() == 1          # one alert per refund, not one per attempt
+
+    def test_a_different_answer_in_between_means_it_is_not_a_straight_404_run(self, teacher_user, student_user, gw, clock):
+        answers = iter([NOT_FOUND, RefundResult('transient', http_status=503), NOT_FOUND])
+        gw.behavior = lambda order: next(answers)
+        new_refund(teacher_user, student_user)
+        self._sweep_n(3, clock)
+        assert not alerts('refund_capture_not_found').exists()
+
+    def test_only_the_current_request_ids_attempts_count(self, teacher_user, student_user, gw, clock, admin_user):
+        gw.behavior = lambda order: NOT_FOUND
+        r = new_refund(teacher_user, student_user)
+        self._sweep_n(2, clock)
+        refunds.mark_failed(r.pk, 'x', kind='rejected')
+        refunds.retry_failed(r.pk, actor=admin_user, confirm_not_refunded=True)      # epoch bump: a new request id, a new round
+        self._sweep_n(2, clock)
+        assert not alerts('refund_capture_not_found').exists()
+
+    def test_the_alert_is_resolved_when_the_refund_is_finally_paid(self, teacher_user, student_user, gw, clock):
+        gw.behavior = lambda order: NOT_FOUND
+        r = new_refund(teacher_user, student_user)
+        self._sweep_n(3, clock)
+        assert alerts('refund_capture_not_found', r.pk).filter(resolved=False).count() == 1
+        refunds.mark_processed(r.pk, 'RF-LATE')
+        assert not alerts('refund_capture_not_found', r.pk).filter(resolved=False).exists()
+
+    def test_three_404s_from_three_refunds_in_one_sweep_trip_the_gateway_breaker(self, teacher_user, student_user, gw):
+        gw.behavior = lambda order: NOT_FOUND
+        for _ in range(4):
+            new_refund(teacher_user, student_user)
+        done = refunds.process_pending_refunds()
+        assert done['sent'] == 3 and done['transient'] == 3 and done['skipped_breaker'] == 1
+        assert alerts('refund_provider_outage', 'paypal').count() == 1
+
+    def test_a_row_that_only_ever_got_404s_ends_exhausted_never_as_replay_window(self, teacher_user, student_user, gw, clock):
+        gw.behavior = lambda order: NOT_FOUND
+        r = new_refund(teacher_user, student_user)
+        self._sweep_n(14, clock)                                           # a bit over two weeks of daily attempts
+        r = fresh(r)
+        assert r.status == RS.FAILED and r.failure_kind == FK_EXHAUSTED
+        assert r.attempts >= 8 and r.last_http_status == 404
+        assert alerts('refund_failed_exhausted', r.pk).count() == 1 and not alerts('refund_failed_replay_window').exists()
+
+    def test_a_provider_level_404_from_the_lookup_still_never_fails_a_submitted_row(self, teacher_user, student_user, gw, clock):
+        gw.behavior = lambda order: RefundResult('submitted', reference='RF-S')
+        gw.lookup_behavior = lambda order: RefundResult('transient', code='INVALID_RESOURCE_ID', http_status=404, provider_level=True)
+        r = new_refund(teacher_user, student_user)
+        refunds.process_pending_refunds()
+        for _ in range(5):
+            clock.advance(2 * HOUR)
+            refunds.process_pending_refunds()
+        assert fresh(r).status == RS.SUBMITTED
+
+
+FK_EXHAUSTED = RefundRequest.FailureKind.EXHAUSTED

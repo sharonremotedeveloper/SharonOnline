@@ -216,7 +216,9 @@ SUBMITTED_STALE_AFTER = timedelta(days=14)
 CANDIDATE_CAP = 1000
 AMBIGUOUS_KINDS = (FK.EXHAUSTED, FK.REPLAY_WINDOW, FK.ALREADY_REFUNDED, '')     # the provider may already have refunded: a human must confirm
 SEND, POLL = 'send', 'poll'
-_REFUND_ALERT_CODES = tuple(f'refund_failed_{kind}' for kind in FK.values) + ('refund_manual_waiting', 'refund_submitted_stale')
+_REFUND_ALERT_CODES = tuple(f'refund_failed_{kind}' for kind in FK.values) + ('refund_manual_waiting', 'refund_submitted_stale',
+                                                                                'refund_capture_not_found')
+NOT_FOUND_ALERT_AFTER = 3                                     # straight 404 answers from the provider before a person is told about THAT refund
 
 
 def _now():
@@ -622,6 +624,22 @@ def _retry_later(refund, delay: timedelta, now) -> None:
     _clear_claim(refund)
 
 
+def _alert_if_capture_unknown(tx, refund) -> None:
+    """
+    This send was answered 404. When the last NOT_FOUND_ALERT_AFTER sends of this request id (this one included, its row is not
+    written yet) all ended in 404, the capture is probably unknown to this PayPal environment: tell a person about THIS refund
+    (the gateway breaker only sees several refunds failing together).
+    """
+    earlier = list(RefundAttempt.objects.filter(refund=refund, kind=SEND, request_id=refund.gateway_request_id)
+                   .order_by('-seq').values_list('http_status', flat=True)[:NOT_FOUND_ALERT_AFTER - 1])
+    if len(earlier) == NOT_FOUND_ALERT_AFTER - 1 and all(status == 404 for status in earlier):
+        alert_admin('refund_capture_not_found', f"Refund {refund.pk}: PayPal does not know its capture",
+                    f"PayPal answered 404 to the last {NOT_FOUND_ALERT_AFTER} attempts to refund {refund.amount} {refund.currency} "
+                    f"(capture {tx.gateway_reference}). Check that the capture exists in this PayPal environment (sandbox versus "
+                    f"live) and that the payment really was captured. The refund keeps retrying with backoff.",
+                    key=str(refund.pk), tx=tx, booking=refund.booking)
+
+
 def apply_result(refund_id, token: str, result: RefundResult, *, kind: str) -> str:
     """
     The single place a gateway answer is written. Re-locks (payment, then refund), checks the claim token (a worker whose lease
@@ -696,6 +714,8 @@ def apply_result(refund_id, token: str, result: RefundResult, *, kind: str) -> s
             else:
                 _retry_later(refund, _next_backoff(refund.attempts, result), now)
                 refund.failure_detail = (result.detail or '')[:2000]
+                if result.http_status == 404:
+                    _alert_if_capture_unknown(tx, refund)
                 refund.save(update_fields=['next_attempt_at', 'failure_detail', 'claim_token', 'claimed_until', 'last_http_status',
                                            'last_error_code', 'updated_at'])
                 outcome = 'retry'

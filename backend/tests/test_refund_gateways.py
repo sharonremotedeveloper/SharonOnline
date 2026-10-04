@@ -267,10 +267,26 @@ def test_401_then_success_after_refresh_completes_with_same_request_id(pp, gw):
     assert [c['headers']['PayPal-Request-Id'] for c in pp['calls']] == ['rid-stable', 'rid-stable']
 
 
-def test_404_resource_not_found_for_the_capture_is_a_sandbox_live_mismatch(pp, gw):
-    pp['queue'].append(_err(404, 'RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID'))
+@pytest.mark.parametrize('name, issue', [('RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID'), ('INVALID_RESOURCE_ID', None), ('RESOURCE_NOT_FOUND', None)])
+def test_404_on_the_send_path_is_an_ordinary_per_row_transient_with_its_code_kept(pp, gw, name, issue):
+    """QA M1: one bad capture must burn that row's own attempts (and reach `exhausted`), not hide behind the provider-level flag
+    forever. The per-gateway breaker still trips when several refunds in a sweep see it (the sandbox/live mismatch signal)."""
+    pp['queue'].append(_err(404, name, issue))
     res = gw.refund(_order())
-    assert res.state == 'transient' and res.provider_level is True and res.http_status == 404
+    assert res.state == 'transient' and res.provider_level is False and res.http_status == 404
+    assert res.code == (issue or name)
+
+
+def test_404_on_the_lookup_path_keeps_the_provider_level_behaviour(pp, gw):
+    pp['queue'].append(_err(404, 'RESOURCE_NOT_FOUND', 'INVALID_RESOURCE_ID'))
+    res = gw.lookup(_order(provider_refund_id='RFABC12345'))
+    assert res.state == 'transient' and res.provider_level is True and res.http_status == 404 and res.code == 'INVALID_RESOURCE_ID'
+
+
+def test_a_404_that_does_not_name_the_resource_is_still_a_business_rejection(pp, gw):
+    pp['queue'].append(_err(404, 'NOT_FOUND_OTHER', 'SOMETHING_ELSE'))
+    res = gw.refund(_order())
+    assert res.state == 'rejected' and res.http_status == 404 and not res.provider_level
 
 
 @pytest.mark.parametrize('status', [408, 409, 500, 502, 503, 504])
