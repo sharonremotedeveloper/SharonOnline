@@ -225,3 +225,16 @@ def configure_test_settings(settings):
 #### Verification:
 - Executed `pytest` in `Project-files/backend/venv`:  
   `3 passed in 1.93s (100% success)`.
+
+
+---
+
+### ERR-110: capture and refund of one PayPal ZAR payment hit different cash accounts (Task 10.7 QA H1)
+- **Symptom:** after a PayPal payment taken in ZAR was captured and refunded, account 1010 (PayFast) stayed at -amount and 1020 (PayPal) at +amount; both reconciliations were wrong.
+- **Root cause:** `ledger_service` picked the capture-side cash account with `gateway == payfast OR currency == 'ZAR'` (four places) while `refunds._gateway_cash_account` keyed on the gateway only.
+- **Fix:** one helper `ledger_service.gateway_cash_account(tx)` (gateway only) used by every capture/quarantine/unallocated/credit-pack posting and by the refund side. Tests: `TestCaptureSideCashAccountFollowsTheGateway`.
+
+### ERR-111: admin pages cannot render in tests (Task 10.7 QA M4)
+- **Symptom:** `ValueError: Missing staticfiles manifest entry for 'admin/css/base.css'` when a test rendered the refund admin form.
+- **Root cause:** settings use `CompressedManifestStaticFilesStorage`; tests never run collectstatic.
+- **Fix:** the admin tests switch `STORAGES['staticfiles']` to the plain `StaticFilesStorage` (fixture `plain_static_files`); production settings untouched.
