@@ -402,6 +402,14 @@ def configure_test_settings(settings):
 - **Symptom:** ruff `S105` on `TOKEN_URL`, `F811` on a re-imported fixture; `test_env_example_lists_every_setting_read_from_the_environment` failed for the new `ZOOM_*` settings; one test compared two equal `RecordedRequest` objects by index and mis-ordered them.
 - **Fix:** targeted `# noqa: S105` with a reason (the OAuth endpoint URL is not a secret), a local `price_catalog` fixture instead of an import, the new keys added to `.env.example`, and the ordering test compares by identity.
 
+### ERR-142: Z1 QA round 1: the tutor's Start button would have opened the guest link, and four robustness gaps (slice Z1)
+- **Symptom (review):** after Z1 `zoom_start_url` is always empty, so the teacher classroom opened `zoom_url` (the guest join link): with `join_before_host` off the room never opened, the tutor was not recognised as host and the lesson ended as a teacher no-show with a refund. Also: search-before-create skipped after a crashed worker (zoom step PENDING, not FAILED); a staff-issued host link credited the absent tutor with attendance; a Redis outage crashed Zoom auth; unvalidated ids reached URL paths.
+- **Fix:** frontend `lib/hostLink.ts` + `ZoomLauncherButton` host mode fetch a fresh link on click (new tab, `noopener`), 409/502 states, no guest fallback; 15-minute window (`too_early`); `search_first` after any earlier attempt; `HostLinkIssue` audit + escrow hold + admin review action; every cache call in `zoom_auth.py` guarded, lock TTL above the worst-case fetch; unexpected errors in the host-link path map to 502; host/meeting ids validated, 201 without an id raises, marker search date-bounded.
+
+### ERR-143: a Z1 QA test recursed forever and another passed a `Mock` request to Django admin (slice Z1)
+- **Root cause:** a test patched `zoom_auth.cache.add` with a lambda that called `zoom_auth.cache.add` (the patched attribute); the admin-action test used a `Mock` where `get_actions` iterates `request.GET`.
+- **Fix:** capture the real method before patching; use `RequestFactory` and a real superuser.
+
 ### ERR-158: admin "add teacher profile" test posted an empty JSON list (slice T1a)
 - **Symptom:** the new admin-add test got 200 with `{'specialties': ['This field is required.']}`.
 - **Root cause:** Django's form `JSONField` treats `[]` as empty and the model field is not `blank=True`.

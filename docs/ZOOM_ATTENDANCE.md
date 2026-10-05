@@ -102,12 +102,15 @@ A teacher no-show refunds the student, grants a bonus credit and strikes the tut
 * **Errors** carry the HTTP status (`ZoomError.status`) and never Zoom's body; `ZoomNotFound` for 404.
 * **create_meeting is never retried blind.** Every lesson meeting's agenda carries a marker line
   `sharon-booking:<booking id>`. After an ambiguous outcome (timeout, connection error or 5xx: Zoom may have built the room
-  and lost the response) the client lists the host's scheduled meetings (paged, at most 10 pages) and reuses the one whose
+  and lost the response) the client lists the host's scheduled meetings (`type=scheduled`, `from`/`to` = the lesson's UTC
+  date +- 1 day, paged, at most 10 pages; Zoom caps one listing at about 3000 meetings, see the D-9 checklist) and reuses the one whose
   agenda has that exact marker line **and** the same start time (a rescheduled lesson's old room carries the same marker
   until the cleanup task deletes it); only if none is found does it POST again (with back-off, bounded by
   `ZOOM_HTTP_MAX_ATTEMPTS`). A failed search raises: no second POST. 429 on create is retried without a search (Zoom did not
-  process it). Fulfilment passes `search_first=True` when the booking's previous zoom step FAILED, so a lost response from an
-  earlier *attempt* is found before a new room is built. Without a booking id an ambiguous create is never retried.
+  process it). Fulfilment passes `search_first=True` after ANY earlier attempt (`attempts > 1`, which also covers a worker that
+  died after Zoom built the room and whose claim was reclaimed, or a previously FAILED zoom step), so a lost response from
+  an earlier *attempt* is found before a new room is built. Host and meeting ids are validated before they enter a URL
+  (`.`/`..`, slashes, queries rejected); a 201 without an id raises. Without a booking id an ambiguous create is never retried.
   *Why a marker in Zoom, not a stored request marker:* it needs no database write before the HTTP call, survives a worker
   crash between the call and our save, and a stored marker would still need the same search to learn whether Zoom created
   the meeting.
@@ -127,17 +130,33 @@ fresh link from Zoom (`GET /meetings/{id}`) when the classroom opens:
 
 | Caller / state | Answer |
 | :--- | :--- |
-| the booking's tutor, or staff (role admin / is_staff / superuser), lesson `confirmed` or `in_progress`, meeting id set, before `end_time_utc` | 200 `{meeting_id, start_url}`, `Cache-Control: no-store` |
+| the booking's tutor, or staff (role admin / is_staff / superuser), lesson `confirmed` or `in_progress`, meeting id set, from `ZOOM_HOST_LINK_OPEN_MINUTES_BEFORE` (15) minutes before the start until `end_time_utc` | 200 `{meeting_id, start_url}`, `Cache-Control: no-store` |
 | the booking's student | 403 `host_only` |
 | anyone else, or unknown booking | 404 `not_found` |
-| not live / no meeting id / ended | 409 `not_live` / `no_meeting` / `lesson_ended` |
+| not live / no meeting id / ended / before the window | 409 `not_live` / `no_meeting` / `lesson_ended` / `too_early` |
 | Zoom 404 for the meeting | 409 `meeting_missing` + `[ADMIN ALERT]` log |
-| any other Zoom failure | 502 `zoom_unavailable` (no provider detail) |
+| any other Zoom failure, or any unexpected error while fetching | 502 `zoom_unavailable` (no provider detail; error type logged) |
 
-Throttle scope `zoom_host_link` (30/hour per user). Logs carry booking / user / meeting ids only. Staff who open the room
-with this link are the host and count as tutor presence in attendance (the `host_id` rule): use it only to rescue a lesson.
-**Frontend (for F1):** the teacher classroom page still reads `zoom_start_url` and now falls back to the join URL, which does
-not make the tutor the host. F1 must switch it to this endpoint; Z1 and F1 must ship together.
+Throttle scope `zoom_host_link` (30/hour per user). Logs carry booking / user / meeting ids only.
+
+**Staff hosting (QA #3).** Whoever opens the host link IS the host, and the attendance rule credits the host (`host_id`) as the
+tutor. A link issued to staff who are not the tutor therefore writes a `bookings.HostLinkIssue` row (staff user id, time;
+migration `bookings/0016`) and **holds the lesson's escrow release**: `settlement.attendance_verified_for_release` returns
+False while an unreviewed row exists (also for a student no-show or a late-cancel, whose attendance would otherwise be
+taken on trust). An admin clears the hold in Django admin ("Host link issues" -> action "Mark reviewed", which records the
+reviewer) after checking who really attended. Use the staff path only to rescue a lesson. Open question for N2/P1: alert
+the admin when a row is created (today only a `[WARNING]` log line with ids).
+
+**Frontend (done in Z1, not F1).** `lib/hostLink.ts` (`api.getHostLink`) fetches the link when the tutor presses "Start Lesson
+as Host"; `ZoomLauncherButton` (host mode) opens it in a new tab with `noopener,noreferrer`, shows what to do on 409
+(not open yet / ended / no room) and 502 (try again), keeps the link only in memory so the tutor can click again if the
+browser blocked the tab, and only opens an `https` zoom.us address. The tutor page no longer falls back to the guest join
+link, and the host mode hides the web-join toggle and the direct join link (a tutor joining as a guest is not the host: with
+`join_before_host` off the room never opens and the lesson would end as a teacher no-show). F1 keeps the join gating helper.
+
+**Cache outage (QA #4).** Every cache call in `zoom_auth.py` is guarded: a failing read/lock degrades to a direct token fetch
+(no caching, no lock), a failing write/delete is skipped; one warning with the error type only. The lock TTL
+(`ZOOM_HTTP_MAX_ATTEMPTS * (timeout + Retry-After cap) + 5` = 65 s by default) outlives the worst-case fetch.
 
 ## Host allocation (Slice Z1, `integrations/zoom_hosts.py`): LAUNCH BLOCKER pending D-9
 
@@ -147,6 +166,11 @@ fulfilment creates the meeting under that user and stores it in `Booking.zoom_ho
 (`[A-Za-z0-9_.@+-]{1,64}`) before it goes into a URL path. **One host account can run one meeting at a time: two concurrent
 lessons collide on the single licence.** This is a launch blocker until D-9 (host pool) replaces `pick_host` with an
 allocation; probe, delete and host-link paths already work by meeting id and need no change.
+
+**D-9 launch checklist (Zoom side):** licences / alternative hosts for the expected concurrency; the marker search lists a
+host's scheduled meetings (Zoom returns at most about 3000 per listing, and the search is bounded to the lesson's day +- 1
+by `from`/`to`), so a pool host with a very large backlog needs the pool split or the search narrowed further; confirm
+`from`/`to` are honoured for `type=scheduled` and that the list payload carries `agenda` (C4).
 
 ## Fulfilment (Slice F0, `bookings/services/fulfillment.py`)
 
