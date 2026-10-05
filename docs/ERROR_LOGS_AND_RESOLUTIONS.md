@@ -526,3 +526,23 @@ def configure_test_settings(settings):
 - **Symptom:** one full-suite run in about every twenty failed `tests/test_t2_availability_api.py::TestTimezoneValidation::test_the_validator_uses_the_tzdata_list`; it passed when re-run alone (the "single unidentified flaky failure" seen during the layer-1b integration).
 - **Root cause:** the test checked the first 25 entries of `list(zoneinfo.available_timezones())`, a `set` with a per-process random order. On machines whose tzdata lists non-zone entries (here `Factory`) a sample sometimes included one, which `is_valid_timezone` correctly rejects (ERR-194).
 - **Fix:** the test now takes a deterministic sample (first and last 25 of the sorted list) after excluding the validator's own `_NOT_ZONES`.
+=======
+### ERR-220: T3 R2 commit could leave storage state inconsistent after a database rollback (T3 review)
+- **Symptom:** the asset was copied and the quarantine object was deleted before the surrounding `transaction.atomic` block committed; a later database error could leave a final object with no `TeacherAsset` row.
+- **Root cause:** object storage has no transaction rollback and the old code performed both storage mutations inside the database transaction without compensating cleanup.
+- **Fix:** track the copied final key, remove it on exception, and register quarantine deletion with `transaction.on_commit`; the rollback test proves the final object is removed and quarantine remains.
+
+### ERR-230: Google OAuth callback exposed provider exception text (G1 review)
+- **Symptom:** callback failures returned `str(exc)` to the browser, potentially exposing provider or configuration details.
+- **Root cause:** the view used exception text as its public error payload.
+- **Fix:** return a fixed user-facing message and log only the exception type; add typed callback serializers and regression tests.
+
+### ERR-240: R1 review documentation and mutation coverage were missing (R1 review)
+- **Symptom:** the implemented attendance-payload purge had no `docs/slices/R1.md` or `docs/mutation/R1.md`, so the retention review could not be resumed from the branch handoff.
+- **Root cause:** the initial layer-1b integration landed code/tests without the required slice artifacts.
+- **Fix:** added the R1 slice handoff and mutation table, preserving the existing Postgres-marked retention verification requirement.
+
+### ERR-221: configured backend virtualenv could not start on the Codex host (verification environment)
+- **Symptom:** the prescribed `backend/venv/Scripts/python.exe` failed before pytest with `Unable to create process ... Python312\\python.exe`.
+- **Root cause:** `pyvenv.cfg` points to a Python 3.12 installation absent from this host.
+- **Fix:** no repository workaround was applied; test evidence is explicitly pending a repaired runtime or CI.
