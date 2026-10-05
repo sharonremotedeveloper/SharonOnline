@@ -78,6 +78,18 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 60.0,
         'options': {'queue': 'critical_io', 'expires': 50},
     },
+    # --- Notifications (slice N1a): delivery safety net (due retries, lost messages, expired leases) + daily retention.
+    'sweep-notifications-2min': {
+        'task': 'apps.notifications.tasks.sweep_notifications_task',
+        'schedule': 120.0,
+        'options': {'queue': 'notifications', 'expires': 100},
+    },
+    'purge-notifications-daily': {
+        'task': 'apps.notifications.tasks.purge_notifications_task',
+        'schedule': crontab(hour=3, minute=20),
+        'options': {'queue': 'notifications', 'expires': 3600},
+    },
+    # --- end N1a
 }
 
 # Task Queue Routing Definition
@@ -92,4 +104,8 @@ CELERY_TASK_ROUTES = {
     'apps.integrations.tasks.reconcile_teacher_gcal_task': {'queue': 'scheduler_beat'},
     'apps.integrations.tasks.dispatch_booking_fulfillment': {'queue': 'critical_io'},
     'apps.integrations.tasks.retry_fulfillment_dispatches_task': {'queue': 'critical_io'},
+    # Notifications (slice N1a)
+    'apps.notifications.tasks.deliver_notification_task': {'queue': 'notifications'},
+    'apps.notifications.tasks.sweep_notifications_task': {'queue': 'notifications'},
+    'apps.notifications.tasks.purge_notifications_task': {'queue': 'notifications'},
 }

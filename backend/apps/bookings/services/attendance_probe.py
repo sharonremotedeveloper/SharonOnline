@@ -25,6 +25,7 @@ from apps.bookings.models import AttendanceAudit, Booking
 from apps.bookings.services.state_machine import transition_booking
 from apps.integrations.services.attendance import STUDENT, TEACHER, present_with_disconnect_grace
 from apps.integrations.zoom import zoom_client
+from apps.notifications.alerts import alert_staff
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.funding import funding_for_settlement
 from apps.teachers.models import TeacherStrike
@@ -185,5 +186,8 @@ def dispute_without_verdict(booking, reason: str) -> None:
         case.admin_notes = f'{case.admin_notes}\n[reopened] {note}'.strip()
         case.save(update_fields=['status', 'resolution', 'resolved_at', 'admin_notes'])
     if result.changed:
-        # TODO(N1a): admin notification through notify(); the open DisputeCase is the durable work item meanwhile.
+        # Staff alert through notify() (slice N1a); the open DisputeCase stays the durable work item.
         logger.error('[ADMIN ALERT] Lesson disputed without an attendance verdict: booking=%s', booking.id)
+        alert_staff('lesson_disputed_without_verdict',
+                    key=f'admin:disputed-no-verdict:{booking.id}:{booking.reschedule_count}',
+                    payload={'booking_id': str(booking.id)})
