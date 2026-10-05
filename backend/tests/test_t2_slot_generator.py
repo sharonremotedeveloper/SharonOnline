@@ -214,6 +214,21 @@ class TestBlockedIntervals:
         assert len(starts(tutor, date(2026, 1, 5), blocked_intervals=blocked)) == 2
 
 
+# ------------------------------------------------------------------ schedule plan unit tests (added after the mutation run)
+class TestSchedulePlanUnits:
+    def test_build_plan_ignores_inactive_weekly_rows(self):
+        from zoneinfo import ZoneInfo
+        from apps.teachers.services.schedule import build_plan
+        rows = [TeacherAvailability(day_of_week=0, start_time=time(9, 0), end_time=time(10, 0), is_active=False)]
+        assert build_plan(ZoneInfo('UTC'), rows, [], []).weekly == {}
+
+    def test_subtract_returns_exact_pieces(self):
+        from apps.teachers.services.schedule import _subtract
+        assert _subtract((time(9), time(12)), [(time(9), time(10))]) == [(time(10), time(12))]
+        assert _subtract((time(9), time(12)), [(time(10), time(11))]) == [(time(9), time(10)), (time(11), time(12))]
+        assert _subtract((time(9), time(12)), [(time(12), time(13))]) == [(time(9), time(12))]
+
+
 # ------------------------------------------------------------------ time off and date overrides (INV TEA-03)
 class TestTimeOffAndOverrides:
     def test_time_off_hides_overlapping_slots(self):
