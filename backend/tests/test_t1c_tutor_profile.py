@@ -265,6 +265,14 @@ class TestRevetHook:
         profile.refresh_from_db()
         assert profile.status == status
 
+    def test_every_profile_field_is_in_exactly_one_class(self):
+        from apps.teachers import profile as prof
+        classes = [prof.WRITABLE_FIELDS, prof.VETTED_FIELDS, prof.SERVICE_OWNED_FIELDS, prof.STAFF_OWNED_FIELDS,
+                   prof.DERIVED_FIELDS, prof.SELF_DECLARED_ELSEWHERE_FIELDS, prof.DEPRECATED_FIELDS, prof.IDENTITY_FIELDS]
+        names = [n for group in classes for n in group]
+        assert len(names) == len(set(names)), 'a field is in two classes'
+        assert set(names) == {f.name for f in TeacherProfile._meta.concrete_fields}
+
     def test_vetted_field_list_covers_video_accent_and_documents(self):
         from apps.teachers.profile import VETTED_FIELDS, WRITABLE_FIELDS
         assert {'accent', 'intro_video_url', 'intro_audio_file', 'tefl_certificate_file'} <= set(VETTED_FIELDS)
@@ -283,6 +291,12 @@ class TestAuthMeTutorStatus:
     def test_other_roles_get_null(self):
         assert _client(f.make_student()).get(AUTH_ME).json()['tutor_status'] is None
         assert _client(f.make_admin()).get(AUTH_ME).json()['tutor_status'] is None
+
+    def test_tutor_profile_is_loaded_once_per_request(self, django_assert_num_queries):
+        profile = f.make_teacher_profile(status='approved')
+        c = _client(User.objects.get(pk=profile.user_id))    # a fresh user: no cached profile, like a real request
+        with django_assert_num_queries(1):     # the profile, once, for avatar_url + is_verified + tutor_status
+            assert c.get(AUTH_ME).json()['tutor_status'] == 'approved'
 
     def test_tutor_without_profile_gets_null(self):
         assert _client(f.make_user(role='teacher')).get(AUTH_ME).json()['tutor_status'] is None
@@ -356,6 +370,8 @@ class TestPriceDeprecation:
         for component in ('TeacherList', 'TeacherDetail'):
             field = schema['components']['schemas'][component]['properties']['price_per_25min_usd']
             assert field.get('deprecated') is True and field.get('readOnly') is True
+            assert field['description'].startswith('Deprecated. USD catalog price only. Do not display')
+            assert '/payments/lesson-prices/' in field['description']
         params = [p['name'] for p in schema['paths']['/api/v1/teachers/']['get'].get('parameters', [])]
         assert 'max_price' not in params
 
