@@ -23,6 +23,7 @@ import { BookingDetail } from "@/types/booking";
 import { MaterialDetail } from "@/types/material";
 import { HardwareCheckModal } from "@/components/classroom/HardwareCheckModal";
 import { ZoomLauncherButton } from "@/components/classroom/ZoomLauncherButton";
+import { VideoSdkClassroom } from "@/components/classroom/VideoSdkClassroom";
 import { LessonCountDownClock } from "@/components/classroom/LessonCountDownClock";
 import { EskomReportButton } from "@/components/classroom/EskomReportButton";
 import { ClassroomSplitLayout } from "@/components/classroom/ClassroomSplitLayout";
@@ -227,32 +228,18 @@ export default function TeacherClassroomPage() {
               </div>
             </div>
 
-            {/* Zoom Host Launch CTA */}
+            {/* In-Browser Synchronous Video Stage (Zoom Video SDK) */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs font-bold text-ink">
-                <span>Start Zoom Meeting as Host</span>
-                <span className="text-[11px] text-accent flex items-center gap-1 font-bold">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Host S2S Token Active
-                </span>
-              </div>
-
-              {/* The tutor never receives a stored link: Start fetches a fresh host link (lib/hostLink.ts, Slice Z1). The
-                  guest join link is deliberately NOT a fallback: a tutor who joins as a guest is not the host, the room
-                  (join_before_host off) never opens and the lesson would be scored a tutor no-show. */}
-              {booking.zoom_meeting_id ? (
-                <ZoomLauncherButton
-                  meetingId={booking.zoom_meeting_id}
-                  password={booking.zoom_password || ""}
-                  joinUrl=""
-                  bookingId={booking.id}
-                  isHost={true}
-                  disabled={!isConfirmed}
-                />
-              ) : (
-                <p className="text-[11px] text-ink-muted bg-cream-surface border border-divider rounded-xl p-3">
-                  The Zoom meeting details for this lesson are not available yet.
-                </p>
-              )}
+              <VideoSdkClassroom
+                bookingId={booking.id}
+                isHost={true}
+                partnerName={booking.student.full_name}
+                legacyJoinUrl={
+                  booking.zoom_meeting_id
+                    ? `/api/proxy/bookings/${booking.id}/host-link/`
+                    : undefined
+                }
+              />
               {materialError != null && (
                 <p className="text-[11px] text-error">Lesson material could not be loaded.</p>
               )}

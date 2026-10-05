@@ -21,6 +21,7 @@ import { BookingDetail } from "@/types/booking";
 import { MaterialDetail } from "@/types/material";
 import { HardwareCheckModal } from "@/components/classroom/HardwareCheckModal";
 import { ZoomLauncherButton } from "@/components/classroom/ZoomLauncherButton";
+import { VideoSdkClassroom } from "@/components/classroom/VideoSdkClassroom";
 import { LessonCountDownClock } from "@/components/classroom/LessonCountDownClock";
 import { EskomReportButton } from "@/components/classroom/EskomReportButton";
 import { ClassroomSplitLayout } from "@/components/classroom/ClassroomSplitLayout";
@@ -209,27 +210,19 @@ export default function StudentClassroomPage() {
               </div>
             </div>
 
-            {/* Launch Zoom Call to Action */}
+            {/* In-Browser Synchronous Video Stage (Zoom Video SDK) */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs font-bold text-ink">
-                <span>Synchronous Video Room</span>
-                <span className="text-[11px] text-success flex items-center gap-1 font-bold">
-                  <ShieldCheck className="w-3.5 h-3.5" /> End-to-End Encrypted
-                </span>
-              </div>
-
-              {booking.zoom_meeting_id && (booking.zoom_join_url || booking.zoom_url) ? (
-                <ZoomLauncherButton
-                  meetingId={booking.zoom_meeting_id}
-                  password={booking.zoom_password || ""}
-                  joinUrl={(booking.zoom_join_url || booking.zoom_url) as string}
-                  disabled={!isConfirmed}
-                />
-              ) : (
-                <div className="p-4 rounded-2xl bg-cream-surface border border-divider text-xs text-ink-muted">
-                  Your Zoom room details are not available yet. They appear here once the lesson is confirmed.
-                </div>
-              )}
+              <VideoSdkClassroom
+                bookingId={booking.id}
+                isHost={false}
+                partnerName={booking.teacher.full_name}
+                partnerAvatar={booking.teacher.avatar_url || undefined}
+                legacyJoinUrl={
+                  booking.zoom_meeting_id && (booking.zoom_join_url || booking.zoom_url)
+                    ? ((booking.zoom_join_url || booking.zoom_url) as string)
+                    : undefined
+                }
+              />
               {materialError ? <InlineError error={materialError} /> : null}
             </div>
 

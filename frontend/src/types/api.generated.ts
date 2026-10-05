@@ -725,6 +725,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bookings/{booking_id}/video-token/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Retrieve an ephemeral Zoom Video SDK JWT token to enter the live in-browser classroom. */
+        get: operations["v1_bookings_video_token_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/bookings/{id}/": {
         parameters: {
             query?: never;
@@ -786,6 +803,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["v1_integrations_eskom_status_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/google-calendar/callback/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_integrations_google_calendar_callback_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/google-calendar/connect/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_integrations_google_calendar_connect_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1364,6 +1413,38 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["v1_teachers_me_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/teachers/me/assets/{kind}/download/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_teachers_me_assets_download_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teachers/me/assets/commit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_teachers_me_assets_commit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/teachers/profile/power-backup/": {
@@ -2552,6 +2633,20 @@ export interface components {
          * @enum {string}
          */
         UserTypeEnum: "student" | "teacher" | "other";
+        VideoToken: {
+            /** @description JWT session token for Zoom Video SDK */
+            token: string;
+            /** @description Session topic / room name */
+            session_name: string;
+            /** @description 1 for Host (tutor), 0 for Participant (student) */
+            role_type: number;
+            /** @description Unique user ID */
+            user_identity: string;
+            /** @description Display name of participant */
+            user_name: string;
+            /** @description Epoch expiration timestamp */
+            expires_at: number;
+        };
         Wallet: {
             total_credits: number;
             ledger: components["schemas"]["CreditLedgerEntry"][];
@@ -4062,6 +4157,59 @@ export interface operations {
             };
         };
     };
+    v1_bookings_video_token_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VideoToken"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+        };
+    };
     v1_bookings_retrieve: {
         parameters: {
             query?: never;
@@ -4154,6 +4302,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EskomStatus"];
+                };
+            };
+        };
+    };
+    v1_integrations_google_calendar_callback_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    v1_integrations_google_calendar_connect_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -5169,6 +5359,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeacherOwnProfile"];
+                };
+            };
+        };
+    };
+    v1_teachers_me_assets_download_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    v1_teachers_me_assets_commit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+                "application/x-www-form-urlencoded": {
+                    [key: string]: unknown;
+                };
+                "multipart/form-data": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

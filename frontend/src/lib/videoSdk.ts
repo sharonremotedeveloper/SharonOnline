@@ -1,0 +1,77 @@
+/**
+ * Zoom Video SDK client session helper (Sprint Slice V3).
+ * Fetches ephemeral session JWT tokens from GET /api/v1/bookings/<id>/video-token/
+ * for in-browser embedded video sessions.
+ */
+import { ApiError, request } from "./http";
+import { errorCode } from "./bookings";
+
+export interface VideoSessionToken {
+  token: string;
+  session_name: string;
+  role_type: number; // 1 for host (tutor), 0 for participant (student)
+  user_identity: string;
+  user_name: string;
+  expires_at: number;
+}
+
+export async function fetchVideoSessionToken(bookingId: string): Promise<VideoSessionToken> {
+  const data = await request<VideoSessionToken>(`/bookings/${encodeURIComponent(bookingId)}/video-token/`);
+  if (!data || !data.token || !data.session_name) {
+    throw new ApiError(502, "The server returned an invalid video session token", null);
+  }
+  return data;
+}
+
+export type VideoSessionProblemKind =
+  | "not_open"
+  | "ended"
+  | "cancelled"
+  | "forbidden"
+  | "unconfigured"
+  | "retry"
+  | "other";
+
+export interface VideoSessionProblem {
+  kind: VideoSessionProblemKind;
+  message: string;
+}
+
+export function videoSessionProblem(err: unknown): VideoSessionProblem {
+  const status = err instanceof ApiError ? err.status : null;
+  const code = errorCode(err);
+
+  if (status === 409) {
+    if (code === "outside_lesson_window") {
+      return {
+        kind: "not_open",
+        message: "The classroom is not open yet. It opens 15 minutes before the lesson starts.",
+      };
+    }
+    if (code === "booking_cancelled") {
+      return { kind: "cancelled", message: "This lesson has been cancelled." };
+    }
+    return { kind: "ended", message: "This lesson's video session has ended." };
+  }
+
+  if (status === 403) {
+    return { kind: "forbidden", message: "Only the assigned tutor or student can enter this live classroom." };
+  }
+
+  if (status === 404) {
+    return { kind: "other", message: "This lesson booking could not be found." };
+  }
+
+  if (status === 503) {
+    return {
+      kind: "unconfigured",
+      message: "The in-platform video engine is currently being initialized. Please contact support.",
+    };
+  }
+
+  if (err instanceof ApiError && err.isNetworkError) {
+    return { kind: "retry", message: "Network connection lost. Please check your internet connection." };
+  }
+
+  return { kind: "other", message: "Could not join video session. Please try again or refresh the page." };
+}
