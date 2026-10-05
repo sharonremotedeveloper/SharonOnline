@@ -744,7 +744,7 @@ def test_postgres_concurrent_claims_have_exactly_one_winner(price_catalog, teach
 
 @pytest.mark.postgres
 @pytest.mark.django_db(transaction=True)
-def test_postgres_new_row_locks_run(price_catalog, teacher_user, student_user):
+def test_postgres_new_row_locks_run(price_catalog, teacher_user, student_user, zoom_never_held):
     """The new select_for_update sites (fulfilment save, T+10 adjudication, no-meeting dispute) are valid SQL on Postgres."""
     _postgres_only()
     b = confirmed(teacher_user, student_user)

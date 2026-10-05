@@ -31,6 +31,13 @@ STATUS_CHOICES = [
 ]
 
 
+def _check_constraints_now(schema_editor):
+    """PostgreSQL: run any deferred foreign-key checks queued by the data step now, so the index / constraint DDL Django
+    runs at the end of this migration never meets "pending trigger events" (ERR-192)."""
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute('SET CONSTRAINTS ALL IMMEDIATE')
+
+
 def booleans_to_status(apps, schema_editor):
     Profile = apps.get_model('teachers', 'TeacherProfile')
     Change = apps.get_model('teachers', 'TeacherStatusChange')
@@ -41,6 +48,7 @@ def booleans_to_status(apps, schema_editor):
     rows = [Change(teacher_id=pk, from_status='', to_status=status, actor=ACTOR, reason='baseline', reviewed_assets={})
             for pk, status in Profile.objects.values_list('pk', 'status').iterator()]
     Change.objects.bulk_create(rows, batch_size=500)
+    _check_constraints_now(schema_editor)
 
 
 def status_to_booleans(apps, schema_editor):
@@ -48,6 +56,7 @@ def status_to_booleans(apps, schema_editor):
     Profile.objects.exclude(status__in=list(BACKWARD)).update(is_verified=False, is_active=True)
     for status, (verified, active) in BACKWARD.items():
         Profile.objects.filter(status=status).update(is_verified=verified, is_active=active)
+    _check_constraints_now(schema_editor)
 
 
 class Migration(migrations.Migration):
