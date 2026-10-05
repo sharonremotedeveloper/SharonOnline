@@ -3,6 +3,8 @@
 **Written:** 2026-10-05 by Claude (lead architect agent) for Codex, on Anesu MUPESA's instruction ("I need Codex to pick up from where you would have left").
 **Read this first, then** `docs/PHASE_11_12_EXECUTION_PLAN.md` (the approved plan; §4 slice table, §5 definition of done, §9 decisions), `docs/QUALITY_GATES.md`, `docs/AI_AGENT_COLLABORATION_RULES.md`, `CLAUDE.md` (workspace root).
 
+> **2026-10-05 update: who does what next is in `docs/PHASE_11_12_TASK_ASSIGNMENTS.md` (Codex, Antigravity, Claude streams, waves, seams). T3/G1/R1 and Video SDK V1-V3 now exist uncommitted in the working tree; read that file before starting anything.**
+
 Claude built Phase 11/12 as parallel slices run by sub-agents in git worktrees, each reviewed by an independent QA agent, then merged onto a local integration branch. You will not have those sub-agents; section 8 says how to do the same work by hand.
 
 ---
@@ -19,7 +21,7 @@ Claude built Phase 11/12 as parallel slices run by sub-agents in git worktrees, 
 | L1 **T1b** | `bookable()`, staff review actions, admin cancel of a suspended tutor's lessons | on `develop`, CI green |
 | L1 **Z1** | Zoom client hardening, host link, payout-hold admin (legacy Meetings path) | on `develop`, CI green |
 | L1 **T2** | availability, DST fix, notice at pay time, timezone-change conflicts | on `develop`, CI green (its review fixes were not independently re-reviewed) |
-| L1 **T3** uploads, **G1** Google Calendar OAuth, **R1** attendance-payload purge | not started | **next** |
+| L1 **T3** uploads, **G1** Google Calendar OAuth, **R1** attendance-payload purge, Zoom Video SDK **V1-V3** | on `develop` (layer-1b integration, 2026-10-05; review items open, see `PHASE_11_12_TASK_ASSIGNMENTS.md` §0.4) | **review fixes next** |
 | L2-L4 (N1b, N2a-c, N3, T4a/b, G2, T6, F1, F2, N4, T5, T7, P1/P2, I0-I3) | not started | plan §4 |
 | Zoom Video SDK slices V1-V5 | planned in `ZOOM_VIDEO_SDK_MIGRATION_PLAN.md` | **unconfirmed with Anesu, see section 6** |
 

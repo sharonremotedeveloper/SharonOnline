@@ -1532,6 +1532,53 @@ paths:
               schema:
                 $ref: '#/components/schemas/ReviewResult'
           description: ''
+  /api/v1/bookings/{booking_id}/video-token/:
+    get:
+      operationId: v1_bookings_video_token_retrieve
+      description: Retrieve an ephemeral Zoom Video SDK JWT token to enter the live
+        in-browser classroom.
+      parameters:
+      - in: path
+        name: booking_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoToken'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
   /api/v1/bookings/{id}/:
     get:
       operationId: v1_bookings_retrieve
@@ -1626,6 +1673,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EskomStatus'
+          description: ''
+  /api/v1/integrations/google-calendar/callback/:
+    get:
+      operationId: v1_integrations_google_calendar_callback_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/integrations/google-calendar/connect/:
+    get:
+      operationId: v1_integrations_google_calendar_connect_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/integrations/r2/presigned-url/:
     post:
@@ -2624,6 +2702,56 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TeacherOwnProfile'
+          description: ''
+  /api/v1/teachers/me/assets/{kind}/download/:
+    get:
+      operationId: v1_teachers_me_assets_download_retrieve
+      parameters:
+      - in: path
+        name: kind
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/teachers/me/assets/commit/:
+    post:
+      operationId: v1_teachers_me_assets_commit_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: {}
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: {}
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/v1/teachers/profile/power-backup/:
     patch:
@@ -5417,6 +5545,34 @@ components:
         * `student` - Student
         * `teacher` - Teacher
         * `other` - Other
+    VideoToken:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT session token for Zoom Video SDK
+        session_name:
+          type: string
+          description: Session topic / room name
+        role_type:
+          type: integer
+          description: 1 for Host (tutor), 0 for Participant (student)
+        user_identity:
+          type: string
+          description: Unique user ID
+        user_name:
+          type: string
+          description: Display name of participant
+        expires_at:
+          type: integer
+          description: Epoch expiration timestamp
+      required:
+      - expires_at
+      - role_type
+      - session_name
+      - token
+      - user_identity
+      - user_name
     Wallet:
       type: object
       properties:

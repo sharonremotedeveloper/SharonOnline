@@ -511,3 +511,13 @@ def configure_test_settings(settings):
 - **Symptom:** `tests/guards/test_guard_ruff_baseline.py` failed: new violations in `tests/test_t1b_conditions.py` (imported pytest fixtures from other test modules and used them as parameters).
 - **Root cause:** a fixture imported by name is "unused" (F401) and a test parameter of the same name redefines it (F811); new files must be ruff-clean and the baseline may not grow.
 - **Fix:** the fixtures are imported under their own aliases and each test def that takes them carries one targeted `# noqa: F811`; no baseline entry added.
+
+### ERR-195: layer-1b integration, `reconcile_teacher_gcal_task` crashed for a tutor without a credential row (integrator block 190-199)
+- **Symptom:** `tests/test_t1b_bookable.py::TestOperationalTutors::test_gcal_reconcile_follows_the_same_rule` failed with `AttributeError: 'NoneType' object has no attribute 'block_busy'` on the combined T3/G1/R1 + V1-V3 tree.
+- **Root cause:** G1 changed the tutor query to a left join on `calendar_credential`, so tutors with only the legacy local-simulation token match with `credential = None`, and the new code read `credential.block_busy` unguarded.
+- **Fix:** a missing credential row is treated as "nothing to fetch" (empty busy list cached, tutor counted), same as `block_busy=False`.
+
+### ERR-196: video-token endpoint issued a classroom token for unpaid and settled lessons (integrator review of V2)
+- **Symptom (found in review, red tests first):** `GET /bookings/<id>/video-token/` returned 200 for `pending_payment`, `completed`, `disputed` and no-show bookings (only cancelled statuses were refused), and returned 409 `booking_cancelled` to any authenticated stranger (booking-status oracle).
+- **Root cause:** the V2 view blocklisted cancelled statuses instead of allow-listing live ones, and checked status before authorization. An unpaid booking could enter a free lesson.
+- **Fix:** authorization first (403 for non-parties), then an allow-list of `confirmed`/`in_progress` (409 `classroom_unavailable` otherwise); tests added in `tests/test_zoom_video_token_endpoint.py`.

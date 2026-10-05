@@ -154,7 +154,8 @@ REST_FRAMEWORK = {
         # --- T1c: PATCH /teachers/me/ (tutor editing their own profile) ---
         'teacher_profile': '30/hour',
         'admin_teacher_review': '300/hour',   # slice T1b: staff review actions + admin cancel of a suspended tutor's lessons
-        'zoom_host_link': '30/hour',       # Slice Z1: fresh Zoom host link when the classroom opens (one Zoom call each)
+        'zoom_host_link': '30/hour',
+        'zoom_video_token': '120/hour',       # Slice Z1: fresh Zoom host link when the classroom opens (one Zoom call each)
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
     # NEVER map 0 to None: DRF treats None as "trust the whole client-supplied X-Forwarded-For header", which lets
@@ -197,6 +198,17 @@ try:
 except json.JSONDecodeError:
     PAYOUT_DATA_KEYS = {}
 PAYOUT_DATA_ACTIVE_KEY = os.environ.get('PAYOUT_DATA_ACTIVE_KEY', '')
+
+try:
+    INTEGRATION_DATA_KEYS = json.loads(os.environ.get('INTEGRATION_DATA_KEYS', '{}'))
+except json.JSONDecodeError:
+    INTEGRATION_DATA_KEYS = {}
+INTEGRATION_DATA_ACTIVE_KEY = os.environ.get('INTEGRATION_DATA_ACTIVE_KEY', '')
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+GOOGLE_OAUTH_REDIRECT_URI = os.environ.get('GOOGLE_OAUTH_REDIRECT_URI', '')
+GOOGLE_CALENDAR_SCOPES = ('https://www.googleapis.com/auth/calendar.events', 'https://www.googleapis.com/auth/calendar.freebusy')
+GOOGLE_OAUTH_STATE_TTL = int(os.environ.get('GOOGLE_OAUTH_STATE_TTL', '600'))
 
 # Slot holds (Task 9.4): a started-but-unfinished payment keeps its hold this long past the 10-minute base window,
 # and no hold (however many payment attempts) outlives the hard cap.
@@ -255,6 +267,11 @@ ZOOM_HTTP_MAX_ATTEMPTS = int(os.environ.get('ZOOM_HTTP_MAX_ATTEMPTS', '3'))     
 ZOOM_RETRY_AFTER_CAP_SECONDS = int(os.environ.get('ZOOM_RETRY_AFTER_CAP_SECONDS', '10'))  # longer Retry-After: give up, hand it on
 ZOOM_TOKEN_WAIT_SECONDS = int(os.environ.get('ZOOM_TOKEN_WAIT_SECONDS', '5'))            # single-flight waiters poll this long
 ZOOM_HOST_LINK_OPEN_MINUTES_BEFORE = int(os.environ.get('ZOOM_HOST_LINK_OPEN_MINUTES_BEFORE', '15'))  # host link issued from this long before the start until the lesson ends
+# --- Zoom Video SDK (In-Platform Classroom Engine - Decision D-9) ---
+ZOOM_VIDEO_SDK_KEY = os.environ.get('ZOOM_VIDEO_SDK_KEY', '')
+ZOOM_VIDEO_SDK_SECRET = os.environ.get('ZOOM_VIDEO_SDK_SECRET', '')
+ZOOM_VIDEO_SDK_SESSION_VALID_SECONDS = int(os.environ.get('ZOOM_VIDEO_SDK_SESSION_VALID_SECONDS', '7200'))
+ZOOM_VIDEO_SDK_OPEN_MINUTES_BEFORE = int(os.environ.get('ZOOM_VIDEO_SDK_OPEN_MINUTES_BEFORE', '15'))
 # --- end Z1
 # Dotted path of the object that talks to PayPal / PayFast to return money (Task 10.7). The default moves no money: requests
 # wait for a person (sandbox / dev / CI). Production selects the routing backend through the environment, and
@@ -329,6 +346,7 @@ CLOUDFLARE_R2_ACCOUNT_ID = os.environ.get('CLOUDFLARE_R2_ACCOUNT_ID')
 CLOUDFLARE_R2_ACCESS_KEY_ID = os.environ.get('CLOUDFLARE_R2_ACCESS_KEY_ID')
 CLOUDFLARE_R2_SECRET_ACCESS_KEY = os.environ.get('CLOUDFLARE_R2_SECRET_ACCESS_KEY')
 CLOUDFLARE_R2_BUCKET_NAME = os.environ.get('CLOUDFLARE_R2_BUCKET_NAME', 'esl-platform-assets')
+CLOUDFLARE_R2_PRIVATE_BUCKET_NAME = os.environ.get('CLOUDFLARE_R2_PRIVATE_BUCKET_NAME', '')
 CLOUDFLARE_R2_PUBLIC_DOMAIN = os.environ.get('CLOUDFLARE_R2_PUBLIC_DOMAIN', 'https://assets.sharonesl.com')
 
 MEDIA_URL = '/media/'

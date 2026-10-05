@@ -34,7 +34,6 @@ max-complexity = 12
 "apps/bookings/tasks.py" = ["F401"]
 "apps/bookings/views.py" = ["F401"]
 "apps/common/storage.py" = ["F401"]
-"apps/integrations/google_calendar.py" = ["F401"]
 "apps/integrations/tasks.py" = ["B904"]
 "apps/integrations/views.py" = ["C901"]
 "apps/materials/models.py" = ["S110"]

@@ -12,6 +12,7 @@ _DEFAULT_REFUND_BACKEND = 'apps.payments.services.refunds.ManualSandboxRefundGat
 _ROUTING_REFUND_BACKEND = 'apps.payments.services.refund_gateways.RoutingRefundGateway'
 _LOCAL_HOSTS = {'localhost', '127.0.0.1', '0.0.0.0', 'backend', '::1'}
 ZOOM_CREDENTIAL_SETTINGS = ('ZOOM_ACCOUNT_ID', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET')
+ZOOM_VIDEO_SDK_SETTINGS = ('ZOOM_VIDEO_SDK_KEY', 'ZOOM_VIDEO_SDK_SECRET')
 
 
 def _is_local_origin(origin: str) -> bool:
@@ -67,9 +68,12 @@ def validate_production_settings(env=os.environ):
 
     if not env.get('ZOOM_WEBHOOK_SECRET_TOKEN'):
         errors.append('ZOOM_WEBHOOK_SECRET_TOKEN must be set')
-    for name in ZOOM_CREDENTIAL_SETTINGS:     # Slice Z1; scripts/check_deploy.py reports the same names
-        if not (env.get(name) or '').strip():
-            errors.append(f'{name} must be set: without Zoom S2S credentials no lesson room can be created or probed')
+    has_video_sdk = bool((env.get('ZOOM_VIDEO_SDK_KEY') or '').strip() and (env.get('ZOOM_VIDEO_SDK_SECRET') or '').strip())
+    has_s2s = all(bool((env.get(name) or '').strip()) for name in ZOOM_CREDENTIAL_SETTINGS)
+    if not (has_video_sdk or has_s2s):
+        for name in ZOOM_CREDENTIAL_SETTINGS:     # Slice Z1; scripts/check_deploy.py reports the same names
+            if not (env.get(name) or '').strip():
+                errors.append(f'{name} must be set: without Zoom credentials no lesson room can be created or probed')
     if not env.get('ESKOMSEPUSH_API_KEY'):
         errors.append('ESKOMSEPUSH_API_KEY must be set so Power Guard never fabricates provider status')
 
@@ -86,6 +90,22 @@ def validate_production_settings(env=os.environ):
                 Fernet(str(key).encode('ascii'))
         except (ValueError, UnicodeError):
             errors.append('Every PAYOUT_DATA_KEYS value must be a valid Fernet key')
+
+    try:
+        integration_keys = json.loads(env.get('INTEGRATION_DATA_KEYS', '{}'))
+    except ValueError:
+        integration_keys = {}
+    integration_active = env.get('INTEGRATION_DATA_ACTIVE_KEY', '')
+    if not isinstance(integration_keys, dict) or not integration_active or integration_active not in integration_keys:
+        errors.append('INTEGRATION_DATA_KEYS must be a JSON keyring containing INTEGRATION_DATA_ACTIVE_KEY')
+    else:
+        try:
+            for key in integration_keys.values():
+                Fernet(str(key).encode('ascii'))
+        except (ValueError, UnicodeError):
+            errors.append('Every INTEGRATION_DATA_KEYS value must be a valid Fernet key')
+    if not env.get('CLOUDFLARE_R2_PRIVATE_BUCKET_NAME'):
+        errors.append('CLOUDFLARE_R2_PRIVATE_BUCKET_NAME must be set for private vetting assets')
 
     truthy = ('1', 'true', 'yes')
     no_proxy = env.get('BEHIND_NO_PROXY', '').lower() in truthy
