@@ -428,3 +428,19 @@ def configure_test_settings(settings):
 - **Symptom:** `scripts/mutate.py` round 1: 25/29 killed; survivors: `update_own_profile`'s own whitelist check, the post-save `refresh_from_db` field list in `TeacherOwnProfileView`, the blank-tag check, and two filters in the 0009 reverse.
 - **Root cause:** the whitelist was only exercised through the serializer (which rejects first); the race test checked the DB but not the response body; the blank-tag check duplicated `_TagField(allow_blank=False)`; the reverse test had no pre-existing `applied` profile and no backfilled tutor with history while still `applied`.
 - **Fix:** unit test calling the service directly, response assertion in the race test, redundant check removed, three more rows in the migration round trip. Round 2: 7/8 killed, 1 documented equivalent (`docs/mutation/T1c.md`).
+
+
+### ERR-160: committed OpenAPI schema stale after adding the T1b endpoints (slice T1b)
+- **Symptom:** the full suite failed `tests/test_api_contract.py::TestOpenApiSchema::test_committed_schema_is_current` ("API changed but docs/api/openapi.yaml was not regenerated").
+- **Root cause:** the review / cancel / work-queue endpoints and the `PendingTeacherApplication.status` change altered the generated schema; the committed copy was not regenerated yet.
+- **Fix:** `manage.py spectacular --file ../docs/api/openapi.yaml`, then `npm run gen:api` + `npm run check:api-types` (TS), widened `frontend/src/types/admin.ts` status and the dev-only mock fixtures.
+
+### ERR-161: T1b red tests referenced names that do not exist (slice T1b)
+- **Symptom:** while turning the red tests green two fixtures failed: `LedgerAccount.LIABILITY_DEF501_QUARANTINE` (AttributeError) and a grace transaction without `payer_id` (refused with `payer_unknown` before the new guard ran).
+- **Root cause:** test authoring errors: the DEF-501 account is `LIABILITY_QUARANTINE_DEPOSIT` (2030), and `evaluate_grace` needs a payer id before it reaches the slot guard.
+- **Fix:** the tests use the real constant and a payer id. No product change.
+
+### ERR-162: ruff F811 / F401 on the T1b review-condition tests (slice T1b)
+- **Symptom:** `tests/guards/test_guard_ruff_baseline.py` failed: new violations in `tests/test_t1b_conditions.py` (imported pytest fixtures from other test modules and used them as parameters).
+- **Root cause:** a fixture imported by name is "unused" (F401) and a test parameter of the same name redefines it (F811); new files must be ruff-clean and the baseline may not grow.
+- **Fix:** the fixtures are imported under their own aliases and each test def that takes them carries one targeted `# noqa: F811`; no baseline entry added.

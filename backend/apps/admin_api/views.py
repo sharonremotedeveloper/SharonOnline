@@ -12,7 +12,8 @@ from datetime import timedelta
 from decimal import Decimal
 
 from apps.users.permissions import IsPlatformAdmin
-from apps.teachers import vetting
+from rest_framework.throttling import ScopedRateThrottle
+from apps.teachers import review as teacher_review, vetting
 from apps.teachers.models import TeacherProfile
 from apps.bookings.models import Booking
 from apps.bookings.services.state_machine import InvalidTransition, transition_booking
@@ -67,7 +68,7 @@ class AdminTelemetryView(APIView):
         ).count()
 
         open_disputes = DisputeCase.objects.filter(status=DisputeCase.Status.OPEN).count()
-        pending_vetting = TeacherProfile.objects.filter(is_verified=False).count()
+        pending_vetting = pending_vetting_queue().count()
 
         # Escrow liabilities: live from LedgerEntry
         from apps.payments.models import LedgerEntry, LedgerAccount
@@ -104,68 +105,53 @@ class AdminTelemetryView(APIView):
         return Response(data)
 
 
+def pending_vetting_queue():
+    """
+    Applications waiting for staff: `submitted` / `in_review`, PLUS `applied` because until slice T5a there is no tutor
+    "submit" step (legacy pending tutors were migrated to `applied` too). TODO(T5a): drop `applied` once tutors submit
+    themselves. Rejected tutors never appear (the old `is_verified=False` filter listed them). Oldest first.
+    """
+    St = TeacherProfile.Status
+    return TeacherProfile.objects.filter(status__in=[St.APPLIED, St.SUBMITTED, St.IN_REVIEW]).order_by('created_at', 'pk')
+
+
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class PendingTeachersListView(APIView):
     permission_classes = [IsPlatformAdmin]
 
     def get(self, request):
-        unverified = TeacherProfile.objects.filter(is_verified=False).select_related('user')
-        serializer = PendingTeacherApplicationSerializer(unverified, many=True)
+        serializer = PendingTeacherApplicationSerializer(pending_vetting_queue().select_related('user'), many=True)
         return Response(serializer.data)
 
 
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class VerifyTeacherView(APIView):
-    # LEGACY (T1a shim, T1b replaces it with explicit review actions): approve / reject in one call by walking the shortest
-    # legal path to `approved` / `rejected` through teachers/vetting.py, as the admin. Same response shape and codes as
-    # before; a target the transition table cannot reach is 409. A rejection never walks through `approved` (that would
-    # record a fake reinstatement), so rejecting a suspended tutor is 409. T1b must delete this shim before N1a wires
-    # notify_status_change. (A comment, not a docstring: it would leak into OpenAPI.)
+    # Slice 8 contract kept for the vetting page; since T1b built on the explicit review actions (teachers/review.py
+    # ::legacy_verify): start-review when needed, then approve / reject. No path search. A live tutor (reject) is 409
+    # (suspend first), as is approving a suspended / rejected one (use reactivate / reopen); rejecting a SUSPENDED tutor is
+    # allowed (the staff-only suspended -> rejected edge). (A comment, not a docstring: it would leak into OpenAPI.)
     permission_classes = [IsPlatformAdmin]
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'admin_teacher_review'
 
     def patch(self, request, pk):
         serializer = VerifyTeacherActionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         is_verified = serializer.validated_data['is_verified']
-        reason = serializer.validated_data.get('rejection_reason', '') or 'legacy-verify'
-        target = TeacherProfile.Status.APPROVED if is_verified else TeacherProfile.Status.REJECTED
+        reason = (serializer.validated_data.get('rejection_reason') or '').strip() or 'legacy-verify'
         try:
-            with transaction.atomic():
-                profile = TeacherProfile.objects.select_for_update().filter(pk=pk).first()    # the one read, locked
-                if profile is None:
-                    return Response({'error': 'Teacher profile not found'}, status=status.HTTP_404_NOT_FOUND)
-                path = _legacy_verify_path(profile.status, target)
-                if path is None:
-                    raise vetting.InvalidTeacherTransition(profile.pk, profile.status, target)
-                for step in path:
-                    vetting.transition_teacher(profile, step, actor=request.user, reason=reason)
+            result = teacher_review.legacy_verify(pk, approve=is_verified, actor=request.user, reason=reason)
+        except teacher_review.TeacherNotFound:
+            return Response({'error': 'Teacher profile not found'}, status=status.HTTP_404_NOT_FOUND)
         except vetting.VettingError as exc:
             return Response({'error': 'This tutor cannot be moved to that status.', 'code': 'invalid_transition'},
                             status=exc.http_status)
         return Response({
             'success': True,
-            'teacher_id': str(profile.id),
-            'is_verified': profile.is_verified,
+            'teacher_id': str(result.teacher_id),
+            'is_verified': result.status in (TeacherProfile.Status.APPROVED, TeacherProfile.Status.SUSPENDED),
             'message': "Tutor audition approved and published live." if is_verified else "Application rejected with feedback."
         })
-
-
-def _legacy_verify_path(current, target):
-    """
-    Shortest list of statuses from `current` to `target` over the staff edges (breadth first); None if unreachable.
-    A path to `rejected` may not pass through `approved` (no fake reinstatement in the audit trail).
-    """
-    avoid = {TeacherProfile.Status.APPROVED} if target == TeacherProfile.Status.REJECTED else set()
-    queue, seen = [(current, [])], {current} | avoid
-    while queue:
-        node, path = queue.pop(0)
-        if node == target:
-            return path
-        for nxt in vetting.ALLOWED_TRANSITIONS.get(node, {}):
-            if nxt not in seen:
-                seen.add(nxt)
-                queue.append((nxt, path + [nxt]))
-    return None
 
 
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
@@ -398,8 +384,10 @@ class PayoutBatchView(APIView):
         from apps.payments.services.payout_crypto import PayoutDataError
 
         items = []
+        # Deliberately NOT bookable() / status-filtered (slice T1b): a suspended or removed tutor is still paid what they
+        # earned; a positive ledger-2020 balance is the only criterion.
         teachers = TeacherProfile.objects.filter(
-            is_verified=True, user__payout_account__isnull=False,
+            user__payout_account__isnull=False,
         ).select_related('user', 'user__payout_account')
         for t in teachers:
             totals = LedgerEntry.objects.filter(

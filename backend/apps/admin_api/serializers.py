@@ -58,12 +58,10 @@ class PendingTeacherApplicationSerializer(serializers.ModelSerializer):
     def get_has_inverter(self, obj):
         return obj.has_inverter_backup
 
-    def get_status(self, obj):
-        if obj.is_verified:
-            return 'approved'
-        if not obj.is_active:
-            return 'rejected'
-        return 'pending'
+    def get_status(self, obj) -> str:
+        # The real lifecycle status (slice T1b); the old 'approved' / 'rejected' / 'pending' mapping called a suspended
+        # tutor 'approved'.
+        return obj.status
 
 
 class VerifyTeacherActionSerializer(serializers.Serializer):

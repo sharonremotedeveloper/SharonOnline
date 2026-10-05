@@ -16,7 +16,7 @@ class TeacherListView(generics.ListAPIView):
     permission_classes = (permissions.AllowAny,)
 
     def get_queryset(self):
-        queryset = TeacherProfile.objects.filter(is_active=True, is_verified=True).select_related('user')
+        queryset = TeacherProfile.objects.bookable().select_related('user')
         
         # Accent filter
         accent = self.request.query_params.get('accent')
@@ -52,10 +52,13 @@ class TeacherListView(generics.ListAPIView):
         return queryset.order_by('-rating_avg', '-rating_count')
 
 class TeacherDetailView(generics.RetrieveAPIView):
-    queryset = TeacherProfile.objects.filter(is_active=True, is_verified=True).select_related('user').prefetch_related('availabilities')
     serializer_class = TeacherDetailSerializer
     permission_classes = (permissions.AllowAny,)
     lookup_field = 'id'
+
+    def get_queryset(self):
+        # Evaluated per request: the training gate is a setting (slice T1b).
+        return TeacherProfile.objects.bookable().select_related('user').prefetch_related('availabilities')
 
 class TeacherAvailabilityManageView(generics.ListCreateAPIView):
     serializer_class = TeacherAvailabilitySerializer

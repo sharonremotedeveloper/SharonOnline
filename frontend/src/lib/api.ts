@@ -800,7 +800,7 @@ export const api = {
         eskom_area: null,
         has_inverter: false,
         applied_at: "2026-09-29T14:30:00Z",
-        status: "pending",
+        status: "submitted",
       },
       {
         id: "vet-2",
@@ -815,7 +815,7 @@ export const api = {
         eskom_area: null,
         has_inverter: false,
         applied_at: "2026-09-30T09:15:00Z",
-        status: "pending",
+        status: "in_review",
       },
       {
         id: "vet-3",
@@ -830,7 +830,7 @@ export const api = {
         eskom_area: null,
         has_inverter: false,
         applied_at: "2026-09-30T11:45:00Z",
-        status: "pending",
+        status: "applied",
       },
     ];
   },

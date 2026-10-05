@@ -38,8 +38,7 @@ def reserve_slot(*, student, teacher_id, start_time_utc, material=None) -> Tuple
     if blocked:
         raise ReservationError(409, blocked)
 
-    teacher = (TeacherProfile.objects.select_related('user')
-               .filter(id=teacher_id, is_active=True, is_verified=True).first())
+    teacher = TeacherProfile.objects.bookable().select_related('user').filter(id=teacher_id).first()
     if teacher is None:
         raise ReservationError(404, "This tutor is not available for booking.")
     if teacher.user_id == student.id:

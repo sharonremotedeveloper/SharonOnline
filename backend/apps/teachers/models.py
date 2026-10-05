@@ -46,6 +46,28 @@ class TeacherProfileQuerySet(models.QuerySet):
         _refuse_generated(fields, 'QuerySet.bulk_update')
         return super().bulk_update(objs, fields, *args, **kwargs)
 
+    def bookable(self):
+        """
+        The single bookable predicate (plan §3.1, slice T1b): approved (is_verified and is_active) and training_ok, i.e. the
+        training gate (TUTOR_TRAINING_GATE_ENABLED) is off or the tutor finished training. Every path that creates or
+        confirms a NEW lesson uses it; operations on existing lessons never do (docs/TUTOR_STATUS_MACHINE.md §8).
+        """
+        qs = self.filter(is_verified=True, is_active=True)
+        if settings.TUTOR_TRAINING_GATE_ENABLED:
+            qs = qs.filter(training_completed_at__isnull=False)
+        return qs
+
+    def operational(self, now=None):
+        """
+        Tutors whose integrations must keep running (Eskom sync, calendar reconcile): approved tutors, plus any tutor (e.g.
+        suspended) who still has a confirmed / in-progress lesson that has not ended. Applicants never have one.
+        """
+        from apps.bookings.models import Booking
+        from apps.common import clock
+        live = Booking.objects.filter(teacher=models.OuterRef('pk'), end_time_utc__gte=now or clock.now(),
+                                      status__in=[Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS])
+        return self.filter(Q(status=TeacherProfile.Status.APPROVED) | Q(models.Exists(live)))
+
     def bulk_create(self, objs, *args, **kwargs):
         objs = list(objs)
         with ExitStack() as stack:          # INSERT ... RETURNING sets the generated flags on each object
@@ -171,6 +193,13 @@ class TeacherProfile(models.Model):
         deferred = self.get_deferred_fields()
         return [f.name for f in self._meta.concrete_fields
                 if not (f.primary_key or f.generated or f.name in SERVICE_OWNED or f.attname in deferred)]
+
+    @property
+    def is_bookable(self) -> bool:
+        """Instance form of TeacherProfileQuerySet.bookable() (same rule; keep them in step)."""
+        if self.status != TeacherProfile.Status.APPROVED:
+            return False
+        return not settings.TUTOR_TRAINING_GATE_ENABLED or self.training_completed_at is not None
 
     @property
     def resolved_avatar_url(self) -> str:

@@ -87,7 +87,9 @@ _SLOT_OWNING_STATUSES = (
 def slot_unavailable_reason(booking, now=None) -> str:
     """
     DEF-501 guard shared by the normal payment confirmation and the grace confirmation: '' when the booking may still be
-    confirmed, else why not ('slot_rebooked_by_another_student' / 'lesson_window_elapsed').
+    confirmed, else why not ('slot_rebooked_by_another_student' / 'lesson_window_elapsed' / 'tutor_not_bookable').
+    A hold can outlive its tutor's suspension (or the training gate): such a payment is quarantined like any other DEF-501
+    case (DISPUTED, restitution credit, open DisputeCase, ledger 2030), never confirmed (slice T1b).
     """
     slot_conflict = Booking.objects.filter(
         teacher=booking.teacher, start_time_utc=booking.start_time_utc, status__in=_SLOT_OWNING_STATUSES,
@@ -96,6 +98,8 @@ def slot_unavailable_reason(booking, now=None) -> str:
         return "slot_rebooked_by_another_student"
     if booking.start_time_utc <= (now or timezone.now()):
         return "lesson_window_elapsed"
+    if not booking.teacher.is_bookable:
+        return "tutor_not_bookable"
     return ''
 
 

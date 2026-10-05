@@ -52,7 +52,7 @@ class TeacherSlotsView(APIView):
 
     def get(self, request, teacher_id):
         # Same visibility rule as reserve: a tutor you cannot book has no public slots.
-        teacher = get_object_or_404(TeacherProfile, id=teacher_id, is_active=True, is_verified=True)
+        teacher = get_object_or_404(TeacherProfile.objects.bookable(), id=teacher_id)
 
         raw_days = request.query_params.get('days', '7')
         if not (raw_days.isascii() and raw_days.isdigit() and int(raw_days) >= 1):

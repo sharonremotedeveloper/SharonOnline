@@ -50,7 +50,7 @@
   price and is marked deprecated in OpenAPI; the column is dropped in a later release.
 - `specialties`: JSONField (e.g. `['FreeTalk', 'Business', 'TOEIC']`), `blank=True` (T1c, migration 0010)
 - Created at signup for `role=teacher` (status `applied`, T1c) and backfilled for older tutor accounts (migration 0009);
-  the tutor edits `headline` / `bio` / `specialties` through `GET|PATCH /api/v1/teachers/me/` (`docs/TUTOR_STATUS_MACHINE.md` §8)
+  the tutor edits `headline` / `bio` / `specialties` through `GET|PATCH /api/v1/teachers/me/` (`docs/TUTOR_STATUS_MACHINE.md` §11)
 - `status`: CharField Enum (`applied`, `submitted`, `in_review`, `approved`, `changes_requested`, `rejected`, `suspended`; default `applied`, DB CHECK constraint). The only stored lifecycle column, written only by `teachers/vetting.py` (slice T1a, `docs/TUTOR_STATUS_MACHINE.md`)
 - `is_verified` / `is_active`: Django 5.2 `GeneratedField`s of `status` (stored, indexed, read-only): verified = `approved|suspended`, active = everything but `rejected|suspended`
 - `training_completed_at`: DateTimeField, nullable (live tutors grandfathered by migration 0007)

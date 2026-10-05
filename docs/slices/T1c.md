@@ -1,7 +1,7 @@
 # Slice T1c - tutor profile at signup, `/teachers/me/` (PRP 11.1 partial)
 
 Branch `feature/t1c-tutor-profile` (Claude). Plan: `docs/PHASE_11_12_EXECUTION_PLAN.md` §3.1 (vetting-asset integrity,
-`/teachers/me/` writable fields, price deprecation), §4 (T1c row), §8. Contract: `docs/TUTOR_STATUS_MACHINE.md` §8.
+`/teachers/me/` writable fields, price deprecation), §4 (T1c row), §8. Contract: `docs/TUTOR_STATUS_MACHINE.md` §11 (was §8 on the T1c branch; renumbered at integration).
 Mutation table: `docs/mutation/T1c.md`. ERR block 170-179 (used: ERR-170, 171, 172). Migrations: `teachers/0009` (data),
 `teachers/0010` (specialties blank, no DB change).
 

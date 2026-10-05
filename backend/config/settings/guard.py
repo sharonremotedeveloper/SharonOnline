@@ -147,5 +147,10 @@ def validate_production_settings(env=os.environ):
                      'undeliverable notifications) go to every active admin user, and only to the log if there is none. '
                      'Set it to the on-call staff addresses before go-live (docs/RUNBOOK_NOTIFICATIONS.md).')
 
+    # Slice T1b: the tutor training gate is provisionally off until the content exists; it must be on before launch.
+    if env.get('TUTOR_TRAINING_GATE_ENABLED', '').strip().lower() not in truthy:
+        _log.warning('TUTOR_TRAINING_GATE_ENABLED is off: approved tutors are bookable without onboarding training. '
+                     'Turn it on before launch (PRP Phase 16 launch checklist).')
+
     if errors:
         raise ImproperlyConfigured('Unsafe production configuration: ' + '; '.join(errors))

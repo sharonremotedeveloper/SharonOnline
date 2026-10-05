@@ -41,6 +41,7 @@ Actor kinds: **STAFF** (a user with `role='admin'`, `is_staff` or `is_superuser`
 | approved | suspended | yes | - | yes | admin decision, or the strike limit (`system:strikes`) |
 | approved | in_review | yes | yes | yes | re-vet after a vetted asset changed (INV TEA-11) |
 | suspended | approved | yes | - | - | only a human reinstates |
+| suspended | rejected | yes | - | - | permanent removal (decided by Anesu 2026-10-05, added in T1b) |
 | rejected | applied | yes | - | - | re-application |
 
 Every other pair is illegal. Adding an edge: change `ALLOWED_TRANSITIONS` **and** `PLAN_EDGES` in
@@ -63,10 +64,11 @@ create_teacher_profile(user, *, status='applied', actor, reason='', **fields) ->
 - On a change: `save(update_fields=['status', 'updated_at'])`, one `TeacherStatusChange` row (reason truncated to 500),
   `transaction.on_commit(notify_status_change(change_id))` (a no-op log shim until N1a), and the caller's instance is
   refreshed (`status`, `is_verified`, `is_active`, `updated_at`).
-- **Never takes a booking lock**, so it cannot join a booking/tutor lock cycle. Cancel / memo / no-show lock booking -> tutor
-  (they call `add_strike` while holding a booking row); **not everywhere**: `bookings/services/reviews.py::submit_review` locks
-  tutor -> booking (T1b aligns it, §7). On `-> suspended` the result lists the tutor's future `pending_payment` / `confirmed`
-  bookings with a plain read; cancelling them is a separate, per-booking admin action (T1b), never done here.
+- **Never takes a booking lock**, so it cannot join a booking/tutor lock cycle. Every booking path locks booking -> tutor:
+  cancel / memo / no-show (they call `add_strike` while holding a booking row) and, since T1b, `bookings/services/reviews.py`
+  (Postgres deadlock test `tests/test_t1b_admin_cancel.py::test_postgres_review_and_strike_on_the_same_lesson_do_not_deadlock`).
+  On `-> suspended` the result lists the tutor's future `pending_payment` / `confirmed` bookings with a plain read; cancelling
+  them is a separate, per-booking admin action (§10), never done here.
 - `create_teacher_profile` writes the baseline audit row (`from_status=''`). STAFF and SYSTEM may create any status; the
   tutor (SELF) only `applied`; anyone else gets `TransitionNotPermitted`. Seeds use it. `record_baseline(profile, actor=...)`
   writes the same row for a profile created elsewhere (the Django admin "add" form uses it; the new profile is `applied`).
@@ -108,13 +110,9 @@ chain, `self` in another class, and document / application / training / progress
 - `teachers/strikes.py::add_strike`: still records every strike and mirrors `sla_strikes`; at `STRIKE_LIMIT` it calls
   `transition_teacher(locked, 'suspended', actor='system:strikes')` **only when the tutor is `approved`** (any other status:
   strike recorded, status unchanged, never raises).
-- `PATCH /api/v1/admin/teachers/<id>/verify/` (legacy, **T1b replaces it**): walks the shortest legal path to `approved` /
-  `rejected` through the service as the admin (reason = `rejection_reason` or `legacy-verify`), in one transaction, reading
-  the tutor once under the row lock. Same response shape and codes (200 / 400 / 403 / 404); a target the table cannot reach
-  is 409 (`code: invalid_transition`). A path to `rejected` **may not pass through `approved`** (that would write a fake
-  reinstatement into the audit trail, and a fake "approved" notification once N1a lands), so **rejecting a suspended tutor is
-  409** today. **Decided by Anesu 2026-10-05: add a staff-only `suspended -> rejected` edge (permanent removal)**; slice T1b
-adds it to the transition table and the explicit admin review actions (the legacy shim is deleted there).
+- `PATCH /api/v1/admin/teachers/<id>/verify/`: T1a's path-walking shim (`_legacy_verify_path`) was **deleted in T1b**; the
+  endpoint now runs the explicit review actions (§9). **Decided by Anesu 2026-10-05: staff-only `suspended -> rejected` edge
+  (permanent removal)**, added in T1b.
 - Django admin: `status`, the flags, `training_completed_at` and `sla_strikes` are read-only; filter by `status`.
 - Seeds: `seed_data` creates `approved` (trained) tutors, `seed_phase41_data` `submitted` applications, both through
   `create_teacher_profile`, idempotent.
@@ -148,26 +146,97 @@ There is no deploy runbook yet (Phase 16); until there is, this is the procedure
 Rollback: stop everything, run `migrate teachers 0006_teacherstrike` while the **new** code is still deployed (the reverse
 operations live in its migration files), then deploy and start the old code. The audit table is dropped by the rollback.
 
-## 7. Hand-off notes for T1b / T1c
+## 7. Hand-off notes for T1b / T1c (T1b and T1c items done 2026-10-05, see §8-§11)
 
-- **Legacy pending tutors become `applied`**, not `submitted`: the old schema could not tell "applied" from "sent". T1b's
-  pending queue (`submitted|in_review`) must also show (or let staff move) `applied` tutors that have their documents, or they
-  disappear from the admin queue. `admin_api/views.py` pending list/count still read `is_verified=False` (T1b owns them).
-- Read call sites still use `is_verified` / `is_active` (they keep working): `teachers/views.py`, `bookings/views.py`,
-  `reservation.py`, `rescheduling.py`, `payments/views.py`, `admin_api/views.py` (pending, payout preview), `integrations/tasks.py`,
-  `users/serializers.py`, `admin_api/serializers.py`. T1b replaces them with `bookable()` per the plan's per-site decisions.
-- The verify shim is temporary; T1b deletes it in favour of explicit review actions (submit / start review / approve / request
-  changes / reject / suspend / reinstate) that call `transition_teacher` with a rubric. **Merge-train condition: T1b must
-  delete the shim before N1a wires `notify_status_change`** (the shim walks several edges per call; each would notify).
-- **Lock order (T1b):** `bookings/services/reviews.py::submit_review` locks the tutor row, then the booking (tutor -> booking),
-  while cancel / memo / no-show lock booking -> tutor (`add_strike`). A review and a strike on the same lesson can deadlock on
-  Postgres (one is retried/aborted). T1b should lock booking -> tutor in the review path (or update the rating with an atomic
-  F-expression without a tutor lock) and add a Postgres-marked test.
-- ~~`role=teacher` users without a profile are not given one here~~ done in T1c (§8).
-- ~~T1c's `/teachers/me/` PATCH should save with explicit `update_fields`~~ done in T1c (§8).
+- [x] (T1b) Legacy pending tutors are `applied`: the pending queue lists `applied|submitted|in_review` (§9).
+- [x] (T1b) Read call sites moved to `bookable()` / `operational()` per site (§8).
+- [x] (T1b) The verify shim is deleted; the endpoint runs the explicit actions. **Merge-train condition met: the shim is gone
+  before N1a wires `notify_status_change`.** A legacy call can still take up to three edges (`applied -> submitted ->
+  in_review -> approved`), each with its own audit row and `change_id`; N1a must notify the tutor only on outcome statuses
+  (`approved`, `changes_requested`, `rejected`, `suspended`) and raise the admin "vetting submitted" alert only when the actor
+  of `-> submitted` is the tutor (SELF), never for a staff lead-in.
+- [x] (T1b) Lock order: reviews lock booking -> tutor (Postgres-marked test).
+- [x] (T1c) `role=teacher` users without a profile get one at signup and by the 0009 backfill (§11).
+- [x] (T1c) Full-row saves no longer write `status` / `sla_strikes` (§4); `/teachers/me/` saves with explicit
+  `update_fields` limited to the whitelisted fields (§11).
 - Notifications (`vetting:{change_id}`, `suspended:{change_id}`) hook into `notify_status_change` (N1a).
 
-## 8. Tutor profile at signup and `/teachers/me/` (slice T1c)
+## 8. The bookable predicate and its call sites (slice T1b)
+
+`bookable` = **approved** (`is_verified` and `is_active`) **and** `training_ok` (`TUTOR_TRAINING_GATE_ENABLED` off, or
+`training_completed_at` set). `TeacherProfile.objects.bookable()` (queryset) and `profile.is_bookable` (instance) are the only
+two spellings. `TUTOR_TRAINING_GATE_ENABLED=False` is **provisional** (no training content yet): **it must be ON before launch**;
+`validate_production_settings` logs a warning while it is off, and the launch checklist (PRP Task 16.4 and plan §9) carries the
+line "turn `TUTOR_TRAINING_GATE_ENABLED` on".
+`operational()` = approved tutors plus any tutor with a confirmed / in-progress lesson that has not ended (suspended tutors
+still teach their lessons): used by Eskom sync and GCal reconcile; applicants are excluded.
+
+| # | Site | Rule |
+| :-- | :--- | :--- |
+| 1 | `teachers/views.py` list | `bookable()` |
+| 2 | `teachers/views.py` detail | `bookable()` (evaluated per request) |
+| 3 | `bookings/views.py` `TeacherSlotsView` | `bookable()` (404 otherwise) |
+| 4 | `reservation.py` | `bookable()` (404 "not available for booking") |
+| 5 | `rescheduling.py` | `teacher.is_bookable` for the NEW slot (the lesson itself stays) |
+| 6 | `payments/views.py` checkout `_validate_booking` | `is_bookable` (409) |
+| 7 | `credits.py::redeem_booking_credit` | `is_bookable` (409): a hold can outlive a suspension |
+| 8 | payment webhook / PayPal capture / reconcile (`webhook_handler.slot_unavailable_reason`) | `tutor_not_bookable` -> DEF-501 quarantine (DISPUTED, restitution credit, DisputeCase, ledger 2030), never confirmed; **grace** (`confirm_grace_booking`) uses the same guard and is refused |
+| 9 | `admin_api/views.py` pending list / telemetry count | `applied|submitted|in_review`, oldest first, no rejected |
+| 10 | payout preview | **not** bookable and not status-filtered: a suspended / removed tutor is paid what they earned |
+| 11 | Eskom sync, GCal reconcile (`integrations/tasks.py`) | `operational()` |
+| 12 | serializers | `admin_api/serializers.py` reports `status`; `users/serializers.py` / public `is_verified` stay derived from `status` (T1c owns `/auth/me`) |
+
+Operations on **existing** lessons (cancel, reschedule by the student, memo, attendance, escrow release, strikes) never call
+`bookable()` (test: a student can still cancel a lesson with an untrained tutor once the gate is on). Seeds already create
+`approved` + trained tutors. Because the gate hides untrained tutors, turning it on never breaks live holds only because
+live tutors were grandfathered (`training_completed_at` set by migration 0007).
+
+## 9. Staff review actions (slice T1b)
+
+`teachers/review.py` (no path search; each action names its target and the statuses it may start from). All
+`POST /api/v1/admin/teachers/<id>/<action>/ {reason}`, `IsPlatformAdmin`, throttle `admin_teacher_review`, typed result
+`{teacher_id, action, previous_status, status, changed, change_ids, affected_booking_ids}`; the service re-checks staff
+itself. 404 unknown tutor, 409 `invalid_transition`, 400 on a missing reason where one is required (*).
+
+| Action | From | To | Notes |
+| :--- | :--- | :--- | :--- |
+| `start-review` | submitted | in_review | also `applied` / `changes_requested` via a `submitted` lead-in (staff receive the application on the tutor's behalf: until slice T5a there is no tutor "submit" step). **TODO(T5a): drop the `applied` / `changes_requested` lead-ins.** |
+| `approve` | in_review | approved | |
+| `request-changes` (*) | in_review | changes_requested | |
+| `reject` (*) | in_review, suspended | rejected | the `suspended -> rejected` edge is staff-only (permanent removal) |
+| `suspend` (*) | approved | suspended | returns `affected_booking_ids`, cancels nothing |
+| `reactivate` | suspended | approved | |
+| `revet` | approved | in_review | INV TEA-11 |
+| `reopen` | rejected | applied | re-application |
+
+Repeating an action whose target is already reached is a 200 no-op (`changed=false`, no audit row). The reason is stored on the
+audit row (truncated to 500; the API caps it at 500). `PATCH /admin/teachers/<id>/verify/` (Slice 8 contract: `{is_verified,
+rejection_reason?}` -> `{success, teacher_id, is_verified, message}`) is `legacy_verify`: optional `start-review` lead-in
+then `approve` / `reject`, in one transaction under the tutor lock (a failed step rolls all back); a live tutor cannot be
+rejected through it (409: suspend first), a suspended tutor can (direct edge); approve of suspended / rejected is 409.
+The admin pending queue is `applied|submitted|in_review` (TODO(T5a): drop `applied`); `PendingTeacherApplicationSerializer.status`
+is the real status (the frontend type was widened; T1c removes the fake Eskom area).
+
+## 10. Suspension with future lessons (slice T1b)
+
+`suspend` returns `affected_booking_ids` (read-only). Staff cancel with `POST /admin/teachers/<id>/cancel-future-lessons/
+{reason, booking_ids?}` (`bookings/services/admin_cancellation.py`): per lesson its own transaction, only while the tutor is
+`suspended` / `rejected`; paid lesson -> `cancelled_by_teacher` (`cancelled_by` = admin) with a full refund through
+`refunds.request_refund` (public API only), **no strike**, `ADMIN_CANCEL_BONUS_CREDITS=0` (provisional); unpaid hold ->
+`cancelled`; idempotent; the student gets the existing cancellation e-mail (`admin` / `admin_unpaid` variants) until N1a/N2.
+A hold whose payment is in flight (INITIALIZED attempt younger than `PAYMENT_INFLIGHT_GRACE_SECONDS`, or a PENDING capture) is
+**not** released: outcome `payment_in_flight`, listed in `payment_in_flight_ids`, left to the capture / webhook path; retry once the
+payment resolved. The default list is capped at 50 lessons per call (`remaining` says whether more are left; flagged holds do
+not count). Per-lesson domain errors (`MissingFunding`, refund state errors, invalid transitions) are reported per lesson and
+never abort the rest. The tutor row is locked after the booking (booking -> tutor) and re-checked, so a concurrent `reactivate`
+wins. PayPal's capture endpoint also refuses (409 `tutor_not_bookable`) BEFORE calling PayPal when the tutor is no longer bookable
+(no charge); PayFast checkout initiation already did (a PayFast payment made after initiation is quarantined by the webhook guard).
+An automatic strike suspension logs `[ADMIN ALERT] tutor <id> suspended by strikes with N future lessons needing action: <ids>`
+after commit (N1a routes it) and the tutor shows in `GET /admin/teachers/suspended-with-lessons/` until the lessons are
+cancelled. `add_strike` on a non-approved tutor records the strike only (idempotent per booking+kind; test
+`test_a_tutor_who_is_not_approved_only_records_the_strike`).
+
+## 11. Tutor profile at signup and `/teachers/me/` (slice T1c)
 
 **Signup.** `POST /api/v1/auth/register/` with `role=teacher` creates the user and, in the same transaction
 (`RegisterSerializer.create` is `@transaction.atomic`), the profile through

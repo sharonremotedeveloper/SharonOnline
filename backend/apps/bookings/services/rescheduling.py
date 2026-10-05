@@ -59,7 +59,7 @@ def reschedule_booking(booking_id, student, new_start, now=None) -> Booking:
             raise RescheduleError(400, 'invalid_slot', 'Choose a different time at least '
                                   f'{settings.RESCHEDULE_MIN_NOTICE_HOURS} hours and at most {settings.RESCHEDULE_MAX_DAYS_AHEAD} days from now.')
         teacher = booking.teacher
-        if not (teacher.is_active and teacher.is_verified):
+        if not teacher.is_bookable:     # the NEW slot is new tutor time: same predicate as reserving (slice T1b)
             raise RescheduleError(409, 'slot_unavailable', 'This tutor is not available for new times right now.')
 
         slot = next((s for s in generate_teacher_slots(teacher=teacher, days_ahead=settings.RESCHEDULE_MAX_DAYS_AHEAD + 1)

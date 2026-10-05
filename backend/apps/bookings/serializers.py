@@ -2,11 +2,8 @@ from typing import Optional
 from rest_framework import serializers
 from .models import Booking, LessonMemo
 from .services.reviews import REVIEW_TAGS
-from apps.teachers.models import TeacherProfile
-from apps.materials.models import Material
 from apps.teachers.serializers import TeacherListSerializer
 from apps.users.serializers import UserSerializer
-from datetime import timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.conf import settings
 from .services.holds import hold_expires_at
@@ -218,24 +215,9 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'status')
 
     def create(self, validated_data):
-        teacher_id = validated_data.pop('teacher_id')
-        material_id = validated_data.pop('material_id', None)
-        start_time_utc = validated_data['start_time_utc']
-        end_time_utc = start_time_utc + timedelta(minutes=25)
-
-        teacher = TeacherProfile.objects.get(id=teacher_id)
-        material = Material.objects.get(id=material_id) if material_id else None
-        student = self.context['request'].user
-
-        booking = Booking.objects.create(
-            teacher=teacher,
-            student=student,
-            material=material,
-            start_time_utc=start_time_utc,
-            end_time_utc=end_time_utc,
-            status=Booking.Status.PENDING_PAYMENT
-        )
-        return booking
+        # Validation only: BookingListCreateView.create() reserves through services/reservation.py (hold + bookable tutor).
+        # The old body here created a booking without either (slice T1b review nit); it was never reachable.
+        raise NotImplementedError('Bookings are created by bookings.services.reservation.reserve_slot.')
 
 class ReviewInputSerializer(serializers.Serializer):
     """A student's review. `review` is the legacy name of `private_notes` (older clients)."""
