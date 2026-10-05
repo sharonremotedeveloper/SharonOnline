@@ -80,10 +80,17 @@ class TestTimezoneChange:
 
 
     def test_the_admin_form_warns_but_does_not_block(self, tutor, student_user, admin_user, settings):
+        lesson(tutor, student_user, next_weekday_utc(0, 10))
+        assert any('fall outside' in m for m in self._admin_change_timezone(tutor, admin_user, settings))
+
+    def test_the_admin_form_is_quiet_without_conflicts(self, tutor, admin_user, settings):
+        assert not any('fall outside' in m for m in self._admin_change_timezone(tutor, admin_user, settings))
+
+    @staticmethod
+    def _admin_change_timezone(tutor, admin_user, settings):
         settings.STORAGES = {**settings.STORAGES, 'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}}
         from django.contrib.messages import get_messages
         from django.test import Client
-        lesson(tutor, student_user, next_weekday_utc(0, 10))
         user = tutor.user
         admin = Client()
         admin.force_login(admin_user)
@@ -93,7 +100,7 @@ class TestTimezoneChange:
         res = admin.post(f'/admin/users/user/{user.pk}/change/', data, follow=True)
         user.refresh_from_db()
         assert user.timezone == 'Asia/Tokyo', res.content[:500]
-        assert any('fall outside' in str(m) for m in get_messages(res.wsgi_request))
+        return [str(m) for m in get_messages(res.wsgi_request)]
 
 
 # ------------------------------------------------------------------ MINOR-3: races under the lock are 404s
@@ -138,6 +145,12 @@ class TestLegacyRows:
     def test_a_window_in_the_payload_is_still_validated(self, tutor):
         legacy = TeacherAvailability.objects.create(teacher=tutor, day_of_week=2, start_time=time(12, 0), end_time=time(9, 0))
         res = client(tutor.user).patch(f'{BASE}/manage/{legacy.id}/', {'end_time': '09:00'}, format='json')
+        assert res.status_code == 400 and 'end_time' in res.json()
+
+    def test_reactivating_an_invalid_legacy_window_is_refused(self, tutor):
+        legacy = TeacherAvailability.objects.create(teacher=tutor, day_of_week=2, start_time=time(12, 0), end_time=time(9, 0),
+                                                    is_active=False)
+        res = client(tutor.user).patch(f'{BASE}/manage/{legacy.id}/', {'is_active': True}, format='json')
         assert res.status_code == 400 and 'end_time' in res.json()
 
     def test_a_valid_edit_of_a_legacy_row_still_works(self, tutor):
