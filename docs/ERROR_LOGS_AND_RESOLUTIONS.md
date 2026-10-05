@@ -353,6 +353,11 @@ def configure_test_settings(settings):
 - **Root cause:** (1) 0008's reverse `restore_booleans` ran three UPDATEs over the same rows; on PostgreSQL a second update of a row already modified in the same transaction queues deferred foreign-key trigger events, and Django creates the restored column's index at the END of the migration (deferred DDL), which PostgreSQL refuses while events are pending. SQLite has no deferred triggers, so every local run passed; the Architect review had judged the migrations safe by reading them. (2) The F0 Postgres smoke test predates review item m3 (`waiting` is `not_started` only if Zoom reports no past instance) and lacked the `zoom_never_held` fixture; being skipped on SQLite it never ran after that change.
 - **Fix:** `restore_booleans` is one UPDATE with `Case/When`; every data step in 0007/0008 ends with `SET CONSTRAINTS ALL IMMEDIATE` on PostgreSQL so nothing is pending when the deferred DDL runs; the F0 test takes `zoom_never_held`. Lesson: a migration that mixes data steps and schema changes must be run on PostgreSQL before merge (Docker Postgres locally, or CI on a pull request), not only reasoned about.
 
+### ERR-193: `test_average_and_count_come_from_the_database` failed only in the full suite (layer-1 integration)
+- **Symptom:** `sqlite3.IntegrityError: UNIQUE constraint failed: bookings_booking.teacher_id, bookings_booking.start_time_utc` in `tests/test_review_endpoint.py::TestAggregates`; green alone, with its file and with its class.
+- **Root cause:** the file's `lesson()` helper starts every lesson at `now() - 3h`. The test creates three lessons for one tutor in a loop; on Windows the system clock advances in ~15 ms steps, so under load two iterations can read the same instant, and `(teacher, start_time_utc)` is unique for live statuses. A pre-existing timing flake, not a product defect and not an interaction with T1b's lock-order change.
+- **Fix:** each lesson in the loop gets a distinct `hours_ago` (`3 + n`).
+
 ### ERR-200: golden snapshots could not be printed by a scratch pytest file (slice N1a, tooling)
 - **Symptom:** running a scratch test (outside the repo) to print the new golden snapshot text failed at collection:
   `OSError: [WinError 1920] The file cannot be accessed by the system: '...\AppData\Local\Temp\jb.station.ij.10096.sock'`,
