@@ -14,10 +14,16 @@ ACTIVE_STATUSES = ('applied', 'submitted', 'in_review', 'changes_requested', 'ap
 
 
 def restore_booleans(apps, schema_editor):
+    """One UPDATE per row: on PostgreSQL a second update of a row already changed in this transaction queues deferred
+    foreign-key checks, and the index on the restored column (created at the end of this migration) then fails with
+    "pending trigger events" (ERR-192, found by the CI Postgres job)."""
     Profile = apps.get_model('teachers', 'TeacherProfile')
-    Profile.objects.update(is_verified=False, is_active=False)
-    Profile.objects.filter(status__in=VERIFIED_STATUSES).update(is_verified=True)
-    Profile.objects.filter(status__in=ACTIVE_STATUSES).update(is_active=True)
+    Profile.objects.update(
+        is_verified=Case(When(status__in=VERIFIED_STATUSES, then=Value(True)), default=Value(False)),
+        is_active=Case(When(status__in=ACTIVE_STATUSES, then=Value(True)), default=Value(False)),
+    )
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute('SET CONSTRAINTS ALL IMMEDIATE')    # nothing may stay pending before the deferred DDL
 
 
 class Migration(migrations.Migration):
