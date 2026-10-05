@@ -125,11 +125,8 @@ class TeacherOwnProfileSerializer(serializers.ModelSerializer):
         return super().to_internal_value(data)
 
     def validate_specialties(self, value):
-        cleaned = []
+        cleaned = []                       # each tag is already trimmed and non-blank (_TagField)
         for tag in value:
-            tag = tag.strip()
-            if not tag:
-                raise serializers.ValidationError('Tags cannot be blank.')
             if tag not in cleaned:
                 cleaned.append(tag)
         return cleaned

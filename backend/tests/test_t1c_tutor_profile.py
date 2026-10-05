@@ -178,7 +178,9 @@ class TestOwnProfileUpdate:
             return obj                                   # the view now holds a stale 'approved' copy
 
         with mock.patch.object(tviews.TeacherOwnProfileView, 'get_object', get_then_suspend):
-            assert _client(profile.user).patch(ME, {'headline': 'edited'}, format='json').status_code == 200
+            res = _client(profile.user).patch(ME, {'headline': 'edited'}, format='json')
+        assert res.status_code == 200
+        assert (res.json()['status'], res.json()['is_active']) == ('suspended', False)   # the live value, not the stale copy
         profile.refresh_from_db()
         assert (profile.status, profile.headline) == ('suspended', 'edited')
 
@@ -232,9 +234,18 @@ class TestOwnProfileUpdate:
         cache.clear()
 
 
-# ------------------------------------------------------------------ 3b. re-vet hook for T3
+# ------------------------------------------------------------------ 3b. service + re-vet hook for T3
 @pytest.mark.django_db
 class TestRevetHook:
+    @pytest.mark.parametrize('field', ['status', 'accent', 'sla_strikes'])
+    def test_service_refuses_non_whitelisted_fields_even_without_the_serializer(self, field):
+        from apps.teachers.profile import update_own_profile
+        profile = f.make_teacher_profile(status='applied')
+        with pytest.raises(ValueError):
+            update_own_profile(profile, {'headline': 'x', field: 'approved'})
+        profile.refresh_from_db()
+        assert (profile.headline, profile.status) == ('TEFL Tutor', 'applied')
+
     def test_approved_tutor_goes_back_to_review(self):
         from apps.teachers.profile import revet_after_vetted_change
         profile = f.make_teacher_profile(status='approved')
