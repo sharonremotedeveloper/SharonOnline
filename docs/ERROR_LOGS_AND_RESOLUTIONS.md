@@ -579,3 +579,9 @@ def configure_test_settings(settings):
 - **Symptom:** Classroom UI could not switch cameras, microphones, or output speakers during or before sessions, and classroom logic lacked unit and component tests in `frontend/src/lib/`.
 - **Root cause:** Initial V3 implementation wired basic WebRTC streams but omitted device enumeration modal and device switching handlers (`switchCamera`, `switchMicrophone`, `switchSpeakerDevice`).
 - **Fix:** Added AV Device Selection modal with device enumeration and device switching handlers; sized control bar and PiP preview for mobile viewports (320px+); decoupled `VideoSdkClassroom.tsx` from `@/` path alias imports by importing `fetchVideoSessionToken` from `../../lib/videoSdk`; added 12 tests in `videoSdk.test.ts` and 7 tests in `videoSdkClassroom.test.ts` under Node test runner.
+
+### ERR-390: Video session probe exceeded cyclomatic complexity threshold in ruff (slice V4)
+- **Symptom:** `ruff check apps/bookings/services/video_session_probe.py` failed with `C901: 'probe_session' is too complex (23 > 12)`.
+- **Root cause:** `probe_session` consolidated HTTP retry loops, JSON payload validation, topic matching, inline user parsing, and secondary REST calls into a single monolithic routine.
+- **Fix:** Decomposed `probe_session` into single-responsibility helpers: `_get_matching_sessions`, `_parse_sessions_data`, `_session_contains_tutor`, and `_user_list_contains_tutor`. Each helper remains under 7 cyclomatic complexity. Full suite (139 backend + 186 frontend tests, ruff clean) verified green.
+

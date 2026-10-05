@@ -285,6 +285,7 @@ ZOOM_VIDEO_SDK_KEY = os.environ.get('ZOOM_VIDEO_SDK_KEY', '')
 ZOOM_VIDEO_SDK_SECRET = os.environ.get('ZOOM_VIDEO_SDK_SECRET', '')
 ZOOM_VIDEO_SDK_SESSION_VALID_SECONDS = int(os.environ.get('ZOOM_VIDEO_SDK_SESSION_VALID_SECONDS', '7200'))
 ZOOM_VIDEO_SDK_OPEN_MINUTES_BEFORE = int(os.environ.get('ZOOM_VIDEO_SDK_OPEN_MINUTES_BEFORE', '15'))
+ZOOM_VIDEO_SDK_WEBHOOK_SECRET = os.environ.get('ZOOM_VIDEO_SDK_WEBHOOK_SECRET', '') or ZOOM_WEBHOOK_SECRET_TOKEN
 # --- end Z1
 # Dotted path of the object that talks to PayPal / PayFast to return money (Task 10.7). The default moves no money: requests
 # wait for a person (sandbox / dev / CI). Production selects the routing backend through the environment, and
