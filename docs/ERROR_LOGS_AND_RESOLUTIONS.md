@@ -521,3 +521,23 @@ def configure_test_settings(settings):
 - **Symptom (found in review, red tests first):** `GET /bookings/<id>/video-token/` returned 200 for `pending_payment`, `completed`, `disputed` and no-show bookings (only cancelled statuses were refused), and returned 409 `booking_cancelled` to any authenticated stranger (booking-status oracle).
 - **Root cause:** the V2 view blocklisted cancelled statuses instead of allow-listing live ones, and checked status before authorization. An unpaid booking could enter a free lesson.
 - **Fix:** authorization first (403 for non-parties), then an allow-list of `confirmed`/`in_progress` (409 `classroom_unavailable` otherwise); tests added in `tests/test_zoom_video_token_endpoint.py`.
+
+### ERR-220: T3 R2 commit could leave storage state inconsistent after a database rollback (T3 review)
+- **Symptom:** the asset was copied and the quarantine object was deleted before the surrounding `transaction.atomic` block committed; a later database error could leave a final object with no `TeacherAsset` row.
+- **Root cause:** object storage has no transaction rollback and the old code performed both storage mutations inside the database transaction without compensating cleanup.
+- **Fix:** track the copied final key, remove it on exception, and register quarantine deletion with `transaction.on_commit`; the rollback test proves the final object is removed and quarantine remains.
+
+### ERR-230: Google OAuth callback exposed provider exception text (G1 review)
+- **Symptom:** callback failures returned `str(exc)` to the browser, potentially exposing provider or configuration details.
+- **Root cause:** the view used exception text as its public error payload.
+- **Fix:** return a fixed user-facing message and log only the exception type; add typed callback serializers and regression tests.
+
+### ERR-240: R1 review documentation and mutation coverage were missing (R1 review)
+- **Symptom:** the implemented attendance-payload purge had no `docs/slices/R1.md` or `docs/mutation/R1.md`, so the retention review could not be resumed from the branch handoff.
+- **Root cause:** the initial layer-1b integration landed code/tests without the required slice artifacts.
+- **Fix:** added the R1 slice handoff and mutation table, preserving the existing Postgres-marked retention verification requirement.
+
+### ERR-221: configured backend virtualenv could not start on the Codex host (verification environment)
+- **Symptom:** the prescribed `backend/venv/Scripts/python.exe` failed before pytest with `Unable to create process ... Python312\\python.exe`.
+- **Root cause:** `pyvenv.cfg` points to a Python 3.12 installation absent from this host.
+- **Fix:** no repository workaround was applied; test evidence is explicitly pending a repaired runtime or CI.

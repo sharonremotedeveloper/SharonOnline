@@ -16,7 +16,11 @@ from apps.bookings.models import Booking
 from apps.integrations.models import EskomAreaStatus
 from apps.teachers.models import TeacherAsset, TeacherProfile
 from apps.teachers.assets import audit_private_access
-from apps.integrations.serializers import EskomStatusSerializer
+from apps.integrations.serializers import (
+    EskomStatusSerializer,
+    GoogleCalendarCallbackResponseSerializer,
+    GoogleCalendarCallbackSerializer,
+)
 from apps.users.permissions import IsTeacher
 from .services import attendance
 from .zoom import zoom_client
@@ -78,15 +82,17 @@ class GoogleCalendarConnectView(APIView):
             return Response({'error': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
-@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
+@extend_schema(parameters=[GoogleCalendarCallbackSerializer], responses=GoogleCalendarCallbackResponseSerializer)
 class GoogleCalendarCallbackView(APIView):
     # Google redirects may not preserve the API session. The single-use state
     # nonce is the authentication binding for this callback.
     permission_classes = [AllowAny]
 
     def get(self, request):
-        state = request.query_params.get('state', '')
-        if request.query_params.get('error'):
+        serializer = GoogleCalendarCallbackSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        state = serializer.validated_data['state']
+        if serializer.validated_data.get('error'):
             try:
                 owner = oauth_state_user(state)
                 consume_oauth_state(owner, state)
@@ -97,9 +103,10 @@ class GoogleCalendarCallbackView(APIView):
             owner = oauth_state_user(state)
             if not getattr(owner, 'teacher_profile', None):
                 raise ValueError('Google Calendar is available to teachers only.')
-            exchange_oauth_code(owner, request.query_params.get('code', ''), state)
+            exchange_oauth_code(owner, serializer.validated_data.get('code', ''), state)
         except (ValueError, RuntimeError) as exc:
-            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            logger.info('Google Calendar callback failed: %s', type(exc).__name__)
+            return Response({'error': 'Google Calendar connection could not be completed.'}, status=status.HTTP_400_BAD_REQUEST)
         return Response({'connected': True}, status=status.HTTP_200_OK)
 
 

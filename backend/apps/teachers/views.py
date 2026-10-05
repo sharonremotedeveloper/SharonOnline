@@ -22,7 +22,7 @@ from .serializers import (
     AvailabilityUpdateSerializer, ConflictErrorSerializer, DateOverrideCreateSerializer, DateOverrideResultSerializer,
     DeletedSerializer, PowerBackupSerializer, TeacherDateOverrideSerializer, TeacherDetailSerializer, TeacherListSerializer,
     TeacherAvailabilitySerializer, TeacherTimeOffSerializer, TimeOffCreateSerializer, TimeOffResultSerializer,
-    TeacherOwnProfileSerializer,
+    TeacherOwnProfileSerializer, TeacherAssetCommitSerializer, TeacherAssetCommitResponseSerializer,
 )
 from .services import availability
 
@@ -267,7 +267,7 @@ class TeacherPowerBackupView(generics.UpdateAPIView):
         return self.request.user.teacher_profile
 
 
-@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
+@extend_schema(request=TeacherAssetCommitSerializer, responses=TeacherAssetCommitResponseSerializer)
 class TeacherAssetCommitView(APIView):
     permission_classes = (permissions.IsAuthenticated, IsTeacher)
     throttle_classes = (ScopedRateThrottle,)
@@ -277,17 +277,21 @@ class TeacherAssetCommitView(APIView):
         teacher = getattr(request.user, 'teacher_profile', None)
         if teacher is None:
             raise NotFound('No tutor profile exists for this account.')
+        serializer = TeacherAssetCommitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         try:
             asset = commit_asset(teacher, actor=request.user,
-                                 kind=str(request.data.get('kind') or ''),
-                                 quarantine_key=str(request.data.get('key') or ''),
-                                 expected_etag=str(request.data.get('etag') or ''))
+                                 kind=serializer.validated_data['kind'],
+                                 quarantine_key=serializer.validated_data['key'],
+                                 expected_etag=serializer.validated_data['etag'])
         except ValueError as exc:
             return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except RuntimeError as exc:
             return Response({'error': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        return Response({'id': str(asset.id), 'kind': asset.kind, 'key': asset.object_key,
-                         'etag': asset.etag, 'content_type': asset.content_type}, status=status.HTTP_200_OK)
+        return Response(TeacherAssetCommitResponseSerializer({
+            'id': asset.id, 'kind': asset.kind, 'key': asset.object_key,
+            'etag': asset.etag, 'content_type': asset.content_type,
+        }).data, status=status.HTTP_200_OK)
 
 
 @extend_schema(responses=OpenApiTypes.OBJECT)

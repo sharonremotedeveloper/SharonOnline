@@ -1,6 +1,8 @@
 """T3 quarantine -> verified tutor asset commits."""
 
+import logging
 import uuid
+from functools import wraps
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
@@ -8,6 +10,8 @@ from django.utils import timezone
 from apps.common import r2_client
 from apps.common.upload_policy import policy_for_key
 from .models import PrivateAssetAccessAudit, TeacherAsset, TeacherProfile
+
+logger = logging.getLogger(__name__)
 
 MAGIC = {
     'image/jpeg': (b'\xff\xd8\xff',), 'image/png': (b'\x89PNG\r\n\x1a\n',),
@@ -42,8 +46,26 @@ def _private(kind):
     return kind in {TeacherAsset.Kind.TEFL_CERTIFICATE, TeacherAsset.Kind.IDENTITY_DOCUMENT}
 
 
+def _cleanup_copied_objects_on_error(func):
+    """Storage has no transaction rollback; remove committed copies if DB work fails."""
+    @wraps(func)
+    def wrapped(*args, **kwargs):
+        copied = []
+        try:
+            return func(*args, _copied_objects=copied, **kwargs)
+        except Exception:
+            for object_key, private in copied:
+                try:
+                    r2_client.delete_object(object_key, private=private)
+                except Exception:
+                    logger.exception('Failed to clean up copied tutor asset after database rollback.')
+            raise
+    return wrapped
+
+
+@_cleanup_copied_objects_on_error
 @transaction.atomic
-def commit_asset(teacher, *, actor, kind, quarantine_key, expected_etag=''):  # noqa: C901 - ordered integrity gate
+def commit_asset(teacher, *, actor, kind, quarantine_key, expected_etag='', _copied_objects=None):  # noqa: C901 - ordered integrity gate
     if kind not in KIND_TYPES:
         raise ValueError('Unsupported asset kind.')
     if not quarantine_key.startswith(f'incoming/{teacher.user_id}/'):
@@ -84,7 +106,10 @@ def commit_asset(teacher, *, actor, kind, quarantine_key, expected_etag=''):  # 
     final_key = f'private/vetting/{teacher.user_id}/{kind}/{uuid.uuid4().hex}{suffix}' if private else f'teachers/{kind}/{teacher.user_id}/{uuid.uuid4().hex}{suffix}'
     if metadata.get('ContentLength'):
         r2_client.copy_object(quarantine_key, final_key, etag=etag_header, private=private, source_private=True)
-        r2_client.delete_object(quarantine_key, private=True)
+        _copied_objects.append((final_key, private))
+        # Do not delete the quarantine object until the DB transaction commits. If it rolls back,
+        # the cleanup wrapper removes the copied final object and leaves the upload retryable.
+        transaction.on_commit(lambda: r2_client.delete_object(quarantine_key, private=True))
 
     if old:
         old.replaced_at = timezone.now()

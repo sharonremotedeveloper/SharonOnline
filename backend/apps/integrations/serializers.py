@@ -20,3 +20,14 @@ class EskomStatusSerializer(serializers.Serializer):
     provider_status = serializers.CharField()
     retrieved_at = serializers.DateTimeField()
 
+
+class GoogleCalendarCallbackSerializer(serializers.Serializer):
+    state = serializers.CharField(required=True, allow_blank=False)
+    code = serializers.CharField(required=False, allow_blank=True, default='')
+    error = serializers.CharField(required=False, allow_blank=True)
+
+
+class GoogleCalendarCallbackResponseSerializer(serializers.Serializer):
+    connected = serializers.BooleanField(required=False)
+    error = serializers.CharField(required=False)
+

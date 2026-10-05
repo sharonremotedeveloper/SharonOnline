@@ -18,6 +18,20 @@ DEPRECATED_PRICE_SCHEMA = {
 }
 
 
+class TeacherAssetCommitSerializer(serializers.Serializer):
+    kind = serializers.CharField()
+    key = serializers.CharField()
+    etag = serializers.CharField(required=False, allow_blank=True, default='')
+
+
+class TeacherAssetCommitResponseSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    kind = serializers.CharField()
+    key = serializers.CharField()
+    etag = serializers.CharField(allow_blank=True)
+    content_type = serializers.CharField()
+
+
 class TeacherAvailabilitySerializer(serializers.ModelSerializer):
     """One weekly window in the tutor's local clock. Validated against the tutor in `context['teacher']` (absent = read-only use)."""
     day_of_week = serializers.IntegerField(min_value=0, max_value=6, help_text='0=Monday ... 6=Sunday')
