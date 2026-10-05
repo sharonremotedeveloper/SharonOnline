@@ -938,6 +938,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notifications/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_notifications_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/{id}/read/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_notifications_read_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/preferences/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_notifications_preferences_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["v1_notifications_preferences_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/notifications/read-all/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_notifications_read_all_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/unread-count/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_notifications_unread_count_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payments/checkout/init/": {
         parameters: {
             query?: never;
@@ -1904,6 +1984,17 @@ export interface components {
         Detail: {
             detail: string;
         };
+        /**
+         * @description * `pending` - Pending
+         *     * `sending` - Sending (claimed; the lease is NOTIFICATION_LEASE_SECONDS)
+         *     * `sent` - Sent
+         *     * `retryable` - Retryable
+         *     * `failed` - Failed (needs a person)
+         *     * `skipped` - Skipped (no e-mail for this kind / preference)
+         *     * `bounced` - Bounced
+         * @enum {string}
+         */
+        EmailStateEnum: "pending" | "sending" | "sent" | "retryable" | "failed" | "skipped" | "bounced";
         EmailVerifyConfirmRequest: {
             token: string;
         };
@@ -1944,6 +2035,10 @@ export interface components {
          * @enum {string}
          */
         FailureKindEnum: "rejected" | "already_refunded" | "guard" | "exhausted" | "replay_window" | "provider_failed";
+        GoogleCalendarCallbackResponse: {
+            connected?: boolean;
+            error?: string;
+        };
         HostLink: {
             meeting_id: string;
             /**
@@ -2041,6 +2136,34 @@ export interface components {
             readonly pdf_file_url: string;
             readonly audio_snippet_url: string;
         };
+        Notification: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly kind: string;
+            readonly title: string;
+            readonly body: string;
+            /** @description Ids only, never free text (plan §3.2). */
+            readonly payload: unknown;
+            /** Format: uuid */
+            readonly booking_id: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly read_at: string | null;
+            readonly email_state: components["schemas"]["EmailStateEnum"];
+            /** @description Staff only: null for everyone else. */
+            readonly email_last_error: string | null;
+        };
+        NotificationPreference: {
+            email_by_kind?: {
+                [key: string]: boolean;
+            };
+            in_app_by_kind?: {
+                [key: string]: boolean;
+            };
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
         /** @enum {unknown} */
         NullEnum: null;
         /**
@@ -2119,6 +2242,21 @@ export interface components {
              */
             previous?: string | null;
             results: components["schemas"]["MaterialList"][];
+        };
+        PaginatedNotificationList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["Notification"][];
         };
         PaginatedRefundList: {
             /** @example 123 */
@@ -2248,6 +2386,14 @@ export interface components {
             /** @default false */
             acknowledge_conflicts: boolean;
         };
+        PatchedNotificationPreferenceRequest: {
+            email_by_kind?: {
+                [key: string]: boolean;
+            };
+            in_app_by_kind?: {
+                [key: string]: boolean;
+            };
+        };
         PatchedPayoutAccountWriteRequest: {
             current_password?: string;
             account_holder_name?: string;
@@ -2326,6 +2472,9 @@ export interface components {
         PowerBackup: {
             has_inverter_backup?: boolean;
             has_lte_failover?: boolean;
+        };
+        ReadAllResponse: {
+            updated: number;
         };
         Refund: {
             /** Format: uuid */
@@ -2523,6 +2672,20 @@ export interface components {
          * @enum {string}
          */
         TagsEnum: "Patience & Empathy" | "Clear Pronunciation" | "Great Corrections" | "Conversational Flow" | "Encouraging Atmosphere" | "Deep Topic Expertise" | "Ideal Pacing" | "Helpful Examples";
+        TeacherAssetCommitRequest: {
+            kind: string;
+            key: string;
+            /** @default  */
+            etag: string;
+        };
+        TeacherAssetCommitResponse: {
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            key: string;
+            etag: string;
+            content_type: string;
+        };
         /** @description One weekly window in the tutor's local clock. Validated against the tutor in `context['teacher']` (absent = read-only use). */
         TeacherAvailability: {
             /** Format: uuid */
@@ -2821,6 +2984,9 @@ export interface components {
          * @enum {string}
          */
         TypeEnum: "opening" | "purchase" | "redemption" | "refund" | "bonus" | "expiry";
+        UnreadCount: {
+            count: number;
+        };
         User: {
             /** Format: uuid */
             readonly id: string;
@@ -4585,7 +4751,11 @@ export interface operations {
     };
     v1_integrations_google_calendar_callback_retrieve: {
         parameters: {
-            query?: never;
+            query: {
+                code?: string;
+                error?: string;
+                state: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4597,9 +4767,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["GoogleCalendarCallbackResponse"];
                 };
             };
         };
@@ -4730,6 +4898,133 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MaterialDetail"];
+                };
+            };
+        };
+    };
+    v1_notifications_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedNotificationList"];
+                };
+            };
+        };
+    };
+    v1_notifications_read_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Notification"];
+                };
+            };
+        };
+    };
+    v1_notifications_preferences_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPreference"];
+                };
+            };
+        };
+    };
+    v1_notifications_preferences_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedNotificationPreferenceRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedNotificationPreferenceRequest"];
+                "multipart/form-data": components["schemas"]["PatchedNotificationPreferenceRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPreference"];
+                };
+            };
+        };
+    };
+    v1_notifications_read_all_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadAllResponse"];
+                };
+            };
+        };
+    };
+    v1_notifications_unread_count_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadCount"];
                 };
             };
         };
@@ -5765,17 +6060,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-                "application/x-www-form-urlencoded": {
-                    [key: string]: unknown;
-                };
-                "multipart/form-data": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["TeacherAssetCommitRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TeacherAssetCommitRequest"];
+                "multipart/form-data": components["schemas"]["TeacherAssetCommitRequest"];
             };
         };
         responses: {
@@ -5784,9 +6073,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["TeacherAssetCommitResponse"];
                 };
             };
         };

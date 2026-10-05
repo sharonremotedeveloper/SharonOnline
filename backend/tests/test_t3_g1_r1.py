@@ -23,14 +23,17 @@ def test_t3_magic_bytes_are_format_specific():
     assert not _matches(TeacherAsset.Kind.INTRO_VIDEO, 'video/mp4', b'ftyp')
 
 
-def test_t3_commits_from_private_quarantine_to_final_bucket(teacher_user, fake_r2, settings):
+def test_t3_commits_from_private_quarantine_to_final_bucket(teacher_user, fake_r2, settings,
+                                                            django_capture_on_commit_callbacks):
     settings.CLOUDFLARE_R2_PRIVATE_BUCKET_NAME = 'private-assets'
     settings.CLOUDFLARE_R2_BUCKET_NAME = 'public-assets'
     quarantine = f'incoming/{teacher_user.user_id}/avatar.png'
     fake_r2.put_object(Bucket='private-assets', Key=quarantine, Body=b'\x89PNG\r\n\x1a\nbytes', ContentType='image/png')
 
-    asset = commit_asset(teacher_user, actor=teacher_user.user, kind=TeacherAsset.Kind.AVATAR,
-                         quarantine_key=quarantine)
+    with django_capture_on_commit_callbacks(execute=True):      # the quarantine copy is deleted only after the DB commit
+        asset = commit_asset(teacher_user, actor=teacher_user.user, kind=TeacherAsset.Kind.AVATAR,
+                             quarantine_key=quarantine)
+        assert ('private-assets', quarantine) in fake_r2.objects         # still there until the transaction commits
 
     assert asset.object_key.startswith(f'teachers/avatar/{teacher_user.user_id}/')
     assert fake_r2.objects[('public-assets', asset.object_key)]['body'].startswith(b'\x89PNG')

@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.notifications import registry
@@ -14,6 +15,7 @@ class NotificationSerializer(serializers.ModelSerializer):
                   'email_last_error')
         read_only_fields = fields
 
+    @extend_schema_field(serializers.CharField(allow_null=True, help_text='Staff only: null for everyone else.'))
     def get_email_last_error(self, obj):
         return obj.email_last_error if self.context['request'].user.is_staff else None
 

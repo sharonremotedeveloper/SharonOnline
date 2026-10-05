@@ -24,4 +24,5 @@ urlpatterns = [
     path('api/v1/teacher/students/', include('apps.crm.urls')),
     path('api/v1/student/', include('apps.srs.urls')),
     path('api/v1/integrations/', include('apps.integrations.urls')),
+    path('api/v1/notifications/', include('apps.notifications.urls')),     # slice N1b
 ]

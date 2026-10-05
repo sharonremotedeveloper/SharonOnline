@@ -1706,6 +1706,22 @@ paths:
   /api/v1/integrations/google-calendar/callback/:
     get:
       operationId: v1_integrations_google_calendar_callback_retrieve
+      parameters:
+      - in: query
+        name: code
+        schema:
+          type: string
+          default: ''
+      - in: query
+        name: error
+        schema:
+          type: string
+      - in: query
+        name: state
+        schema:
+          type: string
+          minLength: 1
+        required: true
       tags:
       - v1
       security:
@@ -1716,8 +1732,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/GoogleCalendarCallbackResponse'
           description: ''
   /api/v1/integrations/google-calendar/connect/:
     get:
@@ -1846,6 +1861,120 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MaterialDetail'
+          description: ''
+  /api/v1/notifications/:
+    get:
+      operationId: v1_notifications_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotificationList'
+          description: ''
+  /api/v1/notifications/{id}/read/:
+    post:
+      operationId: v1_notifications_read_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/v1/notifications/preferences/:
+    get:
+      operationId: v1_notifications_preferences_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreference'
+          description: ''
+    patch:
+      operationId: v1_notifications_preferences_partial_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedNotificationPreferenceRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedNotificationPreferenceRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedNotificationPreferenceRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreference'
+          description: ''
+  /api/v1/notifications/read-all/:
+    post:
+      operationId: v1_notifications_read_all_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadAllResponse'
+          description: ''
+  /api/v1/notifications/unread-count/:
+    get:
+      operationId: v1_notifications_unread_count_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnreadCount'
           description: ''
   /api/v1/payments/checkout/init/:
     post:
@@ -2838,16 +2967,14 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/TeacherAssetCommitRequest'
           application/x-www-form-urlencoded:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/TeacherAssetCommitRequest'
           multipart/form-data:
             schema:
-              type: object
-              additionalProperties: {}
+              $ref: '#/components/schemas/TeacherAssetCommitRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
@@ -2855,8 +2982,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
+                $ref: '#/components/schemas/TeacherAssetCommitResponse'
           description: ''
   /api/v1/teachers/me/training/:
     get:
@@ -3803,6 +3929,24 @@ components:
           type: string
       required:
       - detail
+    EmailStateEnum:
+      enum:
+      - pending
+      - sending
+      - sent
+      - retryable
+      - failed
+      - skipped
+      - bounced
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `sending` - Sending (claimed; the lease is NOTIFICATION_LEASE_SECONDS)
+        * `sent` - Sent
+        * `retryable` - Retryable
+        * `failed` - Failed (needs a person)
+        * `skipped` - Skipped (no e-mail for this kind / preference)
+        * `bounced` - Bounced
     EmailVerifyConfirmRequest:
       type: object
       properties:
@@ -3899,6 +4043,13 @@ components:
         * `exhausted` - Retries ran out
         * `replay_window` - Too old to replay blind
         * `provider_failed` - The provider failed it after accepting it
+    GoogleCalendarCallbackResponse:
+      type: object
+      properties:
+        connected:
+          type: boolean
+        error:
+          type: string
     HostLink:
       type: object
       properties:
@@ -4126,6 +4277,76 @@ components:
       - pdf_file_url
       - slug
       - title
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        kind:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          readOnly: true
+        body:
+          type: string
+          readOnly: true
+        payload:
+          readOnly: true
+          description: Ids only, never free text (plan §3.2).
+        booking_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        read_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        email_state:
+          allOf:
+          - $ref: '#/components/schemas/EmailStateEnum'
+          readOnly: true
+        email_last_error:
+          type: string
+          nullable: true
+          description: 'Staff only: null for everyone else.'
+          readOnly: true
+      required:
+      - body
+      - booking_id
+      - created_at
+      - email_last_error
+      - email_state
+      - id
+      - kind
+      - payload
+      - read_at
+      - title
+    NotificationPreference:
+      type: object
+      properties:
+        email_by_kind:
+          type: object
+          additionalProperties:
+            type: boolean
+        in_app_by_kind:
+          type: object
+          additionalProperties:
+            type: boolean
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - updated_at
     NullEnum:
       enum:
       - null
@@ -4283,6 +4504,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/MaterialList'
+    PaginatedNotificationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
     PaginatedRefundList:
       type: object
       required:
@@ -4512,6 +4756,17 @@ components:
           type: boolean
           writeOnly: true
           default: false
+    PatchedNotificationPreferenceRequest:
+      type: object
+      properties:
+        email_by_kind:
+          type: object
+          additionalProperties:
+            type: boolean
+        in_app_by_kind:
+          type: object
+          additionalProperties:
+            type: boolean
     PatchedPayoutAccountWriteRequest:
       type: object
       properties:
@@ -4729,6 +4984,14 @@ components:
           type: boolean
         has_lte_failover:
           type: boolean
+    ReadAllResponse:
+      type: object
+      properties:
+        updated:
+          type: integer
+          minimum: 0
+      required:
+      - updated
     Refund:
       type: object
       properties:
@@ -5216,6 +5479,41 @@ components:
         * `Deep Topic Expertise` - Deep Topic Expertise
         * `Ideal Pacing` - Ideal Pacing
         * `Helpful Examples` - Helpful Examples
+    TeacherAssetCommitRequest:
+      type: object
+      properties:
+        kind:
+          type: string
+          minLength: 1
+        key:
+          type: string
+          minLength: 1
+        etag:
+          type: string
+          default: ''
+      required:
+      - key
+      - kind
+    TeacherAssetCommitResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+        key:
+          type: string
+        etag:
+          type: string
+        content_type:
+          type: string
+      required:
+      - content_type
+      - etag
+      - id
+      - key
+      - kind
     TeacherAvailability:
       type: object
       description: One weekly window in the tutor's local clock. Validated against
@@ -5966,6 +6264,14 @@ components:
         * `refund` - refund
         * `bonus` - bonus
         * `expiry` - expiry
+    UnreadCount:
+      type: object
+      properties:
+        count:
+          type: integer
+          minimum: 0
+      required:
+      - count
     User:
       type: object
       properties:

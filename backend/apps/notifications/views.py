@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
@@ -48,7 +48,7 @@ class NotificationUnreadCountView(NotificationBaseView):
         return Response(UnreadCountSerializer({'count': count}).data)
 
 
-@extend_schema(responses=NotificationSerializer)
+@extend_schema(request=None, responses=NotificationSerializer)
 class NotificationReadView(NotificationBaseView):
     def post(self, request, pk):
         notification = get_object_or_404(Notification, pk=pk, user=request.user, in_app=True)
@@ -58,7 +58,7 @@ class NotificationReadView(NotificationBaseView):
         return Response(NotificationSerializer(notification, context={'request': request}).data)
 
 
-@extend_schema(responses=ReadAllResponseSerializer)
+@extend_schema(request=None, responses=ReadAllResponseSerializer)
 class NotificationReadAllView(NotificationBaseView):
     def post(self, request):
         updated = Notification.objects.filter(user=request.user, in_app=True, read_at__isnull=True).update(
