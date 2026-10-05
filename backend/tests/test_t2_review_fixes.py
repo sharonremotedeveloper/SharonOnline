@@ -54,6 +54,10 @@ class TestTimezoneChange:
         lesson(tutor, student_user, next_weekday_utc(0, 10))
         assert client(tutor.user).patch(ME, {'timezone': 'Africa/Johannesburg'}, format='json').status_code == 200
 
+    def test_resending_the_same_zone_is_fine_even_when_a_lesson_is_already_outside_the_hours(self, tutor, student_user):
+        lesson(tutor, student_user, next_weekday_utc(1, 10))                    # Tuesday: no weekly hours, already uncovered
+        assert client(tutor.user).patch(ME, {'timezone': 'Africa/Johannesburg'}, format='json').status_code == 200
+
     def test_other_profile_fields_are_never_blocked(self, tutor, student_user):
         lesson(tutor, student_user, next_weekday_utc(0, 10))
         assert client(tutor.user).patch(ME, {'first_name': 'Naledi'}, format='json').status_code == 200
