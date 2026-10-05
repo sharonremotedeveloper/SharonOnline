@@ -149,7 +149,7 @@ Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done.
 
 **Goal:** every external integration real, observable, and failing loudly. Depends on 9.x; needs D-8, D-9. *Check `TOOL_ACCESS_AND_ACCOUNTS.md` and verify each account before use.*
 
-- [ ] **Task 12.1 (M, ARCH)** Zoom client: no fake meetings when unconfigured in production (raise); explicit error handling/429 backoff; cache the S2S access token; fix `create_meeting` returning `None`; implement D-9 host strategy (per-tutor users or alternative hosts) so concurrent lessons don't collide.
+- [ ] **Task 12.1 (M, ARCH)** *(F0 + Z1 done 2026-10-05 except the D-9 host strategy, which stays open: single host = launch blocker; real Zoom unverified)* Zoom client: no fake meetings when unconfigured in production (raise); explicit error handling/429 backoff; cache the S2S access token; fix `create_meeting` returning `None`; implement D-9 host strategy (per-tutor users or alternative hosts) so concurrent lessons don't collide.
 - [ ] **Task 12.2 (M, ARCH)** Notification system: `Notification` model (in-app) + email dispatch; real T-24h/T-1h/T-10m reminders, teacher late-alert, memo SLA warning, apology credit email, tutor booking notification, Eskom shield alert. Resend failures retried with backoff and surfaced; HTML-escape names.
 - [ ] **Task 12.3 (M, ARCH)** Resend: domain verification (SPF/DKIM) once D-10 domain is chosen; delivery webhook; production refuses `re_dev` mock key.
 - [ ] **Task 12.4 (L, ARCH)** Google Calendar: OAuth connect/callback endpoints, encrypted refresh-token storage, token refresh, cancel/reschedule event updates, real freebusy in `reconcile_teacher_gcal_task`, slot generator honours busy times. Remove token exposure from `UserAdmin`.

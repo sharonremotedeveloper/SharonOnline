@@ -74,11 +74,79 @@ A teacher no-show refunds the student, grants a bonus credit and strikes the tut
 * **C2 - sandbox check (before launch):** call `GET /past_meetings/{id}/instances` for a meeting that was never held (200 with
   `meetings: []`, or 404?) and measure how soon an instance appears after a meeting ends. A 404 would turn every real
   no-show into DISPUTED (safe but manual); a slow instance would let a just-ended lesson read `waiting` + no instance.
-* **C3 - Z1:** cache the Server-to-Server OAuth token (about 55 min TTL, keyed by account, single-flight, invalidated on 401).
-  Today every probe/create/delete requests a new token.
+* **C3 - Z1: DONE** (token cache, see "Client contract" below).
+* **C4 - sandbox check (Z1):** `GET /users/{host}/meetings?type=scheduled` returns `agenda` in its list items (the create
+  search matches the marker line in it; the client falls back to exact topic + start time if it does not); the host `start_url`
+  ZAK lifetime (about 2 h?); the `Retry-After` format on 429.
 * **Before go-live (N1a):** every `[ADMIN ALERT]` log line from F0 (fulfilment needs attention / failed, orphaned meeting or
   calendar event, lesson disputed without a verdict) must be replaced by a `notify()` to `ADMIN_ALERT_RECIPIENTS`; a log
   line alone is not an alert anyone will see.
+
+## Client contract (Slice Z1, `integrations/zoom.py`, `zoom_auth.py`, `zoom_hosts.py`)
+
+* **Credentials** are Django settings `ZOOM_ACCOUNT_ID` / `ZOOM_CLIENT_ID` / `ZOOM_CLIENT_SECRET` (no environment reads in app
+  code). Production refuses to boot without them (`config/settings/guard.py::ZOOM_CREDENTIAL_SETTINGS`), and
+  `scripts/check_deploy.py` reports the same three names. Tests blank them in the autouse fixture; `fake_zoom` sets fake ones.
+* **Token cache (closes F0 condition C3).** One S2S token per account id in the Django cache (Redis in production), kept for
+  `expires_in - 60 s`; a token living 60 s or less is used once and not cached. Single-flight: the worker that wins
+  `cache.add(<key>:lock)` (15 s, owner-checked release) fetches; others poll every 0.25 s for up to `ZOOM_TOKEN_WAIT_SECONDS`
+  (5) and then fetch themselves. Failures are never cached. A **401** invalidates the cached token (only if it is still the
+  refused one) and the request is sent **once** more with a fresh token (a token Zoom refused is never handed out again); a
+  second 401 is final. The token lives only in the cache and memory, never in a log.
+* **Retries.** Only **429** and **5xx**, at most `ZOOM_HTTP_MAX_ATTEMPTS` (3) tries per call. 429 honours `Retry-After`
+  (seconds or HTTP date) up to `ZOOM_RETRY_AFTER_CAP_SECONDS` (10); a longer one is not slept: the call raises `ZoomError`
+  with `retry_after_seconds`, which fulfilment uses as its minimum retry delay. Without Retry-After, and for 5xx: full-jitter
+  exponential back-off (0.5 s doubling, capped at 10 s). Other 4xx are final at once. Timeouts / connection errors raise
+  `ZoomAmbiguous` and are **not** retried by reads (the T+10 probe reads that as `unknown` and probes again next minute).
+  Every request has `timeout=ZOOM_HTTP_TIMEOUT_SECONDS` (10). The token request follows the same policy.
+* **Errors** carry the HTTP status (`ZoomError.status`) and never Zoom's body; `ZoomNotFound` for 404.
+* **create_meeting is never retried blind.** Every lesson meeting's agenda carries a marker line
+  `sharon-booking:<booking id>`. After an ambiguous outcome (timeout, connection error or 5xx: Zoom may have built the room
+  and lost the response) the client lists the host's scheduled meetings (paged, at most 10 pages) and reuses the one whose
+  agenda has that exact marker line **and** the same start time (a rescheduled lesson's old room carries the same marker
+  until the cleanup task deletes it); only if none is found does it POST again (with back-off, bounded by
+  `ZOOM_HTTP_MAX_ATTEMPTS`). A failed search raises: no second POST. 429 on create is retried without a search (Zoom did not
+  process it). Fulfilment passes `search_first=True` when the booking's previous zoom step FAILED, so a lost response from an
+  earlier *attempt* is found before a new room is built. Without a booking id an ambiguous create is never retried.
+  *Why a marker in Zoom, not a stored request marker:* it needs no database write before the HTTP call, survives a worker
+  crash between the call and our save, and a stored marker would still need the same search to learn whether Zoom created
+  the meeting.
+* **`auto_recording: "none"`** is set explicitly on create (D-8: no recording in the MVP, whatever the account default).
+* **No silent `return ""`**: without credentials `get_access_token` raises (guard allowlist for `zoom.py` is now 0).
+
+## Host link (Slice Z1)
+
+The host `start_url` embeds a ZAK that expires (about 2 h for a regular user; verify in the sandbox, C4). Since Z1 it is
+**never stored, e-mailed or copied into a calendar event**: fulfilment no longer writes `Booking.zoom_start_url`, migration
+`bookings/0015` blanked existing values (reverse is a no-op), and the tutor's Google Calendar event carries only the join
+URL. `BookingDetailSerializer.zoom_start_url` stays in the contract for one release but is always `""` (deprecated) and
+`zoom_url` is the join URL for everyone. The column is dropped in a later release.
+
+`GET /api/v1/bookings/{id}/host-link/` (`bookings/host_link_views.py`, service `bookings/services/host_link.py`) fetches a
+fresh link from Zoom (`GET /meetings/{id}`) when the classroom opens:
+
+| Caller / state | Answer |
+| :--- | :--- |
+| the booking's tutor, or staff (role admin / is_staff / superuser), lesson `confirmed` or `in_progress`, meeting id set, before `end_time_utc` | 200 `{meeting_id, start_url}`, `Cache-Control: no-store` |
+| the booking's student | 403 `host_only` |
+| anyone else, or unknown booking | 404 `not_found` |
+| not live / no meeting id / ended | 409 `not_live` / `no_meeting` / `lesson_ended` |
+| Zoom 404 for the meeting | 409 `meeting_missing` + `[ADMIN ALERT]` log |
+| any other Zoom failure | 502 `zoom_unavailable` (no provider detail) |
+
+Throttle scope `zoom_host_link` (30/hour per user). Logs carry booking / user / meeting ids only. Staff who open the room
+with this link are the host and count as tutor presence in attendance (the `host_id` rule): use it only to rescue a lesson.
+**Frontend (for F1):** the teacher classroom page still reads `zoom_start_url` and now falls back to the join URL, which does
+not make the tutor the host. F1 must switch it to this endpoint; Z1 and F1 must ship together.
+
+## Host allocation (Slice Z1, `integrations/zoom_hosts.py`): LAUNCH BLOCKER pending D-9
+
+`HostPicker.pick_host(booking)` returns `settings.ZOOM_HOST_USER_ID` (default `'me'`, the account owning the S2S app);
+fulfilment creates the meeting under that user and stores it in `Booking.zoom_host_user_id` (nullable, migration
+`bookings/0014`; cleared on reschedule; null = no meeting or created before Z1, i.e. `'me'`). The host id is validated
+(`[A-Za-z0-9_.@+-]{1,64}`) before it goes into a URL path. **One host account can run one meeting at a time: two concurrent
+lessons collide on the single licence.** This is a launch blocker until D-9 (host pool) replaces `pick_host` with an
+allocation; probe, delete and host-link paths already work by meeting id and need no change.
 
 ## Fulfilment (Slice F0, `bookings/services/fulfillment.py`)
 
@@ -116,7 +184,7 @@ draining avoids a second room being created by an old worker and a new one at th
   404 instead, every real tutor no-show becomes `unknown` and ends as DISPUTED (safe: nobody is wrongly penalised, but no
   automatic no-show); then map that specific 404 to "no instances" after confirming it.
 
-* Meetings are created under the platform's one Zoom account, so the tutor's host link joins as that account (`host_id`). If tutors ever get their own Zoom hosts, `classify` still works (the host is still the tutor).
+* Meetings are created under the host chosen by `HostPicker` (today the platform's one Zoom account: single host = launch blocker pending D-9), so the tutor's host link joins as that account (`host_id`). If tutors ever get their own Zoom hosts, `classify` still works (the host is still the tutor).
 * `participant.user_id` is per join session; `participant_uuid` is the fallback key.
 * The student join link is not personal, so the student is identified by the e-mail they joined with, which is self-asserted for guests. **Registrant links** (Zoom registration, one personal join URL per student) would make this verified; it needs a Zoom plan that supports registration and a `registrants` call at fulfillment time. Not built.
 

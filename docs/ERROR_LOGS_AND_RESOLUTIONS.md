@@ -393,6 +393,15 @@ def configure_test_settings(settings):
 - **Root cause:** the shortest-path search used every staff edge, including the reinstatement edge, and the view read the profile before taking the row lock.
 - **Fix:** a path to `rejected` may not pass through `approved` (suspended -> reject is now 409; no new edge, open question for Anesu in `TUTOR_STATUS_MACHINE.md`); the view reads the tutor once with `select_for_update()` and builds the 409 from that row.
 
+### ERR-140: two older Zoom tests failed after Z1 (`match='bad start_time'`) and the OpenAPI contract test went stale (slice Z1)
+- **Symptom:** `test_zoom_attendance*.py::test_a_zoom_rejection_is_an_error_not_a_none` failed (error text no longer contained Zoom's body); `test_committed_schema_is_current` failed after the host-link endpoint was added.
+- **Root cause:** Z1 deliberately stopped putting provider bodies into `ZoomError` (ids-only rule); the two tests asserted the old text. The new endpoint changed the schema and `docs/api/openapi.yaml` was not regenerated yet.
+- **Fix:** the tests now assert `HTTP 400`, the typed `status`, and that the body text is absent; `manage.py spectacular` + `npm run gen:api` regenerated the schema and TS types.
+
+### ERR-141: new Z1 code and tests tripped ruff and the env guard (slice Z1)
+- **Symptom:** ruff `S105` on `TOKEN_URL`, `F811` on a re-imported fixture; `test_env_example_lists_every_setting_read_from_the_environment` failed for the new `ZOOM_*` settings; one test compared two equal `RecordedRequest` objects by index and mis-ordered them.
+- **Fix:** targeted `# noqa: S105` with a reason (the OAuth endpoint URL is not a secret), a local `price_catalog` fixture instead of an import, the new keys added to `.env.example`, and the ordering test compares by identity.
+
 ### ERR-158: admin "add teacher profile" test posted an empty JSON list (slice T1a)
 - **Symptom:** the new admin-add test got 200 with `{'specialties': ['This field is required.']}`.
 - **Root cause:** Django's form `JSONField` treats `[]` as empty and the model field is not `blank=True`.

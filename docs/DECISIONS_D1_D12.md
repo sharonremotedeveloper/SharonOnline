@@ -22,7 +22,7 @@
 | D-3 | Payout cadence + rail + maker-checker | Bi-weekly (matches code); bank EFT/ACB CSV export for MVP (no API cost); maker-checker **yes**, since one person should not both build and approve a payout batch. |
 | D-4 | Memo SLA | 12h reminder, 24h deadline; late memo forfeits the tutor's pay for that lesson (code behaviour); memo does **not** block student escrow clearing; platform funds any apology credit. |
 | D-7 | Credit bundles | Bundles of 5 / 10 / 20 at 0 / 5 / 10 % off; **no subscriptions in MVP**. |
-| D-9 | Zoom licensing | One licensed host per ~3 concurrent tutors with alternative hosts, to avoid per-tutor licence cost. Confirm with Zoom account limits. |
+| D-9 | Zoom licensing | One licensed host per ~3 concurrent tutors with alternative hosts, to avoid per-tutor licence cost. Confirm with Zoom account limits. **Z1 note (2026-10-05): with the single host account the code ships today (`HostPicker` -> `ZOOM_HOST_USER_ID`, default `me`), concurrent lessons collide on one licence: LAUNCH BLOCKER until this is decided and `pick_host` allocates from a pool (`docs/ZOOM_ATTENDANCE.md`).** |
 | D-10 | Stack | Backend Railway or Render (Docker), frontend Vercel, R2 for files, Django JWT (no Neon Auth). Domain `sharonesl.com` (already used in the R2 CDN config). |
 | D-11 | Tutor vetting | Sharon interviews; TEFL certificate + SA ID document uploaded to the private vault and verified by an admin; background check done outside the platform for launch. |
 | D-12 | Legal entity / VAT / POPIA officer / SARB | Needs an accountant and attorney. Not something engineering can decide. Blocks live-gateway cutover and Phase 14. |
