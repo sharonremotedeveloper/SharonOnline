@@ -17,6 +17,17 @@ Landed as one unit (the combined tree was gated as a whole, then committed per o
 
 Open review items for the owners (none blocks the push): **Codex** (C0): the Google callback returns provider/exception text to the browser (return a fixed message, log the type only); R2 copy happens inside `transaction.atomic`, so a rolled-back commit can orphan an object (add a cleanup/`on_commit` ordering note and test); the commit endpoint and callback have no typed serializers (`OpenApiTypes.OBJECT`: guard baseline must not grow); mutation tables `docs/mutation/{T3,G1,R1}.md` and `docs/slices/{T3,G1,R1}.md` do not exist yet. **Antigravity** (A0): require a 32+ character `ZOOM_VIDEO_SDK_SECRET` in the production guard (tests warn about an 18-byte key), add a pagination-free typed schema review, frontend tests for `videoSdk.ts`, browser verification, `docs/mutation/V1-V3.md`.
 
+## 0.45 WORKTREES READY (2026-10-05, from `develop` `db3e966`)
+
+| Agent | Worktree (under `Project-files/.claude/worktrees/`) | Branch | First task |
+| :-- | :-- | :-- | :-- |
+| Codex | `codex-n1b` | `feature/n1b-notification-api` | N1b (ERR 250) |
+| Codex | `codex-t3-fixes` | `fix/t3-g1-r1-review` | C0 review items (ERR 220/230/240) |
+| Antigravity | `antigravity-v1-v3-fixes` | `fix/v1-v3-review` | A0 (ERR 360-380), then V4 design/build |
+| Claude | `claude-t4a` | `feature/t4a-vetting-backend` | T4a (ERR 300), then V4 contract test, T6 |
+
+Using a worktree: `cd` into it and stay there. **Python:** the venv exists only in the main checkout; run `"C:/Dev/Active Projects/Sharon Online/Project-files/backend/venv/Scripts/python.exe" -m pytest ...` with the worktree's `backend/` as the working directory (verified). **Frontend:** run `npm ci` once inside the worktree's `frontend/`. Merge back by rebasing on `origin/develop` and telling Claude (integrator) which branch is ready; do not push to `develop` yourself unless Claude says so. After `npm run build` restore `frontend/package-lock.json`, `tsconfig.json`, `next-env.d.ts` if they changed.
+
 ## 0.5 FINAL KICKOFF (2026-10-05): what starts now
 
 **Decisions closed for kickoff:** Video SDK direction and V1-V4 = go (Anesu's instruction to start all three streams, 2026-10-05; if that is wrong he says so and V4 stops). V5 = still blocked. Private R2 bucket `esl-platform-private-vetting` and the Google Cloud project/OAuth client are provisioned (see `TOOL_ACCESS_AND_ACCOUNTS.md`; credentials live only in `backend/.env`, never in files). **Still missing:** the Zoom Video SDK app (key/secret/webhook secret) and the Resend domain. Both only block *live* checks; V4 and N3 are built and tested on mocks.
