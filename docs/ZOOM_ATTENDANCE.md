@@ -145,8 +145,13 @@ tutor. A link issued to staff who are not the tutor therefore writes a `bookings
 migration `bookings/0016`) and **holds the lesson's escrow release**: `settlement.attendance_verified_for_release` returns
 False while an unreviewed row exists (also for a student no-show or a late-cancel, whose attendance would otherwise be
 taken on trust). An admin clears the hold in Django admin ("Host link issues" -> action "Mark reviewed", which records the
-reviewer) after checking who really attended. Use the staff path only to rescue a lesson. Open question for N2/P1: alert
-the admin when a row is created (today only a `[WARNING]` log line with ids).
+reviewer) after checking who really attended. Use the staff path only to rescue a lesson. **Who may review** (re-review): the
+action needs `is_active`, `is_staff` and (superuser or role admin), like the fulfilment re-queue and notification re-send
+admins; a reviewer cannot clear a link issued to themselves unless superuser. The same predicate (`host_link.can_review`)
+decides who may obtain a staff host link at all, so no hold can be created that nobody is able to clear. Open question for
+N2/P1: alert the admin when a row is created (today only a `[WARNING]` log line with ids). The money effect is described in
+`SETTLEMENT_PATHS.md` (staff-hosted lesson row). **This hold is part of the legacy Meetings path and will retire with the
+Zoom Video SDK migration (V5).**
 
 **Frontend (done in Z1, not F1).** `lib/hostLink.ts` (`api.getHostLink`) fetches the link when the tutor presses "Start Lesson
 as Host"; `ZoomLauncherButton` (host mode) opens it in a new tab with `noopener,noreferrer`, shows what to do on 409

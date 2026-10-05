@@ -1,13 +1,10 @@
 """
-Slice Z1, re-review conditions (run on the integration branch with N1a merged):
+Slice Z1, re-review REQUIRED conditions (the Video SDK migration retires this legacy path later; until then it is live):
 
 1. the "Mark reviewed" admin action is gated like the sibling money admins and refuses self-review
-2. who may obtain a staff host link == who can review it; a staff alert is raised (N1a `alert_staff`)
-3. docs/SETTLEMENT_PATHS.md describes the hold
-4. held rows cannot starve the escrow release batch
-NITs: reviewed_by implies reviewed_at (constraint); the admin lists unreviewed rows first
+2. who may obtain a staff host link == who can review it (no row that nobody can clear)
+3. docs/SETTLEMENT_PATHS.md describes the hold; ZOOM_ATTENDANCE.md says it is legacy
 """
-import logging
 from datetime import timedelta
 from pathlib import Path
 from unittest import mock
@@ -15,15 +12,13 @@ from unittest import mock
 import pytest
 from django.contrib import admin
 from django.core.exceptions import PermissionDenied
-from django.db import IntegrityError, transaction
 from django.test import RequestFactory
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 import factories as f
-from apps.bookings.models import AttendanceAudit, Booking, HostLinkIssue
+from apps.bookings.models import Booking, HostLinkIssue
 from apps.integrations.zoom import zoom_client
-from payment_helpers import captured
 
 S = Booking.Status
 URL = '/api/v1/bookings/{}/host-link/'
@@ -137,9 +132,9 @@ class TestReviewPermission:
         assert row.reviewed_at is not None
 
 
-# ====================================================================== 2. who may obtain the link, and the alert
+# ====================================================================== 2. who may obtain the link
 @pytest.mark.django_db
-class TestIssuerPredicateAndAlert:
+class TestIssuerPredicate:
     def test_an_admin_role_without_django_admin_access_gets_no_link_and_no_row(self, live):
         outsider = f.make_admin(is_superuser=False, is_staff=False)
         assert client_for(outsider).get(URL.format(live.id)).status_code == 404
@@ -161,45 +156,9 @@ class TestIssuerPredicateAndAlert:
                      f.make_admin(is_active=False)):
             assert host_link.can_review(user) == model_admin().has_review_permission(request_as(user))
 
-    def test_a_staff_alert_is_raised_with_ids_only(self, live):
-        admin_user = plain_admin()
-        with mock.patch('apps.bookings.services.host_link.alert_staff') as alert:
-            assert client_for(admin_user).get(URL.format(live.id)).status_code == 200
-        alert.assert_called_once()
-        args, kwargs = alert.call_args
-        assert args == ('host_link_issued_to_staff',)
-        assert kwargs['key'] == f'admin:host-link:{live.id}'
-        assert kwargs['payload'] == {'booking_id': str(live.id), 'issued_by': str(admin_user.pk)}
-
-    def test_the_alert_is_not_raised_for_the_tutor_or_a_refused_request(self, live):
-        with mock.patch('apps.bookings.services.host_link.alert_staff') as alert:
-            client_for(live.teacher.user).get(URL.format(live.id))
-            Booking.objects.filter(pk=live.pk).update(zoom_meeting_id='')
-            client_for(plain_admin()).get(URL.format(live.id))
-        alert.assert_not_called()
-
-    def test_the_alert_runs_after_the_row_exists(self, live):
-        seen = []
-        with mock.patch('apps.bookings.services.host_link.alert_staff',
-                        side_effect=lambda *a, **k: seen.append(HostLinkIssue.objects.count())):
-            client_for(plain_admin()).get(URL.format(live.id))
-        assert seen == [1]
-
-    def test_the_real_alert_notifies_the_other_admins(self, live):
-        from apps.notifications.models import Notification
-        issuer, other = plain_admin(), plain_admin()
-        assert client_for(issuer).get(URL.format(live.id)).status_code == 200
-        assert Notification.objects.filter(user=other, kind='admin_alert').exists()
-
-    def test_the_alert_code_has_a_title_and_does_not_change_the_snapshot(self):
-        from apps.notifications.builtin_kinds import ALERT_TITLES, _example_admin_alert
-        assert 'host_link_issued_to_staff' in ALERT_TITLES
-        assert _example_admin_alert(mock.Mock(pk='b'))['alert'] == 'fulfilment_failed'
-
-    def test_a_failing_alert_does_not_break_the_link(self, live):
-        with mock.patch('apps.bookings.services.host_link.alert_staff', side_effect=RuntimeError('x')):
-            res = client_for(plain_admin()).get(URL.format(live.id))
-        assert res.status_code == 200 and HostLinkIssue.objects.count() == 1
+    def test_the_tutor_still_gets_their_own_link_without_a_row(self, live):
+        assert client_for(live.teacher.user).get(URL.format(live.id)).status_code == 200
+        assert not HostLinkIssue.objects.exists()
 
 
 # ====================================================================== 3. docs
@@ -210,73 +169,6 @@ class TestDocs:
         for word in ('student_no_show', 'student_late_cancelled', 'disputes', 'refunds'):
             assert word in text
 
-    def test_zoom_attendance_no_longer_defers_the_alert_and_notes_the_uuid_encoding(self):
+    def test_zoom_attendance_says_the_hold_is_legacy(self):
         text = (DOCS / 'ZOOM_ATTENDANCE.md').read_text(encoding='utf-8')
-        assert 'host_link_issued_to_staff' in text and 'double' in text.lower() and 'numeric' in text.lower()
-
-
-# ====================================================================== 4. held rows do not starve the release batch
-@pytest.mark.django_db
-class TestReleaseBatch:
-    def test_held_rows_are_not_even_candidates(self, teacher_user, student_user, caplog):
-        from apps.payments import tasks as payment_tasks
-        issuer = plain_admin()
-        base = timezone.now() - timedelta(days=5)
-        for i in range(51):                                             # more than the 50-row batch
-            start = base - timedelta(hours=i)
-            held = f.make_booking(teacher_user, student_user, status=S.COMPLETED, start=start)
-            HostLinkIssue.objects.create(booking=held, issued_by=issuer)
-        good = captured(teacher_user, student_user, 10)
-        end = timezone.now() - timedelta(hours=30)
-        Booking.objects.filter(pk=good.pk).update(status=S.COMPLETED, start_time_utc=end - timedelta(minutes=25), end_time_utc=end)
-        AttendanceAudit.objects.create(booking=good, participant_email=teacher_user.user.email, total_minutes=25)
-        real = payment_tasks.attendance_verified_for_release
-        with mock.patch.object(payment_tasks, 'attendance_verified_for_release', side_effect=real) as check, \
-                caplog.at_level(logging.WARNING):
-            result = payment_tasks.release_cleared_escrow_task()
-        assert result['cleared_count'] == 1
-        assert check.call_count == 1                                    # only the releasable booking was ever examined
-        assert any('awaiting attendance review' in r.getMessage() and '51' in r.getMessage() for r in caplog.records)
-
-    def test_a_reviewed_row_no_longer_excludes_the_booking(self, teacher_user, student_user):
-        from apps.bookings.services.host_link import review_host_link_issues
-        from apps.payments import tasks as payment_tasks
-        good = captured(teacher_user, student_user, 10)
-        end = timezone.now() - timedelta(hours=30)
-        Booking.objects.filter(pk=good.pk).update(status=S.COMPLETED, start_time_utc=end - timedelta(minutes=25), end_time_utc=end)
-        AttendanceAudit.objects.create(booking=good, participant_email=teacher_user.user.email, total_minutes=25)
-        HostLinkIssue.objects.create(booking=good, issued_by=plain_admin())
-        assert payment_tasks.release_cleared_escrow_task()['cleared_count'] == 0
-        review_host_link_issues(HostLinkIssue.objects.all(), plain_admin())
-        assert payment_tasks.release_cleared_escrow_task()['cleared_count'] == 1
-
-
-# ====================================================================== NITs
-@pytest.mark.django_db
-class TestModelAndAdminList:
-    def test_a_reviewer_without_a_review_time_is_rejected_by_the_database(self, live):
-        with pytest.raises(IntegrityError), transaction.atomic():
-            HostLinkIssue.objects.create(booking=live, issued_by=plain_admin(), reviewed_by=plain_admin())
-
-    def test_a_review_time_without_a_reviewer_is_allowed(self, live):
-        """The reviewer account may be deleted later (SET_NULL), so the constraint is one-directional."""
-        row = HostLinkIssue.objects.create(booking=live, issued_by=plain_admin(), reviewed_at=timezone.now())
-        assert row.reviewed_by_id is None
-
-    def test_a_deleted_reviewer_does_not_break_the_row(self, live):
-        reviewer = plain_admin()
-        row = HostLinkIssue.objects.create(booking=live, issued_by=plain_admin(), reviewed_at=timezone.now(), reviewed_by=reviewer)
-        reviewer.delete()
-        row.refresh_from_db()
-        assert row.reviewed_by_id is None and row.reviewed_at is not None
-
-    def test_the_admin_lists_unreviewed_rows_first(self, live):
-        issuer = plain_admin()
-        old_reviewed = HostLinkIssue.objects.create(booking=live, issued_by=issuer, reviewed_at=timezone.now(),
-                                                    reviewed_by=plain_admin())
-        newest_open = open_issue(live, issuer)
-        older_open = open_issue(live, issuer)
-        HostLinkIssue.objects.filter(pk=older_open.pk).update(created_at=timezone.now() - timedelta(days=1))
-        request = request_as(f.make_admin())
-        order = [r.pk for r in model_admin().get_queryset(request)]
-        assert order[:2] == [newest_open.pk, older_open.pk] and order[-1] == old_reviewed.pk
+        assert 'retire' in text and 'Video SDK' in text and 'V5' in text
