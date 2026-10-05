@@ -142,7 +142,7 @@ def _date_window(start_time_iso) -> dict:
 def _safe_meeting_id(meeting_id) -> str:
     """A meeting id goes into a URL path: digits, or a base64-style uuid. Never a path segment or a query."""
     value = str(meeting_id if meeting_id is not None else '')
-    if not _MEETING_ID.fullmatch(value) or not value.strip('.'):
+    if not _MEETING_ID.fullmatch(value):          # no dots at all, so '.' / '..' cannot pass
         raise ZoomError('Invalid Zoom meeting id')
     return value
 

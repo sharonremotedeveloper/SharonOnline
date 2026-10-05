@@ -248,6 +248,29 @@ class TestCacheOutage:
             zoom_auth.invalidate_token('acc', 'tok')
             zoom_auth.release_lock('k', 'owner')
 
+    def test_a_cache_that_dies_while_waiting_for_another_worker_degrades_to_a_fetch(self, fake_zoom, monkeypatch):
+        calls = {'get': 0}
+
+        class DiesWhileWaiting:
+            def get(self, key, *a, **kw):
+                calls['get'] += 1
+                if calls['get'] > 1:
+                    raise ConnectionError('down')
+                return None
+
+            def add(self, *a, **kw):
+                return False                     # another worker holds the lock
+
+            def set(self, *a, **kw):
+                pass
+
+            def delete(self, *a, **kw):
+                pass
+
+        monkeypatch.setattr(zoom_auth, 'cache', DiesWhileWaiting())
+        assert zoom_client.get_access_token() == fake_zoom.access_token
+        assert fake_zoom.sleeps == [zoom_auth.POLL_SECONDS]       # one poll, then straight to a direct fetch
+
     def test_an_unexpected_error_in_the_host_link_path_is_a_structured_502(self, live, monkeypatch, caplog):
         monkeypatch.setattr(zoom_client, 'get_start_url', mock.Mock(side_effect=RuntimeError('boom secret-detail')))
         with caplog.at_level(logging.DEBUG):
