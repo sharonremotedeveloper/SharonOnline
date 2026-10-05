@@ -66,5 +66,5 @@ These supersede conflicting statements above (notably the fixed R75 tutor payout
 - **D-2 Tutor pay:** 80/20 split; the platform bears gateway fees from its 20%.
 - **D-5 No-show:** tutor and student at T+10 minutes; 5 minute disconnect grace.
 - **D-6 Refunds:** gateway refund only (cancel window and credit expiry still open; conflicts with credit refunds in the outage and DEF-501 paths, to be resolved before Phase 10).
-- **Tutor signup:** self-registration as `teacher` is allowed but unverified and hidden until vetted; `admin` is never self-assigned.
+- **Tutor signup:** self-registration as `teacher` is allowed but unverified and hidden until vetted; `admin` is never self-assigned. Since slice T1c the signup also creates the tutor profile in status `applied` (`docs/TUTOR_STATUS_MACHINE.md` §8); the tutor edits headline/bio/specialties at `/api/v1/teachers/me/`, while video, accent and documents change only through vetting.
 - **Storage:** Cloudflare R2 bucket `esl-platform-assets` (public access off, no custom domain yet). Uploads are presigned PUT with a signed `Content-Length`.
