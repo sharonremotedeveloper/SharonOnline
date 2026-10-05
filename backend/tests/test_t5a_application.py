@@ -27,8 +27,8 @@ def api(user):
 
 
 def applicant(status='applied', **fields):
-    return f.make_teacher_profile(status=status, headline='Certified TEFL tutor', bio='I teach.', specialties=['FreeTalk'],
-                                  **fields)
+    fields = {'headline': 'Certified TEFL tutor', 'bio': 'I teach.', 'specialties': ['FreeTalk'], **fields}
+    return f.make_teacher_profile(status=status, **fields)
 
 
 def upload(tutor, kind, etag=None, *, replaced=False):

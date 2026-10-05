@@ -461,3 +461,19 @@ class TrainingProgress(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['teacher', 'module'], name='uniq_training_progress')]
+
+
+class TeacherApplication(models.Model):
+    """What an applicant reports while completing the funnel (slice T5a). Uploads live in TeacherAsset, the profile text on
+    TeacherProfile; this row holds the rest. The speed test is measured by the browser and recorded as given: it is advisory
+    evidence for the reviewer, not proof. The South African ID number is deliberately NOT stored (the document is an upload)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    teacher = models.OneToOneField(TeacherProfile, on_delete=models.CASCADE, related_name='application')
+    speed_test_download_mbps = models.DecimalField(max_digits=7, decimal_places=1, null=True, blank=True)
+    speed_test_upload_mbps = models.DecimalField(max_digits=7, decimal_places=1, null=True, blank=True)
+    speed_test_at = models.DateTimeField(null=True, blank=True)
+    power_backup_confirmed_at = models.DateTimeField(null=True, blank=True)
+    declaration_accepted_at = models.DateTimeField(null=True, blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

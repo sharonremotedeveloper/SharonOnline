@@ -74,11 +74,11 @@ def verify(admin, profile_id, body):
 
 
 def test_legacy_verify_records_the_admin_on_every_row(admin_user):
-    profile = f.make_teacher_profile(status='applied')
+    profile = f.make_teacher_profile(status='submitted')
     rubric = {'pronunciation': 4, 'teaching_presence': 4, 'professionalism': 4, 'credentials': 4}
     assert verify(admin_user, profile.id, {'is_verified': True, 'rubric': rubric}).status_code == 200
     rows = list(TeacherStatusChange.objects.filter(teacher=profile).values_list('actor_user', 'reason'))
-    assert len(rows) == 3 and all(row == (admin_user.pk, 'legacy-verify') for row in rows)
+    assert len(rows) == 2 and all(row == (admin_user.pk, 'legacy-verify') for row in rows)
 
 
 # ------------------------------------------------------------------ Django admin and serializers

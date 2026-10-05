@@ -2732,6 +2732,82 @@ paths:
               schema:
                 $ref: '#/components/schemas/TeacherOwnProfile'
           description: ''
+  /api/v1/teachers/me/application/:
+    get:
+      operationId: teachers_me_application_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationOverview'
+          description: ''
+    patch:
+      operationId: teachers_me_application_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedApplicationUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedApplicationUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedApplicationUpdateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationOverview'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+  /api/v1/teachers/me/application/submit/:
+    post:
+      operationId: teachers_me_application_submit
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationOverview'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incomplete'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
   /api/v1/teachers/me/assets/{kind}/download/:
     get:
       operationId: v1_teachers_me_assets_download_retrieve
@@ -3148,6 +3224,32 @@ components:
       required:
       - code
       - error
+    ApplicationOverview:
+      type: object
+      properties:
+        status:
+          type: string
+        editable:
+          type: boolean
+        can_submit:
+          type: boolean
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/Step'
+        requirements:
+          $ref: '#/components/schemas/Requirements'
+        submitted_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - can_submit
+      - editable
+      - requirements
+      - status
+      - steps
+      - submitted_at
     AvailabilityChange:
       type: object
       properties:
@@ -3810,6 +3912,34 @@ components:
       required:
       - meeting_id
       - start_url
+    Incomplete:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        missing:
+          type: array
+          items:
+            type: string
+      required:
+      - code
+      - error
+    KeyEnum:
+      enum:
+      - profile
+      - uploads
+      - power_backup
+      - speed_test
+      - declaration
+      type: string
+      description: |-
+        * `profile` - profile
+        * `uploads` - uploads
+        * `power_backup` - power_backup
+        * `speed_test` - speed_test
+        * `declaration` - declaration
     KindEnum:
       enum:
       - open
@@ -4017,6 +4147,40 @@ components:
         * `not_cancellable` - not_cancellable
         * `funding_unavailable` - funding_unavailable
         * `not_found` - not_found
+    PacketApplication:
+      type: object
+      properties:
+        speed_test_download_mbps:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,1})?$
+          nullable: true
+        speed_test_upload_mbps:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,1})?$
+          nullable: true
+        speed_test_at:
+          type: string
+          format: date-time
+          nullable: true
+        power_backup_confirmed:
+          type: boolean
+        declaration_accepted_at:
+          type: string
+          format: date-time
+          nullable: true
+        submitted_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - declaration_accepted_at
+      - power_backup_confirmed
+      - speed_test_at
+      - speed_test_download_mbps
+      - speed_test_upload_mbps
+      - submitted_at
     PacketAsset:
       type: object
       properties:
@@ -4315,6 +4479,15 @@ components:
           maxLength: 254
       required:
       - email
+    PatchedApplicationUpdateRequest:
+      type: object
+      properties:
+        speed_test:
+          $ref: '#/components/schemas/SpeedTestRequest'
+        confirm_power_backup:
+          type: boolean
+        accept_declaration:
+          type: boolean
     PatchedAvailabilityUpdateRequest:
       type: object
       description: One weekly window in the tutor's local clock. Validated against
@@ -4725,6 +4898,26 @@ components:
       description: |-
         * `student` - student
         * `teacher` - teacher
+    Requirements:
+      type: object
+      properties:
+        upload_kinds:
+          type: array
+          items:
+            type: string
+        min_download_mbps:
+          type: number
+          format: double
+        min_upload_mbps:
+          type: number
+          format: double
+        speed_test_max_age_hours:
+          type: integer
+      required:
+      - min_download_mbps
+      - min_upload_mbps
+      - speed_test_max_age_hours
+      - upload_kinds
     RescheduleRequestRequest:
       type: object
       properties:
@@ -4864,8 +5057,14 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PacketHistory'
+        application:
+          allOf:
+          - $ref: '#/components/schemas/PacketApplication'
+          nullable: true
+          description: What the tutor reported in the funnel (T5a).
       required:
       - accent
+      - application
       - assets
       - bio
       - criteria
@@ -4891,6 +5090,38 @@ components:
       - message
       - status
       - success
+    SpeedTestRequest:
+      type: object
+      properties:
+        download_mbps:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,1})?$
+        upload_mbps:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,1})?$
+      required:
+      - download_mbps
+      - upload_mbps
+    Step:
+      type: object
+      properties:
+        key:
+          $ref: '#/components/schemas/KeyEnum'
+        complete:
+          type: boolean
+        missing:
+          type: array
+          items:
+            type: string
+        detail:
+          type: string
+      required:
+      - complete
+      - detail
+      - key
+      - missing
     StudentProfile:
       type: object
       properties:

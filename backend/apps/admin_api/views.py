@@ -107,12 +107,11 @@ class AdminTelemetryView(APIView):
 
 def pending_vetting_queue():
     """
-    Applications waiting for staff: `submitted` / `in_review`, PLUS `applied` because until slice T5a there is no tutor
-    "submit" step (legacy pending tutors were migrated to `applied` too). TODO(T5a): drop `applied` once tutors submit
-    themselves. Rejected tutors never appear (the old `is_verified=False` filter listed them). Oldest first.
+    Applications waiting for staff: `submitted` / `in_review`. An `applied` tutor is still filling in the funnel (slice T5a)
+    and a `rejected` one is closed. Oldest first.
     """
     St = TeacherProfile.Status
-    return TeacherProfile.objects.filter(status__in=[St.APPLIED, St.SUBMITTED, St.IN_REVIEW]).order_by('created_at', 'pk')
+    return TeacherProfile.objects.filter(status__in=[St.SUBMITTED, St.IN_REVIEW]).order_by('created_at', 'pk')
 
 
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers

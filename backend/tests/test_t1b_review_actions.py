@@ -15,8 +15,7 @@ pytestmark = pytest.mark.django_db
 ACTIONS = ('start-review', 'approve', 'request-changes', 'reject', 'suspend', 'reactivate', 'revet', 'reopen')
 # action -> {from_status: statuses the audit trail records, in order}
 EXPECTED = {
-    'start-review': {'applied': ['submitted', 'in_review'], 'submitted': ['in_review'],
-                     'changes_requested': ['submitted', 'in_review']},
+    'start-review': {'submitted': ['in_review']},          # T5a: staff no longer submit on the tutor's behalf
     'approve': {'in_review': ['approved']},
     'request-changes': {'in_review': ['changes_requested']},
     'reject': {'in_review': ['rejected'], 'suspended': ['rejected']},
@@ -178,8 +177,6 @@ class TestLegacyVerify:
     @pytest.mark.parametrize('start,path', [
         ('in_review', ['approved']),
         ('submitted', ['in_review', 'approved']),
-        ('applied', ['submitted', 'in_review', 'approved']),
-        ('changes_requested', ['submitted', 'in_review', 'approved']),
     ])
     def test_approve_uses_only_review_edges(self, admin_user, start, path):
         tutor = f.make_teacher_profile(status=start)
@@ -192,8 +189,6 @@ class TestLegacyVerify:
     @pytest.mark.parametrize('start,path', [
         ('in_review', ['rejected']),
         ('submitted', ['in_review', 'rejected']),
-        ('applied', ['submitted', 'in_review', 'rejected']),
-        ('changes_requested', ['submitted', 'in_review', 'rejected']),
         ('suspended', ['rejected']),
     ])
     def test_reject_records_the_reason_and_never_passes_approved(self, admin_user, start, path):
@@ -207,6 +202,15 @@ class TestLegacyVerify:
         tutor = f.make_teacher_profile(status='in_review')
         assert verify(admin_user, tutor.id, {'is_verified': False}).status_code == 200
         assert TeacherStatusChange.objects.get(teacher=tutor).reason == 'legacy-verify'
+
+    @pytest.mark.parametrize('start,is_verified', [('applied', True), ('applied', False), ('changes_requested', True),
+                                                   ('changes_requested', False)])
+    def test_an_application_the_tutor_has_not_sent_cannot_be_decided(self, admin_user, start, is_verified):
+        tutor = f.make_teacher_profile(status=start)
+        res = verify(admin_user, tutor.id, {'is_verified': is_verified})
+        assert res.status_code == 409 and res.json()['code'] == 'invalid_transition'
+        tutor.refresh_from_db()
+        assert tutor.status == start and not TeacherStatusChange.objects.exists()
 
     @pytest.mark.parametrize('start,is_verified', [('approved', False), ('suspended', True), ('rejected', True)])
     def test_lifecycle_moves_are_not_vetting_and_are_409(self, admin_user, start, is_verified):
@@ -244,18 +248,18 @@ class TestLegacyVerify:
 
 # ------------------------------------------------------------------ admin pending queue
 class TestPendingQueue:
-    def test_lists_applied_submitted_and_in_review_only_oldest_first(self, admin_user):
+    def test_lists_submitted_and_in_review_only_oldest_first(self, admin_user):
         from datetime import timedelta
         from django.utils import timezone
         from apps.teachers.models import TeacherProfile
         made = {s: f.make_teacher_profile(status=s, availability=False) for s in ALL}
-        for i, s in enumerate(('applied', 'submitted', 'in_review')):      # explicit ages: created_at can tie on a fast clock
+        for i, s in enumerate(('submitted', 'in_review')):                 # explicit ages: created_at can tie on a fast clock
             TeacherProfile.objects.filter(pk=made[s].pk).update(created_at=timezone.now() - timedelta(days=10 - i))
         rows = api(admin_user).get('/api/v1/admin/teachers/pending-vetting/').json()
-        assert [r['id'] for r in rows] == [str(made[s].id) for s in ('applied', 'submitted', 'in_review')]
-        assert [r['status'] for r in rows] == ['applied', 'submitted', 'in_review']
+        assert [r['id'] for r in rows] == [str(made[s].id) for s in ('submitted', 'in_review')]
+        assert [r['status'] for r in rows] == ['submitted', 'in_review']
 
     def test_the_telemetry_count_matches_the_queue(self, admin_user):
         for s in ALL:
             f.make_teacher_profile(status=s, availability=False)
-        assert api(admin_user).get('/api/v1/admin/telemetry/').json()['pending_vetting_count'] == 3
+        assert api(admin_user).get('/api/v1/admin/telemetry/').json()['pending_vetting_count'] == 2

@@ -1432,6 +1432,38 @@ export interface paths {
         patch: operations["v1_teachers_me_partial_update"];
         trace?: never;
     };
+    "/api/v1/teachers/me/application/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["teachers_me_application_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["teachers_me_application_update"];
+        trace?: never;
+    };
+    "/api/v1/teachers/me/application/submit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["teachers_me_application_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teachers/me/assets/{kind}/download/": {
         parameters: {
             query?: never;
@@ -1636,6 +1668,15 @@ export interface components {
         AdminTeacherError: {
             error: string;
             code: string;
+        };
+        ApplicationOverview: {
+            status: string;
+            editable: boolean;
+            can_submit: boolean;
+            steps: components["schemas"]["Step"][];
+            requirements: components["schemas"]["Requirements"];
+            /** Format: date-time */
+            submitted_at: string | null;
         };
         AvailabilityChange: {
             availability: components["schemas"]["TeacherAvailability"];
@@ -1911,6 +1952,20 @@ export interface components {
              */
             start_url: string;
         };
+        Incomplete: {
+            error: string;
+            code: string;
+            missing?: string[];
+        };
+        /**
+         * @description * `profile` - profile
+         *     * `uploads` - uploads
+         *     * `power_backup` - power_backup
+         *     * `speed_test` - speed_test
+         *     * `declaration` - declaration
+         * @enum {string}
+         */
+        KeyEnum: "profile" | "uploads" | "power_backup" | "speed_test" | "declaration";
         /**
          * @description * `open` - Extra hours
          *     * `closed` - Hours removed
@@ -1999,6 +2054,19 @@ export interface components {
          * @enum {string}
          */
         OutcomeEnum: "admin_refund" | "released" | "payment_in_flight" | "already_cancelled" | "not_cancellable" | "funding_unavailable" | "not_found";
+        PacketApplication: {
+            /** Format: decimal */
+            speed_test_download_mbps: string | null;
+            /** Format: decimal */
+            speed_test_upload_mbps: string | null;
+            /** Format: date-time */
+            speed_test_at: string | null;
+            power_backup_confirmed: boolean;
+            /** Format: date-time */
+            declaration_accepted_at: string | null;
+            /** Format: date-time */
+            submitted_at: string | null;
+        };
         PacketAsset: {
             kind: string;
             /** @description Send these back in `reviewed_assets` when approving. */
@@ -2156,6 +2224,11 @@ export interface components {
         PasswordResetRequestRequest: {
             /** Format: email */
             email: string;
+        };
+        PatchedApplicationUpdateRequest: {
+            speed_test?: components["schemas"]["SpeedTestRequest"];
+            confirm_power_backup?: boolean;
+            accept_declaration?: boolean;
         };
         /** @description One weekly window in the tutor's local clock. Validated against the tutor in `context['teacher']` (absent = read-only use). */
         PatchedAvailabilityUpdateRequest: {
@@ -2327,6 +2400,14 @@ export interface components {
          * @enum {string}
          */
         RegisterRoleEnum: "student" | "teacher";
+        Requirements: {
+            upload_kinds: string[];
+            /** Format: double */
+            min_download_mbps: number;
+            /** Format: double */
+            min_upload_mbps: number;
+            speed_test_max_age_hours: number;
+        };
         RescheduleRequestRequest: {
             /** Format: date-time */
             start_time_utc: string;
@@ -2385,11 +2466,25 @@ export interface components {
             required_asset_kinds: string[];
             assets: components["schemas"]["PacketAsset"][];
             history: components["schemas"]["PacketHistory"][];
+            /** @description What the tutor reported in the funnel (T5a). */
+            application: components["schemas"]["PacketApplication"] | null;
         };
         ReviewResult: {
             success: boolean;
             status: string;
             message: string;
+        };
+        SpeedTestRequest: {
+            /** Format: decimal */
+            download_mbps: string;
+            /** Format: decimal */
+            upload_mbps: string;
+        };
+        Step: {
+            key: components["schemas"]["KeyEnum"];
+            complete: boolean;
+            missing: string[];
+            detail: string;
         };
         StudentProfile: {
             /** Format: uuid */
@@ -5541,6 +5636,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeacherOwnProfile"];
+                };
+            };
+        };
+    };
+    teachers_me_application_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationOverview"];
+                };
+            };
+        };
+    };
+    teachers_me_application_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedApplicationUpdateRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedApplicationUpdateRequest"];
+                "multipart/form-data": components["schemas"]["PatchedApplicationUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationOverview"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+        };
+    };
+    teachers_me_application_submit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationOverview"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Incomplete"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
                 };
             };
         };

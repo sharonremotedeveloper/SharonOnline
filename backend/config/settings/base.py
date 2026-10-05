@@ -153,6 +153,7 @@ REST_FRAMEWORK = {
         'availability': '300/hour',        # tutor availability / time-off / override reads and writes (T2)
         # --- T1c: PATCH /teachers/me/ (tutor editing their own profile) ---
         'teacher_profile': '30/hour',
+        'application': '120/hour',            # slice T5a: tutor application funnel
         'training': '120/hour',               # slice T6: tutor onboarding training
         'admin_teacher_review': '300/hour',   # slice T1b: staff review actions + admin cancel of a suspended tutor's lessons
         'zoom_host_link': '30/hour',
@@ -245,6 +246,13 @@ LESSON_DELIVERED_MIN_TEACHER_MINUTES = int(os.environ.get('LESSON_DELIVERED_MIN_
 TUTOR_TRAINING_GATE_ENABLED = os.environ.get('TUTOR_TRAINING_GATE_ENABLED', 'False').strip().lower() in ('1', 'true', 'yes')
 # Vetting rubric (slice T4a, PROVISIONAL until D-11): every criterion must score at least this (scale 1-5); the upload kinds
 # (teachers.TeacherAsset.Kind values, comma separated) that must be committed before approval. Empty until D-11 fixes the list.
+# Tutor application funnel (slice T5a, PROVISIONAL until D-11): uploads needed to submit, minimum connection (Mbps), and how
+# old the recorded speed test may be.
+APPLICATION_REQUIRED_ASSET_KINDS = tuple(k.strip() for k in os.environ.get(
+    'APPLICATION_REQUIRED_ASSET_KINDS', 'avatar,accent_audio,intro_video,tefl_certificate,identity_document').split(',') if k.strip())
+APPLICATION_MIN_DOWNLOAD_MBPS = float(os.environ.get('APPLICATION_MIN_DOWNLOAD_MBPS', '10'))
+APPLICATION_MIN_UPLOAD_MBPS = float(os.environ.get('APPLICATION_MIN_UPLOAD_MBPS', '5'))
+APPLICATION_SPEED_TEST_MAX_AGE_HOURS = int(os.environ.get('APPLICATION_SPEED_TEST_MAX_AGE_HOURS', '168'))
 VETTING_MIN_RUBRIC_SCORE = int(os.environ.get('VETTING_MIN_RUBRIC_SCORE', '3'))
 VETTING_REQUIRED_ASSET_KINDS = tuple(k.strip() for k in os.environ.get('VETTING_REQUIRED_ASSET_KINDS', '').split(',') if k.strip())
 # Bonus credits a student gets when staff cancel a suspended tutor's lesson (on top of the full refund). PROVISIONAL 0.

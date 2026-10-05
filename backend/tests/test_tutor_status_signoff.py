@@ -110,7 +110,7 @@ def test_rejecting_a_live_tutor_through_vetting_is_409_from_the_locked_row(admin
     assert tutor.status == 'approved' and not TeacherStatusChange.objects.exists()
 
 
-@pytest.mark.parametrize('start', ['in_review', 'submitted', 'applied', 'changes_requested', 'suspended'])
+@pytest.mark.parametrize('start', ['in_review', 'submitted', 'suspended'])
 def test_reject_paths_never_pass_through_approved(admin_user, start):
     tutor = f.make_teacher_profile(status=start)
     assert verify(admin_user, tutor.id, {'is_verified': False}).status_code == 200

@@ -6,9 +6,8 @@ each action names its target, the statuses it may start from, and (for `start-re
     apply_review_action(teacher_id, action, *, actor, reason='') -> ReviewResult
     legacy_verify(teacher_id, *, approve, actor, reason='') -> ReviewResult      # PATCH /admin/teachers/<id>/verify/
 
-`start-review` may lead in through `submitted` from `applied` / `changes_requested`: until slice T5a there is no tutor
-"submit" step, so staff receive the application on the tutor's behalf. TODO(T5a): drop the `applied` and
-`changes_requested` lead-ins once tutors submit themselves.
+`start-review` needs a `submitted` application: since slice T5a the tutor submits it themselves
+(teachers/application.py), so staff no longer receive an application on the tutor's behalf.
 
 All steps of one call run in one transaction under the tutor's row lock: a failure on any step rolls back every step.
 A request for the status the tutor already has is a no-op (`changed=False`, no audit row).
@@ -41,8 +40,7 @@ class ReviewAction:
 
 
 ACTIONS = {a.name: a for a in (
-    ReviewAction('start-review', St.IN_REVIEW, frozenset({St.SUBMITTED}),
-                 {St.APPLIED: (St.SUBMITTED,), St.CHANGES_REQUESTED: (St.SUBMITTED,)}),
+    ReviewAction('start-review', St.IN_REVIEW, frozenset({St.SUBMITTED})),
     ReviewAction('approve', St.APPROVED, frozenset({St.IN_REVIEW})),
     ReviewAction('request-changes', St.CHANGES_REQUESTED, frozenset({St.IN_REVIEW}), needs_reason=True),
     ReviewAction('reject', St.REJECTED, frozenset({St.IN_REVIEW, St.SUSPENDED}), needs_reason=True),
@@ -140,7 +138,7 @@ def legacy_verify(teacher_id, *, approve: bool, actor, reason: str = '', rubric=
         locked = _lock(teacher_id)
         current = locked.status
         steps = ()
-        if current in start.sources or current in start.lead_in:      # never approved / rejected: no lead-in for them
+        if current in start.sources:                                   # a sent application: pick it up first
             steps = steps_for(start, current, locked.pk)
             current = start.target
         decision = steps_for(final, current, locked.pk)
