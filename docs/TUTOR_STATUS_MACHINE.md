@@ -309,3 +309,23 @@ must exist before approval. Code: `teachers/rubric.py`, `teachers/review.py`, `a
   `vetting_submitted` staff alert (`admin:vetting-submitted:<change id>`); a staff lead-in raises none. Tutor-facing mails for the
   outcomes remain N2c.
 - Work queue for suspended tutors with future lessons already exists (T1b §10).
+
+## 13. Onboarding training and the gate backfill (slice T6)
+
+Infrastructure only: Sharon writes the content (Django admin: **Training modules**, publish when ready). Code:
+`teachers/training.py`, `teachers/training_views.py`, models `TrainingModule` / `TrainingProgress` (migration `teachers/0013_t6_training`).
+
+- **Counting rule.** Only `is_published AND is_required` modules count. A tutor finishes training when every such module has a
+  `TrainingProgress` row; `training_completed_at` is then set **once** by a conditional UPDATE (`... WHERE training_completed_at IS
+  NULL`): a concurrent completion, a repeat or a module published later never overwrites or removes it. With **no** required
+  published module nobody can finish: switching `TUTOR_TRAINING_GATE_ENABLED` on before the content exists would hide every
+  new tutor.
+- **Who trains.** Only an `approved` tutor (409 `training_unavailable` otherwise; the gate hides approved-but-untrained tutors, and
+  nobody else has been vetted). A draft module is 404 for tutors.
+- **API (`IsTeacher`, throttle scope `training` 120/h, owner-only):** `GET /teachers/me/training/` (published modules in order with
+  `completed`, `required_total`, `required_completed`, `completed_at`, `can_train`), `GET .../<slug>/` (adds the Markdown `body`),
+  `POST .../<slug>/complete/` (idempotent, returns the new overview).
+- **Backfill before the gate (launch checklist):** `python manage.py backfill_training_completed [--dry-run]` stamps every
+  `approved` tutor without a date (tutors approved after migration 0007 have none and would vanish from search once the gate is
+  on). Idempotent; warns when no published required module exists. **Order: publish the modules -> run the backfill -> set
+  `TUTOR_TRAINING_GATE_ENABLED=True`.**
