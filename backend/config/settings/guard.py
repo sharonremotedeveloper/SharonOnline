@@ -142,5 +142,10 @@ def validate_production_settings(env=os.environ):
         _log.warning('REFUND_GATEWAY_BACKEND is the routing backend but PayPal credentials are blank: PayPal refunds will wait for a person '
                      '(manual answers) until PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET are set.')
 
+    # Slice T1b: the tutor training gate is provisionally off until the content exists; it must be on before launch.
+    if env.get('TUTOR_TRAINING_GATE_ENABLED', '').strip().lower() not in truthy:
+        _log.warning('TUTOR_TRAINING_GATE_ENABLED is off: approved tutors are bookable without onboarding training. '
+                     'Turn it on before launch (PRP Phase 16 launch checklist).')
+
     if errors:
         raise ImproperlyConfigured('Unsafe production configuration: ' + '; '.join(errors))

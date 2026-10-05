@@ -32,14 +32,14 @@ class ReviewError(Exception):
 
 def submit_review(*, booking_id, student, rating: int, tags: list, notes: str) -> Booking:
     with transaction.atomic():
-        # Lock the tutor first: two students reviewing the same tutor at once must not compute their averages from
-        # stale reads (the later write would silently drop the other's rating).
-        booking = Booking.objects.filter(pk=booking_id, student=student).select_related('teacher').first()
+        # Lock order booking -> tutor, like cancel / memo / no-show (they strike the tutor while holding the booking row);
+        # the old tutor -> booking order could deadlock with them on Postgres (slice T1b). The tutor lock still serialises
+        # two students reviewing the same tutor, so neither average is computed from a stale read.
+        booking = Booking.objects.select_for_update().filter(pk=booking_id, student=student).first()
         if booking is None:
             raise ReviewError(404, "Lesson not found.")
         teacher_id = booking.teacher_id
-        TeacherProfile.objects.select_for_update().get(pk=teacher_id)
-        booking = Booking.objects.select_for_update().get(pk=booking.pk)
+        TeacherProfile.objects.select_for_update().only('id').get(pk=teacher_id)
 
         if booking.status not in REVIEWABLE_STATUSES:
             raise ReviewError(409, "Only a lesson that has taken place can be reviewed.")

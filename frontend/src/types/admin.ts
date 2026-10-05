@@ -23,7 +23,8 @@ export interface PendingTeacherApplication {
   eskom_area?: string;
   has_inverter?: boolean;
   applied_at: string;
-  status: "pending" | "approved" | "rejected";
+  // The tutor's real lifecycle status (slice T1b, docs/TUTOR_STATUS_MACHINE.md); the queue lists applied | submitted | in_review.
+  status: "applied" | "submitted" | "in_review" | "changes_requested" | "approved" | "rejected" | "suspended";
 }
 
 export interface LiveSessionRadarItem {

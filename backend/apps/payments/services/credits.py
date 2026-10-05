@@ -190,6 +190,8 @@ def redeem_booking_credit(*, booking, student):
         raise CreditRedemptionError(409, blocked)
     if booking.status != Booking.Status.PENDING_PAYMENT:
         raise CreditRedemptionError(409, f"Booking is '{booking.status}' and cannot redeem a credit.")
+    if not booking.teacher.is_bookable:            # a hold can outlive a suspension (slice T1b)
+        raise CreditRedemptionError(409, 'This tutor is not currently bookable.')
     if not hold_is_live(booking, timezone.now()):
         raise CreditRedemptionError(409, 'This reservation has expired. Please choose the time slot again.')
     if Booking.objects.filter(

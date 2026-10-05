@@ -212,7 +212,7 @@ class CheckoutInitializeView(APIView):
             return Response({"error": blocked, "code": "booking_blocked"}, status=409)
         if booking.status != Booking.Status.PENDING_PAYMENT:
             return Response({"error": f"Booking is '{booking.status}' and cannot be paid for."}, status=409)
-        if not (booking.teacher.is_active and booking.teacher.is_verified):
+        if not booking.teacher.is_bookable:
             return Response({"error": "This tutor is not currently bookable."}, status=409)
         now = timezone.now()
         if booking.start_time_utc <= now:

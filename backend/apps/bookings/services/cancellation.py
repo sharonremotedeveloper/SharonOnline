@@ -63,7 +63,10 @@ def party_of(booking, user) -> Optional[str]:
 def recent_early_cancels(teacher, now) -> int:
     """Times this tutor already cancelled with proper notice in the last 30 days (they get TUTOR_EARLY_CANCELS_PER_30D free ones)."""
     notice = timedelta(hours=settings.TUTOR_CANCEL_NO_PENALTY_HOURS)
-    rows = Booking.objects.filter(teacher=teacher, status=S.CANCELLED_BY_TEACHER, cancelled_at__gte=now - timedelta(days=30))
+    # Only the tutor's OWN cancellations: staff cancelling a suspended tutor's lessons also lands in CANCELLED_BY_TEACHER
+    # (services/admin_cancellation.py) and must not count against the tutor (slice T1b).
+    rows = Booking.objects.filter(teacher=teacher, status=S.CANCELLED_BY_TEACHER, cancelled_by_id=teacher.user_id,
+                                  cancelled_at__gte=now - timedelta(days=30))
     return sum(1 for b in rows.only('start_time_utc', 'cancelled_at') if b.start_time_utc - b.cancelled_at >= notice)
 
 

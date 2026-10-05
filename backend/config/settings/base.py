@@ -149,6 +149,7 @@ REST_FRAMEWORK = {
         'inquiry': '5/hour',
         'webhook': '120/min',
         'admin_refund_retry': '30/hour',   # staff retrying failed refunds (Task 10.7)
+        'admin_teacher_review': '300/hour',   # slice T1b: staff review actions + admin cancel of a suspended tutor's lessons
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
     # NEVER map 0 to None: DRF treats None as "trust the whole client-supplied X-Forwarded-For header", which lets
@@ -204,6 +205,13 @@ CREDIT_EXPIRY_DAYS_REFUND = int(os.environ.get('CREDIT_EXPIRY_DAYS_REFUND', '30'
 CREDIT_EXPIRY_DAYS_BONUS = int(os.environ.get('CREDIT_EXPIRY_DAYS_BONUS', '30'))
 CREDIT_EXPIRY_DAYS_BUNDLE = int(os.environ.get('CREDIT_EXPIRY_DAYS_BUNDLE', '30'))       # purchased packs (Task 10.6); legal review D-12 may extend this
 LESSON_DELIVERED_MIN_TEACHER_MINUTES = int(os.environ.get('LESSON_DELIVERED_MIN_TEACHER_MINUTES', '20'))
+# ---- slice T1b (tutor bookability, admin review actions; docs/TUTOR_STATUS_MACHINE.md) ----
+# Training gate (SOW 2.4): an approved tutor is bookable only after onboarding training. PROVISIONAL default OFF until the
+# training content exists; it MUST be ON before launch (the production guard warns while it is off).
+TUTOR_TRAINING_GATE_ENABLED = os.environ.get('TUTOR_TRAINING_GATE_ENABLED', 'False').strip().lower() in ('1', 'true', 'yes')
+# Bonus credits a student gets when staff cancel a suspended tutor's lesson (on top of the full refund). PROVISIONAL 0.
+ADMIN_CANCEL_BONUS_CREDITS = int(os.environ.get('ADMIN_CANCEL_BONUS_CREDITS', '0'))
+# ---- end T1b ----
 # Lesson fulfilment (Zoom room, tutor calendar, confirmation e-mail) and the T+10 Zoom probe (Slice F0, docs/ZOOM_ATTENDANCE.md).
 FULFILLMENT_MAX_ATTEMPTS = int(os.environ.get('FULFILLMENT_MAX_ATTEMPTS', '5'))        # then terminal FAILED + admin alert
 FULFILLMENT_LEASE_SECONDS = int(os.environ.get('FULFILLMENT_LEASE_SECONDS', '600'))    # a RUNNING claim older than this is reclaimable
