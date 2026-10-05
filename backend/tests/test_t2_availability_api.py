@@ -364,7 +364,9 @@ class TestTimezoneValidation:
         import zoneinfo
         from apps.common.timezones import is_valid_timezone
         assert is_valid_timezone('Africa/Johannesburg') and not is_valid_timezone('Nope/Nope')
-        assert all(is_valid_timezone(z) for z in list(zoneinfo.available_timezones())[:25])
+        from apps.common.timezones import _NOT_ZONES            # entries the tz database lists that are not zones (ERR-197)
+        zones = sorted(z for z in zoneinfo.available_timezones() if z not in _NOT_ZONES)
+        assert all(is_valid_timezone(z) for z in zones[:25] + zones[-25:])
 
 
 # Boundaries, limits, lock calls and throttling live in tests/test_t2_availability_limits.py.

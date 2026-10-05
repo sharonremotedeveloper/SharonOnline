@@ -521,3 +521,8 @@ def configure_test_settings(settings):
 - **Symptom (found in review, red tests first):** `GET /bookings/<id>/video-token/` returned 200 for `pending_payment`, `completed`, `disputed` and no-show bookings (only cancelled statuses were refused), and returned 409 `booking_cancelled` to any authenticated stranger (booking-status oracle).
 - **Root cause:** the V2 view blocklisted cancelled statuses instead of allow-listing live ones, and checked status before authorization. An unpaid booking could enter a free lesson.
 - **Fix:** authorization first (403 for non-parties), then an allow-list of `confirmed`/`in_progress` (409 `classroom_unavailable` otherwise); tests added in `tests/test_zoom_video_token_endpoint.py`.
+
+### ERR-197: `test_the_validator_uses_the_tzdata_list` failed intermittently (integrator block 190-199)
+- **Symptom:** one full-suite run in about every twenty failed `tests/test_t2_availability_api.py::TestTimezoneValidation::test_the_validator_uses_the_tzdata_list`; it passed when re-run alone (the "single unidentified flaky failure" seen during the layer-1b integration).
+- **Root cause:** the test checked the first 25 entries of `list(zoneinfo.available_timezones())`, a `set` with a per-process random order. On machines whose tzdata lists non-zone entries (here `Factory`) a sample sometimes included one, which `is_valid_timezone` correctly rejects (ERR-194).
+- **Fix:** the test now takes a deterministic sample (first and last 25 of the sorted list) after excluding the validator's own `_NOT_ZONES`.
