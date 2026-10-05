@@ -213,7 +213,7 @@ class CheckoutInitializeView(APIView):
             return Response({"error": blocked, "code": "booking_blocked"}, status=409)
         if booking.status != Booking.Status.PENDING_PAYMENT:
             return Response({"error": f"Booking is '{booking.status}' and cannot be paid for."}, status=409)
-        if not (booking.teacher.is_active and booking.teacher.is_verified):
+        if not booking.teacher.is_bookable:
             return Response({"error": "This tutor is not currently bookable."}, status=409)
         now = timezone.now()
         if booking.start_time_utc <= now:
@@ -523,9 +523,15 @@ class PayPalCaptureView(APIView):
         if booking.status != Booking.Status.PENDING_PAYMENT or not hold_is_live(booking, timezone.now()):
             return Response({"error": "This booking can no longer be paid for. Please book a new time.",
                              "outcome": "failed", "retryable": False}, status=status.HTTP_409_CONFLICT)
+        # A hold can outlive a suspension (or the training gate flipping on): refuse BEFORE PayPal captures real money,
+        # otherwise the payment would be taken and then quarantined (slice T1b, review M1).
+        if not booking.teacher.is_bookable:
+            return Response({"error": "This tutor is not currently bookable. You have not been charged.",
+                             "code": "tutor_not_bookable", "outcome": "failed", "retryable": False},
+                            status=status.HTTP_409_CONFLICT)
         now = timezone.now()
         # T2: refuse BEFORE capture when the notice window closed meanwhile; nothing to refund. A lesson that has already
-        # started keeps its existing path (capture, then the late-payment settlement; see test_grace_bookings).
+        # started keeps its existing path (capture, then the late-payment settlement; docs/BOOKING_HOLDS.md, lead decision).
         if now < booking.start_time_utc and notice_closed(booking.start_time_utc, now):
             return Response({"error": TOO_CLOSE_MESSAGE, "code": TOO_CLOSE_CODE, "outcome": "failed", "retryable": False},
                             status=status.HTTP_409_CONFLICT)

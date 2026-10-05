@@ -51,7 +51,6 @@ max-complexity = 12
 "apps/srs/serializers.py" = ["F401"]
 "apps/srs/views.py" = ["F401"]
 "apps/teachers/models.py" = ["S110"]
-"apps/teachers/serializers.py" = ["F401"]
 "apps/teachers/views.py" = ["F401"]
 "apps/users/management/commands/seed_phase41_data.py" = ["F401", "F841"]
 "apps/users/serializers.py" = ["B904"]

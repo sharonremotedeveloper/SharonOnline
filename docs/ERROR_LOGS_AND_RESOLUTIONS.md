@@ -353,6 +353,21 @@ def configure_test_settings(settings):
 - **Root cause:** (1) 0008's reverse `restore_booleans` ran three UPDATEs over the same rows; on PostgreSQL a second update of a row already modified in the same transaction queues deferred foreign-key trigger events, and Django creates the restored column's index at the END of the migration (deferred DDL), which PostgreSQL refuses while events are pending. SQLite has no deferred triggers, so every local run passed; the Architect review had judged the migrations safe by reading them. (2) The F0 Postgres smoke test predates review item m3 (`waiting` is `not_started` only if Zoom reports no past instance) and lacked the `zoom_never_held` fixture; being skipped on SQLite it never ran after that change.
 - **Fix:** `restore_booleans` is one UPDATE with `Case/When`; every data step in 0007/0008 ends with `SET CONSTRAINTS ALL IMMEDIATE` on PostgreSQL so nothing is pending when the deferred DDL runs; the F0 test takes `zoom_never_held`. Lesson: a migration that mixes data steps and schema changes must be run on PostgreSQL before merge (Docker Postgres locally, or CI on a pull request), not only reasoned about.
 
+### ERR-193: `test_average_and_count_come_from_the_database` failed only in the full suite (layer-1 integration)
+- **Symptom:** `sqlite3.IntegrityError: UNIQUE constraint failed: bookings_booking.teacher_id, bookings_booking.start_time_utc` in `tests/test_review_endpoint.py::TestAggregates`; green alone, with its file and with its class.
+- **Root cause:** the file's `lesson()` helper starts every lesson at `now() - 3h`. The test creates three lessons for one tutor in a loop; on Windows the system clock advances in ~15 ms steps, so under load two iterations can read the same instant, and `(teacher, start_time_utc)` is unique for live statuses. A pre-existing timing flake, not a product defect and not an interaction with T1b's lock-order change.
+- **Fix:** each lesson in the loop gets a distinct `hours_ago` (`3 + n`).
+
+### ERR-200: golden snapshots could not be printed by a scratch pytest file (slice N1a, tooling)
+- **Symptom:** running a scratch test (outside the repo) to print the new golden snapshot text failed at collection:
+  `OSError: [WinError 1920] The file cannot be accessed by the system: '...\AppData\Local\Temp\jb.station.ij.10096.sock'`,
+  then `found no collectors`.
+- **Root cause:** given a path in the 8.3 short-name temp directory, pytest walked up to `AppData\Local\Temp` as rootdir and
+  tried to stat a JetBrains socket file there. No product code involved.
+- **Fix:** no scratch collection: the golden guard (`tests/guards/test_guard_notification_kinds.py`) reports the full rendered
+  text in its assertion diff (`pytest -vv`, without `-q`), which was copied into `tests/golden/notifications/*.txt` with the
+  editor after review. Documented in the guard's docstring ("no auto-write switch").
+
 ### ERR-150: migration round-trip test failed with `NOT NULL constraint failed: users_user.email_verified` (slice T1a)
 - **Symptom:** `tests/test_tutor_status_migrations.py::test_migration_round_trip` failed while building tutors on the 0006 schema.
 - **Root cause:** the test migrated to `[('teachers', '0006_teacherstrike')]` only; `MigrationExecutor.loader.project_state(targets)` then builds the historical `users.User` from the users migrations that teachers 0006 depends on (before `email_verified` existed), while the real table (users left at its leaf) has the NOT NULL column.
@@ -393,6 +408,23 @@ def configure_test_settings(settings):
 - **Root cause:** the shortest-path search used every staff edge, including the reinstatement edge, and the view read the profile before taking the row lock.
 - **Fix:** a path to `rejected` may not pass through `approved` (suspended -> reject is now 409; no new edge, open question for Anesu in `TUTOR_STATUS_MACHINE.md`); the view reads the tutor once with `select_for_update()` and builds the 409 from that row.
 
+### ERR-140: two older Zoom tests failed after Z1 (`match='bad start_time'`) and the OpenAPI contract test went stale (slice Z1)
+- **Symptom:** `test_zoom_attendance*.py::test_a_zoom_rejection_is_an_error_not_a_none` failed (error text no longer contained Zoom's body); `test_committed_schema_is_current` failed after the host-link endpoint was added.
+- **Root cause:** Z1 deliberately stopped putting provider bodies into `ZoomError` (ids-only rule); the two tests asserted the old text. The new endpoint changed the schema and `docs/api/openapi.yaml` was not regenerated yet.
+- **Fix:** the tests now assert `HTTP 400`, the typed `status`, and that the body text is absent; `manage.py spectacular` + `npm run gen:api` regenerated the schema and TS types.
+
+### ERR-141: new Z1 code and tests tripped ruff and the env guard (slice Z1)
+- **Symptom:** ruff `S105` on `TOKEN_URL`, `F811` on a re-imported fixture; `test_env_example_lists_every_setting_read_from_the_environment` failed for the new `ZOOM_*` settings; one test compared two equal `RecordedRequest` objects by index and mis-ordered them.
+- **Fix:** targeted `# noqa: S105` with a reason (the OAuth endpoint URL is not a secret), a local `price_catalog` fixture instead of an import, the new keys added to `.env.example`, and the ordering test compares by identity.
+
+### ERR-142: Z1 QA round 1: the tutor's Start button would have opened the guest link, and four robustness gaps (slice Z1)
+- **Symptom (review):** after Z1 `zoom_start_url` is always empty, so the teacher classroom opened `zoom_url` (the guest join link): with `join_before_host` off the room never opened, the tutor was not recognised as host and the lesson ended as a teacher no-show with a refund. Also: search-before-create skipped after a crashed worker (zoom step PENDING, not FAILED); a staff-issued host link credited the absent tutor with attendance; a Redis outage crashed Zoom auth; unvalidated ids reached URL paths.
+- **Fix:** frontend `lib/hostLink.ts` + `ZoomLauncherButton` host mode fetch a fresh link on click (new tab, `noopener`), 409/502 states, no guest fallback; 15-minute window (`too_early`); `search_first` after any earlier attempt; `HostLinkIssue` audit + escrow hold + admin review action; every cache call in `zoom_auth.py` guarded, lock TTL above the worst-case fetch; unexpected errors in the host-link path map to 502; host/meeting ids validated, 201 without an id raises, marker search date-bounded.
+
+### ERR-143: a Z1 QA test recursed forever and another passed a `Mock` request to Django admin (slice Z1)
+- **Root cause:** a test patched `zoom_auth.cache.add` with a lambda that called `zoom_auth.cache.add` (the patched attribute); the admin-action test used a `Mock` where `get_actions` iterates `request.GET`.
+- **Fix:** capture the real method before patching; use `RequestFactory` and a real superuser.
+
 ### ERR-158: admin "add teacher profile" test posted an empty JSON list (slice T1a)
 - **Symptom:** the new admin-add test got 200 with `{'specialties': ['This field is required.']}`.
 - **Root cause:** Django's form `JSONField` treats `[]` as empty and the model field is not `blank=True`.
@@ -417,3 +449,42 @@ def configure_test_settings(settings):
 - **Symptom:** `tests/test_grace_bookings.py::test_a_lesson_that_already_started_gets_no_grace` failed (409 instead of the pending outcome) after the notice check was added to `_validate_still_payable`.
 - **Root cause:** the first version also refused capture of a lesson that had already started, changing the deliberate Phase 10 behaviour (capture, then late-payment settlement).
 - **Fix:** the capture-time check only applies while `now < start` (inside the notice window); started lessons keep the existing path. Recorded as a follow-up: refusing started lessons before capture would be safer but is a payments-policy change outside T2.
+
+### ERR-158 follow-up (T1c)
+- **Follow-up (T1c):** answered: `specialties` is now `blank=True` (migration `teachers/0010_specialties_optional`, no DB change); a tutor created at signup has no tags yet.
+
+### ERR-170: OpenAPI test looked up a `Teacher` component that does not exist (slice T1c)
+- **Symptom:** `test_openapi_marks_the_field_deprecated` failed with `KeyError: 'Teacher'` once the code was green.
+- **Root cause:** the red test assumed the component name; drf-spectacular names it after the serializer (`TeacherList`, `TeacherDetail`). The TS alias `Teacher` in `frontend/src/types` is hand-written.
+- **Fix:** the test checks both `TeacherList` and `TeacherDetail`. No product change.
+
+### ERR-171: ruff baseline guard failed after T1c (`apps/teachers/serializers.py` F401 no longer present)
+- **Symptom:** full suite: `tests/guards/test_guard_ruff_baseline.py::test_ruff_baseline_only_shrinks` failed (1 failed, 2417 passed).
+- **Root cause:** T1c removed the unused `UserSerializer` import from `teachers/serializers.py`, so its `F401` per-file ignore in `ruff.toml` became stale; the ratchet fails until a fixed offender is removed from the baseline.
+- **Fix:** deleted the `"apps/teachers/serializers.py" = ["F401"]` entry (baseline shrank by one file/code pair).
+
+### ERR-173: the 0009 reverse could delete tutor-entered data (slice T1c, QA M1)
+- **Symptom:** none yet (found in review): a backfilled profile with a `/teachers/me/` bio, a power-backup flag, a staff-set Eskom area or an uploaded photo, but no booking / availability / extra audit row, was still "untouched" and the reverse deleted it (cascading strikes, dossiers, disputes, memos; orphaning stored files).
+- **Root cause:** "untouched" was inferred from three hand-picked traces; profile edits leave no trace of those kinds.
+- **Fix:** the reverse requires every data column to still hold the backfill default (`BACKFILL_DEFAULTS` next to the backfill, with a test that fails when a model column is missing from it) and no row in any reverse relation (`_meta.related_objects`) besides the baseline audit row. Round-trip cases `edited_tutor`, `power_tutor`, `area_tutor`, `photo_tutor`, `tagged_tutor`, `struck_tutor`.
+
+### ERR-172: four T1c mutants survived the first mutation run (slice T1c)
+- **Symptom:** `scripts/mutate.py` round 1: 25/29 killed; survivors: `update_own_profile`'s own whitelist check, the post-save `refresh_from_db` field list in `TeacherOwnProfileView`, the blank-tag check, and two filters in the 0009 reverse.
+- **Root cause:** the whitelist was only exercised through the serializer (which rejects first); the race test checked the DB but not the response body; the blank-tag check duplicated `_TagField(allow_blank=False)`; the reverse test had no pre-existing `applied` profile and no backfilled tutor with history while still `applied`.
+- **Fix:** unit test calling the service directly, response assertion in the race test, redundant check removed, three more rows in the migration round trip. Round 2: 7/8 killed, 1 documented equivalent (`docs/mutation/T1c.md`).
+
+
+### ERR-160: committed OpenAPI schema stale after adding the T1b endpoints (slice T1b)
+- **Symptom:** the full suite failed `tests/test_api_contract.py::TestOpenApiSchema::test_committed_schema_is_current` ("API changed but docs/api/openapi.yaml was not regenerated").
+- **Root cause:** the review / cancel / work-queue endpoints and the `PendingTeacherApplication.status` change altered the generated schema; the committed copy was not regenerated yet.
+- **Fix:** `manage.py spectacular --file ../docs/api/openapi.yaml`, then `npm run gen:api` + `npm run check:api-types` (TS), widened `frontend/src/types/admin.ts` status and the dev-only mock fixtures.
+
+### ERR-161: T1b red tests referenced names that do not exist (slice T1b)
+- **Symptom:** while turning the red tests green two fixtures failed: `LedgerAccount.LIABILITY_DEF501_QUARANTINE` (AttributeError) and a grace transaction without `payer_id` (refused with `payer_unknown` before the new guard ran).
+- **Root cause:** test authoring errors: the DEF-501 account is `LIABILITY_QUARANTINE_DEPOSIT` (2030), and `evaluate_grace` needs a payer id before it reaches the slot guard.
+- **Fix:** the tests use the real constant and a payer id. No product change.
+
+### ERR-162: ruff F811 / F401 on the T1b review-condition tests (slice T1b)
+- **Symptom:** `tests/guards/test_guard_ruff_baseline.py` failed: new violations in `tests/test_t1b_conditions.py` (imported pytest fixtures from other test modules and used them as parameters).
+- **Root cause:** a fixture imported by name is "unused" (F401) and a test parameter of the same name redefines it (F811); new files must be ruff-clean and the baseline may not grow.
+- **Fix:** the fixtures are imported under their own aliases and each test def that takes them carries one targeted `# noqa: F811`; no baseline entry added.

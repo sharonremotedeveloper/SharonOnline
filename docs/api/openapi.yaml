@@ -273,6 +273,460 @@ paths:
               schema:
                 $ref: '#/components/schemas/AdminRefundError'
           description: ''
+  /api/v1/admin/teachers/{id}/approve/:
+    post:
+      operationId: v1_admin_teachers_approve_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherReviewResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+  /api/v1/admin/teachers/{id}/cancel-future-lessons/:
+    post:
+      operationId: v1_admin_teachers_cancel_future_lessons_create
+      description: 'Cancels a suspended or removed tutor''s future lessons, one transaction
+        per lesson: full refund, no strike, ADMIN_CANCEL_BONUS_CREDITS bonus (0).
+        Idempotent. 409 `tutor_not_suspended` otherwise.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminCancelRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AdminCancelRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AdminCancelRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCancelResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+  /api/v1/admin/teachers/{id}/reactivate/:
+    post:
+      operationId: v1_admin_teachers_reactivate_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherReviewResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+  /api/v1/admin/teachers/{id}/reject/:
+    post:
+      operationId: v1_admin_teachers_reject_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherReviewResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+  /api/v1/admin/teachers/{id}/reopen/:
+    post:
+      operationId: v1_admin_teachers_reopen_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherReviewResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+  /api/v1/admin/teachers/{id}/request-changes/:
+    post:
+      operationId: v1_admin_teachers_request_changes_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherReviewResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+  /api/v1/admin/teachers/{id}/revet/:
+    post:
+      operationId: v1_admin_teachers_revet_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherReviewResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+  /api/v1/admin/teachers/{id}/start-review/:
+    post:
+      operationId: v1_admin_teachers_start_review_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherReviewResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+  /api/v1/admin/teachers/{id}/suspend/:
+    post:
+      operationId: v1_admin_teachers_suspend_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TeacherReviewRequestRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherReviewResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
   /api/v1/admin/teachers/{id}/verify/:
     patch:
       operationId: v1_admin_teachers_verify_partial_update
@@ -323,6 +777,35 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
+          description: ''
+  /api/v1/admin/teachers/suspended-with-lessons/:
+    get:
+      operationId: v1_admin_teachers_suspended_with_lessons_list
+      description: 'Suspended or removed tutors who still have future lessons (soonest
+        first): cancel them with cancel-future-lessons.'
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTutorWorkQueueItemList'
           description: ''
   /api/v1/admin/telemetry/:
     get:
@@ -818,6 +1301,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CancelPreview'
+          description: ''
+  /api/v1/bookings/{booking_id}/host-link/:
+    get:
+      operationId: v1_bookings_host_link_retrieve
+      parameters:
+      - in: path
+        name: booking_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HostLink'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+        '502':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
           description: ''
   /api/v1/bookings/{booking_id}/memo/:
     post:
@@ -2059,6 +2587,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/Deleted'
           description: ''
+  /api/v1/teachers/me/:
+    get:
+      operationId: v1_teachers_me_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherOwnProfile'
+          description: ''
+    patch:
+      operationId: v1_teachers_me_partial_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherOwnProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherOwnProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherOwnProfileRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherOwnProfile'
+          description: ''
   /api/v1/teachers/profile/power-backup/:
     patch:
       operationId: v1_teachers_profile_power_backup_partial_update
@@ -2106,6 +2672,65 @@ components:
       description: |-
         * `cheque` - cheque
         * `savings` - savings
+    AdminCancelRequestRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 255
+        booking_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: 'Default: every future pending / confirmed lesson of the tutor.'
+          maxItems: 200
+      required:
+      - reason
+    AdminCancelResult:
+      type: object
+      properties:
+        teacher_id:
+          type: string
+          format: uuid
+        cancelled_count:
+          type: integer
+        remaining:
+          type: boolean
+          description: 'The default list was capped (50 lessons per call): call again
+            for the rest.'
+        payment_in_flight_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: 'Unpaid holds whose payment may still complete: left untouched,
+            retry once the payment has resolved.'
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminCancelRow'
+      required:
+      - cancelled_count
+      - payment_in_flight_ids
+      - remaining
+      - results
+      - teacher_id
+    AdminCancelRow:
+      type: object
+      properties:
+        booking_id:
+          type: string
+          format: uuid
+        outcome:
+          $ref: '#/components/schemas/OutcomeEnum'
+        status:
+          type: string
+      required:
+      - booking_id
+      - outcome
+      - status
     AdminRefund:
       type: object
       properties:
@@ -2284,6 +2909,16 @@ components:
           description: 'Required for ambiguous failures (exhausted, replay_window,
             already_refunded): the admin has checked the gateway and the money did
             NOT go out.'
+    AdminTeacherError:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+      required:
+      - code
+      - error
     AvailabilityChange:
       type: object
       properties:
@@ -2472,6 +3107,8 @@ components:
           readOnly: true
         zoom_start_url:
           type: string
+          description: 'DEPRECATED (Slice Z1): always empty. The host link expires;
+            fetch a fresh one from GET /api/v1/bookings/{id}/host-link/.'
           readOnly: true
         zoom_meeting_id:
           type: string
@@ -2931,6 +3568,19 @@ components:
         * `exhausted` - Retries ran out
         * `replay_window` - Too old to replay blind
         * `provider_failed` - The provider failed it after accepting it
+    HostLink:
+      type: object
+      properties:
+        meeting_id:
+          type: string
+        start_url:
+          type: string
+          format: uri
+          description: Fresh Zoom host start link (expiring ZAK). Open it at once;
+            never store it.
+      required:
+      - meeting_id
+      - start_url
     KindEnum:
       enum:
       - open
@@ -3117,6 +3767,27 @@ components:
       - pdf_file_url
       - slug
       - title
+    NullEnum:
+      enum:
+      - null
+    OutcomeEnum:
+      enum:
+      - admin_refund
+      - released
+      - payment_in_flight
+      - already_cancelled
+      - not_cancellable
+      - funding_unavailable
+      - not_found
+      type: string
+      description: |-
+        * `admin_refund` - admin_refund
+        * `released` - released
+        * `payment_in_flight` - payment_in_flight
+        * `already_cancelled` - already_cancelled
+        * `not_cancellable` - not_cancellable
+        * `funding_unavailable` - funding_unavailable
+        * `not_found` - not_found
     PaginatedBookingDetailList:
       type: object
       required:
@@ -3278,6 +3949,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TeacherTimeOff'
+    PaginatedTutorWorkQueueItemList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TutorWorkQueueItem'
     PasswordChangeRequest:
       type: object
       properties:
@@ -3419,6 +4113,22 @@ components:
         learning_goals:
           type: string
           maxLength: 2000
+    PatchedTeacherOwnProfileRequest:
+      type: object
+      properties:
+        headline:
+          type: string
+          maxLength: 255
+        bio:
+          type: string
+          maxLength: 5000
+        specialties:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 40
+          maxItems: 10
     PatchedUserRequest:
       type: object
       properties:
@@ -4041,7 +4751,11 @@ components:
         price_per_25min_usd:
           type: string
           format: decimal
-          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          nullable: true
+          deprecated: true
+          description: Deprecated. USD catalog price only. Do not display; use `/payments/lesson-prices/`
+            for the student's currency. null when no USD price is configured.
+          readOnly: true
         specialties:
           description: 'List of tags: [''FreeTalk'', ''Business English'', ''Daily
             News'', ''TOEIC'']'
@@ -4079,6 +4793,7 @@ components:
       - intro_audio_url
       - is_verified
       - last_name
+      - price_per_25min_usd
       - timezone
       - user_id
     TeacherList:
@@ -4132,7 +4847,11 @@ components:
         price_per_25min_usd:
           type: string
           format: decimal
-          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          nullable: true
+          deprecated: true
+          description: Deprecated. USD catalog price only. Do not display; use `/payments/lesson-prices/`
+            for the student's currency. null when no USD price is configured.
+          readOnly: true
         specialties:
           description: 'List of tags: [''FreeTalk'', ''Business English'', ''Daily
             News'', ''TOEIC'']'
@@ -4151,7 +4870,154 @@ components:
       - intro_audio_url
       - is_verified
       - last_name
+      - price_per_25min_usd
       - user_id
+    TeacherOwnProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TutorStatusEnum'
+          readOnly: true
+        is_verified:
+          type: boolean
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+        headline:
+          type: string
+          maxLength: 255
+        bio:
+          type: string
+          maxLength: 5000
+        specialties:
+          type: array
+          items:
+            type: string
+            maxLength: 40
+          maxItems: 10
+        accent:
+          allOf:
+          - $ref: '#/components/schemas/AccentEnum'
+          readOnly: true
+        intro_video_url:
+          type: string
+          format: uri
+          readOnly: true
+          description: Cloudflare Stream HLS or preview MP4 URL
+        intro_video_thumbnail:
+          type: string
+          format: uri
+          readOnly: true
+        avatar_url:
+          type: string
+          readOnly: true
+        intro_audio_url:
+          type: string
+          readOnly: true
+        has_tefl_certificate:
+          type: boolean
+          readOnly: true
+        eskom_area_id:
+          type: string
+          readOnly: true
+        has_inverter_backup:
+          type: boolean
+          readOnly: true
+        has_lte_failover:
+          type: boolean
+          readOnly: true
+        rating_avg:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,2})?$
+          readOnly: true
+        rating_count:
+          type: integer
+          readOnly: true
+        sla_strikes:
+          type: integer
+          readOnly: true
+        training_completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - accent
+      - avatar_url
+      - created_at
+      - eskom_area_id
+      - has_inverter_backup
+      - has_lte_failover
+      - has_tefl_certificate
+      - id
+      - intro_audio_url
+      - intro_video_thumbnail
+      - intro_video_url
+      - is_active
+      - is_verified
+      - rating_avg
+      - rating_count
+      - sla_strikes
+      - status
+      - training_completed_at
+      - updated_at
+    TeacherReviewRequestRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          default: ''
+          description: Required (non-blank) for request-changes, reject and suspend.
+          maxLength: 500
+    TeacherReviewResult:
+      type: object
+      properties:
+        teacher_id:
+          type: string
+          format: uuid
+        action:
+          type: string
+        previous_status:
+          type: string
+        status:
+          type: string
+        changed:
+          type: boolean
+        change_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        affected_booking_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: 'suspend: the tutor''s future pending / confirmed lessons,
+            left untouched; cancel them with cancel-future-lessons.'
+      required:
+      - action
+      - affected_booking_ids
+      - change_ids
+      - changed
+      - previous_status
+      - status
+      - teacher_id
     TeacherTimeOff:
       type: object
       properties:
@@ -4222,6 +5088,24 @@ components:
           minLength: 1
       required:
       - refresh
+    TutorStatusEnum:
+      enum:
+      - applied
+      - submitted
+      - in_review
+      - approved
+      - changes_requested
+      - rejected
+      - suspended
+      type: string
+      description: |-
+        * `applied` - Applied
+        * `submitted` - Submitted for review
+        * `in_review` - In review
+        * `approved` - Approved
+        * `changes_requested` - Changes requested
+        * `rejected` - Rejected
+        * `suspended` - Suspended
     TutorWallet:
       type: object
       properties:
@@ -4341,6 +5225,28 @@ components:
       - net_zar
       - status
       - student_name
+    TutorWorkQueueItem:
+      type: object
+      properties:
+        teacher_id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+          readOnly: true
+        status:
+          type: string
+        future_lesson_count:
+          type: integer
+        next_lesson_start_utc:
+          type: string
+          format: date-time
+      required:
+      - full_name
+      - future_lesson_count
+      - next_lesson_start_utc
+      - status
+      - teacher_id
     TypeEnum:
       enum:
       - opening
@@ -4422,6 +5328,15 @@ components:
           nullable: true
           readOnly: true
           description: Vetting status (tutors only; otherwise null).
+        tutor_status:
+          description: 'Tutor lifecycle status (docs/TUTOR_STATUS_MACHINE.md); null
+            for students, admins and a tutor account without a profile. Read-only:
+            changed only by the vetting service.'
+          nullable: true
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/TutorStatusEnum'
+          - $ref: '#/components/schemas/NullEnum'
       required:
       - avatar_url
       - created_at
@@ -4430,6 +5345,7 @@ components:
       - id
       - is_verified
       - role
+      - tutor_status
       - username
     UserRequest:
       type: object

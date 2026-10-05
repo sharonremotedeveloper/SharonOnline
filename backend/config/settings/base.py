@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'apps.admin_api',
     'apps.crm',
     'apps.srs',
+    'apps.notifications',   # slice N1a
 ]
 
 MIDDLEWARE = [
@@ -150,6 +151,10 @@ REST_FRAMEWORK = {
         'webhook': '120/min',
         'admin_refund_retry': '30/hour',   # staff retrying failed refunds (Task 10.7)
         'availability': '300/hour',        # tutor availability / time-off / override reads and writes (T2)
+        # --- T1c: PATCH /teachers/me/ (tutor editing their own profile) ---
+        'teacher_profile': '30/hour',
+        'admin_teacher_review': '300/hour',   # slice T1b: staff review actions + admin cancel of a suspended tutor's lessons
+        'zoom_host_link': '30/hour',       # Slice Z1: fresh Zoom host link when the classroom opens (one Zoom call each)
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
     # NEVER map 0 to None: DRF treats None as "trust the whole client-supplied X-Forwarded-For header", which lets
@@ -172,6 +177,18 @@ RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 RESEND_TIMEOUT_SECONDS = float(os.environ.get('RESEND_TIMEOUT_SECONDS', '10'))
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Sharon ESL <bookings@sharonesl.com>')
 EMAIL_BACKEND_MODE = resolve_email_backend_mode()
+
+# --- Notifications (slice N1a, docs/NOTIFICATIONS.md §2, ADR-0002) ---------------------------------------------------
+# Staff alerts go to these staff accounts (comma-separated e-mails of active is_staff / admin users; anything else is
+# ignored). Empty = every active admin-role user.
+ADMIN_ALERT_RECIPIENTS = [a.strip() for a in os.environ.get('ADMIN_ALERT_RECIPIENTS', '').split(',') if a.strip()]
+NOTIFICATION_MAX_ATTEMPTS = int(os.environ.get('NOTIFICATION_MAX_ATTEMPTS', '8'))              # then failed + staff alert
+NOTIFICATION_LEASE_SECONDS = int(os.environ.get('NOTIFICATION_LEASE_SECONDS', '900'))          # a 'sending' claim older than this is reclaimable
+NOTIFICATION_RETRY_SECONDS = int(os.environ.get('NOTIFICATION_RETRY_SECONDS', '60'))           # first retry delay (doubles, +-20 % jitter)
+NOTIFICATION_RETRY_MAX_SECONDS = int(os.environ.get('NOTIFICATION_RETRY_MAX_SECONDS', '3600'))  # backoff cap
+NOTIFICATION_SWEEP_AGE_SECONDS = 120     # a 'pending' row this old lost its message (broker outage): the sweep sends it
+NOTIFICATION_SWEEP_LIMIT = 200           # rows enqueued per 2-minute sweep
+# --- end N1a ------------------------------------------------------------------------------------------------------------
 
 # Versioned Fernet keyring for encrypted tutor payout details. Example:
 # PAYOUT_DATA_KEYS='{"v1":"<fernet-key>","v2":"<fernet-key>"}' and PAYOUT_DATA_ACTIVE_KEY='v2'.
@@ -209,6 +226,13 @@ CREDIT_EXPIRY_DAYS_REFUND = int(os.environ.get('CREDIT_EXPIRY_DAYS_REFUND', '30'
 CREDIT_EXPIRY_DAYS_BONUS = int(os.environ.get('CREDIT_EXPIRY_DAYS_BONUS', '30'))
 CREDIT_EXPIRY_DAYS_BUNDLE = int(os.environ.get('CREDIT_EXPIRY_DAYS_BUNDLE', '30'))       # purchased packs (Task 10.6); legal review D-12 may extend this
 LESSON_DELIVERED_MIN_TEACHER_MINUTES = int(os.environ.get('LESSON_DELIVERED_MIN_TEACHER_MINUTES', '20'))
+# ---- slice T1b (tutor bookability, admin review actions; docs/TUTOR_STATUS_MACHINE.md) ----
+# Training gate (SOW 2.4): an approved tutor is bookable only after onboarding training. PROVISIONAL default OFF until the
+# training content exists; it MUST be ON before launch (the production guard warns while it is off).
+TUTOR_TRAINING_GATE_ENABLED = os.environ.get('TUTOR_TRAINING_GATE_ENABLED', 'False').strip().lower() in ('1', 'true', 'yes')
+# Bonus credits a student gets when staff cancel a suspended tutor's lesson (on top of the full refund). PROVISIONAL 0.
+ADMIN_CANCEL_BONUS_CREDITS = int(os.environ.get('ADMIN_CANCEL_BONUS_CREDITS', '0'))
+# ---- end T1b ----
 # Lesson fulfilment (Zoom room, tutor calendar, confirmation e-mail) and the T+10 Zoom probe (Slice F0, docs/ZOOM_ATTENDANCE.md).
 FULFILLMENT_MAX_ATTEMPTS = int(os.environ.get('FULFILLMENT_MAX_ATTEMPTS', '5'))        # then terminal FAILED + admin alert
 FULFILLMENT_LEASE_SECONDS = int(os.environ.get('FULFILLMENT_LEASE_SECONDS', '600'))    # a RUNNING claim older than this is reclaimable
@@ -218,6 +242,20 @@ FULFILLMENT_RETRY_MAX_SECONDS = int(os.environ.get('FULFILLMENT_RETRY_MAX_SECOND
 # Simulated Zoom rooms without credentials: never in production (only config/settings/local.py turns this on).
 ZOOM_SIMULATE_WITHOUT_CREDENTIALS = False
 ATTENDANCE_PROBE_BUDGET_SECONDS = int(os.environ.get('ATTENDANCE_PROBE_BUDGET_SECONDS', '25'))  # wall clock for Zoom probes per T+10 run (beat lock TTL 50 s)
+# --- Slice Z1: Zoom Server-to-Server OAuth client (docs/ZOOM_ATTENDANCE.md "Client contract"). Production refuses to boot
+# without the three credentials (config/settings/guard.py); app code reads these settings, never the environment.
+ZOOM_ACCOUNT_ID = os.environ.get('ZOOM_ACCOUNT_ID', '')
+ZOOM_CLIENT_ID = os.environ.get('ZOOM_CLIENT_ID', '')
+ZOOM_CLIENT_SECRET = os.environ.get('ZOOM_CLIENT_SECRET', '')
+# Host every lesson meeting is created under (HostPicker default). 'me' = the account that owns the S2S app. A single host
+# means concurrent lessons collide on one licence: LAUNCH BLOCKER pending D-9 (host pool).
+ZOOM_HOST_USER_ID = os.environ.get('ZOOM_HOST_USER_ID', 'me')
+ZOOM_HTTP_TIMEOUT_SECONDS = int(os.environ.get('ZOOM_HTTP_TIMEOUT_SECONDS', '10'))        # every Zoom request
+ZOOM_HTTP_MAX_ATTEMPTS = int(os.environ.get('ZOOM_HTTP_MAX_ATTEMPTS', '3'))              # tries per call for 429 / 5xx
+ZOOM_RETRY_AFTER_CAP_SECONDS = int(os.environ.get('ZOOM_RETRY_AFTER_CAP_SECONDS', '10'))  # longer Retry-After: give up, hand it on
+ZOOM_TOKEN_WAIT_SECONDS = int(os.environ.get('ZOOM_TOKEN_WAIT_SECONDS', '5'))            # single-flight waiters poll this long
+ZOOM_HOST_LINK_OPEN_MINUTES_BEFORE = int(os.environ.get('ZOOM_HOST_LINK_OPEN_MINUTES_BEFORE', '15'))  # host link issued from this long before the start until the lesson ends
+# --- end Z1
 # Dotted path of the object that talks to PayPal / PayFast to return money (Task 10.7). The default moves no money: requests
 # wait for a person (sandbox / dev / CI). Production selects the routing backend through the environment, and
 # scripts/check_deploy.py fails a production check while this is still the manual backend.
@@ -254,6 +292,8 @@ SPECTACULAR_SETTINGS = {
         'BookingStatusEnum': 'apps.bookings.models.Booking.Status',
         'RefundStatusEnum': 'apps.payments.models.RefundRequest.Status',
         'RefundReasonEnum': 'apps.payments.models.RefundRequest.Reason',
+        # --- T1c: TeacherProfile.status on /teachers/me/ and /auth/me/ (tutor_status) ---
+        'TutorStatusEnum': 'apps.teachers.models.TeacherProfile.Status',
     },
 }
 

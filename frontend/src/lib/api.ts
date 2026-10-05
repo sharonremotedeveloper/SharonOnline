@@ -161,6 +161,7 @@ import type { CreditPackPrice, LessonPrice } from "@/lib/prices";
 import type { FxCurrency, FxRateRow, FxRatesResponse } from "@/lib/fx";
 import type { CaptureResponse } from "@/lib/paypalOutcome";
 import { adminRefundQuery, type AdminRefund, type AdminRefundPage, type AdminRefundParams } from "@/lib/adminRefunds";
+import { fetchHostLink } from "@/lib/hostLink";
 
 export const FALLBACK_MATERIALS: MaterialDetail[] = [
   {
@@ -480,6 +481,9 @@ export const api = {
       expires_at: new Date(Date.now() + 600000).toISOString(),
     };
   },
+
+  /** Slice Z1: a FRESH Zoom host start link for the tutor of this lesson (never stored; throws ApiError, see lib/hostLink.ts). */
+  getHostLink: fetchHostLink,
 
   async getBooking(bookingId: string): Promise<BookingDetail> {
     const live = await liveRequest(`${API_BASE}/bookings/${bookingId}/`, {});
@@ -802,10 +806,10 @@ export const api = {
         specialties: ["Business English", "Pronunciation", "STAR Interviewing"],
         video_url: "https://assets.mixkit.co/videos/preview/mixkit-young-man-giving-a-presentation-online-41292-large.mp4",
         tefl_certificate_url: "https://pub-088f123.r2.dev/certificates/thabo-celta.pdf",
-        eskom_area: "City of Johannesburg Block 3 - Rosebank",
-        has_inverter: true,
+        eskom_area: null,
+        has_inverter: false,
         applied_at: "2026-09-29T14:30:00Z",
-        status: "pending",
+        status: "submitted",
       },
       {
         id: "vet-2",
@@ -817,10 +821,10 @@ export const api = {
         specialties: ["IELTS Prep", "Grammar Drills", "FreeTalk"],
         video_url: "https://assets.mixkit.co/videos/preview/mixkit-woman-in-online-meeting-41290-large.mp4",
         tefl_certificate_url: "https://pub-088f123.r2.dev/certificates/kirsty-tefl-150hr.pdf",
-        eskom_area: "Cape Town City Bowl Area 7",
-        has_inverter: true,
+        eskom_area: null,
+        has_inverter: false,
         applied_at: "2026-09-30T09:15:00Z",
-        status: "pending",
+        status: "in_review",
       },
       {
         id: "vet-3",
@@ -832,10 +836,10 @@ export const api = {
         specialties: ["Beginner A1-A2", "Conversation", "Travel English"],
         video_url: "https://assets.mixkit.co/videos/preview/mixkit-young-woman-in-online-meeting-41290-large.mp4",
         tefl_certificate_url: "https://pub-088f123.r2.dev/certificates/zanele-tefl-120hr.pdf",
-        eskom_area: "Durban Central Block 1",
+        eskom_area: null,
         has_inverter: false,
         applied_at: "2026-09-30T11:45:00Z",
-        status: "pending",
+        status: "applied",
       },
     ];
   },

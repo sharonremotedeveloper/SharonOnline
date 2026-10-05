@@ -26,6 +26,10 @@ def test_environment_settings(settings):
     # Same for e-mail (slice N1c): a developer .env with a real RESEND_API_KEY must never make a test send real mail.
     # Console mode hands every message to Django's test mail backend (`django.core.mail.outbox`).
     settings.EMAIL_BACKEND_MODE = 'console'
+    # --- Slice Z1: same for Zoom: credentials now come from settings, so a developer .env must never make a test call Zoom.
+    # Tests that need credentials use `fake_zoom` (or set them explicitly).
+    settings.ZOOM_ACCOUNT_ID = settings.ZOOM_CLIENT_ID = settings.ZOOM_CLIENT_SECRET = ''
+    # --- end Z1
     settings.CELERY_TASK_EAGER_PROPAGATES = True
     settings.CELERY_BROKER_URL = 'memory://'
     settings.CELERY_RESULT_BACKEND = 'cache+memory://'

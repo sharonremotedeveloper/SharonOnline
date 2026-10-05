@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 from apps.teachers.models import TeacherProfile
 from apps.bookings.models import Booking, AttendanceAudit
@@ -47,18 +48,20 @@ class PendingTeacherApplicationSerializer(serializers.ModelSerializer):
         return getattr(obj, 'tefl_certificate_url', '')
 
 
+    # T1c: real values only (the Eskom area id the tutor is mapped to, or null; the declared inverter backup), never a
+    # placeholder.
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_eskom_area(self, obj):
-        return getattr(obj, 'eskom_area', 'City of Johannesburg Block 3')
+        return obj.eskom_area_id or None
 
+    @extend_schema_field(serializers.BooleanField())
     def get_has_inverter(self, obj):
-        return getattr(obj, 'has_inverter_backup', True)
+        return obj.has_inverter_backup
 
-    def get_status(self, obj):
-        if obj.is_verified:
-            return 'approved'
-        if not obj.is_active:
-            return 'rejected'
-        return 'pending'
+    def get_status(self, obj) -> str:
+        # The real lifecycle status (slice T1b); the old 'approved' / 'rejected' / 'pending' mapping called a suspended
+        # tutor 'approved'.
+        return obj.status
 
 
 class VerifyTeacherActionSerializer(serializers.Serializer):

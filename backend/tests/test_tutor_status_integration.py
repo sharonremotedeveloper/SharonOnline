@@ -10,7 +10,6 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 import factories as f
-from apps.teachers import vetting
 from apps.teachers.models import TeacherProfile, TeacherStatusChange, TeacherStrike
 from apps.teachers.strikes import add_strike
 
@@ -66,62 +65,19 @@ class TestStrikes:
         assert tutor.status == 'suspended'
 
 
-# ------------------------------------------------------------------ legacy PATCH /admin/teachers/<id>/verify/ (T1b deletes it)
+# ------------------------------------------------------------------ legacy PATCH /admin/teachers/<id>/verify/
+# T1b rebuilt it on the explicit review actions (no path-walking): tests/test_t1b_review_actions.py::TestLegacyVerify.
 def verify(admin, profile_id, body):
     client = APIClient()
     client.force_authenticate(user=admin)
     return client.patch(f'/api/v1/admin/teachers/{profile_id}/verify/', body, format='json')
 
 
-class TestLegacyVerify:
-    @pytest.mark.parametrize('start', ['applied', 'submitted', 'in_review', 'changes_requested', 'rejected', 'suspended'])
-    def test_approve_walks_the_shortest_legal_path(self, admin_user, start):
-        profile = f.make_teacher_profile(status=start)
-        res = verify(admin_user, profile.id, {'is_verified': True})
-        assert res.status_code == 200
-        assert res.json() == {'success': True, 'teacher_id': str(profile.id), 'is_verified': True,
-                              'message': 'Tutor audition approved and published live.'}
-        profile.refresh_from_db()
-        assert profile.status == 'approved'
-        rows = list(TeacherStatusChange.objects.filter(teacher=profile).values_list('actor_user', 'reason'))
-        assert rows and all(row == (admin_user.pk, 'legacy-verify') for row in rows)
-
-    # `suspended` is not here: rejecting a suspended tutor is 409 (no suspended -> rejected edge; open question for Anesu).
-    @pytest.mark.parametrize('start', ['applied', 'submitted', 'in_review', 'approved'])
-    def test_reject_records_the_reason(self, admin_user, start):
-        profile = f.make_teacher_profile(status=start)
-        res = verify(admin_user, profile.id, {'is_verified': False, 'rejection_reason': 'Audio unclear'})
-        assert res.status_code == 200
-        assert res.json()['is_verified'] is False and res.json()['message'] == 'Application rejected with feedback.'
-        profile.refresh_from_db()
-        assert profile.status == 'rejected' and profile.is_active is False
-        assert TeacherStatusChange.objects.filter(teacher=profile).last().reason == 'Audio unclear'
-
-    def test_the_same_status_is_a_no_op_200(self, admin_user):
-        profile = f.make_teacher_profile(status='approved')
-        assert verify(admin_user, profile.id, {'is_verified': True}).status_code == 200
-        assert not TeacherStatusChange.objects.exists()
-
-    def test_unreachable_target_is_409_and_changes_nothing(self, admin_user, monkeypatch):
-        table = {src: dict(targets) for src, targets in vetting.ALLOWED_TRANSITIONS.items()}
-        table['in_review'].pop('approved')
-        monkeypatch.setattr(vetting, 'ALLOWED_TRANSITIONS', table)
-        profile = f.make_teacher_profile(status='submitted')
-        res = verify(admin_user, profile.id, {'is_verified': True})
-        assert res.status_code == 409
-        profile.refresh_from_db()
-        assert profile.status == 'submitted' and not TeacherStatusChange.objects.exists()
-
-    def test_404_and_400_are_unchanged(self, admin_user):
-        import uuid
-        assert verify(admin_user, uuid.uuid4(), {'is_verified': True}).status_code == 404
-        assert verify(admin_user, uuid.uuid4(), {'is_verified': 'not-a-bool'}).status_code == 400
-
-    def test_non_admins_are_refused(self, teacher_user):
-        profile = f.make_teacher_profile(status='submitted')
-        assert verify(teacher_user.user, profile.id, {'is_verified': True}).status_code == 403
-        profile.refresh_from_db()
-        assert profile.status == 'submitted'
+def test_legacy_verify_records_the_admin_on_every_row(admin_user):
+    profile = f.make_teacher_profile(status='applied')
+    assert verify(admin_user, profile.id, {'is_verified': True}).status_code == 200
+    rows = list(TeacherStatusChange.objects.filter(teacher=profile).values_list('actor_user', 'reason'))
+    assert len(rows) == 3 and all(row == (admin_user.pk, 'legacy-verify') for row in rows)
 
 
 # ------------------------------------------------------------------ Django admin and serializers

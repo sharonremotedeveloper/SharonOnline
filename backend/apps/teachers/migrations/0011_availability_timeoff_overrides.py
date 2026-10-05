@@ -1,5 +1,4 @@
-# T2 (PRP 11.6). Additive and reversible: two new tables, no data step. Numbered 0011 because T1c reserves 0009/0010; until
-# T1c merges this depends on 0008, and the integrator re-points the dependency to T1c's leaf (0010) when both are on develop.
+# T2 (PRP 11.6). Additive and reversible: two new tables, no data step. Numbered 0011 because T1c owns 0009/0010.
 
 import django.db.models.deletion
 import uuid
@@ -9,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('teachers', '0008_generated_flags'),
+        ('teachers', '0010_specialties_optional'),
     ]
 
     operations = [

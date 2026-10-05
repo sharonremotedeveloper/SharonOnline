@@ -38,10 +38,12 @@ def resp(status, payload=None):
 
 
 @pytest.fixture
-def zoom_configured(monkeypatch):
-    """Real-looking credentials: the client must talk to (mocked) Zoom and may never simulate."""
-    for name in ('account_id', 'client_id', 'client_secret'):
-        monkeypatch.setattr(zoom_client, name, f'cfg-{name}')
+def zoom_configured(monkeypatch, settings):
+    """Real-looking credentials: the client must talk to (mocked) Zoom and may never simulate. Since Z1 the client reads
+    them from Django settings and retries 429 / 5xx with back-off; the waits are skipped here."""
+    for name in ('ZOOM_ACCOUNT_ID', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET'):
+        setattr(settings, name, f'cfg-{name.lower()}')
+    monkeypatch.setattr('apps.integrations.zoom._sleep', lambda seconds: None)
 
 
 def token_ok():

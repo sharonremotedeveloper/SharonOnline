@@ -1,12 +1,10 @@
 from typing import Optional
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 from .models import Booking, LessonMemo
 from .services.reviews import REVIEW_TAGS
-from apps.teachers.models import TeacherProfile
-from apps.materials.models import Material
 from apps.teachers.serializers import TeacherListSerializer
 from apps.users.serializers import UserSerializer
-from datetime import timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.conf import settings
 from .services.holds import hold_expires_at
@@ -143,25 +141,20 @@ class BookingDetailSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         return getattr(request, 'user', None) if request else None
 
-    def _is_host(self, obj):
-        viewer = self._viewer()
-        return bool(viewer and viewer.is_authenticated and viewer == obj.teacher.user)
-
     def get_zoom_url(self, obj) -> str:
         viewer = self._viewer()
         if not viewer or not viewer.is_authenticated:
             return ""
-        # Return host start URL for the assigned teacher, join URL for student
-        if self._is_host(obj):
-            return obj.zoom_start_url or obj.zoom_join_url
+        # Slice Z1: the join URL for everyone; the tutor's host link comes fresh from GET /bookings/<id>/host-link/.
         return obj.zoom_join_url
 
     def get_zoom_join_url(self, obj) -> str:
         return obj.zoom_join_url if self._viewer() and self._viewer().is_authenticated else ""
 
+    @extend_schema_field(serializers.CharField(help_text='DEPRECATED (Slice Z1): always empty. The host link expires; '
+                                                         'fetch a fresh one from GET /api/v1/bookings/{id}/host-link/.'))
     def get_zoom_start_url(self, obj) -> str:
-        # The host link grants control of the meeting: ONLY the booking's own tutor ever receives it.
-        return obj.zoom_start_url if self._is_host(obj) else ""
+        return ""
 
     def get_booking_reference(self, obj) -> str:
         return f"BK-{str(obj.id).split('-')[0].upper()}"
@@ -218,24 +211,9 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'status')
 
     def create(self, validated_data):
-        teacher_id = validated_data.pop('teacher_id')
-        material_id = validated_data.pop('material_id', None)
-        start_time_utc = validated_data['start_time_utc']
-        end_time_utc = start_time_utc + timedelta(minutes=25)
-
-        teacher = TeacherProfile.objects.get(id=teacher_id)
-        material = Material.objects.get(id=material_id) if material_id else None
-        student = self.context['request'].user
-
-        booking = Booking.objects.create(
-            teacher=teacher,
-            student=student,
-            material=material,
-            start_time_utc=start_time_utc,
-            end_time_utc=end_time_utc,
-            status=Booking.Status.PENDING_PAYMENT
-        )
-        return booking
+        # Validation only: BookingListCreateView.create() reserves through services/reservation.py (hold + bookable tutor).
+        # The old body here created a booking without either (slice T1b review nit); it was never reachable.
+        raise NotImplementedError('Bookings are created by bookings.services.reservation.reserve_slot.')
 
 class ReviewInputSerializer(serializers.Serializer):
     """A student's review. `review` is the legacy name of `private_notes` (older clients)."""

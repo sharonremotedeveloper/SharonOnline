@@ -45,10 +45,11 @@ class TestBookingDetailContract:
         assert 'HOSTTOKEN' not in str(d)
         assert d['zoom_url'] == 'https://zoom.example/j/123'
 
-    def test_tutor_gets_the_host_start_link(self, booking, teacher_user):
+    def test_tutor_detail_never_carries_a_stored_host_link(self, booking, teacher_user):
+        # Slice Z1: the host link (ZAK) expires; the tutor fetches a fresh one from GET /bookings/<id>/host-link/.
         d = _get(teacher_user.user, booking).data
-        assert d['zoom_start_url'].endswith('HOSTTOKEN')
-        assert d['zoom_url'].endswith('HOSTTOKEN')
+        assert d['zoom_start_url'] == '' and 'HOSTTOKEN' not in str(d)
+        assert d['zoom_url'] == 'https://zoom.example/j/123'
 
     def test_student_contact_details_are_not_shared_with_the_tutor(self, booking, teacher_user, student_user):
         assert 'email' not in _get(teacher_user.user, booking).data['student']

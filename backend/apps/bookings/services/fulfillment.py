@@ -30,6 +30,8 @@ from apps.bookings.models import Booking
 from apps.integrations.email import send_booking_confirmation_email
 from apps.integrations.google_calendar import sync_booking_to_teacher_gcal
 from apps.integrations.zoom import zoom_client
+from apps.integrations.zoom_hosts import host_picker
+from apps.notifications.alerts import alert_staff
 from apps.payments.models import FulfillmentDispatch
 
 logger = logging.getLogger(__name__)
@@ -40,7 +42,8 @@ CLAIMABLE = (D.PENDING, D.QUEUED)            # + RETRYABLE once due (_due_retry_
 REQUEUEABLE = (D.PENDING, D.QUEUED, D.ABANDONED)
 FINISHED_STEP = (St.DONE, St.SKIPPED)
 STEP_FLAGS = {'zoom': 'zoom_completed', 'calendar': 'calendar_completed', 'email': 'email_completed'}
-ZOOM_FIELDS = ['zoom_meeting_id', 'zoom_join_url', 'zoom_start_url', 'zoom_password', 'updated_at']
+# No zoom_start_url (Slice Z1): the host link expires and is fetched fresh by the host-link endpoint, never stored.
+ZOOM_FIELDS = ['zoom_meeting_id', 'zoom_join_url', 'zoom_password', 'zoom_host_user_id', 'updated_at']
 
 
 class ClaimRevoked(Exception):
@@ -176,7 +179,9 @@ def classify_failure(exc) -> tuple[bool, int | None]:
     class that may not exist yet is imported. Every other exception (Zoom, Google, database, broker) is transient."""
     result = getattr(exc, 'result', None)
     if result is None:
-        return False, None
+        # Slice Z1: a Zoom 429 whose Retry-After exceeded the client's inline cap carries it on the ZoomError.
+        retry_after = getattr(exc, 'retry_after_seconds', None)
+        return False, (int(retry_after) if isinstance(retry_after, int) and retry_after > 0 else None)
     if getattr(result, 'status', None) == 'failed':
         return True, None
     retry_after = getattr(result, 'retry_after_seconds', None)
@@ -200,15 +205,18 @@ def _fail(booking_id, token, step, exc, now) -> str:
     if not _owned(booking_id, token).update(**fields):
         return 'revoked'
     error = type(exc).__name__
-    # TODO(N1a): route both alerts through notify() to ADMIN_ALERT_RECIPIENTS. payments/services/alerts.py is payment-bound
-    # (GatewayAnomaly) and deliberately not reused for lesson fulfilment.
+    # Staff alerts go through notify() (slice N1a); payments/services/alerts.py stays payment-bound. The claim token keys
+    # the alert to this run, so an admin re-queue that fails again alerts again.
+    alert = {'booking_id': str(booking_id), 'step': step, 'error': error, 'attempts': attempts}
     if terminal:
         logger.error('[ADMIN ALERT] FULFILMENT FAILED booking=%s step=%s error=%s attempts=%s permanent=%s',
                      booking_id, step, error, attempts, permanent)
+        alert_staff('fulfilment_failed', key=f'admin:fulfilment-failed:{booking_id}:{token}', payload=alert)
         return 'failed'
     if attempts == settings.FULFILLMENT_MAX_ATTEMPTS:
         logger.error('[ADMIN ALERT] FULFILMENT NEEDS ATTENTION booking=%s step=%s error=%s attempts=%s (still retrying)',
                      booking_id, step, error, attempts)
+        alert_staff('fulfilment_needs_attention', key=f'admin:fulfilment-attention:{booking_id}:{token}', payload=alert)
     logger.warning('Fulfilment step failed, will retry: booking=%s step=%s error=%s attempt=%s in=%ss',
                    booking_id, step, error, attempts, delay)
     _schedule_retry(booking_id, delay)
@@ -255,6 +263,8 @@ def _delete_orphan(meeting_id, booking_id) -> None:
     except Exception as exc:    # broker down: a human must delete it; never hide that
         logger.error('[ADMIN ALERT] ORPHANED ZOOM MEETING meeting=%s booking=%s error=%s',
                      meeting_id, booking_id, type(exc).__name__)
+        alert_staff('orphaned_zoom_meeting', key=f'admin:orphaned-zoom-meeting:{meeting_id}',
+                    payload={'meeting_id': str(meeting_id), 'booking_id': str(booking_id)})
 
 
 def _zoom_step(booking_id, token, now) -> None:
@@ -264,9 +274,14 @@ def _zoom_step(booking_id, token, now) -> None:
             _set_step(booking_id, token, 'zoom', St.DONE, now)       # a room exists: reuse it, never build a second one
             return
     student, tutor = booking.student, booking.teacher.user
+    # Any earlier attempt (a failed step, OR a worker that died after Zoom built the room and was reclaimed: attempts > 1)
+    # may have left a meeting behind: look for it before creating another (Z1, QA #2).
+    retried = FulfillmentDispatch.objects.filter(booking_id=booking_id).filter(
+        Q(attempts__gt=1) | Q(zoom_state=St.FAILED)).exists()
     data = zoom_client.create_meeting(        # outside the row lock
         topic=f"Sharon ESL: {student.first_name or student.username} with {tutor.first_name or tutor.username}",
-        start_time_iso=booking.start_time_utc.strftime('%Y-%m-%dT%H:%M:%SZ'), duration_minutes=25)
+        start_time_iso=booking.start_time_utc.strftime('%Y-%m-%dT%H:%M:%SZ'), duration_minutes=25,
+        booking_id=str(booking_id), host_user_id=host_picker.pick_host(booking), search_first=retried)
     _store_meeting(booking_id, token, data, now)
 
 
@@ -278,7 +293,8 @@ def _store_meeting(booking_id, token, data, now) -> None:
             booking = _locked_confirmed(booking_id, token)
             if not booking.zoom_meeting_id:
                 booking.zoom_meeting_id, booking.zoom_join_url = meeting_id, data['join_url']
-                booking.zoom_start_url, booking.zoom_password = data['start_url'], data.get('password', '')
+                booking.zoom_password = data.get('password', '')
+                booking.zoom_host_user_id = data.get('host_user_id') or 'me'
                 booking.save(update_fields=ZOOM_FIELDS)
                 wrote = True
             _set_step(booking_id, token, 'zoom', St.DONE, now)
@@ -326,6 +342,8 @@ def _store_event(booking_id, token, event_id, tutor_user_id, now) -> None:
                 cleanup_gcal_event.delay(tutor_user_id, event_id)
             except Exception as exc:
                 logger.error('[ADMIN ALERT] ORPHANED CALENDAR EVENT booking=%s error=%s', booking_id, type(exc).__name__)
+                alert_staff('orphaned_calendar_event', key=f'admin:orphaned-calendar-event:{booking_id}:{token}',
+                            payload={'booking_id': str(booking_id), 'tutor_user_id': str(tutor_user_id)})
 
 
 def email_was_sent(result) -> bool:

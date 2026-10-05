@@ -35,6 +35,7 @@ PLAN_EDGES = {
     ('changes_requested', 'submitted'): {'self', 'staff'},
     ('approved', 'suspended'): {'staff', 'system'},
     ('suspended', 'approved'): {'staff'},
+    ('suspended', 'rejected'): {'staff'},          # permanent removal (Anesu 2026-10-05, slice T1b)
     ('approved', 'in_review'): {'staff', 'self', 'system'},
     ('rejected', 'applied'): {'staff'},
 }

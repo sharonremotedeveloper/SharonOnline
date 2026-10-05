@@ -344,8 +344,8 @@ export interface LoginResponse {
 | :--- | :--- | :--- | :--- |
 | `/api/v1/auth/token/` | POST | `CustomTokenObtainPairView` | Exchanges email/password for JWT with embedded claims |
 | `/api/v1/auth/token/refresh/` | POST | `TokenRefreshView` | Silent token renewal before 15-minute access expiry |
-| `/api/v1/auth/register/` | POST | `RegisterView` | Creates User + TeacherProfile if role=='teacher' |
-| `/api/v1/auth/me/` | GET | `CurrentUserView` | Returns authenticated user profile & balance |
+| `/api/v1/auth/register/` | POST | `RegisterView` | Creates User + TeacherProfile (status `applied`, audited) if role=='teacher' (implemented in T1c) |
+| `/api/v1/auth/me/` | GET | `CurrentUserView` | Returns authenticated user profile & balance; `tutor_status` (read-only, null for non-tutors, T1c) for tutor routing |
 
 ### 6. Edge Route Protection Middleware Specification
 Create `src/middleware.ts` running on Next.js Edge Runtime:
@@ -450,7 +450,7 @@ export interface PublicTutor {
   rating_count: number;
   review_percentage: number;
   lessons_completed: number;
-  price_per_25min_usd: number;
+  price_per_25min_usd: number; // DEPRECATED (T1c): API returns the catalog USD price as string | null; not used by the UI
   specialties: string[];
   learning_goals: Array<'business' | 'interview' | 'conversation' | 'presentation' | 'travel'>;
   learner_levels: string;
@@ -464,7 +464,8 @@ export interface PublicTutor {
 
 ### 5. Backend Django REST API Mappings
 - `GET /api/v1/teachers/`:
-  - Query params: `?accent=South+African&specialty=Business&max_price=10&goal=interview&available_today=true&search=naledi`
+  - Query params: `?accent=South+African&specialty=Business&goal=interview&available_today=true&search=naledi`
+  - *T1c:* `?max_price=` was removed (every tutor has the platform catalog price, Task 10.1). `price_per_25min_usd` stays in the response for one release, marked deprecated in OpenAPI, and now reports the catalog USD price (string, or `null` when no USD price is configured); read prices from `GET /api/v1/payments/lesson-prices/` instead.
   - Backend filtering powered by `django-filter` on verified active tutors (`is_verified=True, is_active=True`).
 - `GET /api/v1/teachers/<id>/`:
   - Retrieves full tutor profile, certifications, and review aggregates.
@@ -787,7 +788,7 @@ frontend/src/app/teacher/
 │   └── payout-settings/
 │       └── page.tsx                   # South African EFT bank details form (branch code, account #)
 └── profile/
-    └── page.tsx                       # Bio, specialties, intro video link & hourly rate
+    └── page.tsx                       # Bio, headline, specialties via GET|PATCH /api/v1/teachers/me/ (T1c contract; wiring = T7). No rate: prices are the platform catalog; intro video/accent change only through vetting uploads (T3)
 frontend/src/components/teacher/
 ├── EskomStageBanner.tsx               # Alert banner showing current Eskom Stage & backup safety
 ├── WeeklyScheduleGrid.tsx             # Interactive 7x48 slot toggle matrix
@@ -941,6 +942,7 @@ flowchart LR
   - Returns platform aggregates: GMV today, active bookings count, open disputes count, escrow balance.
 - `GET /api/v1/admin/teachers/pending-vetting/`:
   - Returns applicant tutors with Cloudflare Stream audition URLs, TEFL certificate PDFs, and power declarations.
+  - *T1c:* `eskom_area` is the tutor's real `eskom_area_id` or `null` (no placeholder area any more); `has_inverter` is the declared `has_inverter_backup`.
 - `PATCH /api/v1/admin/teachers/<id>/verify/`:
   - Request: `{ "is_verified": true, "rejection_reason": null }`
   - Immediately publishes tutor to public search.

@@ -132,7 +132,8 @@ class TestAggregates:
     def test_average_and_count_come_from_the_database(self, teacher_user):
         for n, stars in enumerate([5, 4, 3], start=1):
             s = new_student(n)
-            assert review(s, lesson(teacher_user, s), {'rating': stars}).status_code == 200
+            # distinct start per lesson: the clock ticks in ~15 ms steps on Windows, and (teacher, start) is unique
+            assert review(s, lesson(teacher_user, s, hours_ago=3 + n), {'rating': stars}).status_code == 200
         teacher_user.refresh_from_db()
         assert (teacher_user.rating_avg, teacher_user.rating_count) == (Decimal('4.00'), 3)
 

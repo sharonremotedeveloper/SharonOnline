@@ -149,6 +149,151 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/teachers/{id}/approve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_admin_teachers_approve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/teachers/{id}/cancel-future-lessons/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Cancels a suspended or removed tutor's future lessons, one transaction per lesson: full refund, no strike, ADMIN_CANCEL_BONUS_CREDITS bonus (0). Idempotent. 409 `tutor_not_suspended` otherwise. */
+        post: operations["v1_admin_teachers_cancel_future_lessons_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/teachers/{id}/reactivate/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_admin_teachers_reactivate_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/teachers/{id}/reject/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_admin_teachers_reject_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/teachers/{id}/reopen/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_admin_teachers_reopen_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/teachers/{id}/request-changes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_admin_teachers_request_changes_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/teachers/{id}/revet/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_admin_teachers_revet_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/teachers/{id}/start-review/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_admin_teachers_start_review_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/teachers/{id}/suspend/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_admin_teachers_suspend_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/teachers/{id}/verify/": {
         parameters: {
             query?: never;
@@ -173,6 +318,23 @@ export interface paths {
             cookie?: never;
         };
         get: operations["v1_admin_teachers_pending_vetting_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/teachers/suspended-with-lessons/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Suspended or removed tutors who still have future lessons (soonest first): cancel them with cancel-future-lessons. */
+        get: operations["v1_admin_teachers_suspended_with_lessons_list"];
         put?: never;
         post?: never;
         delete?: never;
@@ -439,6 +601,22 @@ export interface paths {
         };
         /** @description What would happen if I cancelled now? Read-only: shown before the student/tutor confirms. */
         get: operations["v1_bookings_cancel_preview_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bookings/{booking_id}/host-link/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_bookings_host_link_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1172,6 +1350,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teachers/me/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_teachers_me_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["v1_teachers_me_partial_update"];
+        trace?: never;
+    };
     "/api/v1/teachers/profile/power-backup/": {
         parameters: {
             query?: never;
@@ -1206,6 +1400,27 @@ export interface components {
          * @enum {string}
          */
         AccountTypeEnum: "cheque" | "savings";
+        AdminCancelRequestRequest: {
+            reason: string;
+            /** @description Default: every future pending / confirmed lesson of the tutor. */
+            booking_ids?: string[];
+        };
+        AdminCancelResult: {
+            /** Format: uuid */
+            teacher_id: string;
+            cancelled_count: number;
+            /** @description The default list was capped (50 lessons per call): call again for the rest. */
+            remaining: boolean;
+            /** @description Unpaid holds whose payment may still complete: left untouched, retry once the payment has resolved. */
+            payment_in_flight_ids: string[];
+            results: components["schemas"]["AdminCancelRow"][];
+        };
+        AdminCancelRow: {
+            /** Format: uuid */
+            booking_id: string;
+            outcome: components["schemas"]["OutcomeEnum"];
+            status: string;
+        };
         AdminRefund: {
             /** Format: uuid */
             readonly id: string;
@@ -1271,6 +1486,10 @@ export interface components {
              * @default false
              */
             confirm_not_refunded_in_gateway: boolean;
+        };
+        AdminTeacherError: {
+            error: string;
+            code: string;
         };
         AvailabilityChange: {
             availability: components["schemas"]["TeacherAvailability"];
@@ -1346,6 +1565,7 @@ export interface components {
             readonly lock_expires_at: string | null;
             readonly zoom_url: string;
             readonly zoom_join_url: string;
+            /** @description DEPRECATED (Slice Z1): always empty. The host link expires; fetch a fresh one from GET /api/v1/bookings/{id}/host-link/. */
             readonly zoom_start_url: string;
             readonly zoom_meeting_id: string;
             readonly zoom_password: string;
@@ -1537,6 +1757,14 @@ export interface components {
          * @enum {string}
          */
         FailureKindEnum: "rejected" | "already_refunded" | "guard" | "exhausted" | "replay_window" | "provider_failed";
+        HostLink: {
+            meeting_id: string;
+            /**
+             * Format: uri
+             * @description Fresh Zoom host start link (expiring ZAK). Open it at once; never store it.
+             */
+            start_url: string;
+        };
         /**
          * @description * `open` - Extra hours
          *     * `closed` - Hours removed
@@ -1612,6 +1840,19 @@ export interface components {
             readonly pdf_file_url: string;
             readonly audio_snippet_url: string;
         };
+        /** @enum {unknown} */
+        NullEnum: null;
+        /**
+         * @description * `admin_refund` - admin_refund
+         *     * `released` - released
+         *     * `payment_in_flight` - payment_in_flight
+         *     * `already_cancelled` - already_cancelled
+         *     * `not_cancellable` - not_cancellable
+         *     * `funding_unavailable` - funding_unavailable
+         *     * `not_found` - not_found
+         * @enum {string}
+         */
+        OutcomeEnum: "admin_refund" | "released" | "payment_in_flight" | "already_cancelled" | "not_cancellable" | "funding_unavailable" | "not_found";
         PaginatedBookingDetailList: {
             /** @example 123 */
             count: number;
@@ -1717,6 +1958,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["TeacherTimeOff"][];
         };
+        PaginatedTutorWorkQueueItemList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["TutorWorkQueueItem"][];
+        };
         PasswordChangeRequest: {
             new_password: string;
             new_password_confirm: string;
@@ -1769,6 +2025,11 @@ export interface components {
             timezone?: string;
             target_level?: string;
             learning_goals?: string;
+        };
+        PatchedTeacherOwnProfileRequest: {
+            headline?: string;
+            bio?: string;
+            specialties?: string[];
         };
         PatchedUserRequest: {
             /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
@@ -2035,8 +2296,12 @@ export interface components {
             rating_avg?: string;
             /** Format: int64 */
             rating_count?: number;
-            /** Format: decimal */
-            price_per_25min_usd?: string;
+            /**
+             * Format: decimal
+             * @deprecated
+             * @description Deprecated. USD catalog price only. Do not display; use `/payments/lesson-prices/` for the student's currency. null when no USD price is configured.
+             */
+            readonly price_per_25min_usd: string | null;
             /** @description List of tags: ['FreeTalk', 'Business English', 'Daily News', 'TOEIC'] */
             specialties?: unknown;
             readonly country: string;
@@ -2065,12 +2330,68 @@ export interface components {
             rating_avg?: string;
             /** Format: int64 */
             rating_count?: number;
-            /** Format: decimal */
-            price_per_25min_usd?: string;
+            /**
+             * Format: decimal
+             * @deprecated
+             * @description Deprecated. USD catalog price only. Do not display; use `/payments/lesson-prices/` for the student's currency. null when no USD price is configured.
+             */
+            readonly price_per_25min_usd: string | null;
             /** @description List of tags: ['FreeTalk', 'Business English', 'Daily News', 'TOEIC'] */
             specialties?: unknown;
             readonly country: string;
             readonly is_verified: boolean;
+        };
+        TeacherOwnProfile: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly status: components["schemas"]["TutorStatusEnum"];
+            readonly is_verified: boolean;
+            readonly is_active: boolean;
+            headline?: string;
+            bio?: string;
+            specialties?: string[];
+            readonly accent: components["schemas"]["AccentEnum"];
+            /**
+             * Format: uri
+             * @description Cloudflare Stream HLS or preview MP4 URL
+             */
+            readonly intro_video_url: string;
+            /** Format: uri */
+            readonly intro_video_thumbnail: string;
+            readonly avatar_url: string;
+            readonly intro_audio_url: string;
+            readonly has_tefl_certificate: boolean;
+            readonly eskom_area_id: string;
+            readonly has_inverter_backup: boolean;
+            readonly has_lte_failover: boolean;
+            /** Format: decimal */
+            readonly rating_avg: string;
+            readonly rating_count: number;
+            readonly sla_strikes: number;
+            /** Format: date-time */
+            readonly training_completed_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
+        };
+        TeacherReviewRequestRequest: {
+            /**
+             * @description Required (non-blank) for request-changes, reject and suspend.
+             * @default
+             */
+            reason: string;
+        };
+        TeacherReviewResult: {
+            /** Format: uuid */
+            teacher_id: string;
+            action: string;
+            previous_status: string;
+            status: string;
+            changed: boolean;
+            change_ids: string[];
+            /** @description suspend: the tutor's future pending / confirmed lessons, left untouched; cancel them with cancel-future-lessons. */
+            affected_booking_ids: string[];
         };
         TeacherTimeOff: {
             /** Format: uuid */
@@ -2101,6 +2422,17 @@ export interface components {
         TokenRefreshRequest: {
             refresh: string;
         };
+        /**
+         * @description * `applied` - Applied
+         *     * `submitted` - Submitted for review
+         *     * `in_review` - In review
+         *     * `approved` - Approved
+         *     * `changes_requested` - Changes requested
+         *     * `rejected` - Rejected
+         *     * `suspended` - Suspended
+         * @enum {string}
+         */
+        TutorStatusEnum: "applied" | "submitted" | "in_review" | "approved" | "changes_requested" | "rejected" | "suspended";
         TutorWallet: {
             /** Format: double */
             pending_escrow_zar: number;
@@ -2135,6 +2467,15 @@ export interface components {
             fx_rate_to_zar: number;
             fx_source: string;
             status: string;
+        };
+        TutorWorkQueueItem: {
+            /** Format: uuid */
+            teacher_id: string;
+            readonly full_name: string;
+            status: string;
+            future_lesson_count: number;
+            /** Format: date-time */
+            next_lesson_start_utc: string;
         };
         /**
          * @description * `opening` - opening
@@ -2171,6 +2512,8 @@ export interface components {
             readonly avatar_url: string;
             /** @description Vetting status (tutors only; otherwise null). */
             readonly is_verified: boolean | null;
+            /** @description Tutor lifecycle status (docs/TUTOR_STATUS_MACHINE.md); null for students, admins and a tutor account without a profile. Read-only: changed only by the vetting service. */
+            readonly tutor_status: (components["schemas"]["TutorStatusEnum"] | components["schemas"]["NullEnum"]) | null;
         };
         UserRequest: {
             /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
@@ -2499,6 +2842,465 @@ export interface operations {
             };
         };
     };
+    v1_admin_teachers_approve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TeacherReviewRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TeacherReviewRequestRequest"];
+                "multipart/form-data": components["schemas"]["TeacherReviewRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeacherReviewResult"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+        };
+    };
+    v1_admin_teachers_cancel_future_lessons_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminCancelRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AdminCancelRequestRequest"];
+                "multipart/form-data": components["schemas"]["AdminCancelRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCancelResult"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+        };
+    };
+    v1_admin_teachers_reactivate_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TeacherReviewRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TeacherReviewRequestRequest"];
+                "multipart/form-data": components["schemas"]["TeacherReviewRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeacherReviewResult"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+        };
+    };
+    v1_admin_teachers_reject_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TeacherReviewRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TeacherReviewRequestRequest"];
+                "multipart/form-data": components["schemas"]["TeacherReviewRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeacherReviewResult"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+        };
+    };
+    v1_admin_teachers_reopen_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TeacherReviewRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TeacherReviewRequestRequest"];
+                "multipart/form-data": components["schemas"]["TeacherReviewRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeacherReviewResult"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+        };
+    };
+    v1_admin_teachers_request_changes_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TeacherReviewRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TeacherReviewRequestRequest"];
+                "multipart/form-data": components["schemas"]["TeacherReviewRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeacherReviewResult"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+        };
+    };
+    v1_admin_teachers_revet_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TeacherReviewRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TeacherReviewRequestRequest"];
+                "multipart/form-data": components["schemas"]["TeacherReviewRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeacherReviewResult"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+        };
+    };
+    v1_admin_teachers_start_review_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TeacherReviewRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TeacherReviewRequestRequest"];
+                "multipart/form-data": components["schemas"]["TeacherReviewRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeacherReviewResult"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+        };
+    };
+    v1_admin_teachers_suspend_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TeacherReviewRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TeacherReviewRequestRequest"];
+                "multipart/form-data": components["schemas"]["TeacherReviewRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeacherReviewResult"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+        };
+    };
     v1_admin_teachers_verify_partial_update: {
         parameters: {
             query?: never;
@@ -2551,6 +3353,30 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    v1_admin_teachers_suspended_with_lessons_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+                /** @description Number of results to return per page. */
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTutorWorkQueueItemList"];
                 };
             };
         };
@@ -3014,6 +3840,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CancelPreview"];
+                };
+            };
+        };
+    };
+    v1_bookings_host_link_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostLink"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
                 };
             };
         };
@@ -4236,6 +5115,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Deleted"];
+                };
+            };
+        };
+    };
+    v1_teachers_me_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeacherOwnProfile"];
+                };
+            };
+        };
+    };
+    v1_teachers_me_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTeacherOwnProfileRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedTeacherOwnProfileRequest"];
+                "multipart/form-data": components["schemas"]["PatchedTeacherOwnProfileRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeacherOwnProfile"];
                 };
             };
         };

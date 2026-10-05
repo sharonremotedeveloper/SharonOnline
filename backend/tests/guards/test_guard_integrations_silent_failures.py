@@ -15,8 +15,7 @@ INTEGRATIONS = APPS / 'integrations'
 # Baseline 2026-10-04: {file (relative to apps/): number of silent failures}. Only ever lower these numbers.
 ALLOWLIST = {
     'integrations/google_calendar.py': 3,         # "not connected" / failed insert both return "" (G1 rewrites)
-    'integrations/zoom.py': 1,                    # F0 made a failed OAuth raise; one "" left for Z1
-}
+}                                                 # zoom.py: 0 since Z1 (no-credentials token call raises)
 
 
 def silent_failures(path):

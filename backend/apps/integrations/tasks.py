@@ -68,8 +68,9 @@ def sync_eskom_statuses(provider, now=None):
     from apps.teachers.models import TeacherProfile
 
     now = now or timezone.now()
-    areas = set(TeacherProfile.objects.filter(
-        accent=TeacherProfile.Accent.SOUTH_AFRICAN, is_active=True,
+    # Approved tutors plus suspended ones who still have a lesson to teach; never applicants (slice T1b).
+    areas = set(TeacherProfile.objects.operational(now).filter(
+        accent=TeacherProfile.Accent.SOUTH_AFRICAN,
     ).exclude(eskom_area_id='').values_list('eskom_area_id', flat=True))
     result = {'synced_areas': 0, 'failed_areas': 0, 'vulnerable_bookings_flagged': 0,
               'notifications_created': 0}
@@ -181,8 +182,8 @@ def reconcile_teacher_gcal_task():
 
     @distributed_task_lock('lock:beat:reconcile_teacher_gcal', timeout_seconds=1600)
     def _execute():
-        tutors = TeacherProfile.objects.filter(
-            is_active=True,
+        # Same rule as the Eskom sync (slice T1b): approved tutors and suspended ones with lessons left; no applicants.
+        tutors = TeacherProfile.objects.operational().filter(
             user__google_calendar_token__isnull=False
         ).select_related('user')
 
@@ -224,6 +225,15 @@ def send_cancellation_emails(self, booking_id: str, cancelled_by: str):
         # The student's pending PayPal payment failed before the lesson (the student is told by the payment-failure e-mail).
         to, subject, line = booking.teacher.user.email, 'A lesson was cancelled', (
             f"The lesson on {when} was cancelled because the student's payment did not go through.")
+    elif cancelled_by == 'admin':
+        # Staff cancelled a suspended tutor's paid lesson (slice T1b, bookings/services/admin_cancellation.py).
+        to, subject, line = booking.student.email, 'Your lesson was cancelled', (
+            f"Your lesson on {when} was cancelled because your tutor is no longer available. You will be refunded to your "
+            f"original payment method, or you can turn the refund into lesson credit in your wallet.")
+    elif cancelled_by == 'admin_unpaid':
+        to, subject, line = booking.student.email, 'Your reservation was released', (
+            f"Your reservation for the lesson on {when} was released because the tutor is no longer available. "
+            f"Nothing was charged.")
     elif cancelled_by == 'student':
         to, subject, line = booking.teacher.user.email, 'A lesson was cancelled', f"{booking.student.first_name or booking.student.username} cancelled the lesson on {when}."
     else:

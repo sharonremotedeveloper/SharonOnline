@@ -101,6 +101,7 @@ GOOD = {
     'ESKOMSEPUSH_API_KEY': 'eskom-provider-key', 'THROTTLE_NUM_PROXIES': '1', 'FRONTEND_BASE_URL': 'https://sharonesl.com',
     'RESEND_API_KEY': 're_live_abcdefghijklmnop', 'PAYOUT_DATA_KEYS': json.dumps({'v1': Fernet.generate_key().decode()}),
     'PAYOUT_DATA_ACTIVE_KEY': 'v1', 'REFUND_GATEWAY_BACKEND': 'apps.payments.services.refund_gateways.RoutingRefundGateway',
+    'ZOOM_ACCOUNT_ID': 'zoom-account', 'ZOOM_CLIENT_ID': 'zoom-client', 'ZOOM_CLIENT_SECRET': 'zoom-secret-value',  # Z1
 }
 
 

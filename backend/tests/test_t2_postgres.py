@@ -12,7 +12,7 @@ import factories as f
 from apps.teachers.models import TeacherAvailability, TeacherDateOverride, TeacherTimeOff
 from migration_helpers import _migrate, apps_at, latest_targets
 
-BEFORE = ('teachers', '0008_generated_flags')      # the leaf before T2; the integrator re-points 0011 after T1c's 0010
+BEFORE = ('teachers', '0010_specialties_optional')      # the leaf before T2 (T1c)
 AFTER = ('teachers', '0011_availability_timeoff_overrides')
 
 
