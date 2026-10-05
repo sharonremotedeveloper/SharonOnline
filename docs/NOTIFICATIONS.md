@@ -1,8 +1,8 @@
 # Notifications
 
 Owner: Claude (lead architect). Design: `PHASE_11_12_EXECUTION_PLAN.md` §3.2 and §6. This file grows slice by slice:
-N1c (sending e-mail, below), then N1a (the `notifications` app: `notify()`, delivery state machine, sweep, templates),
-N1b (API + preferences), N2/N3/N4 (events, Resend webhook, wrapped senders).
+N1c (sending e-mail, §1), N1a (the `notifications` app: `notify()`, delivery state machine, sweep, templates, staff
+alerts, retention, §2), then N1b (API + preferences), N2/N3/N4 (events, Resend webhook, wrapped senders).
 
 ## 1. Sending e-mail: `send_email` (slice N1c)
 
@@ -91,3 +91,112 @@ raises for anything but `sent` (so does `send_booking_confirmation_email`):
 The fulfilment task (`dispatch_booking_fulfillment`) does not distinguish them yet (F0 owns it). The existing Celery tasks
 (account mails, support inquiry, admin alerts, payment failure, refund processed, Eskom, cancellations) still use the
 wrapper; N4 moves them to `notify()`. Inventory with file:line: `docs/slices/N1c.md`.
+
+## 2. The notifications app (slice N1a)
+
+`backend/apps/notifications/`. Protocol and its reasons: `docs/adr/ADR-0002-notification-delivery.md`. Operations:
+`docs/RUNBOOK_NOTIFICATIONS.md`. No API yet (N1b); no real events yet (N2a-c, N4).
+
+### 2.1 Model
+`Notification` (UUID id): `user`, `kind`, `title` / `body` (in-app text), `payload` (JSON, **ids and short codes only**),
+`booking` (nullable), `idempotency_key` (UNIQUE), `in_app` (False = e-mail-only row, hidden from the in-app list),
+`created_at` (clock seam), `read_at`; e-mail delivery: `email_state` (`pending | sending | sent | retryable | failed |
+skipped | bounced`), `email_attempts`, `email_claimed_at` (claim token), `email_first_attempt_at` (20 h rule),
+`email_next_attempt_at` (backoff), `email_sent_at`, `provider_message_id`, `rendered_subject / rendered_html /
+rendered_text` (frozen at creation), `email_last_error` (short code only, never a provider body). Indexes:
+`(user, read_at, -created_at)` (in-app list) and `(email_state, email_next_attempt_at)` (sweep).
+`NotificationPreference(user, email_by_kind, in_app_by_kind)`: `{kind: false}` opts out; a missing kind is on.
+
+### 2.2 `notify()`
+```python
+from apps.notifications.service import notify, booking_key
+notify(user, kind, *, key, payload, booking=None) -> Notification | None
+```
+- Unknown kind -> `registry.UnknownKind`; a bad key or a payload that is not ids-only -> `InvalidNotification` (programming
+  errors). Payload: flat dict, snake_case keys, values `str` (<= 128 chars) / `int` / `bool` / `None` / UUID (stored as
+  str), no float, nothing nested; key names containing `review`, `note`, `dossier`, `token`, `password`, `secret`,
+  `email`, `text`, `body`, `message`, `comment`, `statement` are refused. Renderers fetch what they need from ids.
+- Idempotent on `key`: an existing row is returned and nothing is enqueued. The insert runs in its own savepoint, so a
+  lost race returns the winner's row and never breaks the caller's transaction.
+- Preferences: a **mandatory** kind (category in `registry.MANDATORY_CATEGORIES`: security, payment, cancellation, refund,
+  bank_change, strike, suspension, vetting_outcome, staff_alert) always e-mails and always shows in-app; an optional
+  kind follows the user's opt-outs. Both channels off -> no row, returns `None`. E-mail off -> `email_state=skipped`,
+  nothing rendered for e-mail. In-app off (optional kinds only) -> the row exists with `in_app=False`.
+- The e-mail is rendered once and persisted; delivery is enqueued with `transaction.on_commit` (a rolled-back caller
+  leaves nothing; a broker failure is logged with the id and left to the sweep).
+- **Never through notify():** password-reset / e-mail-verification mails (their bodies carry live tokens and must not be
+  persisted); they stay on `users/tasks.py::send_account_email_task`.
+
+### 2.3 Keys
+Plan §6 lists every event key. Booking-bound keys carry the generation token `{booking_id}:{reschedule_count}`
+(`booking_generation(booking)`; `booking_key('reminder:24h', booking, 'student')` ->
+`reminder:24h:{bid}:{g}:student`), so a reschedule re-arms confirmations and reminders. Strike keys use the strike id,
+bank / calendar keys the change-record id, never a timestamp. Keys are 1-200 characters of `A-Z a-z 0-9 : _ . -`
+(they are also Resend's `Idempotency-Key`). Staff alerts append `:{recipient_user_id}`.
+
+### 2.4 Delivery state machine
+```
+pending | retryable(due) --claim (CAS)--> sending --sent--> sent (+ provider id)
+                                            |--retryable / in_flight--> retryable (backoff)
+                                            |--failed / cap / no or invalid address--> failed (+ staff alert)
+                                            |--first attempt >= 20 h ago--> failed 'stale_needs_review' (+ staff alert)
+                                            '--lease 15 min expired--> claimable again
+```
+- Claim = one conditional UPDATE; it counts the attempt and stamps `email_claimed_at` (the token) and, once,
+  `email_first_attempt_at`. Every result write is conditional on `(sending, my claimed_at)`; a worker whose lease was
+  taken over gets `revoked` and writes nothing.
+- The persisted subject/html/text go to `send_email(user.email, ..., idempotency_key=notification.idempotency_key)`; a
+  retry is byte-identical, so Resend answers a duplicate with the first result. The address is read at send time.
+- Backoff: `NOTIFICATION_RETRY_SECONDS` (60) doubling, +-20 % jitter, capped at `NOTIFICATION_RETRY_MAX_SECONDS` (3600),
+  never earlier than the provider's `retry_after_seconds`. `NOTIFICATION_MAX_ATTEMPTS` (8): the 8th transient failure is
+  `failed` with `attempts_exhausted:<code>`.
+- Staff alert on every `failed` (`alert_staff('notification_failed', ...)`), except for `admin_alert` rows themselves
+  (recursion guard: log only, the in-app item still shows).
+- No countdown messages: the **sweep** (`sweep_notifications_task`, every 2 min, `notifications` queue, beat lock) enqueues
+  `pending` rows older than 2 min (lost message / broker outage), `retryable` rows whose time has come and `sending` rows
+  past the lease; at most `NOTIFICATION_SWEEP_LIMIT` (200) per run.
+- `bounced` is reserved for N3 (Resend webhook + suppression).
+
+### 2.5 Retention (`purge_notifications_task`, daily 03:20 UTC, beat lock, batches of 1000)
+Read in-app items 180 days after `read_at`; e-mail-only rows (`in_app=False`) 90 days after creation once finished
+(`sent / failed / skipped / bounced`). Unread items stay (erasure / DSR rules are PRP 14.3). The plan's "anonymised key row
+for 25 h" is replaced by an equivalent: every deleted row is at least 90 days old, far outside Resend's 24 h key window, so
+a tombstone would protect nothing.
+
+### 2.6 Kinds and how to add one
+`apps/notifications/registry.py`: `Kind(name, category, channels, render, example)`. `render(user, payload, booking)`
+returns `Rendered(subject, html, text, title, body)`. Rules:
+1. Build HTML with `rendering.render_html` (every value escaped); subjects and titles through `rendering.one_line` (no CR/LF,
+   <= 200 characters); times through `rendering.local_time(dt, user)` (recipient's zone; blank/invalid -> UTC with a
+   visible "time zone not set" label); names through `rendering.first_name`.
+2. Fetch data from the ids in the payload; never read `Booking.student_review`, CRM dossiers or credentials.
+3. Register it in a module imported from `NotificationsConfig.ready()` and give it an `example(booking)` payload builder.
+4. Add `tests/golden/notifications/<kind>.txt` (guard `tests/guards/test_guard_notification_kinds.py`; render
+   `golden_text(kind)` and commit it after reviewing). `tests/test_notifications_templates.py` renders every kind with hostile
+   names and private text present in the database and asserts escaping and no leak.
+
+Kinds today: `admin_alert` (category `staff_alert`, mandatory; codes in `builtin_kinds.ALERT_TITLES`) and
+`sample_lesson_notice` (category `booking`; exercises the machinery, wired to no event; N2 may delete it).
+
+### 2.7 Staff alerts
+`apps.notifications.alerts.alert_staff(alert, *, key, payload)`: `alert` must be a code in `ALERT_TITLES`; one
+`admin_alert` per recipient, key `{key}:{user_id}`; never raises into the caller (errors logged by type). Recipients:
+`ADMIN_ALERT_RECIPIENTS` = comma-separated e-mail addresses of **active staff accounts** (`is_staff` or role admin, matched
+case-insensitively; other addresses ignored with a count-only warning); empty = every active admin-role user. No recipient
+-> an `[ADMIN ALERT] ... no recipient` error log. Routed today (the `[ADMIN ALERT]` log lines stay, ids only):
+
+| Site | Alert code | Key |
+| :-- | :-- | :-- |
+| `bookings/services/fulfillment.py::_fail` terminal | `fulfilment_failed` | `admin:fulfilment-failed:{bid}:{claim_token}` |
+| same, cap reached before the lesson | `fulfilment_needs_attention` | `admin:fulfilment-attention:{bid}:{claim_token}` |
+| `_delete_orphan` (broker down) | `orphaned_zoom_meeting` | `admin:orphaned-zoom-meeting:{meeting_id}` |
+| `_store_event` cleanup (broker down) | `orphaned_calendar_event` | `admin:orphaned-calendar-event:{bid}:{claim_token}` |
+| `attendance_probe.py::dispute_without_verdict` | `lesson_disputed_without_verdict` | `admin:disputed-no-verdict:{bid}:{g}` |
+| `notifications/delivery.py` failed row | `notification_failed` | `admin:notification-failed:{notification_id}` |
+
+Money alerts stay in `payments/services/alerts.py::alert_admin` (GatewayAnomaly, `SUPPORT_TO_EMAIL`).
+
+### 2.8 Settings (`settings/base.py`, all in `.env.example`)
+`ADMIN_ALERT_RECIPIENTS`, `NOTIFICATION_MAX_ATTEMPTS` (8), `NOTIFICATION_LEASE_SECONDS` (900),
+`NOTIFICATION_RETRY_SECONDS` (60), `NOTIFICATION_RETRY_MAX_SECONDS` (3600); constants `NOTIFICATION_SWEEP_AGE_SECONDS`
+(120), `NOTIFICATION_SWEEP_LIMIT` (200). Tasks route to the `notifications` queue (`config/celery_schedule.py`).
