@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.db import transaction
-from .models import TeacherProfile, TeacherAvailability, TeacherStatusChange
+from .models import TeacherProfile, TeacherAvailability, TeacherStatusChange, TrainingModule, TrainingProgress
 from .vetting import record_baseline
 
 class TeacherAvailabilityInline(admin.TabularInline):
@@ -95,3 +95,25 @@ class TeacherStatusChangeAdmin(admin.ModelAdmin):
 class TeacherAvailabilityAdmin(admin.ModelAdmin):
     list_display = ('teacher', 'day_of_week', 'start_time', 'end_time', 'is_active')
     list_filter = ('day_of_week', 'is_active')
+
+
+@admin.register(TrainingModule)
+class TrainingModuleAdmin(admin.ModelAdmin):
+    """Sharon's onboarding content (slice T6). Publish a module to show it; only published + required ones gate tutors."""
+    list_display = ('slug', 'title', 'position', 'is_required', 'is_published', 'estimated_minutes')
+    list_editable = ('position', 'is_required', 'is_published')
+    prepopulated_fields = {'slug': ('title',)}
+    search_fields = ('slug', 'title')
+
+
+@admin.register(TrainingProgress)
+class TrainingProgressAdmin(admin.ModelAdmin):
+    """Read-only: progress is written only by teachers/training.py."""
+    list_display = ('teacher', 'module', 'completed_at')
+    readonly_fields = ('teacher', 'module', 'completed_at')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

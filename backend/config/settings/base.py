@@ -153,6 +153,7 @@ REST_FRAMEWORK = {
         'availability': '300/hour',        # tutor availability / time-off / override reads and writes (T2)
         # --- T1c: PATCH /teachers/me/ (tutor editing their own profile) ---
         'teacher_profile': '30/hour',
+        'training': '120/hour',               # slice T6: tutor onboarding training
         'admin_teacher_review': '300/hour',   # slice T1b: staff review actions + admin cancel of a suspended tutor's lessons
         'zoom_host_link': '30/hour',
         'zoom_video_token': '120/hour',       # Slice Z1: fresh Zoom host link when the classroom opens (one Zoom call each)

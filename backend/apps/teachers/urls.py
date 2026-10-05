@@ -6,6 +6,8 @@ from .views import (
     TeacherAssetCommitView, TeacherPrivateAssetDownloadView,
 )
 
+from .training_views import TeacherTrainingView, TeacherTrainingModuleView, TeacherTrainingCompleteView  # slice T6
+
 urlpatterns = [
     path('', TeacherListView.as_view(), name='teacher-list'),
     path('me/', TeacherOwnProfileView.as_view(), name='teacher-own-profile'),
@@ -18,6 +20,9 @@ urlpatterns = [
     path('availability/overrides/', TeacherDateOverrideListView.as_view(), name='teacher-date-overrides'),
     path('availability/overrides/<uuid:pk>/', TeacherDateOverrideDetailView.as_view(), name='teacher-date-override-detail'),
     path('profile/power-backup/', TeacherPowerBackupView.as_view(), name='teacher-power-backup'),
+    path('me/training/', TeacherTrainingView.as_view(), name='teacher-training'),
+    path('me/training/<slug:slug>/', TeacherTrainingModuleView.as_view(), name='teacher-training-module'),
+    path('me/training/<slug:slug>/complete/', TeacherTrainingCompleteView.as_view(), name='teacher-training-complete'),
     path('me/assets/commit/', TeacherAssetCommitView.as_view(), name='teacher-asset-commit'),
     path('me/assets/<str:kind>/download/', TeacherPrivateAssetDownloadView.as_view(), name='teacher-private-asset-download'),
 ]

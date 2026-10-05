@@ -2782,6 +2782,78 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/teachers/me/training/:
+    get:
+      operationId: teachers_me_training_overview
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingOverview'
+          description: ''
+  /api/v1/teachers/me/training/{slug}/:
+    get:
+      operationId: teachers_me_training_module
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingModuleDetail'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+  /api/v1/teachers/me/training/{slug}/complete/:
+    post:
+      operationId: teachers_me_training_complete
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingOverview'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
   /api/v1/teachers/profile/power-backup/:
     patch:
       operationId: v1_teachers_profile_power_backup_partial_update
@@ -5410,6 +5482,84 @@ components:
           minLength: 1
       required:
       - refresh
+    TrainingModuleDetail:
+      type: object
+      properties:
+        slug:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        position:
+          type: integer
+        estimated_minutes:
+          type: integer
+        is_required:
+          type: boolean
+        completed:
+          type: boolean
+        body:
+          type: string
+          description: Markdown.
+      required:
+      - body
+      - completed
+      - estimated_minutes
+      - is_required
+      - position
+      - slug
+      - summary
+      - title
+    TrainingModuleItem:
+      type: object
+      properties:
+        slug:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        position:
+          type: integer
+        estimated_minutes:
+          type: integer
+        is_required:
+          type: boolean
+        completed:
+          type: boolean
+      required:
+      - completed
+      - estimated_minutes
+      - is_required
+      - position
+      - slug
+      - summary
+      - title
+    TrainingOverview:
+      type: object
+      properties:
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainingModuleItem'
+        required_total:
+          type: integer
+        required_completed:
+          type: integer
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        can_train:
+          type: boolean
+          description: False until the application is approved.
+      required:
+      - can_train
+      - completed_at
+      - modules
+      - required_completed
+      - required_total
     TutorStatusEnum:
       enum:
       - applied

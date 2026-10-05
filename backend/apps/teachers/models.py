@@ -428,3 +428,36 @@ class TeacherDateOverride(models.Model):
                                    name='teacherdateoverride_open_needs_hours'),
         ]
         indexes = [models.Index(fields=['teacher', 'date'], name='teacher_dateoverride_t_d_idx')]
+
+
+class TrainingModule(models.Model):
+    """One onboarding training module (slice T6). Content is written by Sharon; only published modules are shown, and only
+    published + required ones count towards `TeacherProfile.training_completed_at` (set by teachers/training.py)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    slug = models.SlugField(max_length=80, unique=True)
+    title = models.CharField(max_length=200)
+    summary = models.CharField(max_length=500, blank=True)
+    body = models.TextField(blank=True, help_text='Markdown shown to the tutor.')
+    position = models.PositiveIntegerField(default=1, db_index=True)
+    estimated_minutes = models.PositiveIntegerField(default=10)
+    is_required = models.BooleanField(default=True)
+    is_published = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['position', 'slug']
+
+    def __str__(self):
+        return self.slug
+
+
+class TrainingProgress(models.Model):
+    """A tutor finished a module (one row per tutor and module; written only by teachers/training.py)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    teacher = models.ForeignKey(TeacherProfile, on_delete=models.CASCADE, related_name='training_progress')
+    module = models.ForeignKey(TrainingModule, on_delete=models.CASCADE, related_name='progress')
+    completed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['teacher', 'module'], name='uniq_training_progress')]

@@ -6,7 +6,7 @@ from io import StringIO
 
 import pytest
 from django.core.management import call_command
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -36,11 +36,11 @@ def untrained(status='approved'):
 # ------------------------------------------------------------------ models
 def test_slug_is_unique_and_progress_is_one_row_per_tutor_and_module():
     m = module('safety')
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError), transaction.atomic():
         TrainingModule.objects.create(slug='safety', title='x', position=2)
     tutor = untrained()
     TrainingProgress.objects.create(teacher=tutor, module=m)
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError), transaction.atomic():
         TrainingProgress.objects.create(teacher=tutor, module=m)
 
 

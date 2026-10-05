@@ -1464,6 +1464,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teachers/me/training/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["teachers_me_training_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teachers/me/training/{slug}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["teachers_me_training_module"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teachers/me/training/{slug}/complete/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["teachers_me_training_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teachers/profile/power-backup/": {
         parameters: {
             query?: never;
@@ -2583,6 +2631,35 @@ export interface components {
         };
         TokenRefreshRequest: {
             refresh: string;
+        };
+        TrainingModuleDetail: {
+            slug: string;
+            title: string;
+            summary: string;
+            position: number;
+            estimated_minutes: number;
+            is_required: boolean;
+            completed: boolean;
+            /** @description Markdown. */
+            body: string;
+        };
+        TrainingModuleItem: {
+            slug: string;
+            title: string;
+            summary: string;
+            position: number;
+            estimated_minutes: number;
+            is_required: boolean;
+            completed: boolean;
+        };
+        TrainingOverview: {
+            modules: components["schemas"]["TrainingModuleItem"][];
+            required_total: number;
+            required_completed: number;
+            /** Format: date-time */
+            completed_at: string | null;
+            /** @description False until the application is approved. */
+            can_train: boolean;
         };
         /**
          * @description * `applied` - Applied
@@ -5520,6 +5597,91 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    teachers_me_training_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingOverview"];
+                };
+            };
+        };
+    };
+    teachers_me_training_module: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingModuleDetail"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+        };
+    };
+    teachers_me_training_complete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingOverview"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
                 };
             };
         };
