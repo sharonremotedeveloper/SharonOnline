@@ -62,6 +62,9 @@ class UserSerializer(serializers.ModelSerializer):
     credits = serializers.SerializerMethodField(help_text='Remaining lesson credits (students only; otherwise null).')
     avatar_url = serializers.SerializerMethodField(help_text='Tutor profile photo URL (tutors only; otherwise empty).')
     is_verified = serializers.SerializerMethodField(help_text='Vetting status (tutors only; otherwise null).')
+    acknowledge_conflicts = serializers.BooleanField(
+        write_only=True, required=False, default=False,
+        help_text='Tutors: apply a timezone change even though confirmed lessons fall outside the shifted hours (T2).')
     tutor_status = serializers.SerializerMethodField(
         help_text='Tutor lifecycle status (docs/TUTOR_STATUS_MACHINE.md); null for students, admins and a tutor account '
                   'without a profile. Read-only: changed only by the vetting service.')
@@ -93,7 +96,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'email_verified', 'first_name', 'last_name', 'role', 'country', 'timezone', 'phone_number', 'created_at',
-                  'credits', 'avatar_url', 'is_verified', 'tutor_status')
+                  'credits', 'avatar_url', 'is_verified', 'tutor_status', 'acknowledge_conflicts')
         read_only_fields = ('id', 'role', 'email_verified', 'created_at', 'credits', 'avatar_url', 'is_verified', 'tutor_status')
         extra_kwargs = {
             'email': {'validators': [UniqueValidator(queryset=User.objects.all(), lookup='iexact', message='A user with this email already exists.')]},
@@ -107,7 +110,12 @@ class UserSerializer(serializers.ModelSerializer):
         changed = new_email is not None and new_email.lower() != instance.email.lower()
         if changed:
             validated_data['email_verified'] = False  # the new address has not proven anything yet
-        user = super().update(instance, validated_data)
+        acknowledged = bool(validated_data.pop('acknowledge_conflicts', False))
+        with transaction.atomic():
+            if 'timezone' in validated_data:        # T2: a tutor's zone shifts their weekly hours; may strand lessons
+                from apps.teachers.services.availability import guard_timezone_change
+                guard_timezone_change(instance, validated_data['timezone'], acknowledged)
+            user = super().update(instance, validated_data)
         if changed:
             queue_verification_email(user)
         return user

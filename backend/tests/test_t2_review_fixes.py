@@ -79,6 +79,23 @@ class TestTimezoneChange:
         assert ('TeacherProfile', {'of': ('self',)}) in calls
 
 
+    def test_the_admin_form_warns_but_does_not_block(self, tutor, student_user, admin_user, settings):
+        settings.STORAGES = {**settings.STORAGES, 'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}}
+        from django.contrib.messages import get_messages
+        from django.test import Client
+        lesson(tutor, student_user, next_weekday_utc(0, 10))
+        user = tutor.user
+        admin = Client()
+        admin.force_login(admin_user)
+        data = {'username': user.username, 'email': user.email, 'role': user.role, 'country': user.country, 'timezone': 'Asia/Tokyo',
+                'phone_number': '', 'is_active': 'on', 'date_joined_0': '2026-01-01', 'date_joined_1': '00:00:00',
+                'booking_blocked_reason': '', 'first_name': '', 'last_name': ''}
+        res = admin.post(f'/admin/users/user/{user.pk}/change/', data, follow=True)
+        user.refresh_from_db()
+        assert user.timezone == 'Asia/Tokyo', res.content[:500]
+        assert any('fall outside' in str(m) for m in get_messages(res.wsgi_request))
+
+
 # ------------------------------------------------------------------ MINOR-3: races under the lock are 404s
 class TestRacesAre404:
     def test_services_raise_not_found_for_rows_that_vanished(self, tutor):

@@ -35,9 +35,12 @@ class TeacherAvailabilitySerializer(serializers.ModelSerializer):
         def pick(name, default=None):
             return attrs[name] if name in attrs else (getattr(current, name) if current else default)
         start, end, day, active = pick('start_time'), pick('end_time'), pick('day_of_week'), pick('is_active', True)
-        errors = rules.window_errors(start, end)
-        if errors:
-            raise serializers.ValidationError(errors)
+        # Only a payload that sets the hours (or re-activates the row) is judged on them, so a legacy row with bad hours can
+        # still be deactivated (T2 QA MINOR-6).
+        if current is None or {'start_time', 'end_time'} & attrs.keys() or attrs.get('is_active') is True:
+            errors = rules.window_errors(start, end)
+            if errors:
+                raise serializers.ValidationError(errors)
         if current is None:
             rules.check_row_limit(teacher)
         if active:

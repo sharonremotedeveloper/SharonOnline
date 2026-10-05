@@ -15,11 +15,13 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from typing import Iterable, Optional
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
 from rest_framework import serializers
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, NotFound
 
 from apps.common import clock
+from apps.common.timezones import get_zone
 from apps.teachers.models import TeacherAvailability, TeacherDateOverride, TeacherProfile, TeacherTimeOff
 from apps.teachers.services.schedule import InvalidTeacherTimezone, lesson_conflicts, load_plan, teacher_zone
 
@@ -147,10 +149,13 @@ def _tutor_today(teacher) -> date:
 
 
 # ------------------------------------------------------------------ conflicts
-def conflicts_for(teacher, *, weekly=None, extra_overrides: Iterable = (), drop_override=None, extra_time_off: Iterable = ()) -> list:
+def conflicts_for(teacher, *, weekly=None, extra_overrides: Iterable = (), drop_override=None, extra_time_off: Iterable = (),
+                  zone=None) -> list:
     """Confirmed lessons left uncovered by the tutor's CURRENT schedule changed as described (nothing is written).
-    weekly: the proposed ACTIVE weekly rows (default: the stored ones)."""
-    zone, now = _zone(teacher), clock.now()
+    weekly: the proposed ACTIVE weekly rows (default: the stored ones); zone: a proposed new timezone (default: the stored one).
+    Known limits (docs/slices/T2.md): live unpaid PENDING_PAYMENT holds (< 30 min) are ignored, and a lesson confirmed by a
+    concurrent payment after this read is not seen (the check is advisory, not a lock on bookings)."""
+    zone, now = zone or _zone(teacher), clock.now()
     since = now.astimezone(zone).date() - timedelta(days=1)
     overrides = [o for o in teacher.date_overrides.filter(date__gte=since) if o.pk != drop_override] + list(extra_overrides)
     time_off = list(teacher.time_off.filter(end_utc__gt=now - timedelta(days=1))) + list(extra_time_off)
@@ -163,9 +168,29 @@ def require_acknowledgement(conflicts: list, acknowledged: bool) -> None:
         raise AvailabilityConflict(conflicts)
 
 
+def _or_404(queryset, pk, what: str = 'row'):
+    try:
+        return queryset.get(pk=pk)
+    except ObjectDoesNotExist:        # a concurrent request deleted it between the view's lookup and the lock
+        raise NotFound(f'This {what} no longer exists.') from None
+
+
 def lock_teacher(teacher) -> None:
     """Serialise this tutor's schedule edits. Must run inside transaction.atomic()."""
-    TeacherProfile.objects.select_for_update(of=('self',)).get(pk=teacher.pk)
+    _or_404(TeacherProfile.objects.select_for_update(of=('self',)), teacher.pk, 'tutor profile')
+
+
+def guard_timezone_change(user, new_timezone: str, acknowledged: bool) -> list:
+    """A tutor moving their timezone shifts every weekly window in UTC. With confirmed future lessons that would fall outside
+    the shifted hours: 409 (same contract as an availability edit) unless acknowledged. Call inside transaction.atomic()
+    BEFORE saving the user; students and tutors without a profile or without such lessons are never affected."""
+    profile = getattr(user, 'teacher_profile', None)
+    if profile is None or new_timezone == user.timezone:
+        return []
+    lock_teacher(profile)
+    conflicts = conflicts_for(profile, zone=get_zone(new_timezone))
+    require_acknowledgement(conflicts, acknowledged)
+    return conflicts
 
 
 def _active_rows(teacher, *, exclude=None) -> list:
@@ -197,7 +222,10 @@ def create_row(teacher, serializer) -> TeacherAvailability:
 def update_row(teacher, row: TeacherAvailability, serializer) -> Outcome:
     with transaction.atomic():
         lock_teacher(teacher)
-        row.refresh_from_db()
+        try:
+            row.refresh_from_db()
+        except ObjectDoesNotExist:
+            raise NotFound('This row no longer exists.') from None
         serializer.is_valid(raise_exception=True)
         data = dict(serializer.validated_data)
         acknowledged = bool(data.pop('acknowledge_conflicts', False))
@@ -215,7 +243,7 @@ def update_row(teacher, row: TeacherAvailability, serializer) -> Outcome:
 def delete_row(teacher, row_id, *, acknowledged: bool) -> Outcome:
     with transaction.atomic():
         lock_teacher(teacher)
-        row = teacher.availabilities.get(pk=row_id)
+        row = _or_404(teacher.availabilities, row_id)
         conflicts = conflicts_for(teacher, weekly=_active_rows(teacher, exclude=row.pk))
         require_acknowledgement(conflicts, acknowledged)
         row.delete()
@@ -238,7 +266,7 @@ def create_time_off(teacher, data: dict, *, acknowledged: bool) -> Outcome:
 def delete_time_off(teacher, row_id) -> Outcome:
     with transaction.atomic():
         lock_teacher(teacher)
-        teacher.time_off.get(pk=row_id).delete()      # ending an absence can only add hours: no conflicts
+        _or_404(teacher.time_off, row_id).delete()      # ending an absence can only add hours: no conflicts
         return Outcome(None, [])
 
 
@@ -258,7 +286,7 @@ def create_override(teacher, data: dict, *, acknowledged: bool) -> Outcome:
 def delete_override(teacher, row_id, *, acknowledged: bool) -> Outcome:
     with transaction.atomic():
         lock_teacher(teacher)
-        row = teacher.date_overrides.get(pk=row_id)
+        row = _or_404(teacher.date_overrides, row_id)
         conflicts = conflicts_for(teacher, drop_override=row.pk)      # removing extra hours can strand a lesson
         require_acknowledgement(conflicts, acknowledged)
         row.delete()
