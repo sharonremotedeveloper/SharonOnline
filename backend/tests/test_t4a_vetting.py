@@ -272,3 +272,19 @@ class TestReviewRounds:
         asset(tutor, 'intro_video', 'new')
         body = api(admin_user).get(f'/api/v1/admin/teachers/{tutor.id}/review-packet/').json()
         assert [a['etag'] for a in body['assets']] == ['new']
+
+
+class TestMutationSurvivors:
+    def test_a_boolean_or_float_score_is_invalid_even_when_the_minimum_is_one(self, admin_user, settings):
+        settings.VETTING_MIN_RUBRIC_SCORE = 1
+        for bad in (True, 2.0):
+            res = post(admin_user, in_review(), 'approve', rubric={**GOOD, 'credentials': bad})
+            assert res.status_code == 400 and res.json()['code'] == 'rubric_invalid'
+
+    def test_approval_succeeds_when_every_required_upload_is_present(self, admin_user, settings):
+        settings.VETTING_REQUIRED_ASSET_KINDS = ('intro_video', 'tefl_certificate')
+        tutor = in_review()
+        asset(tutor, 'intro_video', 'v-1')
+        asset(tutor, 'tefl_certificate', 't-1')
+        res = post(admin_user, tutor, 'approve', rubric=GOOD, reviewed_assets={'intro_video': 'v-1', 'tefl_certificate': 't-1'})
+        assert res.status_code == 200

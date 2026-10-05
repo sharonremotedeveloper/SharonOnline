@@ -278,3 +278,34 @@ no availability, no booking); anything else is kept. Round trip: `tests/test_t1c
 **`GET /api/v1/auth/me/`** has a read-only `tutor_status` (`TutorStatusEnum` | null): the tutor's status, `null` for students,
 admins and a tutor account without a profile. T5 uses it in `proxy.ts` to route unverified tutors. (Named `tutor_status`, not
 `status`, so it cannot be read as an account status; the TS type is `AuthUser.tutor_status`.)
+
+## 12. Rubric, asset integrity, review packet and tutor feedback (slice T4a)
+
+**Provisional until D-11:** four criteria scored 1-5 (`pronunciation`, `teaching_presence`, `professionalism`, `credentials`),
+every score at least `VETTING_MIN_RUBRIC_SCORE` (3); `VETTING_REQUIRED_ASSET_KINDS` (default empty) lists the uploads that
+must exist before approval. Code: `teachers/rubric.py`, `teachers/review.py`, `admin_api/teacher_packet_views.py`.
+
+- **`approve` needs a rubric** (`POST /admin/teachers/<id>/approve/ {rubric, reviewed_assets?, reason?}`): missing -> 400
+  `rubric_required`; wrong keys, non-integer (bool and float included) or out-of-range score -> 400 `rubric_invalid`; any score
+  below the minimum -> 400 `rubric_below_threshold`; a required upload kind missing -> 400 `required_assets_missing`. The legacy
+  `PATCH /admin/teachers/<id>/verify/` accepts the same `rubric` / `reviewed_assets` and **cannot bypass them** (approve without
+  a rubric is 400). **The current admin vetting page still calls verify without a rubric, so approving from the UI is refused
+  until slice T4b adds the rubric form.**
+- **Asset integrity.** If the tutor has live uploads (`TeacherAsset`, `replaced_at` null) the reviewer must send
+  `reviewed_assets` = `{kind: etag}` of what they looked at (from the review packet). Not sent -> 409 `assets_review_required`;
+  different from the live set (a file swapped or added after the reviewer opened it) -> 409 `assets_changed`. The approval audit
+  row stores the rubric (`{"version":1,"scores":{...}}`) and the reviewed etags. A tutor with no uploads needs none.
+- **`request-changes`** accepts `requested_changes` (a list of upload kinds the tutor must redo; unknown kind -> 400
+  `invalid_requested_changes`) stored on the audit row (`rubric.requested_changes`); the reason stays mandatory.
+- Evidence is recorded on the decision step only (never on a legacy `submitted`/`in_review` lead-in); a repeat of a decision
+  already reached is a 200 no-op and re-validates nothing.
+- **`GET /admin/teachers/<id>/review-packet/`** (staff, throttled): profile, status, strikes, the criteria and minimum, required
+  kinds, live upload fingerprints (kind, etag, type, size, time; **no storage key or URL**: documents open only through the
+  audited download) and the last 50 decisions with scores and requested changes.
+- **Tutor view (`GET /teachers/me/` -> `review_feedback`)**: only while the tutor is `changes_requested` or `rejected`:
+  `{status, reason, requested_changes, decided_at}` from the latest such decision. **Scores are staff-only** and never serialised
+  to the tutor (asymmetric-privacy rule, as for lesson reviews).
+- **Staff alert**: when the tutor themself submits (`applied`/`changes_requested -> submitted`) `notify_status_change` raises one
+  `vetting_submitted` staff alert (`admin:vetting-submitted:<change id>`); a staff lead-in raises none. Tutor-facing mails for the
+  outcomes remain N2c.
+- Work queue for suspended tutors with future lessons already exists (T1b §10).
