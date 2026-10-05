@@ -4,15 +4,18 @@ import { useEffect, useState } from "react";
 import { Check, Save, Clock, Copy, Sparkles, AlertCircle, Info } from "lucide-react";
 import { api } from "@/lib/api";
 import { request } from "@/lib/http";
+import {
+  DAYS,
+  TIME_BLOCKS,
+  conflictsFromError,
+  rowsToMatrix,
+  wouldChangeSavedWindows,
+  type AvailabilityRow,
+  type LessonConflict,
+  type WeeklyMatrix,
+} from "@/lib/availability";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
-
-interface AvailabilityRow {
-  day_of_week: number;
-  start_time: string;
-  end_time: string;
-  is_active: boolean;
-}
 
 interface AvailabilityPage {
   rows: AvailabilityRow[];
@@ -27,57 +30,36 @@ async function loadAvailability(): Promise<AvailabilityPage> {
   return { rows: res.results ?? [], truncated: Boolean(res.next) };
 }
 
-const DAYS = [
-  { id: 0, label: "Mon", full: "Monday" },
-  { id: 1, label: "Tue", full: "Tuesday" },
-  { id: 2, label: "Wed", full: "Wednesday" },
-  { id: 3, label: "Thu", full: "Thursday" },
-  { id: 4, label: "Fri", full: "Friday" },
-  { id: 5, label: "Sat", full: "Saturday" },
-  { id: 6, label: "Sun", full: "Sunday" },
-];
+const SAST = "Africa/Johannesburg";
 
-const TIME_BLOCKS = [
-  "08:00 - 09:00",
-  "09:00 - 10:00",
-  "10:00 - 11:00",
-  "11:00 - 12:00",
-  "13:00 - 14:00",
-  "14:00 - 15:00",
-  "15:00 - 16:00",
-  "16:00 - 17:00",
-  "17:00 - 18:00",
-  "18:00 - 19:00",
-  "19:00 - 20:00",
-  "20:00 - 21:00",
-];
+function lessonTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-GB", {
+    timeZone: SAST,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export function WeeklyScheduleGrid() {
   // Matrix state: dayIdx (0-6) -> array of boolean blocks, built from the availability saved on the server.
   const { data: availability, error: loadError, loading, reload } = useApiData(loadAvailability, []);
-  const [schedule, setSchedule] = useState<{ [day: number]: boolean[] }>({});
+  const [schedule, setSchedule] = useState<WeeklyMatrix>({});
 
   useEffect(() => {
     if (!availability) return;
-    const next: { [day: number]: boolean[] } = {};
-    DAYS.forEach((d) => {
-      next[d.id] = TIME_BLOCKS.map((range) => {
-        const [from, to] = range.split(" - ");
-        return availability.rows.some(
-          (r) =>
-            r.is_active &&
-            r.day_of_week === d.id &&
-            r.start_time.slice(0, 5) <= from &&
-            r.end_time.slice(0, 5) >= to
-        );
-      });
-    });
-    setSchedule(next);
+    setSchedule(rowsToMatrix(availability.rows));
   }, [availability]);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<unknown>(null);
+  // Confirmed lessons the save would leave outside the open hours (refused until the tutor acknowledges), and the ones
+  // that were left outside after an acknowledged save. Saving never cancels a lesson.
+  const [pendingConflicts, setPendingConflicts] = useState<LessonConflict[] | null>(null);
+  const [leftConflicts, setLeftConflicts] = useState<LessonConflict[]>([]);
 
   const toggleSlot = (dayIdx: number, blockIdx: number) => {
     setSchedule((prev) => {
@@ -122,17 +104,25 @@ export function WeeklyScheduleGrid() {
     setSaved(false);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (acknowledgeConflicts = false) => {
     setSaving(true);
     setSaved(false);
     setSaveError(null);
     try {
-      await api.saveTeacherAvailability(schedule);
+      const result = await api.saveTeacherAvailability(schedule, acknowledgeConflicts);
+      setPendingConflicts(null);
+      setLeftConflicts(result.conflicts);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
+      reload();
     } catch (e) {
-      console.error("Failed to save schedule:", e);
-      setSaveError(e);
+      const conflicts = conflictsFromError(e);
+      if (conflicts) {
+        setPendingConflicts(conflicts);
+      } else {
+        console.error("Failed to save schedule:", e);
+        setSaveError(e);
+      }
     } finally {
       setSaving(false);
     }
@@ -206,7 +196,7 @@ export function WeeklyScheduleGrid() {
 
           <button
             type="button"
-            onClick={handleSave}
+            onClick={() => handleSave(false)}
             disabled={saving}
             className="px-5 py-2 rounded-xl bg-teal hover:bg-teal-hover text-white text-xs font-black flex items-center gap-2 shadow-sm transition-all ml-auto lg:ml-2"
           >
@@ -220,6 +210,52 @@ export function WeeklyScheduleGrid() {
       {availability?.truncated && (
         <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
           Only part of your saved availability could be loaded, so this grid may be incomplete. Do not save from here.
+        </p>
+      )}
+      {availability && wouldChangeSavedWindows(availability.rows) && (
+        <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+          Some saved windows do not line up with this hourly grid (or overlap each other). Saving here replaces them with
+          the blocks shown.
+        </p>
+      )}
+      {pendingConflicts && (
+        <div role="alert" className="text-xs text-amber-900 bg-amber-50 border border-amber-300 rounded-2xl px-4 py-3 space-y-2">
+          <p className="font-bold">
+            Nothing was saved: {pendingConflicts.length} confirmed lesson{pendingConflicts.length === 1 ? "" : "s"} would
+            fall outside your open hours.
+          </p>
+          <ul className="list-disc pl-5">
+            {pendingConflicts.map((c) => (
+              <li key={c.booking_id}>{lessonTime(c.start_time_utc)} (SAST)</li>
+            ))}
+          </ul>
+          <p>
+            Saving anyway keeps these lessons booked: you must still teach them, or cancel them from your lessons (late
+            cancellations count as strikes).
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => handleSave(true)}
+              className="px-3 py-1.5 rounded-xl bg-amber-600 text-white font-black"
+            >
+              Save anyway
+            </button>
+            <button
+              type="button"
+              onClick={() => setPendingConflicts(null)}
+              className="px-3 py-1.5 rounded-xl bg-white border border-divider font-bold"
+            >
+              Keep editing
+            </button>
+          </div>
+        </div>
+      )}
+      {leftConflicts.length > 0 && (
+        <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+          Saved. {leftConflicts.length} confirmed lesson{leftConflicts.length === 1 ? " is" : "s are"} outside your new hours but
+          still booked: teach {leftConflicts.length === 1 ? "it" : "them"} or cancel from your lessons.
         </p>
       )}
 

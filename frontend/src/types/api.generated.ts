@@ -1023,10 +1023,150 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * My weekly availability windows (tutor local clock)
+         * @description Owner-only, throttled base of every availability / time-off / override endpoint (T2).
+         */
         get: operations["v1_teachers_availability_manage_list"];
         put?: never;
+        /**
+         * Add one weekly window
+         * @description Owner-only, throttled base of every availability / time-off / override endpoint (T2).
+         */
         post: operations["v1_teachers_availability_manage_create"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teachers/availability/manage/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete one weekly window
+         * @description Owner-only, throttled base of every availability / time-off / override endpoint (T2).
+         */
+        delete: operations["v1_teachers_availability_manage_destroy"];
+        options?: never;
+        head?: never;
+        /**
+         * Edit one weekly window
+         * @description Owner-only, throttled base of every availability / time-off / override endpoint (T2).
+         */
+        patch: operations["v1_teachers_availability_manage_partial_update"];
+        trace?: never;
+    };
+    "/api/v1/teachers/availability/overrides/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My upcoming specific-date overrides
+         * @description Owner-only, throttled base of every availability / time-off / override endpoint (T2).
+         */
+        get: operations["v1_teachers_availability_overrides_list"];
+        put?: never;
+        /**
+         * Add or remove hours on one date
+         * @description Owner-only, throttled base of every availability / time-off / override endpoint (T2).
+         */
+        post: operations["v1_teachers_availability_overrides_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teachers/availability/overrides/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a date override
+         * @description Owner-only, throttled base of every availability / time-off / override endpoint (T2).
+         */
+        delete: operations["v1_teachers_availability_overrides_destroy"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teachers/availability/replace/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Atomically replace the whole weekly matrix
+         * @description Owner-only, throttled base of every availability / time-off / override endpoint (T2).
+         */
+        put: operations["v1_teachers_availability_replace_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teachers/availability/time-off/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My upcoming time off
+         * @description Owner-only, throttled base of every availability / time-off / override endpoint (T2).
+         */
+        get: operations["v1_teachers_availability_time_off_list"];
+        put?: never;
+        /**
+         * Add time off
+         * @description Owner-only, throttled base of every availability / time-off / override endpoint (T2).
+         */
+        post: operations["v1_teachers_availability_time_off_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teachers/availability/time-off/{id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a time-off period
+         * @description Owner-only, throttled base of every availability / time-off / override endpoint (T2).
+         */
+        delete: operations["v1_teachers_availability_time_off_destroy"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1131,6 +1271,28 @@ export interface components {
              * @default false
              */
             confirm_not_refunded_in_gateway: boolean;
+        };
+        AvailabilityChange: {
+            availability: components["schemas"]["TeacherAvailability"];
+            conflicts: components["schemas"]["Conflict"][];
+        };
+        AvailabilityMatrixRequest: {
+            rows: components["schemas"]["AvailabilityRowRequest"][];
+            /** @default false */
+            acknowledge_conflicts: boolean;
+        };
+        AvailabilityReplaceResult: {
+            rows: components["schemas"]["TeacherAvailability"][];
+            conflicts: components["schemas"]["Conflict"][];
+        };
+        AvailabilityRowRequest: {
+            day_of_week: number;
+            /** Format: time */
+            start_time: string;
+            /** Format: time */
+            end_time: string;
+            /** @default true */
+            is_active: boolean;
         };
         /**
          * @description * `Capitec Bank` - Capitec Bank
@@ -1274,6 +1436,20 @@ export interface components {
          * @enum {string}
          */
         CefrLevelEnum: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+        Conflict: {
+            /** Format: uuid */
+            booking_id: string;
+            /** @description ISO 8601 UTC */
+            start_time_utc: string;
+            /** @description ISO 8601 UTC */
+            end_time_utc: string;
+        };
+        /** @description 409 body: nothing was changed. Resend with acknowledge_conflicts=true to apply it anyway. */
+        ConflictError: {
+            code: string;
+            detail: string;
+            conflicts: components["schemas"]["Conflict"][];
+        };
         CreditBundleRow: {
             pack_name: string;
             remaining: number;
@@ -1294,6 +1470,29 @@ export interface components {
         CustomTokenObtainPairRequest: {
             username: string;
             password: string;
+        };
+        DateOverrideCreateRequest: {
+            /**
+             * Format: date
+             * @description Date in the teacher's local timezone
+             */
+            date: string;
+            kind: components["schemas"]["KindEnum"];
+            /** Format: time */
+            start_time?: string | null;
+            /** Format: time */
+            end_time?: string | null;
+            reason?: string;
+            /** @default false */
+            acknowledge_conflicts: boolean;
+        };
+        DateOverrideResult: {
+            override: components["schemas"]["TeacherDateOverride"];
+            conflicts: components["schemas"]["Conflict"][];
+        };
+        Deleted: {
+            deleted: boolean;
+            conflicts: components["schemas"]["Conflict"][];
         };
         Detail: {
             detail: string;
@@ -1338,6 +1537,12 @@ export interface components {
          * @enum {string}
          */
         FailureKindEnum: "rejected" | "already_refunded" | "guard" | "exhausted" | "replay_window" | "provider_failed";
+        /**
+         * @description * `open` - Extra hours
+         *     * `closed` - Hours removed
+         * @enum {string}
+         */
+        KindEnum: "open" | "closed";
         LessonMemo: {
             /** Format: uuid */
             readonly id: string;
@@ -1467,6 +1672,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["TeacherAvailability"][];
         };
+        PaginatedTeacherDateOverrideList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["TeacherDateOverride"][];
+        };
         PaginatedTeacherListList: {
             /** @example 123 */
             count: number;
@@ -1482,6 +1702,21 @@ export interface components {
             previous?: string | null;
             results: components["schemas"]["TeacherList"][];
         };
+        PaginatedTeacherTimeOffList: {
+            /** @example 123 */
+            count: number;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=4
+             */
+            next?: string | null;
+            /**
+             * Format: uri
+             * @example http://api.example.org/accounts/?page=2
+             */
+            previous?: string | null;
+            results: components["schemas"]["TeacherTimeOff"][];
+        };
         PasswordChangeRequest: {
             new_password: string;
             new_password_confirm: string;
@@ -1496,6 +1731,24 @@ export interface components {
         PasswordResetRequestRequest: {
             /** Format: email */
             email: string;
+        };
+        /** @description One weekly window in the tutor's local clock. Validated against the tutor in `context['teacher']` (absent = read-only use). */
+        PatchedAvailabilityUpdateRequest: {
+            /** @description 0=Monday ... 6=Sunday */
+            day_of_week?: number;
+            /**
+             * Format: time
+             * @description Start time in teacher local clock, e.g. 09:00:00
+             */
+            start_time?: string;
+            /**
+             * Format: time
+             * @description End time in teacher local clock, e.g. 17:00:00
+             */
+            end_time?: string;
+            is_active?: boolean;
+            /** @default false */
+            acknowledge_conflicts: boolean;
         };
         PatchedPayoutAccountWriteRequest: {
             current_password?: string;
@@ -1715,13 +1968,11 @@ export interface components {
          * @enum {string}
          */
         TagsEnum: "Patience & Empathy" | "Clear Pronunciation" | "Great Corrections" | "Conversational Flow" | "Encouraging Atmosphere" | "Deep Topic Expertise" | "Ideal Pacing" | "Helpful Examples";
+        /** @description One weekly window in the tutor's local clock. Validated against the tutor in `context['teacher']` (absent = read-only use). */
         TeacherAvailability: {
             /** Format: uuid */
             readonly id: string;
-            /**
-             * Format: int64
-             * @description 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday, 4=Friday, 5=Saturday, 6=Sunday
-             */
+            /** @description 0=Monday ... 6=Sunday */
             day_of_week: number;
             /**
              * Format: time
@@ -1735,11 +1986,9 @@ export interface components {
             end_time: string;
             is_active?: boolean;
         };
+        /** @description One weekly window in the tutor's local clock. Validated against the tutor in `context['teacher']` (absent = read-only use). */
         TeacherAvailabilityRequest: {
-            /**
-             * Format: int64
-             * @description 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday, 4=Friday, 5=Saturday, 6=Sunday
-             */
+            /** @description 0=Monday ... 6=Sunday */
             day_of_week: number;
             /**
              * Format: time
@@ -1752,6 +2001,21 @@ export interface components {
              */
             end_time: string;
             is_active?: boolean;
+        };
+        TeacherDateOverride: {
+            /** Format: uuid */
+            readonly id: string;
+            /**
+             * Format: date
+             * @description Date in the teacher's local timezone
+             */
+            date: string;
+            kind: components["schemas"]["KindEnum"];
+            /** Format: time */
+            start_time?: string | null;
+            /** Format: time */
+            end_time?: string | null;
+            reason?: string;
         };
         TeacherDetail: {
             /** Format: uuid */
@@ -1807,6 +2071,28 @@ export interface components {
             specialties?: unknown;
             readonly country: string;
             readonly is_verified: boolean;
+        };
+        TeacherTimeOff: {
+            /** Format: uuid */
+            readonly id: string;
+            /** Format: date-time */
+            start_utc: string;
+            /** Format: date-time */
+            end_utc: string;
+            reason?: string;
+        };
+        TimeOffCreateRequest: {
+            /** Format: date-time */
+            start_utc: string;
+            /** Format: date-time */
+            end_utc: string;
+            reason?: string;
+            /** @default false */
+            acknowledge_conflicts: boolean;
+        };
+        TimeOffResult: {
+            time_off: components["schemas"]["TeacherTimeOff"];
+            conflicts: components["schemas"]["Conflict"][];
         };
         TokenRefresh: {
             readonly access: string;
@@ -3687,6 +3973,269 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeacherAvailability"];
+                };
+            };
+        };
+    };
+    v1_teachers_availability_manage_destroy: {
+        parameters: {
+            query?: {
+                /** @description Apply even if confirmed lessons fall outside the new hours. */
+                acknowledge_conflicts?: boolean;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Deleted"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    v1_teachers_availability_manage_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAvailabilityUpdateRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedAvailabilityUpdateRequest"];
+                "multipart/form-data": components["schemas"]["PatchedAvailabilityUpdateRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AvailabilityChange"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    v1_teachers_availability_overrides_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTeacherDateOverrideList"];
+                };
+            };
+        };
+    };
+    v1_teachers_availability_overrides_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DateOverrideCreateRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["DateOverrideCreateRequest"];
+                "multipart/form-data": components["schemas"]["DateOverrideCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DateOverrideResult"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    v1_teachers_availability_overrides_destroy: {
+        parameters: {
+            query?: {
+                /** @description Apply even if confirmed lessons fall outside the new hours. */
+                acknowledge_conflicts?: boolean;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Deleted"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    v1_teachers_availability_replace_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AvailabilityMatrixRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AvailabilityMatrixRequest"];
+                "multipart/form-data": components["schemas"]["AvailabilityMatrixRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AvailabilityReplaceResult"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    v1_teachers_availability_time_off_list: {
+        parameters: {
+            query?: {
+                /** @description A page number within the paginated result set. */
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedTeacherTimeOffList"];
+                };
+            };
+        };
+    };
+    v1_teachers_availability_time_off_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TimeOffCreateRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TimeOffCreateRequest"];
+                "multipart/form-data": components["schemas"]["TimeOffCreateRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimeOffResult"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConflictError"];
+                };
+            };
+        };
+    };
+    v1_teachers_availability_time_off_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Deleted"];
                 };
             };
         };
