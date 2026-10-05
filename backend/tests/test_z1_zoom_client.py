@@ -136,6 +136,14 @@ class TestTokenCache:
         assert fake_zoom.token_requests == 2
         assert cache.get(zoom_auth().token_cache_key('fake-zoom_account_id')) == fake_zoom.access_token
 
+    def test_a_refused_token_leaves_the_cache_even_when_the_refresh_fails(self, fake_zoom):
+        meeting = zoom_client.create_meeting('Lesson', START)
+        fake_zoom.rotate_token()
+        fake_zoom.fail_next('token', 400)
+        with pytest.raises(ZoomError):
+            zoom_client.get_meeting_status(meeting['meeting_id'])
+        assert cache.get(zoom_auth().token_cache_key('fake-zoom_account_id')) is None   # other workers will not reuse it
+
     def test_a_second_401_is_final(self, fake_zoom):
         meeting = zoom_client.create_meeting('Lesson', START)
         fake_zoom.fail_next('get', 401)

@@ -5,6 +5,7 @@ earlier attempt's meeting before creating a new one on a retry. Zoom is tests/fa
 """
 import logging
 from datetime import timedelta
+from unittest import mock
 
 import pytest
 from django.db import connection
@@ -122,9 +123,14 @@ class TestHostLinkEndpoint:
         assert 'zak=' not in caplog.text and res.data['start_url'] not in caplog.text
         assert live.teacher.user.email not in caplog.text
 
-    def test_the_endpoint_is_throttled(self, live, settings):
+    def test_the_endpoint_is_throttled(self, live, settings, monkeypatch):
+        from rest_framework.throttling import ScopedRateThrottle
         from apps.bookings.host_link_views import BookingHostLinkView
         assert BookingHostLinkView.throttle_scope in settings.REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']
+        monkeypatch.setattr(ScopedRateThrottle, 'THROTTLE_RATES', {'zoom_host_link': '2/hour'})
+        c = client_for(live.teacher.user)
+        codes = [c.get(URL.format(live.id)).status_code for _ in range(3)]
+        assert codes == [200, 200, 429]
 
 
 # ====================================================================== the stored link is gone
@@ -158,9 +164,19 @@ class TestNoStoredHostLink:
         event = next(iter(fake_google.events.values()))
         assert 'https://zoom.us/j/123' in event['description'] and 'zak' not in str(event)
 
-    def test_a_reschedule_clears_the_host_id(self):
+    def test_a_reschedule_clears_the_host_id(self, teacher_user, student_user):
         from apps.bookings.services.rescheduling import MOVED_FIELDS
+        from payment_helpers import captured
+        from test_reschedule import open_slots, resched
         assert 'zoom_host_user_id' in MOVED_FIELDS
+        b = captured(teacher_user, student_user, 30 * 60)
+        Booking.objects.filter(pk=b.pk).update(zoom_meeting_id='111', zoom_host_user_id='host-1')
+        with mock.patch('apps.bookings.services.rescheduling.cleanup_zoom_meeting'), \
+                mock.patch('apps.bookings.services.rescheduling.dispatch_booking_fulfillment'), \
+                mock.patch('apps.bookings.services.rescheduling.cleanup_gcal_event'):
+            assert resched(student_user, b, open_slots(teacher_user)[0]).status_code == 200
+        b.refresh_from_db()
+        assert b.zoom_meeting_id == '' and b.zoom_host_user_id is None
 
 
 # ====================================================================== HostPicker
