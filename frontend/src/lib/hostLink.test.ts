@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { fetchHostLink, hostLinkProblem, isSafeZoomUrl } from "./hostLink";
+import { fetchHostLink, hostLinkProblem, isSafeZoomUrl, startHostLesson, type HostLink } from "./hostLink";
 import { ApiError } from "./http";
 
 const realFetch = globalThis.fetch;
@@ -73,6 +73,65 @@ describe("hostLinkProblem", () => {
       assert.ok(p.message.length > 10);
       assert.ok(!p.message.includes("SECRET"));
     }
+  });
+});
+
+describe("startHostLesson (popup-safe flow of the Start button)", () => {
+  const GOOD: HostLink = { meeting_id: "1", start_url: "https://zoom.us/s/1?zak=abc" };
+
+  function fakeWindow() {
+    return { location: { href: "about:blank" }, opener: "page" as unknown, closed: false, close() { this.closed = true; } };
+  }
+
+  it("opens the blank window BEFORE the network call, detaches it, then navigates it to the fresh link", async () => {
+    const order: string[] = [];
+    const w = fakeWindow();
+    const result = await startHostLesson("b-1", {
+      openBlank: () => { order.push("open"); return w; },
+      fetchLink: async (id) => { order.push(`fetch:${id}`); assert.equal(w.opener, null); return GOOD; },
+    });
+    assert.deepEqual(order, ["open", "fetch:b-1"]);
+    assert.deepEqual(result, { status: "opened", url: GOOD.start_url });
+    assert.equal(w.location.href, GOOD.start_url);
+    assert.equal(w.opener, null);
+    assert.equal(w.closed, false);
+  });
+
+  it("closes the blank window and reports the problem when the server refuses", async () => {
+    const w = fakeWindow();
+    const result = await startHostLesson("b-1", {
+      openBlank: () => w,
+      fetchLink: async () => { throw new ApiError(409, "m", { code: "too_early" }); },
+    });
+    assert.equal(result.status, "error");
+    assert.equal(result.status === "error" && result.problem.kind, "not_open");
+    assert.equal(w.closed, true);
+    assert.equal(w.location.href, "about:blank");
+  });
+
+  it("falls back to a visible link when the browser blocked the window", async () => {
+    const result = await startHostLesson("b-1", { openBlank: () => null, fetchLink: async () => GOOD });
+    assert.deepEqual(result, { status: "blocked", url: GOOD.start_url });
+  });
+
+  it("never navigates to an unsafe address, even if the fetcher returned one", async () => {
+    const w = fakeWindow();
+    const result = await startHostLesson("b-1", {
+      openBlank: () => w,
+      fetchLink: async () => ({ meeting_id: "1", start_url: "javascript:alert(1)" }),
+    });
+    assert.equal(result.status, "error");
+    assert.equal(w.closed, true);
+    assert.equal(w.location.href, "about:blank");
+  });
+
+  it("survives a window that throws on close or navigation", async () => {
+    const angry = { location: { set href(_v: string) { throw new Error("x"); }, get href() { return ""; } }, opener: null as unknown,
+      close() { throw new Error("y"); } };
+    const ok = await startHostLesson("b-1", { openBlank: () => angry, fetchLink: async () => GOOD });
+    assert.equal(ok.status, "blocked");
+    const bad = await startHostLesson("b-1", { openBlank: () => angry, fetchLink: async () => { throw new ApiError(502, "m"); } });
+    assert.equal(bad.status, "error");
   });
 });
 
