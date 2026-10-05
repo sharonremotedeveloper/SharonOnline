@@ -17,9 +17,10 @@ import {
   Maximize2,
   Minimize2,
   ExternalLink,
+  Volume2,
+  X,
 } from "lucide-react";
-import { api } from "@/lib/api";
-import { videoSessionProblem, VideoSessionProblem } from "@/lib/videoSdk";
+import { fetchVideoSessionToken, videoSessionProblem, VideoSessionProblem } from "../../lib/videoSdk";
 
 interface VideoSdkClassroomProps {
   bookingId: string;
@@ -48,10 +49,102 @@ export function VideoSdkClassroom({
   const [remoteUserJoined, setRemoteUserJoined] = useState(false);
   const [remoteUserName, setRemoteUserName] = useState<string>(partnerName);
 
+  // Device Selection State
+  const [showSettings, setShowSettings] = useState(false);
+  const [cameras, setCameras] = useState<Array<{ deviceId: string; label: string }>>([]);
+  const [mics, setMics] = useState<Array<{ deviceId: string; label: string }>>([]);
+  const [speakers, setSpeakers] = useState<Array<{ deviceId: string; label: string }>>([]);
+  const [selectedCamera, setSelectedCamera] = useState<string>("");
+  const [selectedMic, setSelectedMic] = useState<string>("");
+  const [selectedSpeaker, setSelectedSpeaker] = useState<string>("");
+
   const clientRef = useRef<any>(null);
   const mediaStreamRef = useRef<any>(null);
   const selfCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const remoteCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const loadDevices = useCallback(async () => {
+    try {
+      if (mediaStreamRef.current) {
+        try {
+          const cList = mediaStreamRef.current.getCameraList?.() || [];
+          const mList = mediaStreamRef.current.getMicList?.() || [];
+          const sList = mediaStreamRef.current.getSpeakerList?.() || [];
+          if (cList.length > 0) setCameras(cList);
+          if (mList.length > 0) setMics(mList);
+          if (sList.length > 0) setSpeakers(sList);
+        } catch {
+          /* fallback to browser devices */
+        }
+      }
+      if (typeof navigator !== "undefined" && navigator.mediaDevices?.enumerateDevices) {
+        const allDevs = await navigator.mediaDevices.enumerateDevices();
+        const videoDevs = allDevs
+          .filter((d) => d.kind === "videoinput")
+          .map((d, i) => ({ deviceId: d.deviceId, label: d.label || `Camera ${i + 1}` }));
+        const audioInDevs = allDevs
+          .filter((d) => d.kind === "audioinput")
+          .map((d, i) => ({ deviceId: d.deviceId, label: d.label || `Microphone ${i + 1}` }));
+        const audioOutDevs = allDevs
+          .filter((d) => d.kind === "audiooutput")
+          .map((d, i) => ({ deviceId: d.deviceId, label: d.label || `Speaker ${i + 1}` }));
+
+        setCameras((prev) => (prev.length > 0 ? prev : videoDevs));
+        setMics((prev) => (prev.length > 0 ? prev : audioInDevs));
+        setSpeakers((prev) => (prev.length > 0 ? prev : audioOutDevs));
+
+        if (!selectedCamera && videoDevs.length > 0) setSelectedCamera(videoDevs[0].deviceId);
+        if (!selectedMic && audioInDevs.length > 0) setSelectedMic(audioInDevs[0].deviceId);
+        if (!selectedSpeaker && audioOutDevs.length > 0) setSelectedSpeaker(audioOutDevs[0].deviceId);
+      }
+    } catch (e) {
+      console.warn("Failed to enumerate media devices:", e);
+    }
+  }, [selectedCamera, selectedMic, selectedSpeaker]);
+
+  const switchCameraDevice = async (deviceId: string) => {
+    setSelectedCamera(deviceId);
+    if (mediaStreamRef.current && deviceId) {
+      try {
+        await mediaStreamRef.current.switchCamera(deviceId);
+        if (selfCanvasRef.current && clientRef.current) {
+          await mediaStreamRef.current.renderVideo(
+            selfCanvasRef.current,
+            clientRef.current.getSessionInfo().userId,
+            selfCanvasRef.current.width || 320,
+            selfCanvasRef.current.height || 240,
+            0,
+            0,
+            2
+          );
+        }
+      } catch (err) {
+        console.warn("Switch camera error:", err);
+      }
+    }
+  };
+
+  const switchMicDevice = async (deviceId: string) => {
+    setSelectedMic(deviceId);
+    if (mediaStreamRef.current && deviceId) {
+      try {
+        await mediaStreamRef.current.switchMicrophone(deviceId);
+      } catch (err) {
+        console.warn("Switch mic error:", err);
+      }
+    }
+  };
+
+  const switchSpeakerDevice = async (deviceId: string) => {
+    setSelectedSpeaker(deviceId);
+    if (mediaStreamRef.current && deviceId) {
+      try {
+        await mediaStreamRef.current.switchSpeaker(deviceId);
+      } catch (err) {
+        console.warn("Switch speaker error:", err);
+      }
+    }
+  };
 
   // Connect to the Zoom Video SDK session
   const joinSession = useCallback(async () => {
@@ -60,7 +153,7 @@ export function VideoSdkClassroom({
 
     try {
       // 1. Fetch short-lived JWT token from backend
-      const sessionData = await api.getVideoToken(bookingId);
+      const sessionData = await fetchVideoSessionToken(bookingId);
 
       // 2. Dynamically import Zoom Video SDK on client
       const ZoomVideoModule = (await import("@zoom/videosdk")).default;
@@ -273,6 +366,120 @@ export function VideoSdkClassroom({
     }
   };
 
+  const renderSettingsModal = () => {
+    if (!showSettings) return null;
+    return (
+      <div
+        data-testid="device-settings-modal"
+        className="fixed inset-0 sm:absolute sm:inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+      >
+        <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-white">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center gap-2">
+              <Settings className="w-4 h-4 text-teal" />
+              <h4 className="text-sm font-bold text-white">Audio &amp; Video Devices</h4>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSettings(false)}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              aria-label="Close Device Settings"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="space-y-3.5 text-xs">
+            {/* Camera Selection */}
+            <div className="space-y-1.5">
+              <label htmlFor="camera-select" className="font-semibold text-slate-300 flex items-center gap-1.5">
+                <Video className="w-3.5 h-3.5 text-teal" />
+                <span>Camera</span>
+              </label>
+              <select
+                id="camera-select"
+                aria-label="Select Camera"
+                value={selectedCamera}
+                onChange={(e) => void switchCameraDevice(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-teal"
+              >
+                {cameras.length === 0 ? (
+                  <option value="">Default System Camera</option>
+                ) : (
+                  cameras.map((c) => (
+                    <option key={c.deviceId} value={c.deviceId}>
+                      {c.label || `Camera (${c.deviceId.slice(0, 8)})`}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            {/* Microphone Selection */}
+            <div className="space-y-1.5">
+              <label htmlFor="mic-select" className="font-semibold text-slate-300 flex items-center gap-1.5">
+                <Mic className="w-3.5 h-3.5 text-teal" />
+                <span>Microphone</span>
+              </label>
+              <select
+                id="mic-select"
+                aria-label="Select Microphone"
+                value={selectedMic}
+                onChange={(e) => void switchMicDevice(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-teal"
+              >
+                {mics.length === 0 ? (
+                  <option value="">Default System Microphone</option>
+                ) : (
+                  mics.map((m) => (
+                    <option key={m.deviceId} value={m.deviceId}>
+                      {m.label || `Microphone (${m.deviceId.slice(0, 8)})`}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            {/* Speaker Selection */}
+            <div className="space-y-1.5">
+              <label htmlFor="speaker-select" className="font-semibold text-slate-300 flex items-center gap-1.5">
+                <Volume2 className="w-3.5 h-3.5 text-teal" />
+                <span>Speaker / Audio Output</span>
+              </label>
+              <select
+                id="speaker-select"
+                aria-label="Select Speaker"
+                value={selectedSpeaker}
+                onChange={(e) => void switchSpeakerDevice(e.target.value)}
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-teal"
+              >
+                {speakers.length === 0 ? (
+                  <option value="">Default System Speaker</option>
+                ) : (
+                  speakers.map((s) => (
+                    <option key={s.deviceId} value={s.deviceId}>
+                      {s.label || `Speaker (${s.deviceId.slice(0, 8)})`}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-800 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setShowSettings(false)}
+              className="px-4 py-2 rounded-xl bg-teal text-slate-950 font-bold text-xs hover:bg-teal-hover transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Not connected yet: display pre-join stage
   if (!joined) {
     return (
@@ -328,6 +535,18 @@ export function VideoSdkClassroom({
               )}
             </button>
 
+            <button
+              type="button"
+              onClick={() => {
+                setShowSettings(true);
+                void loadDevices();
+              }}
+              className="w-full sm:w-auto px-4 py-3 rounded-2xl bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700 transition-all flex items-center justify-center gap-1.5 border border-slate-700"
+            >
+              <Settings className="w-3.5 h-3.5 text-teal" />
+              <span>Device Settings</span>
+            </button>
+
             {legacyJoinUrl && (
               <a
                 href={legacyJoinUrl}
@@ -341,6 +560,8 @@ export function VideoSdkClassroom({
             )}
           </div>
         </div>
+
+        {renderSettingsModal()}
       </div>
     );
   }
@@ -389,7 +610,7 @@ export function VideoSdkClassroom({
         )}
 
         {/* Self Picture-in-Picture Preview */}
-        <div className="absolute bottom-20 right-4 z-20 w-32 h-24 sm:w-44 sm:h-32 rounded-2xl overflow-hidden border-2 border-slate-700/80 shadow-2xl bg-slate-950">
+        <div className="absolute bottom-20 right-2 sm:right-4 z-20 w-28 h-20 sm:w-44 sm:h-32 rounded-2xl overflow-hidden border-2 border-slate-700/80 shadow-2xl bg-slate-950">
           <canvas
             ref={selfCanvasRef}
             width={320}
@@ -409,48 +630,69 @@ export function VideoSdkClassroom({
       </div>
 
       {/* Bottom Floating Classroom Control Bar */}
-      <div className="bg-slate-900/95 backdrop-blur-lg border-t border-slate-800/80 px-6 py-4 flex items-center justify-between z-20">
-        <div className="flex items-center gap-2">
+      <div className="bg-slate-900/95 backdrop-blur-lg border-t border-slate-800/80 px-3 py-3 sm:px-6 sm:py-4 flex items-center justify-between z-20 gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Microphone Mute/Unmute */}
           <button
             type="button"
             onClick={toggleAudio}
-            className={`p-3 rounded-2xl transition-all shadow-sm ${
+            className={`p-2.5 sm:p-3 rounded-2xl transition-all shadow-sm ${
               isAudioMuted
                 ? "bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:bg-rose-500/30"
                 : "bg-slate-800 text-white hover:bg-slate-700 border border-slate-700"
             }`}
             title={isAudioMuted ? "Unmute Microphone" : "Mute Microphone"}
+            aria-label={isAudioMuted ? "Unmute Microphone" : "Mute Microphone"}
           >
-            {isAudioMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            {isAudioMuted ? <MicOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Mic className="w-4 h-4 sm:w-5 sm:h-5" />}
           </button>
 
           {/* Camera On/Off */}
           <button
             type="button"
             onClick={toggleVideo}
-            className={`p-3 rounded-2xl transition-all shadow-sm ${
+            className={`p-2.5 sm:p-3 rounded-2xl transition-all shadow-sm ${
               isVideoOff
                 ? "bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:bg-rose-500/30"
                 : "bg-slate-800 text-white hover:bg-slate-700 border border-slate-700"
             }`}
             title={isVideoOff ? "Turn Video On" : "Turn Video Off"}
+            aria-label={isVideoOff ? "Turn Video On" : "Turn Video Off"}
           >
-            {isVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
+            {isVideoOff ? <VideoOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Video className="w-4 h-4 sm:w-5 sm:h-5" />}
           </button>
 
           {/* Screen Share */}
           <button
             type="button"
             onClick={toggleShareScreen}
-            className={`p-3 rounded-2xl transition-all hidden sm:flex shadow-sm ${
+            className={`p-2.5 sm:p-3 rounded-2xl transition-all hidden sm:flex shadow-sm ${
               isSharing
                 ? "bg-teal text-slate-950 hover:bg-teal-hover"
                 : "bg-slate-800 text-white hover:bg-slate-700 border border-slate-700"
             }`}
             title={isSharing ? "Stop Sharing Screen" : "Share Screen"}
+            aria-label={isSharing ? "Stop Sharing Screen" : "Share Screen"}
           >
-            <Share2 className="w-5 h-5" />
+            <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+
+          {/* Settings / Device Selection */}
+          <button
+            type="button"
+            onClick={() => {
+              setShowSettings((prev) => !prev);
+              void loadDevices();
+            }}
+            className={`p-2.5 sm:p-3 rounded-2xl transition-all shadow-sm ${
+              showSettings
+                ? "bg-teal text-slate-950 hover:bg-teal-hover"
+                : "bg-slate-800 text-white hover:bg-slate-700 border border-slate-700"
+            }`}
+            title="Audio & Video Devices"
+            aria-label="Device Settings"
+          >
+            <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
@@ -458,12 +700,14 @@ export function VideoSdkClassroom({
         <button
           type="button"
           onClick={leaveSession}
-          className="px-5 py-2.5 rounded-2xl bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 transition-all flex items-center gap-2 shadow-lg"
+          className="px-3 py-2 sm:px-5 sm:py-2.5 rounded-2xl bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 transition-all flex items-center gap-1.5 sm:gap-2 shadow-lg shrink-0"
         >
-          <PhoneOff className="w-4 h-4" />
+          <PhoneOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           <span>Leave Room</span>
         </button>
       </div>
+
+      {renderSettingsModal()}
     </div>
   );
 }

@@ -16,7 +16,7 @@ from apps.integrations.services.video_sdk import decode_video_sdk_token
 S = Booking.Status
 ENDPOINT = '/api/v1/bookings/{}/video-token/'
 SAMPLE_KEY = 'test_sdk_key_v2'
-SAMPLE_SECRET = 'test_sdk_secret_v2'
+SAMPLE_SECRET = 'test_sdk_secret_v2_1234567890abcdef'
 
 
 def client_for(user=None):

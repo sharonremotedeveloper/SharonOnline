@@ -21,7 +21,8 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
   const [speakerTested, setSpeakerTested] = useState(false);
   const [micLevel, setMicLevel] = useState(0); // 0 - 100
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [pingMs, setPingMs] = useState<number>(38);
+  const [pingMs, setPingMs] = useState<number | null>(null);
+  const [isMeasuringPing, setIsMeasuringPing] = useState(false);
 
   // Stop media streams
   const stopMedia = useCallback(() => {
@@ -46,12 +47,29 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
     setErrorMsg(null);
     setHasCamera(null);
     setHasMic(null);
+    setIsMeasuringPing(true);
+    setPingMs(null);
 
-    // Simulate network latency check
-    const start = performance.now();
-    setTimeout(() => {
-      setPingMs(Math.round(28 + Math.random() * 20));
-    }, 400);
+    // Measure real network round-trip time to server endpoint
+    if (typeof window !== "undefined") {
+      const pingStart = performance.now();
+      fetch(`${window.location.origin}/api/proxy/auth/me`, { method: "HEAD", cache: "no-store" })
+        .then(() => {
+          setPingMs(Math.round(performance.now() - pingStart));
+        })
+        .catch(() => {
+          return fetch(window.location.origin, { method: "HEAD", cache: "no-store" })
+            .then(() => {
+              setPingMs(Math.round(performance.now() - pingStart));
+            })
+            .catch(() => {
+              setPingMs(null);
+            });
+        })
+        .finally(() => {
+          setIsMeasuringPing(false);
+        });
+    }
 
     try {
       if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
@@ -280,8 +298,16 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
                 <span>Network Stability</span>
               </div>
               <div className="flex items-center justify-between text-xs bg-white p-2 rounded-xl border border-divider font-bold">
-                <span className="text-ink">Zoom Latency</span>
-                <span className="text-success">{pingMs} ms (Excellent)</span>
+                <span className="text-ink">Network Latency</span>
+                {isMeasuringPing ? (
+                  <span className="text-ink-muted text-[11px] animate-pulse">Measuring...</span>
+                ) : pingMs !== null ? (
+                  <span className={pingMs < 100 ? "text-success" : pingMs < 250 ? "text-amber-600" : "text-rose-500"}>
+                    {pingMs} ms ({pingMs < 100 ? "Excellent" : pingMs < 250 ? "Good" : "High Latency"})
+                  </span>
+                ) : (
+                  <span className="text-ink-muted text-[11px]">Unavailable</span>
+                )}
               </div>
             </div>
           </div>

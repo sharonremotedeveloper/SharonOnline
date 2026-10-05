@@ -68,7 +68,16 @@ def validate_production_settings(env=os.environ):
 
     if not env.get('ZOOM_WEBHOOK_SECRET_TOKEN'):
         errors.append('ZOOM_WEBHOOK_SECRET_TOKEN must be set')
-    has_video_sdk = bool((env.get('ZOOM_VIDEO_SDK_KEY') or '').strip() and (env.get('ZOOM_VIDEO_SDK_SECRET') or '').strip())
+    video_sdk_key = (env.get('ZOOM_VIDEO_SDK_KEY') or '').strip()
+    video_sdk_secret = (env.get('ZOOM_VIDEO_SDK_SECRET') or '').strip()
+    if video_sdk_key and not video_sdk_secret:
+        errors.append('ZOOM_VIDEO_SDK_SECRET must be set when ZOOM_VIDEO_SDK_KEY is configured')
+    if video_sdk_secret and not video_sdk_key:
+        errors.append('ZOOM_VIDEO_SDK_KEY must be set when ZOOM_VIDEO_SDK_SECRET is configured')
+    if video_sdk_secret and len(video_sdk_secret) < 32:
+        errors.append('ZOOM_VIDEO_SDK_SECRET must be at least 32 characters')
+
+    has_video_sdk = bool(video_sdk_key and video_sdk_secret and len(video_sdk_secret) >= 32)
     has_s2s = all(bool((env.get(name) or '').strip()) for name in ZOOM_CREDENTIAL_SETTINGS)
     if not (has_video_sdk or has_s2s):
         for name in ZOOM_CREDENTIAL_SETTINGS:     # Slice Z1; scripts/check_deploy.py reports the same names

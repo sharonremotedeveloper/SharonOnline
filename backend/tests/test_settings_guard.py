@@ -211,3 +211,37 @@ def test_env_example_documents_both_refund_settings():
     example = (Path(__file__).resolve().parents[2] / '.env.example').read_text(encoding='utf-8')
     assert 'REFUND_GATEWAY_BACKEND=' in example and 'ALLOW_MANUAL_REFUNDS_IN_PROD=' in example
     assert 'apps.payments.services.refund_gateways.RoutingRefundGateway' in example
+
+
+def test_zoom_video_sdk_passes_with_32_plus_char_secret():
+    env = dict(GOOD)
+    for k in ('ZOOM_ACCOUNT_ID', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET'):
+        del env[k]
+    env['ZOOM_VIDEO_SDK_KEY'] = 'test-video-sdk-key-1234567890'
+    env['ZOOM_VIDEO_SDK_SECRET'] = 'x' * 32
+    validate_production_settings(env)
+
+
+def test_zoom_video_sdk_rejects_secret_shorter_than_32_chars():
+    env = dict(GOOD)
+    env['ZOOM_VIDEO_SDK_KEY'] = 'test-video-sdk-key-1234567890'
+    env['ZOOM_VIDEO_SDK_SECRET'] = 'short-18-byte-key!'
+    with pytest.raises(ImproperlyConfigured, match='ZOOM_VIDEO_SDK_SECRET must be at least 32 characters'):
+        validate_production_settings(env)
+
+
+def test_zoom_video_sdk_rejects_key_without_secret():
+    env = dict(GOOD)
+    env['ZOOM_VIDEO_SDK_KEY'] = 'test-video-sdk-key'
+    env['ZOOM_VIDEO_SDK_SECRET'] = ''
+    with pytest.raises(ImproperlyConfigured, match='ZOOM_VIDEO_SDK_SECRET must be set'):
+        validate_production_settings(env)
+
+
+def test_zoom_video_sdk_rejects_secret_without_key():
+    env = dict(GOOD)
+    env['ZOOM_VIDEO_SDK_KEY'] = ''
+    env['ZOOM_VIDEO_SDK_SECRET'] = 'x' * 32
+    with pytest.raises(ImproperlyConfigured, match='ZOOM_VIDEO_SDK_KEY must be set'):
+        validate_production_settings(env)
+
