@@ -121,6 +121,33 @@ class TestTokenCache:
         zoom_client.get_access_token()
         assert fake_zoom.token_requests == 2
 
+    @pytest.mark.parametrize('expires_in', [60, 30, 0])
+    def test_a_short_lived_token_is_not_even_written(self, fake_zoom, monkeypatch, expires_in):
+        writes = []
+        monkeypatch.setattr(zoom_auth().cache, 'set', lambda *a, **kw: writes.append(a))
+        fake_zoom.expires_in = expires_in
+        zoom_client.get_access_token()
+        assert writes == []                                   # a 0 / negative TTL is never handed to the cache backend
+
+    def test_a_refused_token_still_in_the_cache_is_never_handed_out_again(self):
+        key = zoom_auth().token_cache_key('acc')
+        cache.set(key, 'refused-token', 600)                 # e.g. re-stored by a worker that fetched it just before the 401
+        assert zoom_auth().cached_token('acc', lambda: ('fresh-token', 3599), stale='refused-token') == 'fresh-token'
+        assert zoom_auth().cached_token('acc', lambda: ('other', 3599)) == 'fresh-token'
+
+    def test_a_401_retry_skips_an_old_token_another_worker_re_stored(self, fake_zoom, monkeypatch):
+        meeting = zoom_client.create_meeting('Lesson', START)
+        fake_zoom.rotate_token()
+        monkeypatch.setattr(zoom_auth(), 'invalidate_token', lambda account, token: None)   # the old token stays cached
+        assert zoom_client.get_meeting_status(meeting['meeting_id'])['status'] == 'waiting'
+        assert fake_zoom.token_requests == 2
+
+    def test_deleting_a_meeting_zoom_no_longer_has_counts_as_deleted(self, fake_zoom):
+        assert zoom_client.delete_meeting('99999999999') is True
+        fake_zoom.fail_next('delete', 403)
+        with pytest.raises(ZoomError, match='403'):
+            zoom_client.delete_meeting('99999999999')
+
     def test_a_failure_is_never_cached(self, fake_zoom):
         fake_zoom.fail_next('token', 400)
         with pytest.raises(ZoomError):
