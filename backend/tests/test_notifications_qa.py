@@ -3,6 +3,7 @@ import importlib.util
 import logging
 from datetime import timedelta
 from pathlib import Path
+from unittest import mock
 
 import pytest
 from django.contrib.admin.sites import site
@@ -179,6 +180,45 @@ class TestRendererErrors:
     def test_unknown_kind_and_bad_payload_are_still_programming_errors(self, no_delivery):
         with pytest.raises(registry.UnknownKind):
             notify(f.make_student(), 'nope', key='render:5', payload={})
+
+
+    def test_a_lost_insert_race_does_not_raise_a_second_render_alert(self, monkeypatch, no_delivery):
+        register_kind(monkeypatch, 'broken_kind', _boom)
+        admin = f.make_admin()
+        user = f.make_student()
+        Notification.objects.create(user=user, kind='broken_kind', idempotency_key='render:6', title='t')
+        real_filter = Notification.objects.filter
+
+        def blind(*args, **kwargs):                          # the pre-check misses the row a concurrent worker wrote
+            return Notification.objects.none() if kwargs.get('idempotency_key') == 'render:6' else real_filter(*args, **kwargs)
+
+        with mock.patch.object(Notification.objects, 'filter', side_effect=blind):
+            n = notify(user, 'broken_kind', key='render:6', payload={})
+        assert n.title == 't'
+        assert not Notification.objects.filter(user=admin).exists()
+
+
+# ====================================================================== backoff distribution at the cap
+def test_backoff_at_the_cap_stays_jittered(settings):
+    settings.NOTIFICATION_RETRY_SECONDS = 60
+    settings.NOTIFICATION_RETRY_MAX_SECONDS = 3600
+    samples = {delivery.backoff_seconds(30) for _ in range(300)}
+    assert max(samples) <= 3600 and min(samples) < 3600 and min(samples) >= 2880
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db(transaction=True)
+def test_postgres_recipient_query_error_does_not_abort_the_callers_transaction(monkeypatch):
+    _postgres_only()
+
+    def broken_query():
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT * FROM table_that_does_not_exist')
+
+    monkeypatch.setattr(alerts, 'staff_recipients', broken_query)
+    with transaction.atomic():
+        assert alert_staff('fulfilment_failed', key='admin:pg:2', payload={}) == 0
+        assert f.make_student().pk
 
 
 # ====================================================================== MINOR-4: no address -> skipped at creation
