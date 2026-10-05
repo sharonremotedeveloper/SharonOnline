@@ -104,6 +104,30 @@ class BookingReschedule(models.Model):
         ordering = ['created_at']
 
 
+class HostLinkIssue(models.Model):
+    """
+    Slice Z1 (QA #3): staff (not the tutor) was handed the Zoom HOST link of a lesson. Whoever opens the host link is the
+    meeting's host, and the attendance rule credits the host as the TUTOR, so a staff-hosted lesson would otherwise show the
+    absent tutor as present. The row is the audit trail (who, when) and an open hold: escrow is not released
+    (`payments.services.settlement.attendance_verified_for_release`) until an admin reviews it (`reviewed_at`).
+    Written only by `services.host_link.fresh_host_link`; reviewed only by `review_host_link_issues`.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='host_link_issues')
+    issued_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='+')
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['booking', 'reviewed_at'])]
+
+    def __str__(self):
+        return f"Host link for {self.booking_id} issued to staff {self.issued_by_id}"
+
+
 class LessonMemo(models.Model):
     """
     Submitted by the teacher post-class: contains grammar notes, vocabulary bank entries, and homework.

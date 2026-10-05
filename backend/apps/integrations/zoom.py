@@ -22,6 +22,7 @@ import re
 import time
 import uuid
 from collections.abc import Mapping
+from datetime import datetime, timedelta
 from email.utils import parsedate_to_datetime
 
 import requests
@@ -37,6 +38,7 @@ BACKOFF_BASE_SECONDS = 0.5
 SEARCH_PAGE_SIZE = 300
 SEARCH_MAX_PAGES = 10
 _HOST_ID = re.compile(r'[A-Za-z0-9_.@+-]{1,64}')
+_MEETING_ID = re.compile(r'[A-Za-z0-9_=-]{1,64}')
 
 
 def _sleep(seconds):
@@ -121,13 +123,35 @@ def _json(resp) -> dict:
 def _safe_host(host_user_id) -> str:
     """The host goes into a URL path: only a Zoom user id, an e-mail or 'me'."""
     host = str(host_user_id or '')
-    if not _HOST_ID.fullmatch(host):
+    if not _HOST_ID.fullmatch(host) or not host.strip('.'):       # '.', '..' would be path traversal
         raise ZoomError('Invalid Zoom host user id')
     return host
 
 
+def _date_window(start_time_iso) -> dict:
+    """`from` / `to` (UTC dates, one day either side) for the marker search, so it only reads the lesson's own days. Zoom
+    caps a listing at 3000 meetings; without a start time the search is unbounded (docs: D-9 launch checklist)."""
+    try:
+        start = datetime.fromisoformat(str(start_time_iso).replace('Z', '+00:00'))
+    except (TypeError, ValueError):
+        return {}
+    day = start.date()
+    return {'from': (day - timedelta(days=1)).isoformat(), 'to': (day + timedelta(days=1)).isoformat()}
+
+
+def _safe_meeting_id(meeting_id) -> str:
+    """A meeting id goes into a URL path: digits, or a base64-style uuid. Never a path segment or a query."""
+    value = str(meeting_id if meeting_id is not None else '')
+    if not _MEETING_ID.fullmatch(value) or not value.strip('.'):
+        raise ZoomError('Invalid Zoom meeting id')
+    return value
+
+
 def _room(data: dict, host: str) -> dict:
-    return {'meeting_id': str(data.get('id')), 'join_url': data.get('join_url') or '',
+    meeting_id = data.get('id')
+    if meeting_id in (None, ''):
+        raise ZoomError('Zoom returned a meeting without an id')
+    return {'meeting_id': str(meeting_id), 'join_url': data.get('join_url') or '',
             'password': data.get('password', '') or '', 'host_user_id': host}
 
 
@@ -277,7 +301,7 @@ class ZoomClient:
         """The host's scheduled meeting carrying the booking's marker, or None. Any failure (or more pages than
         SEARCH_MAX_PAGES) raises: an unanswered search must stop a retry, not allow a second room."""
         host, marker = _safe_host(host_user_id), booking_marker(booking_id)
-        params = {'type': 'scheduled', 'page_size': page_size}
+        params = {'type': 'scheduled', 'page_size': page_size, **_date_window(start_time)}
         for _ in range(SEARCH_MAX_PAGES):
             resp = self._send('GET', f'{API}/users/{host}/meetings', params=dict(params))
             if resp.status_code != 200:
@@ -293,6 +317,7 @@ class ZoomClient:
         raise ZoomError('Zoom meeting search did not finish')
 
     def _get_meeting(self, meeting_id) -> dict:
+        meeting_id = _safe_meeting_id(meeting_id)
         resp = self._send('GET', f'{API}/meetings/{meeting_id}')
         if resp.status_code == 200:
             return _json(resp)
@@ -301,8 +326,9 @@ class ZoomClient:
 
     def get_meeting_status(self, meeting_id: str) -> dict:
         """{'status': <Zoom's status or None>}. A non-200 raises ZoomError; a missing status is None (the caller's 'unknown')."""
+        meeting_id = _safe_meeting_id(meeting_id)
         if self._simulated():
-            return {'meeting_id': str(meeting_id), 'status': 'waiting', 'participant_count': 0}
+            return {'meeting_id': meeting_id, 'status': 'waiting', 'participant_count': 0}
         data = self._get_meeting(meeting_id)
         return {'meeting_id': str(data.get('id')),
                 'status': data.get('status'),  # 'waiting' | 'started'; anything else / absent = unknown to the caller
@@ -311,6 +337,7 @@ class ZoomClient:
     def get_start_url(self, meeting_id: str) -> str:
         """A FRESH host start link (it embeds an expiring ZAK). Never store or log it. ZoomNotFound for a meeting Zoom
         no longer has; ZoomError otherwise."""
+        meeting_id = _safe_meeting_id(meeting_id)
         if self._simulated():
             return f'https://zoom.us/s/{meeting_id}?zak=simulated'
         url = self._get_meeting(meeting_id).get('start_url')
@@ -322,6 +349,7 @@ class ZoomClient:
         """Ended instances of a meeting (`GET /past_meetings/{id}/instances`). A scheduled meeting goes back to `waiting` after
         it ends, so `waiting` + a past instance means the lesson DID take place. Only a 200 with a list is an answer;
         anything else raises ZoomError (the probe then says 'unknown')."""
+        meeting_id = _safe_meeting_id(meeting_id)
         if self._simulated():
             return []          # simulated rooms never ran
         resp = self._send('GET', f'{API}/past_meetings/{meeting_id}/instances')
@@ -333,6 +361,7 @@ class ZoomClient:
 
     def delete_meeting(self, meeting_id: str) -> bool:
         """Remove a meeting (cancelled or rescheduled lesson). A meeting Zoom no longer has counts as deleted."""
+        meeting_id = _safe_meeting_id(meeting_id)
         if self._simulated():
             return True        # simulated rooms (no credentials, local settings) have nothing to delete
         resp = self._send('DELETE', f'{API}/meetings/{meeting_id}')

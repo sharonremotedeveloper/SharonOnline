@@ -236,12 +236,15 @@ export default function TeacherClassroomPage() {
                 </span>
               </div>
 
-              {(booking.zoom_join_url || booking.zoom_url || booking.zoom_start_url) && booking.zoom_meeting_id ? (
+              {/* The tutor never receives a stored link: Start fetches a fresh host link (lib/hostLink.ts, Slice Z1). The
+                  guest join link is deliberately NOT a fallback: a tutor who joins as a guest is not the host, the room
+                  (join_before_host off) never opens and the lesson would be scored a tutor no-show. */}
+              {booking.zoom_meeting_id ? (
                 <ZoomLauncherButton
                   meetingId={booking.zoom_meeting_id}
                   password={booking.zoom_password || ""}
-                  joinUrl={booking.zoom_join_url || booking.zoom_url || ""}
-                  startUrl={booking.zoom_start_url || booking.zoom_url}
+                  joinUrl=""
+                  bookingId={booking.id}
                   isHost={true}
                   disabled={!isConfirmed}
                 />

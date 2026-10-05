@@ -7,14 +7,22 @@ fetched from Zoom (`GET /meetings/{id}`) at that moment.
 
 Access: the booking's own tutor and platform staff (role admin / is_staff / superuser). The booking's student gets 403 (they
 know the lesson exists; the host link is not theirs); anybody else gets 404 (the booking's existence is not revealed).
-Staff opening the room as host count as the host in attendance (the `host_id` rule in docs/ZOOM_ATTENDANCE.md): staff do this
-only to rescue a lesson, never routinely.
+Window: from `ZOOM_HOST_LINK_OPEN_MINUTES_BEFORE` (15) minutes before the start until the lesson ends (409 `too_early`).
+
+Staff hosting (QA #3): whoever opens the host link IS the host, and the attendance rule credits the host as the tutor, so a
+staff-issued link would show an absent tutor as present. Every link issued to staff who are not the tutor therefore writes a
+`HostLinkIssue` row (who, when) that holds the lesson's escrow release until an admin reviews it
+(`review_host_link_issues`; `settlement.attendance_verified_for_release`).
 
 Logs carry booking / user / meeting ids only, never the link.
 """
 import logging
+from datetime import timedelta
 
-from apps.bookings.models import Booking
+from django.conf import settings
+from django.utils import timezone as dj_timezone
+
+from apps.bookings.models import Booking, HostLinkIssue
 from apps.common import clock
 from apps.integrations.zoom import ZoomError, ZoomNotFound, zoom_client
 
@@ -44,23 +52,45 @@ def _authorised_booking(booking_id, user) -> Booking:
     raise HostLinkError(404, 'not_found', 'Booking not found.')
 
 
-def fresh_host_link(booking_id, user) -> dict:
-    """{'meeting_id', 'start_url'} straight from Zoom, or HostLinkError (404/403/409/502)."""
-    booking = _authorised_booking(booking_id, user)
+def _check_open(booking: Booking) -> None:
     if booking.status not in LIVE:
         raise HostLinkError(409, 'not_live', 'This lesson is not scheduled to take place.')
     if not booking.zoom_meeting_id:
         raise HostLinkError(409, 'no_meeting', 'The Zoom room for this lesson is not ready yet.')
-    if clock.now() >= booking.end_time_utc:
+    now = clock.now()
+    if now >= booking.end_time_utc:
         raise HostLinkError(409, 'lesson_ended', 'This lesson has ended.')
+    opens = booking.start_time_utc - timedelta(minutes=settings.ZOOM_HOST_LINK_OPEN_MINUTES_BEFORE)
+    if now < opens:
+        raise HostLinkError(409, 'too_early', 'The classroom opens shortly before the lesson starts.')
+
+
+def _fetch(booking: Booking, user) -> str:
     try:
-        start_url = zoom_client.get_start_url(booking.zoom_meeting_id)
+        return zoom_client.get_start_url(booking.zoom_meeting_id)
     except ZoomNotFound:
         logger.error('[ADMIN ALERT] Zoom has no meeting for a live lesson: booking=%s meeting=%s',
                      booking.pk, booking.zoom_meeting_id)
         raise HostLinkError(409, 'meeting_missing', 'The Zoom room for this lesson no longer exists.') from None
     except ZoomError as exc:
         logger.warning('Host link unavailable: booking=%s error=%s status=%s', booking.pk, type(exc).__name__, exc.status)
-        raise HostLinkError(502, 'zoom_unavailable', 'Zoom is not answering right now. Please try again.') from None
+    except Exception as exc:    # anything unexpected (cache, parsing, ...) is still a structured answer, never a bare 500
+        logger.error('Host link failed unexpectedly: booking=%s user=%s error=%s', booking.pk, user.pk, type(exc).__name__)
+    raise HostLinkError(502, 'zoom_unavailable', 'Zoom is not answering right now. Please try again.')
+
+
+def fresh_host_link(booking_id, user) -> dict:
+    """{'meeting_id', 'start_url'} straight from Zoom, or HostLinkError (404/403/409/502)."""
+    booking = _authorised_booking(booking_id, user)
+    _check_open(booking)
+    start_url = _fetch(booking, user)
+    if booking.teacher.user_id != user.pk:      # staff, not the tutor: audited, and the lesson's escrow waits for a review
+        HostLinkIssue.objects.create(booking=booking, issued_by=user)
+        logger.warning('Host link issued to STAFF (attendance review required): booking=%s user=%s', booking.pk, user.pk)
     logger.info('Host link issued: booking=%s user=%s meeting=%s', booking.pk, user.pk, booking.zoom_meeting_id)
     return {'meeting_id': booking.zoom_meeting_id, 'start_url': start_url}
+
+
+def review_host_link_issues(queryset, reviewer) -> int:
+    """Stamp still-open audit rows as reviewed (the tutor's real attendance was checked). Returns how many were open."""
+    return queryset.filter(reviewed_at__isnull=True).update(reviewed_at=dj_timezone.now(), reviewed_by=reviewer)

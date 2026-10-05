@@ -226,6 +226,7 @@ ZOOM_HTTP_TIMEOUT_SECONDS = int(os.environ.get('ZOOM_HTTP_TIMEOUT_SECONDS', '10'
 ZOOM_HTTP_MAX_ATTEMPTS = int(os.environ.get('ZOOM_HTTP_MAX_ATTEMPTS', '3'))              # tries per call for 429 / 5xx
 ZOOM_RETRY_AFTER_CAP_SECONDS = int(os.environ.get('ZOOM_RETRY_AFTER_CAP_SECONDS', '10'))  # longer Retry-After: give up, hand it on
 ZOOM_TOKEN_WAIT_SECONDS = int(os.environ.get('ZOOM_TOKEN_WAIT_SECONDS', '5'))            # single-flight waiters poll this long
+ZOOM_HOST_LINK_OPEN_MINUTES_BEFORE = int(os.environ.get('ZOOM_HOST_LINK_OPEN_MINUTES_BEFORE', '15'))  # host link issued from this long before the start until the lesson ends
 # --- end Z1
 # Dotted path of the object that talks to PayPal / PayFast to return money (Task 10.7). The default moves no money: requests
 # wait for a person (sandbox / dev / CI). Production selects the routing backend through the environment, and

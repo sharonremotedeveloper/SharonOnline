@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import AttendanceAudit, Booking, BookingStatusChange, LessonMemo
+from .models import AttendanceAudit, Booking, BookingStatusChange, HostLinkIssue, LessonMemo
+from .services.host_link import review_host_link_issues
 
 class LessonMemoInline(admin.StackedInline):
     model = LessonMemo
@@ -30,6 +31,27 @@ class BookingAdmin(admin.ModelAdmin):
 class LessonMemoAdmin(admin.ModelAdmin):
     list_display = ('booking', 'teacher', 'student', 'submitted_at')
     search_fields = ('teacher__user__username', 'student__username', 'feedback_text')
+
+
+@admin.register(HostLinkIssue)
+class HostLinkIssueAdmin(admin.ModelAdmin):
+    """Staff-hosted lessons waiting for an attendance review (escrow is held until reviewed). Read-only audit rows."""
+    list_display = ('booking', 'issued_by', 'created_at', 'reviewed_at', 'reviewed_by')
+    list_filter = (('reviewed_at', admin.EmptyFieldListFilter),)
+    search_fields = ('booking__id',)
+    readonly_fields = ('booking', 'issued_by', 'created_at', 'reviewed_at', 'reviewed_by')
+    actions = ['mark_reviewed']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    @admin.action(description='Mark reviewed (the tutor\'s attendance was checked; releases the escrow hold)')
+    def mark_reviewed(self, request, queryset):
+        count = review_host_link_issues(queryset, request.user)
+        self.message_user(request, f'{count} host-link audit row(s) marked reviewed.')
 
 
 @admin.register(AttendanceAudit)

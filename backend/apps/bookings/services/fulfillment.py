@@ -268,8 +268,10 @@ def _zoom_step(booking_id, token, now) -> None:
             _set_step(booking_id, token, 'zoom', St.DONE, now)       # a room exists: reuse it, never build a second one
             return
     student, tutor = booking.student, booking.teacher.user
-    # A zoom step that failed before may have failed AFTER Zoom built the room (lost response): look for it first (Z1).
-    retried = FulfillmentDispatch.objects.filter(booking_id=booking_id, zoom_state=St.FAILED).exists()
+    # Any earlier attempt (a failed step, OR a worker that died after Zoom built the room and was reclaimed: attempts > 1)
+    # may have left a meeting behind: look for it before creating another (Z1, QA #2).
+    retried = FulfillmentDispatch.objects.filter(booking_id=booking_id).filter(
+        Q(attempts__gt=1) | Q(zoom_state=St.FAILED)).exists()
     data = zoom_client.create_meeting(        # outside the row lock
         topic=f"Sharon ESL: {student.first_name or student.username} with {tutor.first_name or tutor.username}",
         start_time_iso=booking.start_time_utc.strftime('%Y-%m-%dT%H:%M:%SZ'), duration_minutes=25,

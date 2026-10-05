@@ -190,11 +190,23 @@ class TestStaffHostLinkAudit:
         live.refresh_from_db()
         assert live.escrow_cleared_at is None
 
-    def test_the_audit_model_is_registered_in_the_admin_with_a_review_action(self):
+    def test_the_audit_model_is_registered_in_the_admin_with_a_review_action(self, live):
         from django.contrib import admin
+        from django.contrib.auth import get_user_model
+        from django.test import RequestFactory
         from apps.bookings.models import HostLinkIssue
         model_admin = admin.site._registry[HostLinkIssue]
-        assert 'mark_reviewed' in {a for a in model_admin.get_actions(mock.Mock(user=mock.Mock(has_perm=lambda p: True)))}
+        superuser = get_user_model().objects.create_superuser(username='root-z1', email='root@z1.test', password='x')
+        request = RequestFactory().get('/admin/')
+        request.user = superuser
+        assert 'mark_reviewed' in model_admin.get_actions(request)
+        row = HostLinkIssue.objects.create(booking=live, issued_by=f.make_admin())
+        with mock.patch.object(model_admin, 'message_user') as message:
+            model_admin.mark_reviewed(request, HostLinkIssue.objects.filter(pk=row.pk))
+        message.assert_called_once()
+        row.refresh_from_db()
+        assert row.reviewed_by_id == superuser.pk
+        assert not model_admin.has_add_permission(request) and not model_admin.has_delete_permission(request)
 
 
 # ====================================================================== #4 cache outage
@@ -252,8 +264,8 @@ class TestLockAndSearch:
 
     def test_the_lock_is_taken_with_that_ttl(self, monkeypatch):
         seen = []
-        real = zoom_auth.cache
-        monkeypatch.setattr(zoom_auth.cache, 'add', lambda k, v, t=None, **kw: seen.append(t) or real.add(k, v, t))
+        real_add = zoom_auth.cache.add
+        monkeypatch.setattr(zoom_auth.cache, 'add', lambda k, v, t=None, **kw: seen.append(t) or real_add(k, v, t))
         assert zoom_auth.acquire_lock('k')
         assert seen == [zoom_auth.lock_seconds()]
 

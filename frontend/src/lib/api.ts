@@ -160,6 +160,7 @@ import type { CreditPackPrice, LessonPrice } from "@/lib/prices";
 import type { FxCurrency, FxRateRow, FxRatesResponse } from "@/lib/fx";
 import type { CaptureResponse } from "@/lib/paypalOutcome";
 import { adminRefundQuery, type AdminRefund, type AdminRefundPage, type AdminRefundParams } from "@/lib/adminRefunds";
+import { fetchHostLink } from "@/lib/hostLink";
 
 export const FALLBACK_MATERIALS: MaterialDetail[] = [
   {
@@ -479,6 +480,9 @@ export const api = {
       expires_at: new Date(Date.now() + 600000).toISOString(),
     };
   },
+
+  /** Slice Z1: a FRESH Zoom host start link for the tutor of this lesson (never stored; throws ApiError, see lib/hostLink.ts). */
+  getHostLink: fetchHostLink,
 
   async getBooking(bookingId: string): Promise<BookingDetail> {
     const live = await liveRequest(`${API_BASE}/bookings/${bookingId}/`, {});
