@@ -335,8 +335,11 @@ class TestBadPayloads:
 
 # ------------------------------------------------------------------ creating the meeting
 class TestCreateMeeting:
-    def test_a_zoom_rejection_is_an_error_not_a_none(self):
+    def test_a_zoom_rejection_is_an_error_not_a_none(self, settings):
+        # Slice Z1: the error names the HTTP status only, never Zoom's body (no provider text in errors or logs).
+        settings.ZOOM_ACCOUNT_ID, settings.ZOOM_CLIENT_ID, settings.ZOOM_CLIENT_SECRET = 'acc', 'cid', 'sec'
         resp = MagicMock(status_code=400, text='{"code":300,"message":"bad start_time"}')
         with patch.object(zoom_client, 'get_access_token', return_value='tok'), patch('apps.integrations.zoom.requests.post', return_value=resp):
-            with pytest.raises(ZoomError, match='bad start_time'):
+            with pytest.raises(ZoomError, match='HTTP 400') as err:
                 zoom_client.create_meeting('t', '2026-10-05T09:00:00Z')
+        assert 'bad start_time' not in str(err.value) and err.value.status == 400

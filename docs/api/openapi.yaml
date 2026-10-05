@@ -819,6 +819,51 @@ paths:
               schema:
                 $ref: '#/components/schemas/CancelPreview'
           description: ''
+  /api/v1/bookings/{booking_id}/host-link/:
+    get:
+      operationId: v1_bookings_host_link_retrieve
+      parameters:
+      - in: path
+        name: booking_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HostLink'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+        '502':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
   /api/v1/bookings/{booking_id}/memo/:
     post:
       operationId: v1_bookings_memo_create
@@ -2123,6 +2168,8 @@ components:
           readOnly: true
         zoom_start_url:
           type: string
+          description: 'DEPRECATED (Slice Z1): always empty. The host link expires;
+            fetch a fresh one from GET /api/v1/bookings/{id}/host-link/.'
           readOnly: true
         zoom_meeting_id:
           type: string
@@ -2498,6 +2545,19 @@ components:
         * `exhausted` - Retries ran out
         * `replay_window` - Too old to replay blind
         * `provider_failed` - The provider failed it after accepting it
+    HostLink:
+      type: object
+      properties:
+        meeting_id:
+          type: string
+        start_url:
+          type: string
+          format: uri
+          description: Fresh Zoom host start link (expiring ZAK). Open it at once;
+            never store it.
+      required:
+      - meeting_id
+      - start_url
     LessonMemo:
       type: object
       properties:

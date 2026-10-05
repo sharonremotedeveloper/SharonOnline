@@ -30,6 +30,7 @@ from apps.bookings.models import Booking
 from apps.integrations.email import send_booking_confirmation_email
 from apps.integrations.google_calendar import sync_booking_to_teacher_gcal
 from apps.integrations.zoom import zoom_client
+from apps.integrations.zoom_hosts import host_picker
 from apps.payments.models import FulfillmentDispatch
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,8 @@ CLAIMABLE = (D.PENDING, D.QUEUED)            # + RETRYABLE once due (_due_retry_
 REQUEUEABLE = (D.PENDING, D.QUEUED, D.ABANDONED)
 FINISHED_STEP = (St.DONE, St.SKIPPED)
 STEP_FLAGS = {'zoom': 'zoom_completed', 'calendar': 'calendar_completed', 'email': 'email_completed'}
-ZOOM_FIELDS = ['zoom_meeting_id', 'zoom_join_url', 'zoom_start_url', 'zoom_password', 'updated_at']
+# No zoom_start_url (Slice Z1): the host link expires and is fetched fresh by the host-link endpoint, never stored.
+ZOOM_FIELDS = ['zoom_meeting_id', 'zoom_join_url', 'zoom_password', 'zoom_host_user_id', 'updated_at']
 
 
 class ClaimRevoked(Exception):
@@ -176,7 +178,9 @@ def classify_failure(exc) -> tuple[bool, int | None]:
     class that may not exist yet is imported. Every other exception (Zoom, Google, database, broker) is transient."""
     result = getattr(exc, 'result', None)
     if result is None:
-        return False, None
+        # Slice Z1: a Zoom 429 whose Retry-After exceeded the client's inline cap carries it on the ZoomError.
+        retry_after = getattr(exc, 'retry_after_seconds', None)
+        return False, (int(retry_after) if isinstance(retry_after, int) and retry_after > 0 else None)
     if getattr(result, 'status', None) == 'failed':
         return True, None
     retry_after = getattr(result, 'retry_after_seconds', None)
@@ -264,9 +268,12 @@ def _zoom_step(booking_id, token, now) -> None:
             _set_step(booking_id, token, 'zoom', St.DONE, now)       # a room exists: reuse it, never build a second one
             return
     student, tutor = booking.student, booking.teacher.user
+    # A zoom step that failed before may have failed AFTER Zoom built the room (lost response): look for it first (Z1).
+    retried = FulfillmentDispatch.objects.filter(booking_id=booking_id, zoom_state=St.FAILED).exists()
     data = zoom_client.create_meeting(        # outside the row lock
         topic=f"Sharon ESL: {student.first_name or student.username} with {tutor.first_name or tutor.username}",
-        start_time_iso=booking.start_time_utc.strftime('%Y-%m-%dT%H:%M:%SZ'), duration_minutes=25)
+        start_time_iso=booking.start_time_utc.strftime('%Y-%m-%dT%H:%M:%SZ'), duration_minutes=25,
+        booking_id=str(booking_id), host_user_id=host_picker.pick_host(booking), search_first=retried)
     _store_meeting(booking_id, token, data, now)
 
 
@@ -278,7 +285,8 @@ def _store_meeting(booking_id, token, data, now) -> None:
             booking = _locked_confirmed(booking_id, token)
             if not booking.zoom_meeting_id:
                 booking.zoom_meeting_id, booking.zoom_join_url = meeting_id, data['join_url']
-                booking.zoom_start_url, booking.zoom_password = data['start_url'], data.get('password', '')
+                booking.zoom_password = data.get('password', '')
+                booking.zoom_host_user_id = data.get('host_user_id') or 'me'
                 booking.save(update_fields=ZOOM_FIELDS)
                 wrote = True
             _set_step(booking_id, token, 'zoom', St.DONE, now)

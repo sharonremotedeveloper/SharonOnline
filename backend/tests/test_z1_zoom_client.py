@@ -330,7 +330,9 @@ class TestCreateMeeting:
         assert len(fake_zoom.meetings) == 1 and room['meeting_id'] in fake_zoom.meetings
         assert len(posts(fake_zoom)) == 2
         search = gets(fake_zoom, '/users/me/meetings')
-        assert search and fake_zoom.requests.index(search[0]) < fake_zoom.requests.index(posts(fake_zoom)[1])
+        order = [('search' if r is search[0] else 'post') for r in fake_zoom.requests
+                 if r is search[0] or r in posts(fake_zoom)]
+        assert order == ['post', 'search', 'post']          # identity, not ==: the two POSTs are equal records
 
     def test_a_5xx_on_create_is_also_ambiguous(self, fake_zoom):
         fake_zoom.fail_next('create', 502)

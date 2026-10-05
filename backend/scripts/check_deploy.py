@@ -37,14 +37,15 @@ def throwaway_environment() -> dict:
         'REDIS_URL': 'rediss://cache.invalid:6379/0',
         # Production must route refunds to the real gateways; the manual backend moves no money (Task 10.7).
         'REFUND_GATEWAY_BACKEND': 'apps.payments.services.refund_gateways.RoutingRefundGateway',
-        # Zoom Server-to-Server OAuth (read from the environment by apps/integrations/zoom.py; no call is made here).
+        # Zoom Server-to-Server OAuth (settings ZOOM_* -> apps/integrations/zoom.py; no call is made here). Since Z1 the
+        # production boot guard refuses them missing too, so an override to '' fails at settings load.
         'ZOOM_ACCOUNT_ID': 'ci-' + secrets.token_hex(6),
         'ZOOM_CLIENT_ID': 'ci-' + secrets.token_hex(6),
         'ZOOM_CLIENT_SECRET': secrets.token_hex(16),
     }
 
 
-ZOOM_CREDENTIALS = ('ZOOM_ACCOUNT_ID', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET')
+ZOOM_CREDENTIALS = ('ZOOM_ACCOUNT_ID', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET')   # == guard.ZOOM_CREDENTIAL_SETTINGS (tested)
 
 
 def zoom_credentials_problems(env) -> list:

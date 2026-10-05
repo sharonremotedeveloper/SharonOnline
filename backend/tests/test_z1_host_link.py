@@ -12,7 +12,6 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 import factories as f
-from test_f0_fulfilment_probe import price_catalog  # noqa: F401 - fixture re-export for the transactional tests
 from apps.bookings.models import Booking
 from apps.integrations.zoom import zoom_client
 from apps.payments.models import FulfillmentDispatch
@@ -185,16 +184,33 @@ class TestHostPicker:
 
 
 # ====================================================================== fulfilment retry searches first
+def _iso(dt):
+    return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def _failed_zoom_step(booking):
+    FulfillmentDispatch.objects.create(booking=booking, status=FulfillmentDispatch.Status.RETRYABLE, attempts=1,
+                                       zoom_state=St.FAILED, next_retry_at=timezone.now() - timedelta(seconds=1))
+
+
 @pytest.mark.django_db
 class TestFulfilmentRetrySearchesFirst:
     def test_a_retried_zoom_step_reuses_the_meeting_an_earlier_attempt_created(self, fake_zoom):
         booking = f.make_booking(status=S.CONFIRMED)
-        earlier = zoom_client.create_meeting('Lesson', '2026-11-01T10:00:00Z', booking_id=str(booking.id))
-        FulfillmentDispatch.objects.create(booking=booking, status=FulfillmentDispatch.Status.RETRYABLE, attempts=1,
-                                           zoom_state=St.FAILED, next_retry_at=timezone.now() - timedelta(seconds=1))
+        earlier = zoom_client.create_meeting('Lesson', _iso(booking.start_time_utc), booking_id=str(booking.id))
+        _failed_zoom_step(booking)
         assert fulfillment().run_fulfillment(booking.id) == 'succeeded'
         booking.refresh_from_db()
         assert booking.zoom_meeting_id == earlier['meeting_id'] and len(fake_zoom.created) == 1
+
+    def test_the_old_room_of_a_rescheduled_lesson_is_never_reused(self, fake_zoom):
+        booking = f.make_booking(status=S.CONFIRMED)
+        old = zoom_client.create_meeting('Lesson', _iso(booking.start_time_utc - timedelta(days=1)),
+                                         booking_id=str(booking.id))          # not yet deleted by the cleanup task
+        _failed_zoom_step(booking)
+        assert fulfillment().run_fulfillment(booking.id) == 'succeeded'
+        booking.refresh_from_db()
+        assert booking.zoom_meeting_id != old['meeting_id'] and len(fake_zoom.created) == 2
 
     def test_a_first_attempt_does_not_search(self, fake_zoom):
         booking = f.make_booking(status=S.CONFIRMED)
@@ -209,6 +225,15 @@ class TestFulfilmentRetrySearchesFirst:
 
 
 # ====================================================================== data migration
+@pytest.fixture
+def price_catalog(db):
+    """A transactional test may run after another one flushed the migration-seeded catalog (ERR-133)."""
+    from decimal import Decimal
+    from apps.payments.models import LessonPrice
+    for currency, amount in (('USD', '9.00'), ('EUR', '8.50'), ('ZAR', '162.00'), ('JPY', '1350.00')):
+        LessonPrice.objects.get_or_create(currency=currency, defaults={'amount': Decimal(amount)})
+
+
 def _migration_case():
     def build(old_apps):
         Booking_ = old_apps.get_model('bookings', 'Booking')

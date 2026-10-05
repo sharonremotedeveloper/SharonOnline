@@ -27,7 +27,9 @@ def sync_booking_to_teacher_gcal(booking) -> str:
 
     event_body = {
         "summary": f"Sharon ESL: Lesson with {booking.student.first_name or booking.student.username}",
-        "description": f"25-minute lesson.\n\nHost Zoom URL: {booking.zoom_start_url or booking.zoom_join_url}",
+        # Join link only (Slice Z1): the host link expires; the tutor opens the classroom page for a fresh one.
+        "description": f"25-minute lesson.\n\nZoom join link: {booking.zoom_join_url}\n"
+                       f"Start the lesson as host from your Sharon ESL classroom page.",
         "start": {
             "dateTime": booking.start_time_utc.isoformat(),
             "timeZone": "UTC"

@@ -36,8 +36,12 @@ class Booking(models.Model):
     # Video Conferencing details (provisioned via Zoom Server-to-Server API)
     zoom_meeting_id = models.CharField(max_length=64, blank=True)
     zoom_join_url = models.URLField(max_length=512, blank=True)
+    # DEPRECATED (Slice Z1): the host link embeds an expiring ZAK. No longer written (0015 blanked old values); the tutor
+    # fetches a fresh one from GET /bookings/<id>/host-link/. Kept one release for the API contract, then dropped.
     zoom_start_url = models.URLField(max_length=1024, blank=True)
     zoom_password = models.CharField(max_length=32, blank=True)
+    # Zoom user the meeting was created under (HostPicker, Slice Z1). Null = no meeting / created before Z1 (= 'me').
+    zoom_host_user_id = models.CharField(max_length=64, null=True, blank=True)
 
     # Google Calendar reference
     teacher_gcal_event_id = models.CharField(max_length=255, blank=True)

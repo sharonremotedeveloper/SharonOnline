@@ -1,5 +1,6 @@
 from typing import Optional
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
 from .models import Booking, LessonMemo
 from .services.reviews import REVIEW_TAGS
 from apps.teachers.models import TeacherProfile
@@ -143,25 +144,20 @@ class BookingDetailSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         return getattr(request, 'user', None) if request else None
 
-    def _is_host(self, obj):
-        viewer = self._viewer()
-        return bool(viewer and viewer.is_authenticated and viewer == obj.teacher.user)
-
     def get_zoom_url(self, obj) -> str:
         viewer = self._viewer()
         if not viewer or not viewer.is_authenticated:
             return ""
-        # Return host start URL for the assigned teacher, join URL for student
-        if self._is_host(obj):
-            return obj.zoom_start_url or obj.zoom_join_url
+        # Slice Z1: the join URL for everyone; the tutor's host link comes fresh from GET /bookings/<id>/host-link/.
         return obj.zoom_join_url
 
     def get_zoom_join_url(self, obj) -> str:
         return obj.zoom_join_url if self._viewer() and self._viewer().is_authenticated else ""
 
+    @extend_schema_field(serializers.CharField(help_text='DEPRECATED (Slice Z1): always empty. The host link expires; '
+                                                         'fetch a fresh one from GET /api/v1/bookings/{id}/host-link/.'))
     def get_zoom_start_url(self, obj) -> str:
-        # The host link grants control of the meeting: ONLY the booking's own tutor ever receives it.
-        return obj.zoom_start_url if self._is_host(obj) else ""
+        return ""
 
     def get_booking_reference(self, obj) -> str:
         return f"BK-{str(obj.id).split('-')[0].upper()}"
