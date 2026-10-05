@@ -609,6 +609,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bookings/{booking_id}/host-link/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_bookings_host_link_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/bookings/{booking_id}/memo/": {
         parameters: {
             query?: never;
@@ -1387,6 +1403,7 @@ export interface components {
             readonly lock_expires_at: string | null;
             readonly zoom_url: string;
             readonly zoom_join_url: string;
+            /** @description DEPRECATED (Slice Z1): always empty. The host link expires; fetch a fresh one from GET /api/v1/bookings/{id}/host-link/. */
             readonly zoom_start_url: string;
             readonly zoom_meeting_id: string;
             readonly zoom_password: string;
@@ -1541,6 +1558,14 @@ export interface components {
          * @enum {string}
          */
         FailureKindEnum: "rejected" | "already_refunded" | "guard" | "exhausted" | "replay_window" | "provider_failed";
+        HostLink: {
+            meeting_id: string;
+            /**
+             * Format: uri
+             * @description Fresh Zoom host start link (expiring ZAK). Open it at once; never store it.
+             */
+            start_url: string;
+        };
         LessonMemo: {
             /** Format: uuid */
             readonly id: string;
@@ -3529,6 +3554,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CancelPreview"];
+                };
+            };
+        };
+    };
+    v1_bookings_host_link_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostLink"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
                 };
             };
         };

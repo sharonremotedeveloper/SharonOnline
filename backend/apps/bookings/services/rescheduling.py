@@ -27,7 +27,8 @@ from django.db.models import Q
 S = Booking.Status
 MOVED_FIELDS = ['original_start_time_utc', 'start_time_utc', 'end_time_utc', 'reschedule_count', 'reminder_24h_sent',
                 'reminder_1h_sent', 'reminder_10m_sent', 'tutor_late_alert_sent', 'zoom_meeting_id', 'zoom_join_url',
-                'zoom_start_url', 'zoom_password', 'slot_lock_token', 'teacher_gcal_event_id', 'updated_at']
+                'zoom_start_url', 'zoom_password', 'zoom_host_user_id', 'slot_lock_token', 'teacher_gcal_event_id',
+                'updated_at']
 
 
 class RescheduleError(Exception):
@@ -93,6 +94,7 @@ def reschedule_booking(booking_id, student, new_start, now=None) -> Booking:
                 booking.reschedule_count += 1
                 booking.reminder_24h_sent = booking.reminder_1h_sent = booking.reminder_10m_sent = booking.tutor_late_alert_sent = False
                 booking.zoom_meeting_id = booking.zoom_join_url = booking.zoom_start_url = booking.zoom_password = ''
+                booking.zoom_host_user_id = None
                 booking.slot_lock_token = token
                 booking.teacher_gcal_event_id = ''
                 booking.save(update_fields=MOVED_FIELDS)

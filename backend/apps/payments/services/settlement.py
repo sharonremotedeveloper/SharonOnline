@@ -44,6 +44,9 @@ def attendance_verified_for_release(booking, teacher_minutes: int) -> bool:
     Completed lessons need >= 20 teacher minutes. A student no-show was already adjudicated on the tutor's presence at
     T+10m (an attendance record exists), so it is not held to the 20-minute rule - the lesson could not run without the student.
     """
+    # Slice Z1: a staff member opened the host link, which attendance credits to the TUTOR; hold until an admin reviews it.
+    if booking.host_link_issues.filter(reviewed_at__isnull=True).exists():
+        return False
     if booking.status == Booking.Status.STUDENT_LATE_CANCELLED:
         return True                              # nothing to attend: the student gave the slot up
     if booking.status == Booking.Status.STUDENT_NO_SHOW:

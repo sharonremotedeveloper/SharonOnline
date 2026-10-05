@@ -128,7 +128,7 @@ def test_full_e2e_booking_and_post_lesson_lifecycle():
     booking.refresh_from_db()
     assert booking.zoom_meeting_id != ""
     assert "zoom.us" in booking.zoom_join_url
-    assert booking.zoom_start_url != ""
+    assert booking.zoom_start_url == ""          # Slice Z1: the expiring host link is fetched fresh, never stored
 
     # 7. Classroom Progression: Lesson in Progress -> Completed
     booking.status = Booking.Status.IN_PROGRESS

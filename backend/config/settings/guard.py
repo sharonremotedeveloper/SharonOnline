@@ -11,6 +11,7 @@ SANDBOX_PAYFAST_MERCHANT_ID = '10000100'
 _DEFAULT_REFUND_BACKEND = 'apps.payments.services.refunds.ManualSandboxRefundGateway'    # what settings/base.py uses when the env is unset
 _ROUTING_REFUND_BACKEND = 'apps.payments.services.refund_gateways.RoutingRefundGateway'
 _LOCAL_HOSTS = {'localhost', '127.0.0.1', '0.0.0.0', 'backend', '::1'}
+ZOOM_CREDENTIAL_SETTINGS = ('ZOOM_ACCOUNT_ID', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET')
 
 
 def _is_local_origin(origin: str) -> bool:
@@ -66,6 +67,9 @@ def validate_production_settings(env=os.environ):
 
     if not env.get('ZOOM_WEBHOOK_SECRET_TOKEN'):
         errors.append('ZOOM_WEBHOOK_SECRET_TOKEN must be set')
+    for name in ZOOM_CREDENTIAL_SETTINGS:     # Slice Z1; scripts/check_deploy.py reports the same names
+        if not (env.get(name) or '').strip():
+            errors.append(f'{name} must be set: without Zoom S2S credentials no lesson room can be created or probed')
     if not env.get('ESKOMSEPUSH_API_KEY'):
         errors.append('ESKOMSEPUSH_API_KEY must be set so Power Guard never fabricates provider status')
 

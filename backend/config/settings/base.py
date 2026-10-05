@@ -153,6 +153,7 @@ REST_FRAMEWORK = {
         # --- T1c: PATCH /teachers/me/ (tutor editing their own profile) ---
         'teacher_profile': '30/hour',
         'admin_teacher_review': '300/hour',   # slice T1b: staff review actions + admin cancel of a suspended tutor's lessons
+        'zoom_host_link': '30/hour',       # Slice Z1: fresh Zoom host link when the classroom opens (one Zoom call each)
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
     # NEVER map 0 to None: DRF treats None as "trust the whole client-supplied X-Forwarded-For header", which lets
@@ -236,6 +237,20 @@ FULFILLMENT_RETRY_MAX_SECONDS = int(os.environ.get('FULFILLMENT_RETRY_MAX_SECOND
 # Simulated Zoom rooms without credentials: never in production (only config/settings/local.py turns this on).
 ZOOM_SIMULATE_WITHOUT_CREDENTIALS = False
 ATTENDANCE_PROBE_BUDGET_SECONDS = int(os.environ.get('ATTENDANCE_PROBE_BUDGET_SECONDS', '25'))  # wall clock for Zoom probes per T+10 run (beat lock TTL 50 s)
+# --- Slice Z1: Zoom Server-to-Server OAuth client (docs/ZOOM_ATTENDANCE.md "Client contract"). Production refuses to boot
+# without the three credentials (config/settings/guard.py); app code reads these settings, never the environment.
+ZOOM_ACCOUNT_ID = os.environ.get('ZOOM_ACCOUNT_ID', '')
+ZOOM_CLIENT_ID = os.environ.get('ZOOM_CLIENT_ID', '')
+ZOOM_CLIENT_SECRET = os.environ.get('ZOOM_CLIENT_SECRET', '')
+# Host every lesson meeting is created under (HostPicker default). 'me' = the account that owns the S2S app. A single host
+# means concurrent lessons collide on one licence: LAUNCH BLOCKER pending D-9 (host pool).
+ZOOM_HOST_USER_ID = os.environ.get('ZOOM_HOST_USER_ID', 'me')
+ZOOM_HTTP_TIMEOUT_SECONDS = int(os.environ.get('ZOOM_HTTP_TIMEOUT_SECONDS', '10'))        # every Zoom request
+ZOOM_HTTP_MAX_ATTEMPTS = int(os.environ.get('ZOOM_HTTP_MAX_ATTEMPTS', '3'))              # tries per call for 429 / 5xx
+ZOOM_RETRY_AFTER_CAP_SECONDS = int(os.environ.get('ZOOM_RETRY_AFTER_CAP_SECONDS', '10'))  # longer Retry-After: give up, hand it on
+ZOOM_TOKEN_WAIT_SECONDS = int(os.environ.get('ZOOM_TOKEN_WAIT_SECONDS', '5'))            # single-flight waiters poll this long
+ZOOM_HOST_LINK_OPEN_MINUTES_BEFORE = int(os.environ.get('ZOOM_HOST_LINK_OPEN_MINUTES_BEFORE', '15'))  # host link issued from this long before the start until the lesson ends
+# --- end Z1
 # Dotted path of the object that talks to PayPal / PayFast to return money (Task 10.7). The default moves no money: requests
 # wait for a person (sandbox / dev / CI). Production selects the routing backend through the environment, and
 # scripts/check_deploy.py fails a production check while this is still the manual backend.

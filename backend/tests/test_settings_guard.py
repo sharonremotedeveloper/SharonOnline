@@ -18,6 +18,8 @@ GOOD = {
     'PAYOUT_DATA_KEYS': json.dumps({'v1': Fernet.generate_key().decode()}),
     'PAYOUT_DATA_ACTIVE_KEY': 'v1',
     'REFUND_GATEWAY_BACKEND': 'apps.payments.services.refund_gateways.RoutingRefundGateway',
+    # Slice Z1: production refuses to boot without Zoom S2S credentials.
+    'ZOOM_ACCOUNT_ID': 'zoom-account', 'ZOOM_CLIENT_ID': 'zoom-client', 'ZOOM_CLIENT_SECRET': 'zoom-secret-value',
 }
 
 

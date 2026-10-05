@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { Video, ExternalLink, Copy, Check, Monitor, Globe } from "lucide-react";
+import { api } from "@/lib/api";
+import { hostLinkProblem, type HostLinkProblem } from "@/lib/hostLink";
 
 interface ZoomLauncherButtonProps {
   meetingId: string;
   password?: string;
   joinUrl: string;
-  startUrl?: string;
+  /** Host mode only: the booking whose FRESH host link is fetched when the tutor presses Start (never stored). */
+  bookingId?: string;
   isHost?: boolean;
   disabled?: boolean;
   className?: string;
@@ -17,7 +20,7 @@ export function ZoomLauncherButton({
   meetingId,
   password = "",
   joinUrl,
-  startUrl,
+  bookingId,
   isHost = false,
   disabled = false,
   className = "",
@@ -25,20 +28,41 @@ export function ZoomLauncherButton({
   const [copiedId, setCopiedId] = useState(false);
   const [copiedPwd, setCopiedPwd] = useState(false);
   const [preferWeb, setPreferWeb] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [hostProblem, setHostProblem] = useState<HostLinkProblem | null>(null);
+  // Kept only so the tutor can click again if the browser blocked the new tab; dropped on the next press.
+  const [openedLink, setOpenedLink] = useState<string | null>(null);
 
   const cleanConfNo = meetingId.replace(/\s+/g, "");
 
-  // Deep link Zoom URI
-  const appDeepLink = isHost && startUrl
-    ? startUrl
-    : `zoommtg://zoom.us/join?confno=${cleanConfNo}&pwd=${encodeURIComponent(password)}`;
+  // Deep link Zoom URI (students)
+  const appDeepLink = `zoommtg://zoom.us/join?confno=${cleanConfNo}&pwd=${encodeURIComponent(password)}`;
 
-  // Web client URL fallback
+  // Web client URL fallback (students)
   const webClientUrl = `https://zoom.us/wc/${cleanConfNo}/join?pwd=${encodeURIComponent(password)}`;
 
-  const targetUrl = preferWeb ? webClientUrl : (isHost && startUrl ? startUrl : appDeepLink);
+  // Tutor: ask the server for a fresh host link NOW (it expires, so it is never loaded with the page) and open it in a new tab.
+  const handleHostStart = async () => {
+    if (disabled || starting || !bookingId) return;
+    setStarting(true);
+    setHostProblem(null);
+    setOpenedLink(null);
+    try {
+      const link = await api.getHostLink(bookingId);
+      setOpenedLink(link.start_url);
+      window.open(link.start_url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setHostProblem(hostLinkProblem(err));
+    } finally {
+      setStarting(false);
+    }
+  };
 
   const handleLaunch = () => {
+    if (isHost) {
+      void handleHostStart();
+      return;
+    }
     if (disabled) return;
     if (preferWeb) {
       window.open(webClientUrl, "_blank", "noopener,noreferrer");
@@ -77,7 +101,7 @@ export function ZoomLauncherButton({
         <button
           type="button"
           onClick={handleLaunch}
-          disabled={disabled}
+          disabled={disabled || starting}
           className={`w-full py-4 px-6 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-lg ${
             disabled
               ? "bg-cream-surface text-ink-muted/50 cursor-not-allowed border border-divider"
@@ -90,6 +114,8 @@ export function ZoomLauncherButton({
           <span>
             {disabled
               ? "Lesson Not Yet Open"
+              : starting
+              ? "Opening Zoom..."
               : isHost
               ? "Start Lesson as Host (Zoom)"
               : "Join Live Lesson in Zoom"}
@@ -97,7 +123,22 @@ export function ZoomLauncherButton({
           <ExternalLink className="w-4 h-4 opacity-75" />
         </button>
 
-        {/* Client Protocol Preference Selector */}
+        {isHost && hostProblem && (
+          <p role="alert" data-host-problem={hostProblem.kind} className="text-xs font-semibold text-error bg-white border border-divider rounded-xl p-3">
+            {hostProblem.message}
+          </p>
+        )}
+        {isHost && openedLink && !hostProblem && (
+          <p className="text-xs text-ink-muted text-center">
+            Zoom should open in a new tab.{" "}
+            <a href={openedLink} target="_blank" rel="noopener noreferrer" className="font-bold text-teal hover:underline">
+              Nothing opened? Start the lesson here
+            </a>
+          </p>
+        )}
+
+        {/* Client Protocol Preference Selector (students only: a tutor must start through the host link, never join as a guest) */}
+        {!isHost && (
         <div className="flex items-center justify-center gap-4 text-xs font-semibold text-ink-muted pt-1">
           <button
             type="button"
@@ -121,6 +162,7 @@ export function ZoomLauncherButton({
             <span>Join in Web Browser</span>
           </button>
         </div>
+        )}
       </div>
 
       {/* Manual Meeting Credentials Snippet */}
@@ -159,14 +201,16 @@ export function ZoomLauncherButton({
           )}
         </div>
 
-        <a
-          href={joinUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs font-bold text-teal hover:underline flex items-center gap-1"
-        >
-          Direct Web Link <ExternalLink className="w-3 h-3" />
-        </a>
+        {!isHost && (
+          <a
+            href={joinUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-bold text-teal hover:underline flex items-center gap-1"
+          >
+            Direct Web Link <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
       </div>
     </div>
   );
