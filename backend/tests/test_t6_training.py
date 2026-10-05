@@ -211,3 +211,18 @@ class TestBackfill:
         assert 'no published required training module' in self.run('--dry-run').lower()
         module('a')
         assert 'no published required training module' not in self.run('--dry-run').lower()
+
+
+class TestMutationSurvivors:
+    def test_an_existing_date_is_never_overwritten(self):
+        old = timezone.now() - timedelta(days=90)
+        tutor = f.make_teacher_profile(status='approved', training_completed_at=old)
+        training.complete_module(tutor, module('a'))
+        assert TeacherProfile.objects.get(pk=tutor.pk).training_completed_at == old
+
+    def test_another_tutors_progress_is_not_shown_as_mine(self):
+        mine, other = untrained(), untrained()
+        training.complete_module(other, module('a'))
+        body = api(mine.user).get('/api/v1/teachers/me/training/').json()
+        assert [m['completed'] for m in body['modules']] == [False]
+        assert api(mine.user).get('/api/v1/teachers/me/training/a/').json()['completed'] is False
