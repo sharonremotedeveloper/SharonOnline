@@ -329,3 +329,27 @@ Infrastructure only: Sharon writes the content (Django admin: **Training modules
   `approved` tutor without a date (tutors approved after migration 0007 have none and would vanish from search once the gate is
   on). Idempotent; warns when no published required module exists. **Order: publish the modules -> run the backfill -> set
   `TUTOR_TRAINING_GATE_ENABLED=True`.**
+
+## 14. The tutor application funnel (slice T5a)
+
+Code: `teachers/application.py`, `teachers/application_views.py`, model `TeacherApplication` (migration `teachers/0014_t5a_application`).
+Provisional until D-11: `APPLICATION_REQUIRED_ASSET_KINDS` (avatar, accent_audio, intro_video, tefl_certificate,
+identity_document), `APPLICATION_MIN_DOWNLOAD_MBPS=10`, `APPLICATION_MIN_UPLOAD_MBPS=5`, `APPLICATION_SPEED_TEST_MAX_AGE_HOURS=168`.
+
+- **Five steps** (`GET /teachers/me/application/`): `profile` (headline, bio, at least one specialty), `uploads` (a live
+  `TeacherAsset` for every required kind; replaced files do not count; `missing` names the kinds), `power_backup` (confirmed),
+  `speed_test` (recorded, at least the minimum, not older than the max age; `detail` explains a slow result), `declaration`
+  (accepted). `can_submit` = editable AND every step complete. `editable` is true only in `applied` / `changes_requested`.
+- **`PATCH`** accepts only `speed_test {download_mbps, upload_mbps}` (decimals, 0.1..10000), `confirm_power_backup: true`,
+  `accept_declaration: true`; any other key (including `status`, `submitted_at`) is 400 naming it; `false` is 400; the stamps are
+  written once and never moved; 409 `application_locked` once the application has been sent. The speed test is **measured by the
+  browser and recorded as reported**: advisory evidence for the reviewer (shown in the review packet), not proof. The SA ID
+  number is **not stored** (the identity document is an upload, private bucket).
+- **`POST .../submit/`** runs `applied | changes_requested -> submitted` through `transition_teacher` with the **tutor as actor**
+  (so staff get the `vetting_submitted` alert, T4a) and stamps `submitted_at`. Incomplete -> 400 `application_incomplete` with
+  `missing`; already `submitted` -> 200 no-op; `in_review` / `approved` / `rejected` / `suspended` -> 409 `cannot_submit`.
+- **The staff lead-in is gone** (the T1b TODO): `start-review` and the legacy `PATCH /admin/teachers/<id>/verify/` need a
+  `submitted` application (an `applied` / `changes_requested` tutor is 409 `invalid_transition`), and the admin pending queue and
+  telemetry count list `submitted` / `in_review` only. A tutor in `changes_requested` fixes the items and submits again.
+- **Frontend (T5b / T7):** the funnel UI, the upload flow (T3 presign + commit), the browser speed test, and `proxy.ts` routing for
+  unverified tutors (`tutor_status` on `/auth/me`) are Antigravity's; the training page (T6) and the rubric form (T4b) likewise.
