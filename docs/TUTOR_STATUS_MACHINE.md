@@ -80,7 +80,8 @@ is read-only (plus an inline on the tutor page). Deleting the tutor still cascad
 
 Consequence: **the Django admin cannot delete a tutor** (or their User): the admin's delete confirmation needs delete permission
 on every cascaded model, and `TeacherStatusChange` grants none. Deleting from code / the shell still cascades. The
-retention / erasure policy for tutor audit rows (POPIA/GDPR) is an open item for Phase 14.
+retention / erasure policy for tutor audit rows (POPIA/GDPR) is an open item for Phase 14. **Accepted by Anesu 2026-10-05**
+as the interim behaviour until Phase 14 defines retention.
 
 ## 4. Tripwires (Django silently drops writes to GeneratedFields; we refuse them)
 
@@ -112,7 +113,8 @@ chain, `self` in another class, and document / application / training / progress
   the tutor once under the row lock. Same response shape and codes (200 / 400 / 403 / 404); a target the table cannot reach
   is 409 (`code: invalid_transition`). A path to `rejected` **may not pass through `approved`** (that would write a fake
   reinstatement into the audit trail, and a fake "approved" notification once N1a lands), so **rejecting a suspended tutor is
-  409**. Open question for Anesu: should there be a `suspended -> rejected` edge (permanent removal)? No such edge exists.
+  409** today. **Decided by Anesu 2026-10-05: add a staff-only `suspended -> rejected` edge (permanent removal)**; slice T1b
+adds it to the transition table and the explicit admin review actions (the legacy shim is deleted there).
 - Django admin: `status`, the flags, `training_completed_at` and `sla_strikes` are read-only; filter by `status`.
 - Seeds: `seed_data` creates `approved` (trained) tutors, `seed_phase41_data` `submitted` applications, both through
   `create_teacher_profile`, idempotent.
