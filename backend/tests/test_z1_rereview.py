@@ -77,6 +77,22 @@ class TestReviewPermission:
         row.refresh_from_db()
         assert row.reviewed_at is None
 
+    def test_the_service_refuses_a_non_reviewer_on_its_own(self, live):
+        """Defence in depth: the service does not rely on the admin's gate."""
+        from apps.bookings.services.host_link import ReviewRefused, review_host_link_issues
+        row = open_issue(live)
+        with pytest.raises(ReviewRefused):
+            review_host_link_issues(HostLinkIssue.objects.filter(pk=row.pk), f.make_user('teacher', is_staff=True))
+        row.refresh_from_db()
+        assert row.reviewed_at is None
+
+    def test_the_admin_action_refuses_before_touching_the_service(self, live):
+        row = open_issue(live)
+        support = f.make_user('teacher', is_staff=True)
+        with mock.patch('apps.bookings.admin.review_host_link_issues') as service, pytest.raises(PermissionDenied):
+            model_admin().mark_reviewed(request_as(support), HostLinkIssue.objects.filter(pk=row.pk))
+        service.assert_not_called()
+
     def test_the_action_is_hidden_from_non_admin_staff(self, live):
         support = f.make_user('teacher', is_staff=True)
         assert 'mark_reviewed' not in model_admin().get_actions(request_as(support))
