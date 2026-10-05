@@ -17,6 +17,10 @@ A `pending_payment` booking *holds* its slot. `apps/bookings/services/holds.py` 
 * **Reserve** also asks the database whether another student has a live hold (or owns) the same slot, because the Redis lock alone can lapse while their payment is still running.
 * **API** `lock_expires_at` (booking detail / reservation) uses the same function, so the timer matches server behaviour.
 
+## Minimum notice at pay time (T2)
+
+`TUTOR_MIN_NOTICE_MINUTES` (default 10, provisional) is defined once in `bookings/services/notice.py` and used by the slot list, **checkout init**, the **PayPal capture endpoint** and **credit redemption**. A hold made while the lesson was still bookable but paid after the window closed is refused with 409 `{code: "too_close_to_start"}` BEFORE any capture, so there is nothing to refund. A lesson that has already started keeps its existing path (capture, then late-payment settlement). Webhook-only payments (PayFast) cannot be refused and still go through the DEF-501 quarantine. The booking horizon is `BOOKING_HORIZON_DAYS` (list capped at it; reserve and reschedule scan horizon + 1 day).
+
 ## Late payments (hold already lapsed and purged)
 
 Unchanged and now explicitly tested: a capture that lands after the purge **re-confirms** the booking (`cancelled -> confirmed`, audited) when the slot is still free; if someone else took the slot it is **quarantined** (`-> disputed`, DEF-501, student made whole with a credit + dispute case + ledger entries).

@@ -13,7 +13,7 @@ policy change is an environment variable, not a code change. Anesu should still 
 | Student cancels > 2 h before start | full refund of the exact capture, to the original payment method | `STUDENT_FREE_CANCEL_HOURS=2` |
 | Student cancels <= 2 h, before start | fee kept; **tutor gets 80 %** at +24 h like a student no-show; student must send `acknowledge_forfeit=true` | same |
 | Anyone cancels after the start time | not possible (409 `cancel_window_closed`); outcomes are decided by attendance / dispute | - |
-| Student reschedules | once per lesson, only if the lesson starts > 2 h away; new slot is an open slot of the same tutor, 2 h to 14 days out | `RESCHEDULE_MIN_NOTICE_HOURS=2`, `RESCHEDULE_MAX_PER_BOOKING=1`, `RESCHEDULE_MAX_DAYS_AHEAD=14` |
+| Student reschedules | once per lesson, only if the lesson starts > 2 h away; new slot is an open slot of the same tutor, 2 h to 14 days out | `RESCHEDULE_MIN_NOTICE_HOURS=2`, `RESCHEDULE_MAX_PER_BOOKING=1`, `BOOKING_HORIZON_DAYS=14` (T2; also caps the slot list and reservations) |
 | Tutor wants to move a lesson | cannot; cancels instead | - |
 | Tutor cancels >= 24 h ahead | full refund, no bonus, no strike (but the 4th such cancel inside 30 days is 1 strike) | `TUTOR_CANCEL_NO_PENALTY_HOURS=24`, `TUTOR_EARLY_CANCELS_PER_30D=3` |
 | Tutor cancels < 24 h ahead | full refund **+ 1 bonus credit** + 1 strike | `TUTOR_CANCEL_BONUS_CREDITS=1` |

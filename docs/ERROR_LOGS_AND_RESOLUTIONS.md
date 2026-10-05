@@ -397,3 +397,23 @@ def configure_test_settings(settings):
 - **Symptom:** the new admin-add test got 200 with `{'specialties': ['This field is required.']}`.
 - **Root cause:** Django's form `JSONField` treats `[]` as empty and the model field is not `blank=True`.
 - **Fix:** the test posts `["FreeTalk"]` (the field's documented shape). No product change; whether `specialties` should be optional is a T1c question.
+
+### ERR-210: slot generator built DST-day slots with pytz arithmetic (slice T2)
+- **Symptom:** on a spring-forward day a window ending inside the gap (Europe/Berlin 2026-03-29, 00:00-02:30) produced an extra slot at 03:00 local, outside the tutor's window; on a fall-back day (2026-10-25, 00:00-04:00) the repeated 02:00-03:00 hour was listed as real slots; the same on Australia/Lord_Howe (30-minute shift). Reproduced with the old algorithm in a scratch script (`localize` + `cursor += timedelta` on the aware value) before the fix.
+- **Root cause:** `pytz.localize` fixes the offset once and adding a timedelta never renormalises it, and an end time inside a gap was resolved as standard time.
+- **Fix:** `slot_generator` and the new `teachers/services/schedule.py` use `zoneinfo`; every slot is converted from NAIVE local time on its own (nonexistent skipped, first fold for ambiguous), slot length is added in UTC. Decision: the repeated fall-back hour is NOT offered twice (plan rule); tests in `tests/test_t2_slot_generator.py::TestDaylightSaving`.
+
+### ERR-211: unknown tutor timezone silently became Africa/Johannesburg (slice T2)
+- **Symptom:** a tutor with an invalid stored `User.timezone` got slots computed in SAST: wrong times shown to students.
+- **Root cause:** `except pytz.UnknownTimeZoneError: teacher_tz = Johannesburg` in the generator; validation existed only in the profile serializers and used `ZoneInfo()`, which accepts keys such as `localtime`; the admin form had none.
+- **Fix:** `apps/common/timezones.py` (`available_timezones()` membership) used by `validate_iana_timezone` and `User.clean()`; the generator returns NO slots for an invalid stored zone and logs an error with teacher and user ids (never the value); availability writes answer 400 `timezone` until the tutor fixes the profile.
+
+### ERR-212: the schedule page POSTed a day->boolean matrix to a single-row endpoint (slice T2)
+- **Symptom:** "Save Availability" could never persist anything (400 on every save).
+- **Root cause:** `api.saveTeacherAvailability` sent the whole grid to `POST /teachers/availability/manage/`, which creates one `TeacherAvailability` row.
+- **Fix:** `PUT /teachers/availability/replace/` (atomic) and `lib/availability.ts` grid-to-windows conversion; the page shows the 409 conflict list.
+
+### ERR-213: capture-time notice check broke an existing grace test (slice T2)
+- **Symptom:** `tests/test_grace_bookings.py::test_a_lesson_that_already_started_gets_no_grace` failed (409 instead of the pending outcome) after the notice check was added to `_validate_still_payable`.
+- **Root cause:** the first version also refused capture of a lesson that had already started, changing the deliberate Phase 10 behaviour (capture, then late-payment settlement).
+- **Fix:** the capture-time check only applies while `now < start` (inside the notice window); started lessons keep the existing path. Recorded as a follow-up: refusing started lessons before capture would be safer but is a payments-policy change outside T2.
