@@ -342,8 +342,9 @@ class TestPriceDeprecation:
         target = tmp_path / 'schema.yaml'
         call_command('spectacular', '--file', str(target))
         schema = yaml.safe_load(target.read_text(encoding='utf-8'))
-        field = schema['components']['schemas']['Teacher']['properties']['price_per_25min_usd']
-        assert field.get('deprecated') is True and field.get('readOnly') is True
+        for component in ('TeacherList', 'TeacherDetail'):
+            field = schema['components']['schemas'][component]['properties']['price_per_25min_usd']
+            assert field.get('deprecated') is True and field.get('readOnly') is True
         params = [p['name'] for p in schema['paths']['/api/v1/teachers/']['get'].get('parameters', [])]
         assert 'max_price' not in params
 

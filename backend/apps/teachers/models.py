@@ -89,8 +89,10 @@ class TeacherProfile(models.Model):
     tefl_certificate_url = models.URLField(blank=True, help_text="Direct or fallback certificate URL")
     rating_avg = models.DecimalField(max_digits=3, decimal_places=2, default=5.00)
     rating_count = models.PositiveIntegerField(default=0)
+    # DEPRECATED (T1c): lesson prices come from the platform catalog (payments.LessonPrice, Task 10.1). No API exposes this
+    # column any more; the public `price_per_25min_usd` field reports the catalog USD price. Drop after one release.
     price_per_25min_usd = models.DecimalField(max_digits=6, decimal_places=2, default=9.00)
-    specialties = models.JSONField(default=list, help_text="List of tags: ['FreeTalk', 'Business English', 'Daily News', 'TOEIC']")
+    specialties = models.JSONField(default=list, blank=True, help_text="List of tags: ['FreeTalk', 'Business English', 'Daily News', 'TOEIC']")
     # The only stored lifecycle column; written only by teachers/vetting.py (transition_teacher / create_teacher_profile).
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.APPLIED, db_index=True)
     # Set when the tutor finished onboarding training (T6); live tutors were grandfathered by migration 0007.

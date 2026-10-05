@@ -49,7 +49,6 @@ export function TutorFilters({ filters, onFilterChange, totalCount }: TutorFilte
       accent: "",
       specialty: "",
       learning_goal: "",
-      max_price: null,
       only_power_guard: false,
       only_today: false,
     });
@@ -60,7 +59,6 @@ export function TutorFilters({ filters, onFilterChange, totalCount }: TutorFilte
     filters.accent ||
     filters.specialty ||
     filters.learning_goal ||
-    filters.max_price !== null ||
     filters.only_power_guard ||
     filters.only_today;
 

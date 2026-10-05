@@ -1,4 +1,7 @@
+import type { components } from "./api.generated";
+
 export type UserRole = "student" | "teacher" | "admin";
+export type TutorStatus = components["schemas"]["TutorStatusEnum"];
 
 export interface AuthUser {
   id: string;
@@ -13,6 +16,7 @@ export interface AuthUser {
   phone_number?: string;
   credits?: number | null; // Remaining lesson credits for students; null for other roles
   is_verified?: boolean | null; // Tutor vetting status; null for other roles
+  tutor_status?: TutorStatus | null; // Tutor lifecycle (docs/TUTOR_STATUS_MACHINE.md); null for other roles (T1c)
   email_verified?: boolean; // The address has been confirmed via the e-mailed link
   created_at?: string;
 }

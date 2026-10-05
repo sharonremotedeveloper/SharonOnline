@@ -1,12 +1,14 @@
-from decimal import Decimal, InvalidOperation
 from rest_framework import generics, permissions, filters, status
 from rest_framework.response import Response
 from django.db.models import Q
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.throttling import ScopedRateThrottle, UserRateThrottle
 from apps.users.permissions import IsTeacher
 from .models import TeacherProfile, TeacherAvailability
+from .profile import update_own_profile
 from .serializers import (
     PowerBackupSerializer, TeacherListSerializer, TeacherDetailSerializer, TeacherAvailabilitySerializer,
+    TeacherOwnProfileSerializer,
 )
 
 class TeacherListView(generics.ListAPIView):
@@ -34,13 +36,7 @@ class TeacherListView(generics.ListAPIView):
             except ValueError:
                 pass
 
-        # Max price filter
-        max_price = self.request.query_params.get('max_price')
-        if max_price:
-            try:
-                queryset = queryset.filter(price_per_25min_usd__lte=Decimal(max_price))
-            except InvalidOperation:
-                pass
+        # No price filter: every tutor has the catalog price (Task 10.1); `?max_price=` was removed in T1c.
 
         # Search query
         search = self.request.query_params.get('search')
@@ -75,6 +71,33 @@ class TeacherAvailabilityManageView(generics.ListCreateAPIView):
         if not hasattr(self.request.user, 'teacher_profile'):
             raise PermissionDenied('A teacher profile is required (your application has not been set up yet).')
         serializer.save(teacher=self.request.user.teacher_profile)
+
+
+class TeacherOwnProfileView(generics.RetrieveUpdateAPIView):
+    # The signed-in tutor's own profile (T1c; docs/TUTOR_STATUS_MACHINE.md §8). Owner-only by construction (no id in the
+    # URL). PATCH accepts only the whitelisted fields in teachers/profile.py and saves them with explicit update_fields.
+    # (Comments, not a docstring: drf-spectacular would publish a docstring in the OpenAPI file, ERR-152.)
+    serializer_class = TeacherOwnProfileSerializer
+    permission_classes = (permissions.IsAuthenticated, IsTeacher)
+    throttle_scope = 'teacher_profile'
+    http_method_names = ('get', 'patch', 'head', 'options')
+
+    def get_throttles(self):
+        # Reads ride the normal per-user rate; writes also count against their own scope.
+        if self.request.method == 'PATCH':
+            return [UserRateThrottle(), ScopedRateThrottle()]
+        return [UserRateThrottle()]
+
+    def get_object(self):
+        try:
+            return TeacherProfile.objects.select_related('user').get(user=self.request.user)
+        except TeacherProfile.DoesNotExist:
+            raise NotFound('No tutor profile exists for this account.') from None
+
+    def perform_update(self, serializer):
+        update_own_profile(serializer.instance, serializer.validated_data)
+        # The response reports the live service-owned values, not the copy loaded before a concurrent status change.
+        serializer.instance.refresh_from_db(fields=['status', 'is_verified', 'is_active', 'sla_strikes', 'updated_at'])
 
 
 class TeacherPowerBackupView(generics.UpdateAPIView):

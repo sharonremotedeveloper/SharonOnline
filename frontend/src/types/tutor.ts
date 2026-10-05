@@ -36,7 +36,6 @@ export interface TutorFilterState {
   accent: string;
   specialty: string;
   learning_goal: string;
-  max_price: number | null;
   only_power_guard: boolean;
   only_today: boolean;
 }
