@@ -1797,7 +1797,7 @@ export interface components {
             /**
              * Format: decimal
              * @deprecated
-             * @description DEPRECATED, removed in a later release. The platform lesson price in USD from the price catalog (GET /payments/lesson-prices/); every tutor has the same price. null when no USD price is configured.
+             * @description Deprecated. USD catalog price only. Do not display; use `/payments/lesson-prices/` for the student's currency. null when no USD price is configured.
              */
             readonly price_per_25min_usd: string | null;
             /** @description List of tags: ['FreeTalk', 'Business English', 'Daily News', 'TOEIC'] */
@@ -1831,7 +1831,7 @@ export interface components {
             /**
              * Format: decimal
              * @deprecated
-             * @description DEPRECATED, removed in a later release. The platform lesson price in USD from the price catalog (GET /payments/lesson-prices/); every tutor has the same price. null when no USD price is configured.
+             * @description Deprecated. USD catalog price only. Do not display; use `/payments/lesson-prices/` for the student's currency. null when no USD price is configured.
              */
             readonly price_per_25min_usd: string | null;
             /** @description List of tags: ['FreeTalk', 'Business English', 'Daily News', 'TOEIC'] */

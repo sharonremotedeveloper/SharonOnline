@@ -22,6 +22,14 @@ from apps.teachers.models import TeacherProfile
 logger = logging.getLogger(__name__)
 
 WRITABLE_FIELDS = ('headline', 'bio', 'specialties')
+# The rest of the partition (tests/test_t1c_tutor_profile.py checks every concrete TeacherProfile column is in exactly one
+# class, so a new column forces a decision here).
+IDENTITY_FIELDS = ('id', 'user', 'created_at', 'updated_at')
+SERVICE_OWNED_FIELDS = ('status', 'sla_strikes', 'training_completed_at')   # written only by vetting.py / strikes.py / T6
+STAFF_OWNED_FIELDS = ('eskom_area_id',)                                      # drives the strike waiver: not self-selectable
+DERIVED_FIELDS = ('rating_avg', 'rating_count', 'is_verified', 'is_active')  # computed (reviews) / generated from status
+SELF_DECLARED_ELSEWHERE_FIELDS = ('has_inverter_backup', 'has_lte_failover')  # PATCH /teachers/profile/power-backup/
+DEPRECATED_FIELDS = ('price_per_25min_usd',)                                 # platform catalog price since Task 10.1
 VETTED_FIELDS = (
     'accent', 'intro_video_url', 'intro_video_thumbnail', 'intro_audio_file', 'intro_audio_url',
     'tefl_certificate_file', 'tefl_certificate_url', 'avatar_image', 'avatar_url',

@@ -12,8 +12,8 @@ _CATALOG_USD = '_t1c_catalog_usd'      # serializer-context cache key: one catal
 # the TS type stay compatible, but it is the platform catalog price, never the old per-tutor column.
 DEPRECATED_PRICE_SCHEMA = {
     'type': 'string', 'format': 'decimal', 'nullable': True, 'deprecated': True,
-    'description': 'DEPRECATED, removed in a later release. The platform lesson price in USD from the price catalog '
-                   '(GET /payments/lesson-prices/); every tutor has the same price. null when no USD price is configured.',
+    'description': 'Deprecated. USD catalog price only. Do not display; use `/payments/lesson-prices/` for the student\'s '
+                   'currency. null when no USD price is configured.',
 }
 
 

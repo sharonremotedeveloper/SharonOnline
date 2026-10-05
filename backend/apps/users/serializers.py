@@ -57,6 +57,10 @@ def validate_iso_country(value):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    # Query note (T1c QA m4): `avatar_url`, `is_verified` and `tutor_status` all read `user.teacher_profile`, which Django
+    # caches on the user instance, so one user costs one profile query however many of them are serialized. Serializing a
+    # LIST of users with this class (none does today; `/auth/me` is a single user) must use
+    # `select_related('teacher_profile')`. tests/test_t1c_tutor_profile.py pins the /auth/me count.
     # Role-specific extras the UI needs on every page (navbar, checkout). Null-ish for roles they do not apply to.
     credits = serializers.SerializerMethodField(help_text='Remaining lesson credits (students only; otherwise null).')
     avatar_url = serializers.SerializerMethodField(help_text='Tutor profile photo URL (tutors only; otherwise empty).')

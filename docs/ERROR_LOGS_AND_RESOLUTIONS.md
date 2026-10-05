@@ -409,6 +409,11 @@ def configure_test_settings(settings):
 - **Root cause:** T1c removed the unused `UserSerializer` import from `teachers/serializers.py`, so its `F401` per-file ignore in `ruff.toml` became stale; the ratchet fails until a fixed offender is removed from the baseline.
 - **Fix:** deleted the `"apps/teachers/serializers.py" = ["F401"]` entry (baseline shrank by one file/code pair).
 
+### ERR-173: the 0009 reverse could delete tutor-entered data (slice T1c, QA M1)
+- **Symptom:** none yet (found in review): a backfilled profile with a `/teachers/me/` bio, a power-backup flag, a staff-set Eskom area or an uploaded photo, but no booking / availability / extra audit row, was still "untouched" and the reverse deleted it (cascading strikes, dossiers, disputes, memos; orphaning stored files).
+- **Root cause:** "untouched" was inferred from three hand-picked traces; profile edits leave no trace of those kinds.
+- **Fix:** the reverse requires every data column to still hold the backfill default (`BACKFILL_DEFAULTS` next to the backfill, with a test that fails when a model column is missing from it) and no row in any reverse relation (`_meta.related_objects`) besides the baseline audit row. Round-trip cases `edited_tutor`, `power_tutor`, `area_tutor`, `photo_tutor`, `tagged_tutor`, `struck_tutor`.
+
 ### ERR-172: four T1c mutants survived the first mutation run (slice T1c)
 - **Symptom:** `scripts/mutate.py` round 1: 25/29 killed; survivors: `update_own_profile`'s own whitelist check, the post-save `refresh_from_db` field list in `TeacherOwnProfileView`, the blank-tag check, and two filters in the 0009 reverse.
 - **Root cause:** the whitelist was only exercised through the serializer (which rejects first); the race test checked the DB but not the response body; the blank-tag check duplicated `_TagField(allow_blank=False)`; the reverse test had no pre-existing `applied` profile and no backfilled tutor with history while still `applied`.

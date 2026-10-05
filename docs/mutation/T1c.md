@@ -43,7 +43,15 @@ the ERR-172 fixes).
 | 29 | m9:42 | reverse ignores later history | r1 SURVIVED -> `noted_tutor` row | KILLED (r2) |
 | 30 | m9:42 | reverse deletes profiles it did not create | r1 SURVIVED -> `old_applicant` row | KILLED (r2) |
 | 31 | m9:43 | reverse ignores availability | `busy_tutor` row | KILLED (r2) |
-| 32 | m9:42 | `status='applied'` dropped | - | **EQUIVALENT**: every status change writes a `TeacherStatusChange` row (guard (a): only `vetting.py` writes `status`), so a moved tutor is already excluded by the "no other audit row" filter; the status filter is a second, independent safety net |
+| 32 | m9:42 | `status='applied'` dropped | - | **REDUNDANT under invariant (a)**: every status write goes through `vetting.py` with an audit row, so a moved tutor is already excluded by the "no other audit row" / related-rows check; the status filter is kept as a second, independent safety net (no test can set a status without an audit row except by writing around the service) |
+
+### QA round (M1, 2026-10-05): reverse safety of 0009
+The reverse now also requires every `BACKFILL_DEFAULTS` column at its backfill value and no row in any reverse relation
+(`_meta.related_objects`) other than the baseline audit row. Cases in `tests/test_t1c_profile_backfill.py::_round_trip`:
+`edited_tutor` (bio), `power_tutor` (inverter), `area_tutor` (`eskom_area_id`), `photo_tutor` (`avatar_url`), `tagged_tutor`
+(specialties), `struck_tutor` (a `TeacherStrike` row): all kept; `bare_tutor` removed. Mutants (round 3, see the commit
+log of this branch): defaults check removed; related-rows check removed; baseline-row exclusion removed; file-field blank
+handling.
 
 Not mutated: `bookings__isnull=True` in the 0009 reverse (removing it makes the delete raise `ProtectedError`,
 `Booking.teacher` is `PROTECT`, so it cannot silently destroy a lesson); the Postgres `SET CONSTRAINTS ALL IMMEDIATE` line
