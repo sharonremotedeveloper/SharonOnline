@@ -1,6 +1,19 @@
 from django.contrib import admin
 
-from .models import EskomAreaStatus, EskomNotificationAttempt
+from .models import EskomAreaStatus, EskomNotificationAttempt, CalendarCredential
+from apps.teachers.models import PrivateAssetAccessAudit
+
+
+@admin.register(CalendarCredential)
+class CalendarCredentialAdmin(admin.ModelAdmin):
+    list_display = ('user', 'connected_at', 'revoked_at', 'block_busy', 'last_error')
+    readonly_fields = ('user', 'refresh_token_enc', 'scopes', 'connected_at', 'revoked_at', 'last_error')
+
+
+@admin.register(PrivateAssetAccessAudit)
+class PrivateAssetAccessAuditAdmin(admin.ModelAdmin):
+    list_display = ('actor', 'teacher', 'object_key', 'action', 'created_at')
+    readonly_fields = tuple(field.name for field in PrivateAssetAccessAudit._meta.fields)
 
 
 @admin.register(EskomAreaStatus)

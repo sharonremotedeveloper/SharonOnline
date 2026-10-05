@@ -235,6 +235,54 @@ class TeacherProfile(models.Model):
     def __str__(self):
         return f"{self.user.get_full_name() or self.user.username} ({self.get_accent_display()})"
 
+
+class TeacherAsset(models.Model):
+    """A server-committed, content-verified tutor asset."""
+
+    class Kind(models.TextChoices):
+        AVATAR = 'avatar', 'Avatar'
+        ACCENT_AUDIO = 'accent_audio', 'Accent audio'
+        TEFL_CERTIFICATE = 'tefl_certificate', 'TEFL certificate'
+        INTRO_VIDEO = 'intro_video', 'Intro video'
+        IDENTITY_DOCUMENT = 'identity_document', 'Identity document'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    teacher = models.ForeignKey(TeacherProfile, on_delete=models.CASCADE, related_name='assets')
+    kind = models.CharField(max_length=32, choices=Kind.choices)
+    object_key = models.CharField(max_length=512)
+    quarantine_key = models.CharField(max_length=512, blank=True)
+    etag = models.CharField(max_length=128)
+    content_type = models.CharField(max_length=128)
+    size_bytes = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    replaced_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['teacher', 'kind', 'etag'], name='uniq_teacher_asset_etag')]
+        indexes = [models.Index(fields=['teacher', 'kind', 'replaced_at'], name='teachers_te_teacher_d9a03c_idx')]
+
+    def __str__(self):
+        return f'{self.teacher_id}:{self.kind}:{self.etag}'
+
+
+class PrivateAssetAccessAudit(models.Model):
+    """Append-only access trail for private vetting documents."""
+
+    id = models.BigAutoField(primary_key=True)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='+')
+    teacher = models.ForeignKey(TeacherProfile, on_delete=models.PROTECT, related_name='private_asset_accesses')
+    object_key = models.CharField(max_length=512)
+    action = models.CharField(max_length=32, default='download')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError('PrivateAssetAccessAudit rows are append-only.')
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError('PrivateAssetAccessAudit rows are append-only.')
+
 class TeacherStrike(models.Model):
     """
     One row per strike. Only strikes inside STRIKE_WINDOW_DAYS count, so a tutor who had a bad month is not penalised

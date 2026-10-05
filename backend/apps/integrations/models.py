@@ -40,3 +40,31 @@ class EskomNotificationAttempt(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+
+class CalendarCredential(models.Model):
+    """Encrypted Google Calendar refresh credential owned by one tutor."""
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='calendar_credential')
+    refresh_token_enc = models.TextField()
+    scopes = models.JSONField(default=list, blank=True)
+    connected_at = models.DateTimeField(auto_now_add=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    block_busy = models.BooleanField(default=True)
+    last_error = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['revoked_at', 'user'], name='integration_revoked_3fd39f_idx')]
+
+
+class CalendarOAuthState(models.Model):
+    """Database-backed, atomically consumable Google OAuth callback nonce."""
+
+    state_hash = models.CharField(max_length=64, unique=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['user', 'expires_at'], name='gcal_state_user_exp_idx')]
+

@@ -2,6 +2,7 @@ import json
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 import logging
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -13,10 +14,13 @@ from rest_framework.throttling import ScopedRateThrottle
 
 from apps.bookings.models import Booking
 from apps.integrations.models import EskomAreaStatus
+from apps.teachers.models import TeacherAsset, TeacherProfile
+from apps.teachers.assets import audit_private_access
 from apps.integrations.serializers import EskomStatusSerializer
 from apps.users.permissions import IsTeacher
 from .services import attendance
 from .zoom import zoom_client
+from .google_calendar import oauth_authorization_url, exchange_oauth_code, disconnect_calendar, oauth_state_user, consume_oauth_state
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +65,52 @@ class EskomStatusView(APIView):
             'retrieved_at': area.provider_retrieved_at,
         }
         return Response(EskomStatusSerializer(payload).data)
+
+
+@extend_schema(responses=OpenApiTypes.OBJECT)
+class GoogleCalendarConnectView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsTeacher]
+
+    def get(self, request):
+        try:
+            return Response({'authorization_url': oauth_authorization_url(request.user)})
+        except RuntimeError as exc:
+            return Response({'error': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
+class GoogleCalendarCallbackView(APIView):
+    # Google redirects may not preserve the API session. The single-use state
+    # nonce is the authentication binding for this callback.
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        state = request.query_params.get('state', '')
+        if request.query_params.get('error'):
+            try:
+                owner = oauth_state_user(state)
+                consume_oauth_state(owner, state)
+            except ValueError:
+                logger.info('Ignored invalid or already-consumed declined Google OAuth state.')
+            return Response({'error': 'Google Calendar authorization was declined.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            owner = oauth_state_user(state)
+            if not getattr(owner, 'teacher_profile', None):
+                raise ValueError('Google Calendar is available to teachers only.')
+            exchange_oauth_code(owner, request.query_params.get('code', ''), state)
+        except (ValueError, RuntimeError) as exc:
+            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'connected': True}, status=status.HTTP_200_OK)
+
+
+@extend_schema(exclude=True)
+class GoogleCalendarDisconnectView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsTeacher]
+
+    @extend_schema(responses=OpenApiTypes.OBJECT)
+    def post(self, request):
+        disconnect_calendar(request.user)
+        return Response({'connected': False}, status=status.HTTP_200_OK)
 
 
 @extend_schema(exclude=True)  # machine-to-machine webhook, not part of the client API
@@ -192,6 +242,7 @@ class PresignedUploadURLView(APIView):
                 user_role = getattr(user, 'role', '')
                 if user_role == 'teacher' or getattr(user, 'teacher_profile', None):
                     allowed_prefixes.extend([
+                        f"incoming/{user_id_str}",
                         f"teachers/avatars/{user_id_str}",
                         f"teachers/audio/{user_id_str}",
                         f"private/vetting/certificates/{user_id_str}",
@@ -208,9 +259,10 @@ class PresignedUploadURLView(APIView):
 
         # 2. Access Control for DOWNLOAD action (Tier 2 Private Regulated Compliance Vault)
         elif action == 'download':
-            if key.startswith('private/'):
+            if key.startswith('incoming/') or key.startswith('private/'):
                 if not is_admin:
                     allowed_private_prefixes = [
+                        f"incoming/{user_id_str}",
                         f"private/vetting/certificates/{user_id_str}",
                         f"private/vetting/{user_id_str}",
                         f"private/{user_id_str}",
@@ -220,6 +272,19 @@ class PresignedUploadURLView(APIView):
                             {"error": f"Permission denied to download private document '{key}'."},
                             status=status.HTTP_403_FORBIDDEN
                         )
+                if key.startswith('private/'):
+                    asset = TeacherAsset.objects.filter(object_key=key, replaced_at__isnull=True).select_related('teacher__user').first()
+                    owner_id = key.split('/')[3] if key.startswith('private/vetting/') and len(key.split('/')) > 3 else ''
+                    teacher = asset.teacher if asset else TeacherProfile.objects.filter(user_id=owner_id).first()
+                    legacy_owner = teacher is None and not is_admin and owner_id == str(user.id)
+                    if legacy_owner:
+                        # Legacy presign callers may request a key before the commit row exists.
+                        # A real committed private document always has an auditable TeacherAsset row.
+                        teacher = getattr(user, 'teacher_profile', None)
+                    if not legacy_owner and not is_admin and (teacher is None or teacher.user_id != user.id):
+                        return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+                    if teacher is not None:
+                        audit_private_access(user, teacher, key)
         else:
             return Response(
                 {"error": f"Invalid action '{action}'. Supported actions: 'upload', 'download'."},
@@ -245,11 +310,28 @@ class PresignedUploadURLView(APIView):
                 return Response({"error": "'size' (bytes) is required."}, status=status.HTTP_400_BAD_REQUEST)
             if size <= 0 or size > max_bytes:
                 return Response({"error": f"size must be between 1 and {max_bytes} bytes."}, status=status.HTTP_400_BAD_REQUEST)
-            res = generate_presigned_upload_url(object_key=key, content_type=content_type, expires_in=expires_in, content_length=size)
-            res['public_cdn_url'] = get_public_r2_url(key)
+            private = key.startswith('incoming/') or key.startswith('private/')
+            local_mode = settings.DEBUG or getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False)
+            if private and not local_mode and not getattr(settings, 'CLOUDFLARE_R2_PRIVATE_BUCKET_NAME', ''):
+                return Response({'error': 'Private asset storage is not configured.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            if private and not local_mode:
+                from apps.common.r2_client import get_r2_client
+                if get_r2_client() is None:
+                    return Response({'error': 'Private asset storage is unavailable.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            try:
+                res = generate_presigned_upload_url(object_key=key, content_type=content_type, expires_in=expires_in,
+                                                    content_length=size, private=private)
+            except RuntimeError as exc:
+                return Response({'error': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            if not private:
+                res['public_cdn_url'] = get_public_r2_url(key)
             return Response(res, status=status.HTTP_200_OK)
         elif action == 'download':
-            url = generate_presigned_download_url(object_key=key, expires_in=expires_in)
+            private = key.startswith('incoming/') or key.startswith('private/')
+            try:
+                url = generate_presigned_download_url(object_key=key, expires_in=expires_in, private=private)
+            except RuntimeError as exc:
+                return Response({'error': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
             return Response({
                 "download_url": url,
                 "key": key,

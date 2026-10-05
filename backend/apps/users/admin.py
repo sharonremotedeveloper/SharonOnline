@@ -11,7 +11,7 @@ class UserAdmin(BaseUserAdmin):
 
     fieldsets = BaseUserAdmin.fieldsets + (
         ('Platform Role & Regional Settings', {
-            'fields': ('role', 'country', 'timezone', 'phone_number', 'google_calendar_token')
+            'fields': ('role', 'country', 'timezone', 'phone_number')
         }),
         ('Booking block (clear this field to let the student book again)', {
             'fields': ('booking_blocked_reason',)

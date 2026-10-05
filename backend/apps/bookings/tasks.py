@@ -70,6 +70,13 @@ def purge_expired_reservations_task():
     return {"purged_count": purged_count}
 
 
+@shared_task(name='apps.bookings.tasks.purge_attendance_payloads_task')
+@distributed_task_lock('lock:beat:purge_attendance_payloads', timeout_seconds=800)
+def purge_attendance_payloads_task():
+    from .retention import purge_attendance_payloads
+    return purge_attendance_payloads()
+
+
 @shared_task(name='apps.bookings.tasks.audit_attendance_and_noshows_task')
 def audit_attendance_and_noshows_task():
     """

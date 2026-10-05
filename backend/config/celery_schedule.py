@@ -89,6 +89,10 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(hour=3, minute=20),
         'options': {'queue': 'notifications', 'expires': 3600},
     },
+    'purge-attendance-payloads-daily': {
+        'task': 'apps.bookings.tasks.purge_attendance_payloads_task',
+        'schedule': crontab(hour=2, minute=20),
+    },
     # --- end N1a
 }
 
@@ -108,4 +112,5 @@ CELERY_TASK_ROUTES = {
     'apps.notifications.tasks.deliver_notification_task': {'queue': 'notifications'},
     'apps.notifications.tasks.sweep_notifications_task': {'queue': 'notifications'},
     'apps.notifications.tasks.purge_notifications_task': {'queue': 'notifications'},
+    'apps.bookings.tasks.purge_attendance_payloads_task': {'queue': 'scheduler_beat'},
 }

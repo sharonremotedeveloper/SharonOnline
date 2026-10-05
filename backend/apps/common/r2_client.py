@@ -26,15 +26,29 @@ def get_r2_client():
         config=Config(signature_version='s3v4')
     )
 
-def generate_presigned_download_url(object_key: str, expires_in: int = 900) -> str:
+def _bucket(private=False):
+    if private:
+        return getattr(settings, 'CLOUDFLARE_R2_PRIVATE_BUCKET_NAME', '') or getattr(settings, 'CLOUDFLARE_R2_BUCKET_NAME', 'esl-platform-assets')
+    return getattr(settings, 'CLOUDFLARE_R2_BUCKET_NAME', 'esl-platform-assets')
+
+
+def _client_or_fail(operation):
+    client = get_r2_client()
+    local_mode = getattr(settings, 'DEBUG', False) or getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False)
+    if client is None and not local_mode:
+        raise RuntimeError(f'Cloudflare R2 is unavailable for {operation}.')
+    return client
+
+
+def generate_presigned_download_url(object_key: str, expires_in: int = 900, *, private=False) -> str:
     """
     Generates a secure, time-limited GET presigned URL for private vetting assets
     (e.g. TEFL certificates, identity documents).
     Defaults to 15-minute (900s) expiry.
     Falls back gracefully to local media URL if R2 is not active.
     """
-    client = get_r2_client()
-    bucket_name = getattr(settings, 'CLOUDFLARE_R2_BUCKET_NAME', 'esl-platform-assets')
+    client = _client_or_fail('download')
+    bucket_name = _bucket(private)
 
     if not client:
         media_url = getattr(settings, 'MEDIA_URL', '/media/')
@@ -52,16 +66,18 @@ def generate_presigned_download_url(object_key: str, expires_in: int = 900) -> s
         return url
     except Exception as e:
         logger.error(f"Failed to generate presigned R2 download URL for {object_key}: {e}")
+        if not (getattr(settings, 'DEBUG', False) or getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False)):
+            raise RuntimeError('Cloudflare R2 refused the download URL.') from e
         media_url = getattr(settings, 'MEDIA_URL', '/media/')
         return f"{media_url.rstrip('/')}/{object_key.lstrip('/')}"
 
-def generate_presigned_upload_url(object_key: str, content_type: str = None, expires_in: int = 900, content_length: int = None) -> dict:
+def generate_presigned_upload_url(object_key: str, content_type: str = None, expires_in: int = 900, content_length: int = None, *, private=False) -> dict:
     """
     Generates a direct PUT presigned upload URL enabling client-side direct uploads
     to Cloudflare R2 with zero backend compute overhead.
     """
-    client = get_r2_client()
-    bucket_name = getattr(settings, 'CLOUDFLARE_R2_BUCKET_NAME', 'esl-platform-assets')
+    client = _client_or_fail('upload')
+    bucket_name = _bucket(private)
 
     if not client:
         return {
@@ -93,6 +109,8 @@ def generate_presigned_upload_url(object_key: str, content_type: str = None, exp
         }
     except Exception as e:
         logger.error(f"Failed to generate presigned R2 upload URL for {object_key}: {e}")
+        if not (getattr(settings, 'DEBUG', False) or getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False)):
+            raise RuntimeError('Cloudflare R2 refused the upload URL.') from e
         return {
             'upload_url': f"/api/v1/upload/{object_key}",
             'error': str(e)
@@ -114,5 +132,39 @@ def get_public_r2_url(object_key: str) -> str:
         return f"{domain}/{object_key.lstrip('/')}"
     media_url = getattr(settings, 'MEDIA_URL', '/media/')
     return f"{media_url.rstrip('/')}/{object_key.lstrip('/')}"
+
+
+def head_object(object_key: str, *, private=False):
+    client = _client_or_fail('head')
+    if not client:
+        return None
+    return client.head_object(Bucket=_bucket(private), Key=object_key)
+
+
+def read_object_prefix(object_key: str, *, etag: str, private=False, size=64):
+    client = _client_or_fail('read')
+    if not client:
+        return None
+    response = client.get_object(Bucket=_bucket(private), Key=object_key, Range=f'bytes=0-{size - 1}', IfMatch=etag)
+    body = response['Body']
+    return body.read(size)
+
+
+def copy_object(source_key: str, destination_key: str, *, etag: str, private=False, source_private=None):
+    client = _client_or_fail('copy')
+    if not client:
+        return None
+    if source_private is None:
+        source_private = private
+    return client.copy_object(Bucket=_bucket(private), Key=destination_key,
+                              CopySource={'Bucket': _bucket(source_private), 'Key': source_key},
+                              CopySourceIfMatch=etag)
+
+
+def delete_object(object_key: str, *, private=False):
+    client = _client_or_fail('delete')
+    if not client:
+        return None
+    return client.delete_object(Bucket=_bucket(private), Key=object_key)
 
 

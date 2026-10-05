@@ -1,5 +1,6 @@
 from celery import shared_task
 from datetime import timedelta
+from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 from apps.bookings.models import Booking
@@ -177,6 +178,8 @@ def reconcile_teacher_gcal_task():
     and caches them in Redis for availability slot deduction.
     """
     from django.core.cache import cache
+    from django.utils.dateparse import parse_datetime
+    from .google_calendar import fetch_freebusy
     from apps.teachers.models import TeacherProfile
     from apps.common.locks import distributed_task_lock
 
@@ -184,18 +187,34 @@ def reconcile_teacher_gcal_task():
     def _execute():
         # Same rule as the Eskom sync (slice T1b): approved tutors and suspended ones with lessons left; no applicants.
         tutors = TeacherProfile.objects.operational().filter(
-            user__google_calendar_token__isnull=False
-        ).select_related('user')
+            user__calendar_credential__revoked_at__isnull=True
+        ).select_related('user', 'user__calendar_credential')
 
         reconciled = 0
         for tutor in tutors:
-            token = tutor.user.google_calendar_token
-            if token and token.get('access_token'):
+            credential = getattr(tutor.user, 'calendar_credential', None)
+            local_mode = settings.DEBUG or getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False)
+            if credential or (local_mode and isinstance(tutor.user.google_calendar_token, dict)
+                              and tutor.user.google_calendar_token.get('access_token')):
                 cache_key = f"gcal:busy:{tutor.id}"
-                # Cache busy span placeholder
-                cache.set(cache_key, [], timeout=7200)
-                reconciled += 1
-                logger.info(f"Reconciled Google Calendar free/busy status for tutor {tutor.user.username}")
+                # No credential row = the local-simulation legacy token: nothing to fetch, cache an empty busy list.
+                if credential is None or not credential.block_busy:
+                    cache.set(cache_key, [], timeout=7200)
+                    reconciled += 1
+                    continue
+                now = timezone.now()
+                try:
+                    busy = fetch_freebusy(tutor.user, now, now + timedelta(days=settings.BOOKING_HORIZON_DAYS + 1))
+                    intervals = []
+                    for item in busy:
+                        start, end = parse_datetime(str(item.get('start') or '')), parse_datetime(str(item.get('end') or ''))
+                        if start and end and start < end:
+                            intervals.append((start.isoformat(), end.isoformat()))
+                    cache.set(cache_key, intervals, timeout=7200)
+                    reconciled += 1
+                    logger.info('Reconciled Google Calendar free/busy for tutor %s', tutor.user.username)
+                except Exception as exc:
+                    logger.warning('Google Calendar free/busy unavailable for tutor %s: %s', tutor.user.username, exc)
 
         return {"reconciled_tutors": reconciled}
 

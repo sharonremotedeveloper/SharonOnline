@@ -1,4 +1,5 @@
 from datetime import timedelta
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import generics, permissions, filters, status
 from rest_framework.generics import get_object_or_404
@@ -12,6 +13,9 @@ from rest_framework.throttling import UserRateThrottle
 from apps.common import clock
 from apps.users.permissions import IsTeacher
 from .models import TeacherProfile, TeacherAvailability, TeacherDateOverride, TeacherTimeOff
+from .models import TeacherAsset
+from .assets import commit_asset, audit_private_access
+from apps.common.r2_client import generate_presigned_download_url
 from .profile import update_own_profile
 from .serializers import (
     AvailabilityChangeSerializer, AvailabilityMatrixSerializer, AvailabilityReplaceResultSerializer,
@@ -261,3 +265,43 @@ class TeacherPowerBackupView(generics.UpdateAPIView):
         if not hasattr(self.request.user, 'teacher_profile'):
             raise PermissionDenied('A teacher profile is required.')
         return self.request.user.teacher_profile
+
+
+@extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
+class TeacherAssetCommitView(APIView):
+    permission_classes = (permissions.IsAuthenticated, IsTeacher)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'upload'
+
+    def post(self, request):
+        teacher = getattr(request.user, 'teacher_profile', None)
+        if teacher is None:
+            raise NotFound('No tutor profile exists for this account.')
+        try:
+            asset = commit_asset(teacher, actor=request.user,
+                                 kind=str(request.data.get('kind') or ''),
+                                 quarantine_key=str(request.data.get('key') or ''),
+                                 expected_etag=str(request.data.get('etag') or ''))
+        except ValueError as exc:
+            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except RuntimeError as exc:
+            return Response({'error': str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response({'id': str(asset.id), 'kind': asset.kind, 'key': asset.object_key,
+                         'etag': asset.etag, 'content_type': asset.content_type}, status=status.HTTP_200_OK)
+
+
+@extend_schema(responses=OpenApiTypes.OBJECT)
+class TeacherPrivateAssetDownloadView(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, kind):
+        teacher = getattr(request.user, 'teacher_profile', None)
+        if request.user.is_staff and request.query_params.get('teacher_id'):
+            teacher = TeacherProfile.objects.filter(pk=request.query_params['teacher_id']).first()
+        asset = TeacherAsset.objects.filter(teacher=teacher, kind=kind, replaced_at__isnull=True).first()
+        if asset is None or kind not in {TeacherAsset.Kind.TEFL_CERTIFICATE, TeacherAsset.Kind.IDENTITY_DOCUMENT}:
+            raise NotFound('Private asset not found.')
+        if not (request.user.is_staff or request.user == teacher.user):
+            return Response({'error': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+        audit_private_access(request.user, teacher, asset.object_key)
+        return Response({'download_url': generate_presigned_download_url(asset.object_key, private=True), 'expires_in': 900})

@@ -181,6 +181,7 @@ class AttendanceAudit(models.Model):
             models.UniqueConstraint(fields=['booking', 'zoom_session_id'], condition=~models.Q(zoom_session_id=''),
                                     name='uniq_attendance_session_per_booking'),
         ]
+        indexes = [models.Index(fields=['created_at', 'id'], name='attendance_created_id_idx')]
 
     def __str__(self):
         return f"Attendance {self.participant_email} on {self.booking_id} ({self.total_minutes}m)"

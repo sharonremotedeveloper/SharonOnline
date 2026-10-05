@@ -6,6 +6,7 @@ DOCS = frozenset({'application/pdf'})
 
 # (key prefix, allowed content types, max bytes) - first match wins
 UPLOAD_POLICIES = (
+    ('incoming/', IMAGES | AUDIO | DOCS | {'video/mp4', 'video/webm'}, 50 * MB),
     ('teachers/avatars/', IMAGES, 5 * MB),
     ('students/avatars/', IMAGES, 5 * MB),
     ('teachers/audio/', AUDIO, 10 * MB),

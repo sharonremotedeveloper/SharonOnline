@@ -312,8 +312,12 @@ def _live_booking(booking_id, token):
 
 def _calendar_step(booking_id, token, now) -> None:
     booking = _live_booking(booking_id, token)
-    connected = booking.teacher.user.google_calendar_token
-    if not (isinstance(connected, dict) and connected.get('access_token')):
+    from apps.integrations.models import CalendarCredential
+    connected = CalendarCredential.objects.filter(user=booking.teacher.user, revoked_at__isnull=True).exists()
+    local_mode = settings.DEBUG or getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False)
+    legacy_connected = local_mode and isinstance(booking.teacher.user.google_calendar_token, dict) \
+        and bool(booking.teacher.user.google_calendar_token.get('access_token'))
+    if not connected and not legacy_connected:
         _set_step(booking_id, token, 'calendar', St.SKIPPED, now)
         return
     event_id = sync_booking_to_teacher_gcal(booking)          # HTTP, outside the row lock; returns the id, saves nothing

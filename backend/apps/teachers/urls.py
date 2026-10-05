@@ -3,6 +3,7 @@ from .views import (
     TeacherListView, TeacherDetailView, TeacherAvailabilityManageView, TeacherAvailabilityDetailView,
     TeacherAvailabilityReplaceView, TeacherTimeOffListView, TeacherTimeOffDetailView, TeacherDateOverrideListView,
     TeacherDateOverrideDetailView, TeacherOwnProfileView, TeacherPowerBackupView,
+    TeacherAssetCommitView, TeacherPrivateAssetDownloadView,
 )
 
 urlpatterns = [
@@ -17,4 +18,6 @@ urlpatterns = [
     path('availability/overrides/', TeacherDateOverrideListView.as_view(), name='teacher-date-overrides'),
     path('availability/overrides/<uuid:pk>/', TeacherDateOverrideDetailView.as_view(), name='teacher-date-override-detail'),
     path('profile/power-backup/', TeacherPowerBackupView.as_view(), name='teacher-power-backup'),
+    path('me/assets/commit/', TeacherAssetCommitView.as_view(), name='teacher-asset-commit'),
+    path('me/assets/<str:kind>/download/', TeacherPrivateAssetDownloadView.as_view(), name='teacher-private-asset-download'),
 ]
