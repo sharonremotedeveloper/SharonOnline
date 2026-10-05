@@ -5,9 +5,14 @@ status handling, error mapping) runs in the test; only the provider is fake. Use
     def test_x(fake_resend, fake_zoom, fake_google, fake_r2): ...
 
 * FakeResend  - POST https://api.resend.com/emails. `.sent` (payloads), `.fail_with(status)`, `.fail_with_network_error()`.
-* FakeZoom    - S2S OAuth token + create / get / patch / delete meeting. Meeting state is tri-state
+* FakeZoom    - S2S OAuth token + create / get / list / patch / delete meeting. Meeting state is tri-state
                 `started | not_started | error` (`.set_status(id, state)`): Zoom reports `started` / `waiting`, `error`
-                answers HTTP 500. `.fail_next(op, status)` for create/get/delete/update/token.
+                answers HTTP 500. `.fail_next(op, status)` for create/get/list/delete/update/token,
+                `.rate_limit_next(op, retry_after)` (429 + Retry-After), `.timeout_next(op, created=False)` (a
+                ReadTimeout; `created=True` builds the meeting first, like a response lost on the way back),
+                `.rotate_token()` (Zoom revokes the current token: the next API call answers 401). Every GET of a meeting
+                returns a NEW `start_url` (`zak=fake-zak-<n>`), so tests can prove a host link was fetched fresh.
+                `.sleeps` records the client's back-off waits (installed in place of `time.sleep`).
 * FakeGoogle  - Calendar v3 events insert / patch / put / delete (410 once deleted), freeBusy, and the OAuth token
                 endpoint (`.revoke()` -> `invalid_grant`). `.add_busy(start, end)`, `.fail_next(op, status)`.
 * FakeR2      - a boto3 S3 client stub: put/head/get (Range, IfMatch)/copy (CopySourceIfMatch)/delete/presign, with real
@@ -160,7 +165,27 @@ class FakeZoom(_FailureQueue):
         self.created = []
         self.token_requests = 0
         self.access_token = 'fake-zoom-access-token'
+        self.expires_in = 3599
+        self.sleeps = []
+        self._tokens = itertools.count(2)
+        self._zaks = itertools.count(1)
         self._ids = itertools.count(81000000001)
+        self._special = {}
+
+    def rotate_token(self):
+        """Zoom revokes the token it issued last: the client's cached token now answers 401 until it fetches a new one."""
+        self.access_token = f'fake-zoom-access-token-{next(self._tokens)}'
+
+    def rate_limit_next(self, op, retry_after=None, times=1):
+        headers = {} if retry_after is None else {'Retry-After': str(retry_after)}
+        self._special.setdefault(op, []).extend([('429', headers)] * times)
+
+    def timeout_next(self, op, created=False, times=1):
+        self._special.setdefault(op, []).extend([('timeout', created)] * times)
+
+    def _pop_special(self, op):
+        queue = self._special.get(op)
+        return queue.pop(0) if queue else None
 
     def set_status(self, meeting_id, state):
         if state not in ZOOM_STATES:
@@ -175,18 +200,35 @@ class FakeZoom(_FailureQueue):
             return FakeResponse(status, body or {'code': status, 'message': f'fake Zoom {op} failure'})
         return None
 
+    def _special_response(self, op, build=None):
+        special = self._pop_special(op)
+        if special is None:
+            return None
+        kind, arg = special
+        if kind == '429':
+            return FakeResponse(429, {'code': 429, 'message': 'You have reached the maximum per-second rate limit.'},
+                                headers=arg)
+        if arg and build is not None:          # timeout AFTER Zoom did the work: the response is lost on the way back
+            build()
+        raise requests.ReadTimeout(f'fake Zoom {op} timed out')
+
     def handle(self, req):
         self.requests.append(req)
         if req.url.startswith(self.TOKEN_URL):
             self.token_requests += 1
-            return self._failure('token') or FakeResponse(200, {'access_token': self.access_token, 'token_type': 'bearer',
-                                                                'expires_in': 3599})
+            return (self._special_response('token') or self._failure('token')
+                    or FakeResponse(200, {'access_token': self.access_token, 'token_type': 'bearer',
+                                          'expires_in': self.expires_in}))
         if req.headers.get('Authorization') != f'Bearer {self.access_token}':
             return FakeResponse(401, {'code': 124, 'message': 'Invalid access token.'})
         path = urlparse(req.url).path.removeprefix('/v2')
         created = re.fullmatch(r'/users/([^/]+)/meetings', path)
         if created and req.method == 'POST':
-            return self._failure('create') or self._create(created.group(1), req.json or {})
+            host, body = created.group(1), req.json or {}
+            return (self._special_response('create', lambda: self._create(host, body))
+                    or self._failure('create') or self._create(host, body))
+        if created and req.method == 'GET':
+            return self._special_response('list') or self._failure('list') or self._list(created.group(1), req.params or {})
         one = re.fullmatch(r'/meetings/([^/]+)', path)
         if not one:
             _unexpected(req)
@@ -194,7 +236,7 @@ class FakeZoom(_FailureQueue):
         op = {'GET': 'get', 'DELETE': 'delete', 'PATCH': 'update'}.get(req.method)
         if op is None:
             _unexpected(req)
-        failure = self._failure(op)
+        failure = self._special_response(op) or self._failure(op)
         if failure:
             return failure
         meeting = self.meetings.get(meeting_id)
@@ -208,25 +250,39 @@ class FakeZoom(_FailureQueue):
             return FakeResponse(204)
         if meeting.get('state') == 'error':
             return FakeResponse(500, {'code': 500, 'message': 'fake Zoom internal error'})
-        return FakeResponse(200, {**meeting, 'status': 'started' if meeting.get('state') == 'started' else 'waiting'})
+        return FakeResponse(200, {**meeting, 'status': 'started' if meeting.get('state') == 'started' else 'waiting',
+                                  'start_url': f'https://zoom.us/s/{meeting_id}?zak=fake-zak-{next(self._zaks)}'})
 
     def _create(self, host, body):
         meeting_id = next(self._ids)
         meeting = {'id': meeting_id, 'host_id': host, 'topic': body.get('topic'), 'start_time': body.get('start_time'),
-                   'duration': body.get('duration'), 'settings': body.get('settings', {}), 'state': 'not_started',
-                   'join_url': f'https://zoom.us/j/{meeting_id}?pwd=fake',
-                   'start_url': f'https://zoom.us/s/{meeting_id}?zak=fake-zak', 'password': 'fake123'}
+                   'duration': body.get('duration'), 'agenda': body.get('agenda', ''), 'settings': body.get('settings', {}),
+                   'state': 'not_started', 'join_url': f'https://zoom.us/j/{meeting_id}?pwd=fake',
+                   'start_url': f'https://zoom.us/s/{meeting_id}?zak=fake-zak-0', 'password': 'fake123'}
         self.meetings[str(meeting_id)] = meeting
         self.created.append(body)
         return FakeResponse(201, meeting)
 
+    def _list(self, host, params):
+        """`GET /users/{host}/meetings` (upcoming): summaries only (no start_url / password), paged by `page_size`."""
+        mine = [m for m in self.meetings.values() if m.get('host_id') == host]
+        size = int(params.get('page_size') or 30)
+        start = int(params.get('next_page_token') or 0)
+        page = mine[start:start + size]
+        token = str(start + size) if start + size < len(mine) else ''
+        return FakeResponse(200, {'page_size': size, 'total_records': len(mine), 'next_page_token': token,
+                                  'meetings': [{'id': m['id'], 'topic': m.get('topic'), 'start_time': m.get('start_time'),
+                                                'agenda': m.get('agenda', ''), 'join_url': m['join_url']} for m in page]})
+
     def install(self, monkeypatch):
-        from apps.integrations.zoom import zoom_client
-        for attr, value in (('account_id', 'fake-account'), ('client_id', 'fake-client'), ('client_secret', 'fake-secret')):
-            monkeypatch.setattr(zoom_client, attr, value)
+        """Credentials come from Django settings since Z1 (no environment reads in app code); back-off waits are recorded,
+        never slept."""
+        from django.conf import settings
         for name in ('ZOOM_ACCOUNT_ID', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET'):
-            monkeypatch.setenv(name, f'fake-{name.lower()}')            # for clients constructed during the test
+            monkeypatch.setattr(settings, name, f'fake-{name.lower()}', raising=False)
         monkeypatch.setattr('apps.integrations.zoom.requests', FakeRequestsModule(self.handle))
+        monkeypatch.setattr('apps.integrations.zoom._sleep', self.sleeps.append)
+        monkeypatch.setattr('apps.integrations.zoom_auth._sleep', self.sleeps.append)
         return self
 
 

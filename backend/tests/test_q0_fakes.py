@@ -78,15 +78,31 @@ def test_fake_zoom_tri_state_is_validated(fake_zoom):
         fake_zoom.set_status('1', 'finished')
 
 
-def test_fake_zoom_failures(fake_zoom):
-    fake_zoom.fail_next('create', 429)
-    with pytest.raises(ZoomError, match='429'):
+def test_fake_zoom_failures(fake_zoom, settings):
+    # Since Z1 a 4xx other than 401/429 is final at once, and 429 / 5xx are retried up to ZOOM_HTTP_MAX_ATTEMPTS.
+    fake_zoom.fail_next('create', 400)
+    with pytest.raises(ZoomError, match='400'):
         zoom_client.create_meeting('Lesson', '2026-11-01T10:00:00Z')
-    fake_zoom.fail_next('delete', 500)
+    for _ in range(settings.ZOOM_HTTP_MAX_ATTEMPTS):
+        fake_zoom.fail_next('delete', 500)
     meeting = zoom_client.create_meeting('Lesson', '2026-11-01T10:00:00Z')
-    with pytest.raises(ZoomError):
+    with pytest.raises(ZoomError, match='500'):
         zoom_client.delete_meeting(meeting['meeting_id'])
     assert fake_zoom.created[0]['settings']['waiting_room'] is True
+
+
+def test_fake_zoom_rate_limit_timeout_and_token_rotation(fake_zoom):
+    fake_zoom.rate_limit_next('create', retry_after=1)
+    meeting = zoom_client.create_meeting('Lesson', '2026-11-01T10:00:00Z')
+    assert fake_zoom.sleeps == [1]
+    fake_zoom.rotate_token()
+    assert zoom_client.get_meeting_status(meeting['meeting_id'])['status'] == 'waiting'
+    assert fake_zoom.token_requests == 2
+    fake_zoom.timeout_next('get')
+    with pytest.raises(ZoomError):
+        zoom_client.get_meeting_status(meeting['meeting_id'])
+    first, second = zoom_client.get_start_url(meeting['meeting_id']), zoom_client.get_start_url(meeting['meeting_id'])
+    assert first != second and 'zak=' in first
 
 
 # ------------------------------------------------------------------ Google Calendar
