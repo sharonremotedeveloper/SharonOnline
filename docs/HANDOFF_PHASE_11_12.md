@@ -7,45 +7,42 @@ Claude built Phase 11/12 as parallel slices run by sub-agents in git worktrees, 
 
 ---
 
-## 1. Where things stand
+## 1. Where things stand (updated after the push, 2026-10-05)
+
+**Layers 0 and 1 are on `origin/develop` (`f4c0e0a`) and CI is green on every job**, including `postgres-ledger` (PostgreSQL 16) which ran the Postgres-marked tests and migration round trips of T1a/T1b/T1c/T2/N1a/Z1 for the first time. Local gate at the same commit: backend **3051 passed, 24 skipped**; `ruff`, `manage.py check`, `makemigrations --check`, `scripts/check_deploy.py` clean; frontend `lint` clean, `npm test` 167/167, `check:api-types` ok, `npm run build` ok.
 
 | Layer / slice | What | State |
 | :--- | :--- | :--- |
-| L0 **Q0** quality infrastructure | guards, ruff ratchet, no-network fixture, fakes, factories, clock, `mutate.py` | **On `origin/develop`**, CI green |
-| L0 **F0** three money defects | reschedule re-provisions Zoom, tri-state probe, race-safe fulfilment | **On `origin/develop`**, CI green |
-| L0 **N1c** unified `send_email` | only code that calls Resend | **On `origin/develop`**, CI green |
-| L0 **T1a** tutor status machine | `status` + generated flags, `transition_teacher`, audit | **On `origin/develop`**, CI green (after ERR-192) |
-| L1 **T1c** tutor profile at signup, `/teachers/me/` | merged locally, QA approved | **Local only** (`integration/layer-1`) |
-| L1 **N1a** notifications app core | `notify()`, delivery, alerts, retention | **Local only**, QA approved |
-| L1 **T1b** `bookable()`, staff review actions, admin cancel | merged locally, QA approved | **Local only** |
-| L1 **Z1** Zoom client hardening + host link | merged locally, QA approved (2 rounds) | **Local only** |
-| L1 **T2** tutor availability, DST fix, notice at pay time, tutor-timezone-change conflicts | QA approved with conditions, all conditions fixed (QA's fixes were not independently re-reviewed) | **Merged into `integration/layer-1`** (`1490deb`), green locally |
-| L1 **T3** uploads, **G1** Google Calendar OAuth, **R1** attendance-payload purge | not started | to do |
-| L2-L4 (N1b, N2a-c, N3, T4a/b, G2, T6, F1, F2, N4, T5, T7, P1/P2, I0-I3) | not started | see plan §4 |
+| L0 **Q0, F0, N1c, T1a** | quality gates; money-defect fixes; unified `send_email`; tutor status machine | on `develop`, CI green |
+| L1 **T1c** | tutor profile at signup, `/teachers/me/`, `tutor_status` | on `develop`, CI green |
+| L1 **N1a** | notifications app core (`notify()`, delivery, alerts, retention) | on `develop`, CI green |
+| L1 **T1b** | `bookable()`, staff review actions, admin cancel of a suspended tutor's lessons | on `develop`, CI green |
+| L1 **Z1** | Zoom client hardening, host link, payout-hold admin (legacy Meetings path) | on `develop`, CI green |
+| L1 **T2** | availability, DST fix, notice at pay time, timezone-change conflicts | on `develop`, CI green (its review fixes were not independently re-reviewed) |
+| L1 **T3** uploads, **G1** Google Calendar OAuth, **R1** attendance-payload purge | not started | **next** |
+| L2-L4 (N1b, N2a-c, N3, T4a/b, G2, T6, F1, F2, N4, T5, T7, P1/P2, I0-I3) | not started | plan §4 |
+| Zoom Video SDK slices V1-V5 | planned in `ZOOM_VIDEO_SDK_MIGRATION_PLAN.md` | **unconfirmed with Anesu, see section 6** |
 
-**Nothing for layer 1 has been pushed.** The push was blocked by a GitHub account mismatch (section 2).
+## 2. Repository state (verified 2026-10-05 after the push and cleanup)
 
-## 2. Repository state (verify, do not trust)
-
-- `origin/develop` = `db0a997` (layer 0 + the ERR-192 CI fix). CI green on it (Quality gates incl. the Postgres job, API contract).
-- Local branch **`integration/layer-1`** is ahead of `origin/develop` by about 100 commits. It contains T1c, N1a, T1b, Z1 (+ its review fixes) and T2 merged in that order, plus integration fixes (ERR-193), a tool-access log row and this handoff. Local gate on it with T2 included: backend **3042 passed, 24 skipped**; `ruff`, `manage.py check`, `makemigrations --check`, `scripts/check_deploy.py` clean; frontend `lint` clean, `npm test` 167/167, `check:api-types` ok, `npm run build` ok. (The earlier T2 sub-agent run took 64 min wall on a loaded machine; the full suite takes about 4-5 min when the machine is idle.)
-- Local `develop` still points at the old tip; `main` = `261077c` (promote to `main` only on Anesu's word).
-- Worktrees in `.claude/worktrees/` (`agent-*`) and branches `feature/{t1c-tutor-profile,n1a-notifications-core,t1b-bookable-review,z1-zoom-hardening,t2-availability}` + `worktree-agent-*`: delete the merged ones after the push (`git worktree remove --force --force <path>` then `git branch -d ...`; some worktrees are `locked`). (`feature/t2-availability` is merged too and can go with them once the push succeeds.)
-- **Uncommitted changes that are not Claude's** sit in the main checkout: modified `docs/DECISIONS_D1_D12.md`, `docs/ZOOM_ATTENDANCE.md`, and a new `docs/ZOOM_VIDEO_SDK_MIGRATION_PLAN.md` (Zoom Video SDK adoption, "D-9 resolved"). Claude did not write them, did not commit them and never read past them beyond understanding the impact (section 6). Whoever owns them should commit them; if they were meant to be part of the push, say so. When merging branches that edit `ZOOM_ATTENDANCE.md`, stash them first (`git stash push -- <files>`), merge, `git stash pop`.
-- Never `git add -A` here. Stage files explicitly. After any `npm run build` / `npm install` in `frontend/` run `git checkout -- frontend/package-lock.json frontend/tsconfig.json frontend/next-env.d.ts` (the build rewrites them: `jsx: preserve`, an optional win32 SWC lockfile entry) and, after regenerating the API, check `git status` for CRLF-only noise on `docs/api/openapi.yaml` and `frontend/src/types/api.generated.ts` (checkout them if the content diff is empty).
+- `origin/develop` = `f4c0e0a`; local `develop` is identical. `main` = `261077c` (promote to `main` only on Anesu's word).
+- **Branches are clean:** locally and on the remote only `develop` and `main` exist. All layer-0/1 feature branches, `worktree-agent-*` branches, `integration/layer-1`, the five Dependabot branches and their PRs (#16-#20, closed as superseded) were removed. `.claude/worktrees/` is empty. There are no open PRs.
+- The Zoom Video SDK docs written by Antigravity (`ZOOM_VIDEO_SDK_MIGRATION_PLAN.md`, edits to `DECISIONS_D1_D12.md` and `ZOOM_ATTENDANCE.md`) were committed at Anesu's instruction (`d3c5a3f`).
+- Dependency bumps applied in one change (`f4c0e0a`): `ruff==0.16.10` (lint ratchet verified unchanged), `django-cors-headers>=4.9.0`, `psycopg2-binary>=2.9.13`, `python-dotenv>=1.2.4`, `pytest-django>=4.14.0`.
+- Never `git add -A` blindly. After any `npm run build` / `npm install` in `frontend/` run `git checkout -- frontend/package-lock.json frontend/tsconfig.json frontend/next-env.d.ts` (the build rewrites them: `jsx: preserve`, an optional win32 SWC lockfile entry) and, after regenerating the API, check `git status` for CRLF-only noise on `docs/api/openapi.yaml` and `frontend/src/types/api.generated.ts` (checkout them if the content diff is empty).
+- **GitHub account:** `gh auth status` must show `sharonremotedeveloper` active before any push (collaboration Rule 8, registry `docs/TOOL_ACCESS_AND_ACCOUNTS.md`). It was switched to `anesu-metabox` once during this work (logged as a MISMATCH); only Anesu switches it.
 
 ## 3. FIRST ACTIONS, in order
 
-1. **Check the GitHub account.** `gh auth status` must show `sharonremotedeveloper` active (collaboration Rule 8; registry `docs/TOOL_ACCESS_AND_ACCOUNTS.md`). When Claude tried to push, the active account was `anesu-metabox` (logged as a MISMATCH row). Do not switch accounts yourself: ask Anesu, who gave the go-ahead to push layer 1 once the account is right (`gh auth switch -u sharonremotedeveloper` is his to run).
-2. **Push layer 1.** `git push origin integration/layer-1:develop` (a fast-forward of `develop`), then `git branch -f develop integration/layer-1`. Append a row to the TOOL_ACCESS §4 log. Check CI (`gh run list --branch develop`): the **Postgres job exercises tests that SKIP locally** (T1a/T1b/T1c/T2/N1a/Z1 Postgres-marked tests, migration round trips). If it is red, read the failure, fix on `develop`, log an ERR, push again (this is exactly what happened with ERR-192).
-3. **T2 is already merged** into `integration/layer-1` (it merged cleanly: migration `teachers/0011` depends on T1c's `0010`, `payments/views.py` runs T1b's `bookable()` check before T2's notice check in `_validate_booking` and `_validate_still_payable`, generated API files regenerated). Nothing to do except make sure the push includes it. One open question for Anesu came from it (plan §9 item 9, section 5). T2's review fixes were applied by its author and were NOT re-reviewed by an independent QA agent: if you have capacity, have someone attack `teachers/services/availability.py::guard_timezone_change` (the new 409 on `PATCH /auth/me/`) and the `acknowledge_conflicts` flow.
-4. **Delete merged branches/worktrees** (section 2, now including `feature/t2-availability` and its worktree) and update `CLAUDE.md` status.
-5. **Start layer 1's remaining slices** (T3, G1, R1) from the new `develop`.
+1. **Start T3, G1 and R1** from `develop` (section 4), one slice per branch, using the process in section 8. They are independent of each other; T3 must call T1c's `profile.revet_after_vetted_change` when an approved tutor swaps a vetted asset.
+2. **Ask Anesu to confirm the Zoom Video SDK decision** (section 6) before building V1-V5 or polishing the legacy Zoom Meetings path.
+3. **Have T2's late fixes independently reviewed** if capacity allows: `teachers/services/availability.py::guard_timezone_change` (the 409 on `PATCH /auth/me/`) and the `acknowledge_conflicts` flow.
+4. Keep `CLAUDE.md` and `docs/PROGRESS_AND_ROADMAP.md` current after each slice (collaboration Rules 3-4, 7).
 
 ## 4. Next slices (plan §4 has the full table)
 
 Reserved numbers so nothing collides (slice ERR block = 120 + 10 x index; leave gaps):
-`Q0 120 · F0 130 · Z1 140 · T1a 150 · T1b 160 · T1c 170 · N1c 180 · integrator 190-199 (next free ERR-194) · N1a 200 · T2 210 · T3 220 · G1 230 · R1 240 · N1b 250 · N2a 260 · N2b 270 · N2c 280 · N3 290 · T4a 300 · G2 310 · T6 320 · F1 330 · F2 340 · N4 350 ...` (always take the next free number inside your block; never reuse another slice's).
+`Q0 120 · F0 130 · Z1 140 · T1a 150 · T1b 160 · T1c 170 · N1c 180 · integrator 190-199 (next free ERR-195) · N1a 200 · T2 210 · T3 220 · G1 230 · R1 240 · N1b 250 · N2a 260 · N2b 270 · N2c 280 · N3 290 · T4a 300 · G2 310 · T6 320 · F1 330 · F2 340 · N4 350 ...` (always take the next free number inside your block; never reuse another slice's).
 Migration leaves today: `teachers 0010` (T2 adds 0011), `bookings 0016`, `payments 0022`, `notifications 0001`. G1 will add an `integrations` migration; T3 may add `teachers` 0012+.
 
 - **T3 uploads** (plan §3.6, depends on T1a, call T1c's `profile.revet_after_vetted_change` from the asset commit for approved tutors): quarantine presign prefix `incoming/{uid}/`, `POST /teachers/me/assets/commit/`, magic-byte sniff, ETag pin, random final key, **separate private R2 bucket for vetting documents (needs Anesu: a Cloudflare action)**, fail **closed** in production, audit row per private-document access. Real R2 is not called in tests (`tests/fakes.py::FakeR2`).
@@ -59,7 +56,7 @@ From plan §9 and later: payout batches P1 as a deliberate exception to "executi
 
 ## 6. Zoom: the Video SDK plan changes direction (unconfirmed by Claude)
 
-The uncommitted docs describe a decision to move from Zoom Meetings (S2S) to the **Zoom Video SDK** (embedded in-browser classroom; `GET /bookings/<id>/video-token/`; slices V1-V5) and mark as STALE/DEPRECATED: `integrations/zoom.py` meeting provisioning, `zoom_hosts.py` (`HostPicker`), `bookings/services/host_link.py` + `host_link_views.py`, `Booking.zoom_meeting_id/zoom_host_user_id/zoom_start_url`, `ZoomLauncherButton.tsx`, `hostLink.ts`. The files say the decision was approved on 2026-10-05 and the code stays operational until the plan is triggered. Claude could not verify who approved it (the decision file uses Anesu's tick) and asked him; **confirm with Anesu before building V1-V5, and before spending effort on the deferred Z1 polish** (below). Until V5, the Meetings path is live and its safety fixes matter:
+The docs written by Antigravity (committed on `develop` at Anesu's instruction, `d3c5a3f`) describe a decision to move from Zoom Meetings (S2S) to the **Zoom Video SDK** (embedded in-browser classroom; `GET /bookings/<id>/video-token/`; slices V1-V5) and mark as STALE/DEPRECATED: `integrations/zoom.py` meeting provisioning, `zoom_hosts.py` (`HostPicker`), `bookings/services/host_link.py` + `host_link_views.py`, `Booking.zoom_meeting_id/zoom_host_user_id/zoom_start_url`, `ZoomLauncherButton.tsx`, `hostLink.ts`. The files say the decision was approved on 2026-10-05 and the code stays operational until the plan is triggered. Claude could not verify who approved it (the decision file uses Anesu's tick) and asked him; **confirm with Anesu before building V1-V5, and before spending effort on the deferred Z1 polish** (below). Until V5, the Meetings path is live and its safety fixes matter:
 - Z1 delivered: S2S token cache, bounded retries, `create_meeting` search-before-retry (agenda marker), `auto_recording: none`, host link endpoint, `HostPicker` default `'me'` (**single host account = concurrent lessons collide: launch blocker until D-9 is implemented, which the SDK plan removes**), tutor classroom fetches the host link on Start.
 - Z1 deferred (not done, only needed if the Meetings path stays): staff alert when staff open a host link, exclude held rows from the escrow-release batch query, popup-blocker-safe window opening in `ZoomLauncherButton`, its component test, `CheckConstraint` on `HostLinkIssue`, admin ordering.
 - The legacy **staff-hosted lesson holds escrow** until an admin marks `HostLinkIssue` reviewed (`SETTLEMENT_PATHS.md`); it retires with V5.
@@ -87,5 +84,5 @@ Everything external is mocked: **no PayPal, PayFast, Zoom, Resend, Google or R2 
 - **Notifications:** `apps/notifications/` (`NOTIFICATIONS.md` §2, `adr/ADR-0002-notification-delivery.md`, `RUNBOOK_NOTIFICATIONS.md`); beat schedules now 13.
 - **Tutor lifecycle:** `teachers/vetting.py`, `review.py`, `profile.py`, models `TeacherStatusChange`, `bookable()`/`operational()` (`docs/TUTOR_STATUS_MACHINE.md`); admin cancel of a suspended tutor's lessons `bookings/services/admin_cancellation.py`.
 - **Zoom (Meetings, legacy after the SDK plan):** `integrations/zoom.py`, `zoom_auth.py`, `zoom_hosts.py`, `bookings/services/host_link.py`, `HostLinkIssue`.
-- **Availability (T2, merged on `integration/layer-1`):** `bookings/services/slot_generator.py`, `notice.py`, `teachers/services/{schedule,availability}.py`, `common/timezones.py`.
+- **Availability (T2, on `develop`):** `bookings/services/slot_generator.py`, `notice.py`, `teachers/services/{schedule,availability}.py`, `common/timezones.py`.
 - Review/QA transcripts live in each slice's `docs/slices/<ID>.md` and `docs/mutation/<ID>.md`; every failure is in `docs/ERROR_LOGS_AND_RESOLUTIONS.md`.
