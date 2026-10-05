@@ -521,3 +521,8 @@ def configure_test_settings(settings):
 - **Symptom (found in review, red tests first):** `GET /bookings/<id>/video-token/` returned 200 for `pending_payment`, `completed`, `disputed` and no-show bookings (only cancelled statuses were refused), and returned 409 `booking_cancelled` to any authenticated stranger (booking-status oracle).
 - **Root cause:** the V2 view blocklisted cancelled statuses instead of allow-listing live ones, and checked status before authorization. An unpaid booking could enter a free lesson.
 - **Fix:** authorization first (403 for non-parties), then an allow-list of `confirmed`/`in_progress` (409 `classroom_unavailable` otherwise); tests added in `tests/test_zoom_video_token_endpoint.py`.
+
+### ERR-250: N1b notification API was missing (slice N1b)
+- **Symptom:** N1a exposed durable notification rows and preferences but no owner-scoped API, unread count, read transitions, or preference endpoint.
+- **Root cause:** the N1a layer intentionally stopped before the API contract freeze.
+- **Fix:** added paginated notification listing, owner-scoped read/read-all endpoints, unread count, typed preference serializers, mandatory-kind enforcement, and staff-only delivery error visibility. Root URL/settings/Celery registrations are handed to Claude in `docs/slices/N1b.md` and were not edited on this branch.
