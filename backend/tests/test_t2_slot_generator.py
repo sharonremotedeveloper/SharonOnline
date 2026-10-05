@@ -199,6 +199,15 @@ class TestBlockedIntervals:
         blocked = [(utc(2026, 1, 5, 7, 20), utc(2026, 1, 5, 8, 10))]          # touches the 07:00, 07:30 and 08:00 slots
         assert starts(tutor, date(2026, 1, 5), blocked_intervals=blocked) == iso((2026, 1, 5, 8, 30))
 
+    def test_time_off_that_only_touches_a_slot_edge_hides_nothing(self):
+        tutor = tutor_in('Africa/Johannesburg', [(0, time(9, 0), time(10, 0))])
+        TeacherTimeOff.objects.create(teacher=tutor, start_utc=utc(2026, 1, 5, 7, 25), end_utc=utc(2026, 1, 5, 7, 30))
+        assert len(starts(tutor, date(2026, 1, 5))) == 2
+
+    def test_overlapping_legacy_rows_never_list_one_slot_twice(self):
+        tutor = tutor_in('Africa/Johannesburg', [(0, time(9, 0), time(10, 0)), (0, time(9, 0), time(10, 0))])
+        assert starts(tutor, date(2026, 1, 5)) == iso((2026, 1, 5, 7, 0), (2026, 1, 5, 7, 30))
+
     def test_an_interval_that_only_touches_the_edge_blocks_nothing(self):
         tutor = tutor_in('Africa/Johannesburg', [(0, time(9, 0), time(10, 0))])
         blocked = [(utc(2026, 1, 5, 7, 25), utc(2026, 1, 5, 7, 30))]
