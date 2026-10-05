@@ -1,5 +1,11 @@
 # Zoom attendance mapping (Task 9.8)
 
+> [!IMPORTANT]
+> **ARCHITECTURAL UPDATE (2026-10-05): ZOOM VIDEO SDK ADOPTED — ZOOM MEETINGS S2S LABELED STALE / DEPRECATED**
+> On 2026-10-05, the project officially resolved Decision **D-9** by approving the transition to **Zoom Video SDK** for embedded, in-browser classrooms.
+> The legacy Zoom Meetings Server-to-Server (S2S) architecture described below (including `HostPicker`, single/pooled host license juggling, desktop Zoom app launching, and `zoommtg://` URLs) is **STALE / DEPRECATED** and will be superseded by the in-browser Video SDK architecture.
+> See full roadmap and implementation design in [`ZOOM_VIDEO_SDK_MIGRATION_PLAN.md`](./ZOOM_VIDEO_SDK_MIGRATION_PLAN.md).
+
 Attendance decides no-show verdicts (T+10), the 20-minute completion rule, escrow release and disputes, and all of it
 reads `AttendanceAudit.classification`. So the rule is: **only an explicit `teacher` or `student` classification counts;
 `unknown` evidence never changes state or money.** The decision lives in one place, `integrations/services/attendance.py::classify()`; the
