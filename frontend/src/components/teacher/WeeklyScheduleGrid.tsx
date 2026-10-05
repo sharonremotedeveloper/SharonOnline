@@ -16,6 +16,7 @@ import {
 } from "@/lib/availability";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
+import { useAuth } from "@/context/AuthContext";
 
 interface AvailabilityPage {
   rows: AvailabilityRow[];
@@ -30,11 +31,10 @@ async function loadAvailability(): Promise<AvailabilityPage> {
   return { rows: res.results ?? [], truncated: Boolean(res.next) };
 }
 
-const SAST = "Africa/Johannesburg";
-
-function lessonTime(iso: string): string {
+// The grid is in the tutor's own account timezone (User.timezone), never a hard-coded one.
+function lessonTime(iso: string, timeZone: string): string {
   return new Date(iso).toLocaleString("en-GB", {
-    timeZone: SAST,
+    timeZone,
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -44,6 +44,8 @@ function lessonTime(iso: string): string {
 }
 
 export function WeeklyScheduleGrid() {
+  const { user } = useAuth();
+  const tutorZone = user?.timezone || "UTC";
   // Matrix state: dayIdx (0-6) -> array of boolean blocks, built from the availability saved on the server.
   const { data: availability, error: loadError, loading, reload } = useApiData(loadAvailability, []);
   const [schedule, setSchedule] = useState<WeeklyMatrix>({});
@@ -105,6 +107,15 @@ export function WeeklyScheduleGrid() {
   };
 
   const handleSave = async (acknowledgeConflicts = false) => {
+    // Saving from the hourly grid replaces saved windows that do not line up with it (or overlap): ask first (T2 QA MINOR-9).
+    if (
+      !acknowledgeConflicts &&
+      availability &&
+      wouldChangeSavedWindows(availability.rows) &&
+      !window.confirm("Some of your saved windows do not fit this hourly grid (or overlap). Saving replaces them with the blocks shown. Continue?")
+    ) {
+      return;
+    }
     setSaving(true);
     setSaved(false);
     setSaveError(null);
@@ -155,7 +166,7 @@ export function WeeklyScheduleGrid() {
         <div>
           <h2 className="text-xl font-black text-ink font-serif">Weekly Recurring Teaching Matrix</h2>
           <p className="text-xs text-ink-muted">
-            All slots defined in South African Standard Time (SAST / UTC+2).
+            All slots are in your account timezone ({tutorZone}).
             Converted automatically on student booking pads.
           </p>
         </div>
@@ -226,7 +237,7 @@ export function WeeklyScheduleGrid() {
           </p>
           <ul className="list-disc pl-5">
             {pendingConflicts.map((c) => (
-              <li key={c.booking_id}>{lessonTime(c.start_time_utc)} (SAST)</li>
+              <li key={c.booking_id}>{lessonTime(c.start_time_utc, tutorZone)} ({tutorZone})</li>
             ))}
           </ul>
           <p>
@@ -278,7 +289,7 @@ export function WeeklyScheduleGrid() {
           <thead>
             <tr className="bg-cream-surface border-b border-divider">
               <th className="py-3 px-4 font-bold text-ink-muted uppercase tracking-wider text-left w-36">
-                Time (SAST)
+                Time (local)
               </th>
               {DAYS.map((d) => (
                 <th key={d.id} className="py-3 px-2 font-black text-ink text-center">

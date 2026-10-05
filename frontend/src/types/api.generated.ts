@@ -2043,6 +2043,11 @@ export interface components {
             /** @description IANA Timezone, e.g. Asia/Tokyo */
             timezone?: string;
             phone_number?: string;
+            /**
+             * @description Tutors: apply a timezone change even though confirmed lessons fall outside the shifted hours (T2).
+             * @default false
+             */
+            acknowledge_conflicts: boolean;
         };
         PayoutAccountMasked: {
             configured: boolean;
@@ -2527,6 +2532,11 @@ export interface components {
             /** @description IANA Timezone, e.g. Asia/Tokyo */
             timezone?: string;
             phone_number?: string;
+            /**
+             * @description Tutors: apply a timezone change even though confirmed lessons fall outside the shifted hours (T2).
+             * @default false
+             */
+            acknowledge_conflicts: boolean;
         };
         /**
          * @description * `student` - Student

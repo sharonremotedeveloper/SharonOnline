@@ -445,6 +445,19 @@ def configure_test_settings(settings):
 - **Root cause:** `api.saveTeacherAvailability` sent the whole grid to `POST /teachers/availability/manage/`, which creates one `TeacherAvailability` row.
 - **Fix:** `PUT /teachers/availability/replace/` (atomic) and `lib/availability.ts` grid-to-windows conversion; the page shows the 409 conflict list.
 
+### ERR-214: a tutor changing their timezone silently stranded confirmed lessons (slice T2 QA)
+- **Symptom:** `PATCH /auth/me/ {timezone}` shifted every weekly window in UTC with no warning.
+- **Root cause:** the timezone is a plain User field; only the availability endpoints computed lesson conflicts.
+- **Fix:** `teachers/services/availability.py::guard_timezone_change` (same conflict computation with the new zone, tutor row locked) called from `UserSerializer.update`; 409 `availability_conflicts` unless `acknowledge_conflicts`; the admin form warns.
+
+### ERR-215: two concurrent deletes (or PATCH racing DELETE) were 500s (slice T2 QA)
+- **Root cause:** the lookup under the tutor lock (`.get`, `refresh_from_db`, the lock itself) raised `DoesNotExist` after the view's pre-check passed.
+- **Fix:** `_or_404` / explicit catches raise `NotFound` (404).
+
+### ERR-216: legacy rows with bad hours could not be deactivated (slice T2 QA)
+- **Root cause:** `TeacherAvailabilitySerializer.validate` judged the merged hours on every PATCH.
+- **Fix:** hours are validated only when the payload sets them (or re-activates the row).
+
 ### ERR-213: capture-time notice check broke an existing grace test (slice T2)
 - **Symptom:** `tests/test_grace_bookings.py::test_a_lesson_that_already_started_gets_no_grace` failed (409 instead of the pending outcome) after the notice check was added to `_validate_still_payable`.
 - **Root cause:** the first version also refused capture of a lesson that had already started, changing the deliberate Phase 10 behaviour (capture, then late-payment settlement).

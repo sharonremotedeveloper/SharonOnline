@@ -4165,6 +4165,12 @@ components:
         phone_number:
           type: string
           maxLength: 32
+        acknowledge_conflicts:
+          type: boolean
+          writeOnly: true
+          default: false
+          description: 'Tutors: apply a timezone change even though confirmed lessons
+            fall outside the shifted hours (T2).'
     PayoutAccountMasked:
       type: object
       properties:
@@ -5383,6 +5389,12 @@ components:
         phone_number:
           type: string
           maxLength: 32
+        acknowledge_conflicts:
+          type: boolean
+          writeOnly: true
+          default: false
+          description: 'Tutors: apply a timezone change even though confirmed lessons
+            fall outside the shifted hours (T2).'
       required:
       - username
     UserRoleEnum:
