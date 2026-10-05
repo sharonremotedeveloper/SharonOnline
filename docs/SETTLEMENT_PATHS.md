@@ -15,6 +15,8 @@ ledger, not from a flag that could be forgotten).
 | `cancelled_by_student` | student cancels > 2 h before start | full gateway refund | nothing | `refund_issued` |
 | `student_late_cancelled` | student cancels <= 2 h before start (acknowledged) | pays, no credit back | **80 %** at +24 h (no attendance needed) | `escrow_cleared` |
 | `cancelled_by_teacher` | tutor cancels | full gateway refund (+ 1 bonus credit and a strike when < 24 h) | nothing | `refund_issued` (+ `compensation_awarded`) |
+| `cancelled_by_teacher` (admin cancel, slice T1b) | staff, `POST /admin/teachers/<id>/cancel-future-lessons/`, only for a `suspended` / `rejected` tutor's future lessons; `cancelled_by` = the admin | full gateway refund (credit-funded: credit restored; grace: waits for clearance) + `ADMIN_CANCEL_BONUS_CREDITS` (0) | nothing, **no strike**, not counted as the tutor's own cancel | `refund_issued` (+ `compensation_awarded` only if the bonus setting is > 0) |
+| `disputed` (DEF-501 `tutor_not_bookable`, slice T1b) | payment webhook / capture for a hold whose tutor was suspended (or fails the training gate) after reserving | 1 restitution credit, open `DisputeCase` (same as the other DEF-501 reasons) | nothing | `late_payment_quarantine` (ledger 2030) |
 | `disputed` -> `cancelled` | admin: *full refund* | full gateway refund (convertible); nothing more if already refunded | nothing | `dispute_resolved` |
 | `disputed` -> `completed` | admin: *release tutor* | pays | 80 % | `dispute_resolved` (+ booking/tx marked cleared) |
 | `disputed` -> `completed` | admin: *50/50 split* | 1 courtesy credit (platform expense) | 80 % | `dispute_resolved` (+ marked cleared) |

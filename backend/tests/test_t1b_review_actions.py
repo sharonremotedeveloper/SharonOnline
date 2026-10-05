@@ -238,7 +238,12 @@ class TestLegacyVerify:
 # ------------------------------------------------------------------ admin pending queue
 class TestPendingQueue:
     def test_lists_applied_submitted_and_in_review_only_oldest_first(self, admin_user):
+        from datetime import timedelta
+        from django.utils import timezone
+        from apps.teachers.models import TeacherProfile
         made = {s: f.make_teacher_profile(status=s, availability=False) for s in ALL}
+        for i, s in enumerate(('applied', 'submitted', 'in_review')):      # explicit ages: created_at can tie on a fast clock
+            TeacherProfile.objects.filter(pk=made[s].pk).update(created_at=timezone.now() - timedelta(days=10 - i))
         rows = api(admin_user).get('/api/v1/admin/teachers/pending-vetting/').json()
         assert [r['id'] for r in rows] == [str(made[s].id) for s in ('applied', 'submitted', 'in_review')]
         assert [r['status'] for r in rows] == ['applied', 'submitted', 'in_review']

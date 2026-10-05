@@ -19,6 +19,7 @@ policy change is an environment variable, not a code change. Anesu should still 
 | Tutor cancels < 24 h ahead | full refund **+ 1 bonus credit** + 1 strike | `TUTOR_CANCEL_BONUS_CREDITS=1` |
 | Tutor no-show (T+10) | full refund + 1 bonus credit + 1 strike (refund now goes via the gateway) | - |
 | Strikes | each counts 90 days; 3 inside the window suspend an `approved` tutor (`approved -> suspended` via `transition_teacher`, actor `system:strikes`, see `TUTOR_STATUS_MACHINE.md`); a tutor in any other status only gets the strike recorded; only an admin reinstates | `STRIKE_LIMIT=3`, `STRIKE_WINDOW_DAYS=90` |
+| Staff cancel a suspended / removed tutor's future lessons (slice T1b) | paid lesson -> `cancelled_by_teacher` with `cancelled_by` = the admin: full refund of the capture, **no strike**, not counted in the tutor's 30-day early-cancel tally, bonus credit only if the setting is > 0; unpaid hold -> `cancelled` (a later payment for it is quarantined, DEF-501 `tutor_not_bookable`). One transaction per lesson; idempotent; the student gets the cancellation e-mail. Only for a `suspended` / `rejected` tutor (409 `tutor_not_suspended`) | `ADMIN_CANCEL_BONUS_CREDITS=0` (**provisional**) |
 | Power outage | the lesson's **tutor or staff** can always report it, inside the existing window; a **student only when the provider confirms an active outage in the tutor's area** (409 `outage_unconfirmed` otherwise; their own power or internet problem is a dispute). Student gets a full gateway refund; tutor unpaid, no strike. If the tutor already taught >= 20 min it is a delivered lesson (409 `lesson_delivered`) | `LESSON_DELIVERED_MIN_TEACHER_MINUTES=20` |
 | Refund route (all of the above + arbitration "full refund") | gateway refund; while still pending the student may convert it to wallet credit | `REFUND_GATEWAY_BACKEND` |
 | Wallet credit | each grant is its own lot that expires **30 days** after it is granted; spent soonest-expiry first; expired lots are written off to breakage revenue | `CREDIT_EXPIRY_DAYS_REFUND/BONUS/BUNDLE=30` |
@@ -68,6 +69,15 @@ cancelled is not available).
 | `POST /bookings/<id>/cancel/` `{reason?, acknowledge_forfeit?}` | student or tutor | 400 `acknowledgement_required`, 409 `not_cancellable` / `cancel_window_closed`; strangers 404, staff 403 |
 | `POST /bookings/<id>/reschedule/` `{start_time_utc}` | the student | 400 `invalid_slot`; 409 `not_reschedulable` / `reschedule_limit_reached` / `reschedule_too_late` / `slot_unavailable`; tutors 403 |
 | `GET /refunds/`, `POST /refunds/<id>/convert-to-wallet/` | the student | convert is 409 once processed |
+| `POST /admin/teachers/<id>/cancel-future-lessons/` `{reason, booking_ids?}` | staff (throttled `admin_teacher_review`) | per lesson `admin_refund` / `released` / `already_cancelled` / `not_cancellable` / `funding_unavailable` / `not_found`; 409 `tutor_not_suspended` (T1b) |
+| `GET /admin/teachers/suspended-with-lessons/` | staff | work queue: suspended / removed tutors that still have future lessons (paginated, soonest first) |
+
+**Suspension routine (T1b).** Staff `POST /admin/teachers/<id>/suspend/` returns `affected_booking_ids` (the future pending /
+confirmed lessons, left untouched); then `cancel-future-lessons` cancels them (or a subset) one by one. An automatic
+strike suspension has no admin present: it logs `[ADMIN ALERT] tutor <id> suspended by strikes with N future lessons needing
+action: <ids>` (N1a will route it as a notification) and the tutor appears in the work queue until the lessons are cancelled.
+Lessons of a suspended tutor are never cancelled silently: either staff cancel them (the student is e-mailed) or the tutor is
+reactivated and teaches them.
 
 Reschedule keeps the booking id; the old Zoom room and calendar event are deleted and fulfilment provisions new ones (best effort,
 retried Celery tasks), reminders re-arm. Cancel emails the other party. Frontend client: `lib/bookings.ts` (`getCancelPreview`,
@@ -131,6 +141,8 @@ the Phase 15 student/tutor screen work**; the contract is ready.
 * The expiry **warning e-mail** (7 days before) is not built; it belongs with the Phase 12 notifications work.
 * Credit-funded bookings (Task 10.6) are not modelled yet: when credits can pay for a lesson, a refund must restore the lot instead
   of calling the gateway. `spend_credit()` already spends soonest-expiry first.
-* A suspended tutor's future confirmed lessons are not auto-cancelled; an admin routine is needed (T1b: admin-initiated cancel plan). Since T1a the suspension's `TeacherTransitionResult.affected_booking_ids` lists them (read only).
+* A suspended tutor's future lessons are not auto-cancelled by design: staff cancel them with the admin cancel routine above
+  (T1b). An admin-cancelled lesson keeps its slot busy (`cancelled_by_teacher` does not free it); if the tutor is reactivated
+  that slot stays closed. The admin cancel reuses the refund reason `teacher_cancel` (no new `RefundRequest.Reason`).
 * `PLATFORM_COMMISSION_RATE` is still the literal 0.80/0.20 in `ledger_service` and the release job.
 * Reschedule into a slot that overlaps the lesson's own old time is refused as "taken".

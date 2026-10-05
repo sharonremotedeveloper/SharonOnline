@@ -397,3 +397,14 @@ def configure_test_settings(settings):
 - **Symptom:** the new admin-add test got 200 with `{'specialties': ['This field is required.']}`.
 - **Root cause:** Django's form `JSONField` treats `[]` as empty and the model field is not `blank=True`.
 - **Fix:** the test posts `["FreeTalk"]` (the field's documented shape). No product change; whether `specialties` should be optional is a T1c question.
+
+
+### ERR-160: committed OpenAPI schema stale after adding the T1b endpoints (slice T1b)
+- **Symptom:** the full suite failed `tests/test_api_contract.py::TestOpenApiSchema::test_committed_schema_is_current` ("API changed but docs/api/openapi.yaml was not regenerated").
+- **Root cause:** the review / cancel / work-queue endpoints and the `PendingTeacherApplication.status` change altered the generated schema; the committed copy was not regenerated yet.
+- **Fix:** `manage.py spectacular --file ../docs/api/openapi.yaml`, then `npm run gen:api` + `npm run check:api-types` (TS), widened `frontend/src/types/admin.ts` status and the dev-only mock fixtures.
+
+### ERR-161: T1b red tests referenced names that do not exist (slice T1b)
+- **Symptom:** while turning the red tests green two fixtures failed: `LedgerAccount.LIABILITY_DEF501_QUARANTINE` (AttributeError) and a grace transaction without `payer_id` (refused with `payer_unknown` before the new guard ran).
+- **Root cause:** test authoring errors: the DEF-501 account is `LIABILITY_QUARANTINE_DEPOSIT` (2030), and `evaluate_grace` needs a payer id before it reaches the slot guard.
+- **Fix:** the tests use the real constant and a payer id. No product change.
