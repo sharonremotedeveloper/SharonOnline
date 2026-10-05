@@ -94,30 +94,23 @@ def verify(admin, profile_id, body):
     return client.patch(f'/api/v1/admin/teachers/{profile_id}/verify/', body, format='json')
 
 
-def test_rejecting_a_suspended_tutor_is_409_and_writes_no_fake_approval(admin_user):
+def test_rejecting_a_suspended_tutor_takes_the_direct_edge_and_writes_no_fake_approval(admin_user):
+    """T1b: the staff-only suspended -> rejected edge (Anesu 2026-10-05) replaces the earlier 409."""
     tutor = f.make_teacher_profile(status='suspended')
     res = verify(admin_user, tutor.id, {'is_verified': False, 'rejection_reason': 'x'})
-    assert res.status_code == 409
-    tutor.refresh_from_db()
-    assert tutor.status == 'suspended' and not TeacherStatusChange.objects.exists()
+    assert res.status_code == 200
+    assert list(TeacherStatusChange.objects.filter(teacher=tutor).values_list('to_status', flat=True)) == ['rejected']
 
 
-def test_the_409_is_built_from_the_locked_row(admin_user, monkeypatch):
-    """The shim reads the tutor once, under the row lock; the error carries that status (no pre-lock read)."""
-    from apps.teachers import vetting
-    raised = []
-
-    class Spy(vetting.InvalidTeacherTransition):
-        def __init__(self, teacher_id, from_status, to_status):
-            raised.append(from_status)
-            super().__init__(teacher_id, from_status, to_status)
-    monkeypatch.setattr(vetting, 'InvalidTeacherTransition', Spy)
-    tutor = f.make_teacher_profile(status='suspended')
+def test_rejecting_a_live_tutor_through_vetting_is_409_from_the_locked_row(admin_user):
+    """A live tutor is suspended first (that returns the lessons left without a tutor); the vetting endpoint refuses."""
+    tutor = f.make_teacher_profile(status='approved')
     assert verify(admin_user, tutor.id, {'is_verified': False}).status_code == 409
-    assert raised == ['suspended']
+    tutor.refresh_from_db()
+    assert tutor.status == 'approved' and not TeacherStatusChange.objects.exists()
 
 
-@pytest.mark.parametrize('start', ['approved', 'in_review', 'submitted', 'applied'])
+@pytest.mark.parametrize('start', ['in_review', 'submitted', 'applied', 'changes_requested', 'suspended'])
 def test_reject_paths_never_pass_through_approved(admin_user, start):
     tutor = f.make_teacher_profile(status=start)
     assert verify(admin_user, tutor.id, {'is_verified': False}).status_code == 200
