@@ -51,4 +51,25 @@ Test files: **B** `tests/test_t1b_bookable.py`, **R** `tests/test_t1b_review_act
 | s1 | strikes.py:54 | alert even with no lessons | C `test_no_alert_without_future_lessons` | KILLED |
 | l1 | reviews.py:38 | booking read without a lock (order test) | C `test_review_locks_the_booking_before_the_tutor` | KILLED |
 
+## Review conditions (commits 66240e2 / ec81b89; test file `tests/test_t1b_conditions.py`, **K**)
+
+| # | File:line | Mutant | Killing test | Verdict |
+| :-- | :--- | :--- | :--- | :--- |
+| m1a | payments/views.py:525 | capture guard `is_bookable` off (M1) | K TestCaptureRefusesUnbookableTutor | KILLED |
+| m1b | payments/views.py:215 | checkout guard off | K PayFast init test (and B) | KILLED |
+| m2a | admin_cancellation.py:88 | PENDING_CAPTURE not counted in flight | K TestPaymentInFlight[pending_capture] | KILLED |
+| m2b | admin_cancellation.py:89 | `created_at__lte` (abandoned vs recent attempt) | K `test_an_abandoned_initialised_attempt_does_not_block` | KILLED |
+| m2c | admin_cancellation.py:151 | in-lock in-flight check off | K `test_explicit_ids_get_the_same_protection` | SURVIVED, then KILLED |
+| m2d | admin_cancellation.py:114 | list-level in-flight partition off | K `test_flagged_holds_do_not_use_up_the_batch` | SURVIVED, then KILLED |
+| m3a | admin_cancellation.py:118 | `remaining` always False | K `test_the_default_batch_is_capped_and_says_so` | KILLED |
+| m3b | admin_cancellation.py:118 | cap removed | K | KILLED |
+| m3c | admin_cancellation.py:130 | `MissingFunding` not caught | K `test_domain_errors_are_reported_per_lesson` | KILLED |
+| m3d | admin_cancellation.py:132 | refund state / invalid transition not caught | K | KILLED |
+| m1c | admin_cancellation.py:148 | tutor re-check off | K `test_a_reactivated_tutor_keeps_the_paid_lesson`, C | KILLED |
+| m1d | admin_cancellation.py:145 | tutor read without lock (order test) | K `test_admin_cancel_locks_booking_then_tutor` | KILLED |
+
+The money-edge tests (grace awaiting clearance, already settled, PayPal vs PayFast currency, lesson starting in minutes) pass on
+the unchanged code: they pin existing behaviour, so they have no mutant of their own (they sit under rows a5-a7, a11 above).
+The Postgres concurrency test `test_postgres_a_concurrent_reactivate_wins_over_the_admin_cancel` runs in the Postgres CI job only.
+
 Not mutated: the Postgres-only deadlock test (skipped locally; runs in the Postgres CI job).
