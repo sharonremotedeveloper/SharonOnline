@@ -96,11 +96,10 @@ def _check(actor, reason, needs_reason):
 def _run(locked, action_name, steps, actor, reason) -> ReviewResult:
     previous = locked.status
     change_ids, affected = [], ()
-    for step in steps:
+    for step in steps:          # steps_for never yields the current status, so every step is a real change
         result = vetting.transition_teacher(locked, step, actor=actor, reason=(reason or '').strip())
-        if result.changed:
-            change_ids.append(result.change_id)
-            affected = result.affected_booking_ids or affected
+        change_ids.append(result.change_id)
+        affected = result.affected_booking_ids or affected
     return ReviewResult(locked.pk, action_name, previous, locked.status, tuple(change_ids), affected)
 
 
@@ -125,7 +124,7 @@ def legacy_verify(teacher_id, *, approve: bool, actor, reason: str = '') -> Revi
         locked = _lock(teacher_id)
         current = locked.status
         steps = ()
-        if current != final.target and (current in start.sources or current in start.lead_in):
+        if current in start.sources or current in start.lead_in:      # never approved / rejected: no lead-in for them
             steps = steps_for(start, current, locked.pk)
             current = start.target
         steps = (*steps, *steps_for(final, current, locked.pk))

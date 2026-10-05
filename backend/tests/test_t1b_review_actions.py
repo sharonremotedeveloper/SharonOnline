@@ -141,6 +141,27 @@ class TestExplicitActions:
         assert codes[-1] == 429
 
 
+# ------------------------------------------------------------------ the service enforces staff itself (not only the view)
+class TestServiceAuthorization:
+    def test_is_staff_user_follows_is_platform_admin(self):
+        assert vetting.is_staff_user(f.make_admin()) is True
+        assert vetting.is_staff_user(f.make_user('admin', is_staff=False, is_superuser=False)) is True
+        assert vetting.is_staff_user(f.make_student()) is False
+        assert vetting.is_staff_user(f.make_user('teacher')) is False
+        assert vetting.is_staff_user('system:strikes') is False and vetting.is_staff_user(None) is False
+
+    def test_the_tutor_cannot_revet_themself_through_the_review_service(self):
+        """approved -> in_review is a SELF edge in the table; the staff review action must still refuse the tutor."""
+        from apps.teachers import review
+        tutor = f.make_teacher_profile(status='approved')
+        with pytest.raises(vetting.TransitionNotPermitted):
+            review.apply_review_action(tutor.pk, 'revet', actor=tutor.user)
+        with pytest.raises(vetting.TransitionNotPermitted):
+            review.legacy_verify(tutor.pk, approve=True, actor=tutor.user)
+        tutor.refresh_from_db()
+        assert tutor.status == 'approved' and not TeacherStatusChange.objects.exists()
+
+
 # ------------------------------------------------------------------ legacy PATCH /admin/teachers/<id>/verify/ (Slice 8 contract)
 def verify(admin, tutor_id, body):
     return api(admin).patch(f'/api/v1/admin/teachers/{tutor_id}/verify/', body, format='json')
