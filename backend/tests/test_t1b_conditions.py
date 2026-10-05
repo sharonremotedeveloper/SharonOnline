@@ -106,6 +106,27 @@ class TestPaymentInFlight:
         f.advance_teacher(teacher_user, 'suspended')
         assert rows(cancel_all(admin_user, teacher_user))[str(hold.id)]['outcome'] == 'released'
 
+    def test_explicit_ids_get_the_same_protection(self, admin_user, teacher_user):
+        hold = self._hold(teacher_user)
+        f.make_payment_transaction(hold, status=PaymentTransaction.Status.PENDING_CAPTURE, gateway='paypal')
+        f.advance_teacher(teacher_user, 'suspended')
+        res = cancel_all(admin_user, teacher_user, booking_ids=[str(hold.id)])
+        assert rows(res)[str(hold.id)]['outcome'] == 'payment_in_flight'
+        hold.refresh_from_db()
+        assert hold.status == S.PENDING_PAYMENT
+
+    def test_flagged_holds_do_not_use_up_the_batch(self, monkeypatch, admin_user):
+        from apps.bookings.services import admin_cancellation
+        monkeypatch.setattr(admin_cancellation, 'BATCH_LIMIT', 1)
+        tutor = f.make_teacher_profile(status='approved')
+        flagged = f.make_booking(teacher=tutor, student=f.make_student(), status=S.PENDING_PAYMENT, offset_hours=30)
+        free = f.make_booking(teacher=tutor, student=f.make_student(), status=S.PENDING_PAYMENT, offset_hours=31)
+        f.make_payment_transaction(flagged, status=PaymentTransaction.Status.INITIALIZED, gateway='paypal')
+        f.advance_teacher(tutor, 'suspended')
+        res = cancel_all(admin_user, tutor)
+        assert rows(res)[str(free.id)]['outcome'] == 'released' and rows(res)[str(flagged.id)]['outcome'] == 'payment_in_flight'
+        assert res.json()['remaining'] is False
+
     def test_the_flagged_hold_is_cancellable_once_the_payment_has_resolved(self, admin_user, teacher_user):
         hold = self._hold(teacher_user)
         tx = f.make_payment_transaction(hold, status=PaymentTransaction.Status.INITIALIZED, gateway='paypal')
