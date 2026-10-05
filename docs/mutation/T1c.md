@@ -3,7 +3,7 @@
 Run 2026-10-05 by Claude with `backend/scripts/mutate.py` (driven by `scratchpad/T1c/run_mutants.py` and `run_mutants2.py`;
 one textual mutant at a time on a clean committed tree, restored and hash-verified by `mutate.py`). Tests per mutant: the
 named class of `tests/test_t1c_tutor_profile.py` (`T`) or `tests/test_t1c_profile_backfill.py` (`M`).
-Round 1 (commit `c4b8418`): **25 / 29 killed**. Round 2 (after the fixes in ERR-172): **7 / 8 killed, 1 equivalent**.
+Round 1 (commit `c4b8418`): **25 / 29 killed**. Round 2 (after the fixes in ERR-172): **7 / 8 killed, 1 redundant under invariant (a)**.
 
 Paths relative to `backend/`. `prof` = `apps/teachers/profile.py`, `tv` = `apps/teachers/views.py`, `ts` =
 `apps/teachers/serializers.py`, `us` = `apps/users/serializers.py`, `as` = `apps/admin_api/serializers.py`, `m9` =
@@ -50,8 +50,9 @@ The reverse now also requires every `BACKFILL_DEFAULTS` column at its backfill v
 (`_meta.related_objects`) other than the baseline audit row. Cases in `tests/test_t1c_profile_backfill.py::_round_trip`:
 `edited_tutor` (bio), `power_tutor` (inverter), `area_tutor` (`eskom_area_id`), `photo_tutor` (`avatar_url`), `tagged_tutor`
 (specialties), `struck_tutor` (a `TeacherStrike` row): all kept; `bare_tutor` removed. Mutants (round 3, see the commit
-log of this branch): defaults check removed; related-rows check removed; baseline-row exclusion removed; file-field blank
-handling.
+log of this branch), all on `0009` lines 62-85 with `tests/test_t1c_profile_backfill.py`: **6 / 6 KILLED**: blank-default
+branch disabled (62), value-differs branch disabled (64), baseline-row exclusion disabled (73), related-rows check disabled
+(75), reverse without the related-rows condition (85), reverse without the defaults condition (85).
 
 Not mutated: `bookings__isnull=True` in the 0009 reverse (removing it makes the delete raise `ProtectedError`,
 `Booking.teacher` is `PROTECT`, so it cannot silently destroy a lesson); the Postgres `SET CONSTRAINTS ALL IMMEDIATE` line
