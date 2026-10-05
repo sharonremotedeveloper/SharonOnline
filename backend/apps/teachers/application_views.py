@@ -80,7 +80,7 @@ class _ApplicationView(APIView):
 
     def teacher(self, request):
         profile = getattr(request.user, 'teacher_profile', None)
-        if profile is None or getattr(request.user, 'role', None) != 'teacher':
+        if profile is None:
             raise PermissionDenied('A tutor account is required.')
         return profile
 

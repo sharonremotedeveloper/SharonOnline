@@ -219,3 +219,28 @@ class TestStaffCannotReceiveTheApplicationForTheTutor:
         body = api(admin_user).get(f'/api/v1/admin/teachers/{tutor.id}/review-packet/').json()
         assert Decimal(str(body['application']['speed_test_download_mbps'])) == Decimal('42.5')
         assert body['application']['submitted_at'] and body['application']['power_backup_confirmed']
+
+
+class TestMutationSurvivors:
+    def test_a_connection_exactly_at_the_minimum_passes(self):
+        tutor = applicant()
+        res = api(tutor.user).patch(URL, {'speed_test': {'download_mbps': '10', 'upload_mbps': '5'}}, format='json')
+        assert {s['key']: s for s in res.json()['steps']}['speed_test']['complete'] is True
+
+    def test_a_sent_application_cannot_be_submitted_again_even_if_every_step_is_complete(self):
+        tutor = applicant()
+        client = complete(tutor)
+        client.post(SUBMIT)
+        body = client.get(URL).json()
+        assert all(s['complete'] for s in body['steps'])
+        assert body['can_submit'] is False and body['editable'] is False and body['submitted_at']
+
+    def test_confirmation_stamps_are_never_moved(self):
+        tutor = applicant()
+        client = api(tutor.user)
+        client.patch(URL, {'accept_declaration': True, 'confirm_power_backup': True}, format='json')
+        old = timezone.now() - timedelta(days=3)
+        TeacherApplication.objects.filter(teacher=tutor).update(declaration_accepted_at=old, power_backup_confirmed_at=old)
+        client.patch(URL, {'accept_declaration': True, 'confirm_power_backup': True}, format='json')
+        app = TeacherApplication.objects.get(teacher=tutor)
+        assert app.declaration_accepted_at == old and app.power_backup_confirmed_at == old
