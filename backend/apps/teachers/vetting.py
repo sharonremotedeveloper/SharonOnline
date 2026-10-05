@@ -82,8 +82,21 @@ class TeacherTransitionResult:
 
 
 def notify_status_change(change_id) -> None:
-    """Notification hook (plan §6 `vetting:{change_id}` / `suspended:{change_id}`). No-op shim until N1a lands."""
+    """
+    After-commit hook (plan §6). T4a: when the TUTOR submits (applied / changes_requested -> submitted) staff get one
+    `vetting_submitted` alert; a staff lead-in (review.py `start-review`) raises nothing. Tutor-facing mails for the outcome
+    statuses (`vetting:{change_id}`, `suspended:{change_id}`) belong to N2c. Never raises: a failed alert must not undo a
+    committed transition.
+    """
     logger.info('tutor status change %s committed', change_id)
+    try:
+        change = TeacherStatusChange.objects.select_related('teacher').filter(pk=change_id).first()
+        if change and change.to_status == St.SUBMITTED and change.actor_user_id == change.teacher.user_id:
+            from apps.notifications.alerts import alert_staff
+            alert_staff('vetting_submitted', key=f'admin:vetting-submitted:{change.id}',
+                        payload={'teacher_id': str(change.teacher_id), 'change_id': str(change.id)})
+    except Exception as exc:
+        logger.error('vetting alert failed: change=%s error=%s', change_id, type(exc).__name__)
 
 
 def _is_staff(user) -> bool:

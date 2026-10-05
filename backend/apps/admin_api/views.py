@@ -13,7 +13,7 @@ from decimal import Decimal
 
 from apps.users.permissions import IsPlatformAdmin
 from rest_framework.throttling import ScopedRateThrottle
-from apps.teachers import review as teacher_review, vetting
+from apps.teachers import review as teacher_review, rubric as rubric_rules, vetting
 from apps.teachers.models import TeacherProfile
 from apps.bookings.models import Booking
 from apps.bookings.services.state_machine import InvalidTransition, transition_booking
@@ -140,9 +140,14 @@ class VerifyTeacherView(APIView):
         is_verified = serializer.validated_data['is_verified']
         reason = (serializer.validated_data.get('rejection_reason') or '').strip() or 'legacy-verify'
         try:
-            result = teacher_review.legacy_verify(pk, approve=is_verified, actor=request.user, reason=reason)
+            result = teacher_review.legacy_verify(
+                pk, approve=is_verified, actor=request.user, reason=reason,
+                rubric=serializer.validated_data.get('rubric'),
+                reviewed_assets=serializer.validated_data.get('reviewed_assets'))
         except teacher_review.TeacherNotFound:
             return Response({'error': 'Teacher profile not found'}, status=status.HTTP_404_NOT_FOUND)
+        except (rubric_rules.RubricError, rubric_rules.AssetReviewError) as exc:      # slice T4a: the reviewer can act on it
+            return Response({'error': str(exc), 'code': exc.code}, status=exc.http_status)
         except vetting.VettingError as exc:
             return Response({'error': 'This tutor cannot be moved to that status.', 'code': 'invalid_transition'},
                             status=exc.http_status)

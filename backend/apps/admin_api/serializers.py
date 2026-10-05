@@ -67,6 +67,10 @@ class PendingTeacherApplicationSerializer(serializers.ModelSerializer):
 class VerifyTeacherActionSerializer(serializers.Serializer):
     is_verified = serializers.BooleanField()
     rejection_reason = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    rubric = serializers.DictField(required=False, allow_null=True,
+                                   help_text='Required to approve (slice T4a): one 1-5 score per criterion.')
+    reviewed_assets = serializers.DictField(child=serializers.CharField(), required=False, allow_null=True,
+                                            help_text='{kind: etag} of the uploads the reviewer looked at (T4a).')
 
 
 class LiveSessionRadarSerializer(serializers.ModelSerializer):

@@ -70,7 +70,7 @@ def test_pending_teachers_and_verification(admin_user):
     # 2. Verify / approve tutor
     verify_res = client.patch(
         f'/api/v1/admin/teachers/{profile.id}/verify/',
-        {"is_verified": True},
+        {"is_verified": True, "rubric": {"pronunciation": 4, "teaching_presence": 4, "professionalism": 4, "credentials": 4}},
         format='json'
     )
     assert verify_res.status_code == 200

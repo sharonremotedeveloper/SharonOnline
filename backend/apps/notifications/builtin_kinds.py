@@ -16,6 +16,7 @@ ALERT_TITLES = {
     'orphaned_calendar_event': 'Orphaned tutor calendar event must be deleted by hand',
     'lesson_disputed_without_verdict': 'Lesson disputed without an attendance verdict',
     'notification_failed': 'A notification e-mail could not be delivered',
+    'vetting_submitted': 'A tutor submitted their application for review',
 }
 
 

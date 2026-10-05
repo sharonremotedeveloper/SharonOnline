@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 
 from django.db import transaction
 
-from apps.teachers import vetting
+from apps.teachers import rubric as rubric_rules, vetting
 from apps.teachers.models import TeacherProfile
 
 St = TeacherProfile.Status
@@ -93,25 +93,41 @@ def _check(actor, reason, needs_reason):
         raise ReasonRequired('A reason is required for this decision.')
 
 
-def _run(locked, action_name, steps, actor, reason) -> ReviewResult:
+def _run(locked, action_name, steps, actor, reason, evidence=None) -> ReviewResult:
+    """`evidence` (rubric / reviewed assets, slice T4a) is recorded on the decision step only, never on a lead-in step."""
     previous = locked.status
     change_ids, affected = [], ()
-    for step in steps:          # steps_for never yields the current status, so every step is a real change
-        result = vetting.transition_teacher(locked, step, actor=actor, reason=(reason or '').strip())
+    for index, step in enumerate(steps):      # steps_for never yields the current status, so every step is a real change
+        extra = evidence if index == len(steps) - 1 and evidence else {}
+        result = vetting.transition_teacher(locked, step, actor=actor, reason=(reason or '').strip(), **extra)
         change_ids.append(result.change_id)
         affected = result.affected_booking_ids or affected
     return ReviewResult(locked.pk, action_name, previous, locked.status, tuple(change_ids), affected)
 
 
-def apply_review_action(teacher_id, action_name: str, *, actor, reason: str = '') -> ReviewResult:
+def _evidence(action_name, locked, rubric, reviewed_assets, requested_changes) -> dict:
+    """Checks the rubric rules for the action (T4a) and returns the extra audit data for the decision step."""
+    if action_name == 'approve':
+        stored, live = rubric_rules.check_approval(locked, rubric, reviewed_assets)
+        return {'rubric': stored, 'reviewed_assets': live}
+    if action_name == 'request-changes':
+        return {'rubric': {'version': 1, 'requested_changes': rubric_rules.check_requested_changes(requested_changes)}}
+    return {}
+
+
+def apply_review_action(teacher_id, action_name: str, *, actor, reason: str = '', rubric=None, reviewed_assets=None,
+                        requested_changes=None) -> ReviewResult:
     action = ACTIONS[action_name]
     _check(actor, reason, action.needs_reason)
     with transaction.atomic():
         locked = _lock(teacher_id)
-        return _run(locked, action.name, steps_for(action, locked.status, locked.pk), actor, reason)
+        steps = steps_for(action, locked.status, locked.pk)
+        evidence = _evidence(action_name, locked, rubric, reviewed_assets, requested_changes) if steps else {}
+        return _run(locked, action.name, steps, actor, reason, evidence)
 
 
-def legacy_verify(teacher_id, *, approve: bool, actor, reason: str = '') -> ReviewResult:
+def legacy_verify(teacher_id, *, approve: bool, actor, reason: str = '', rubric=None,
+                  reviewed_assets=None) -> ReviewResult:
     """
     The Slice 8 contract (approve / reject in one call) built from the explicit actions: `start-review` when the
     application has not reached a reviewer yet, then `approve` / `reject`. Never passes through `approved` on the way to
@@ -127,5 +143,6 @@ def legacy_verify(teacher_id, *, approve: bool, actor, reason: str = '') -> Revi
         if current in start.sources or current in start.lead_in:      # never approved / rejected: no lead-in for them
             steps = steps_for(start, current, locked.pk)
             current = start.target
-        steps = (*steps, *steps_for(final, current, locked.pk))
-        return _run(locked, f'legacy-{final.name}', steps, actor, reason or 'legacy-verify')
+        decision = steps_for(final, current, locked.pk)
+        evidence = _evidence(final.name, locked, rubric, reviewed_assets, None) if decision else {}
+        return _run(locked, f'legacy-{final.name}', (*steps, *decision), actor, reason or 'legacy-verify', evidence)

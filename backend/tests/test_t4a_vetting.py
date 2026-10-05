@@ -239,3 +239,36 @@ class TestSubmittedAlert:
         with django_capture_on_commit_callbacks(execute=True):
             vetting.transition_teacher(tutor, 'submitted', actor=tutor.user)
         assert self.alerts().count() == 1
+
+
+# ------------------------------------------------------------------ review-round details (added from the mutation run)
+class TestReviewRounds:
+    def test_legacy_approval_from_applied_records_the_evidence_on_the_approval_step_only(self, admin_user):
+        tutor = f.make_teacher_profile(status='applied')
+        res = api(admin_user).patch(f'/api/v1/admin/teachers/{tutor.id}/verify/', {'is_verified': True, 'rubric': GOOD},
+                                    format='json')
+        assert res.status_code == 200
+        rows = {r.to_status: r for r in TeacherStatusChange.objects.filter(teacher=tutor)}
+        assert rows['approved'].rubric['scores'] == GOOD
+        assert not rows['submitted'].rubric and not rows['in_review'].rubric
+
+    def test_repeating_an_approval_is_a_no_op_even_without_a_rubric(self, admin_user):
+        tutor = f.make_teacher_profile(status='approved')
+        res = post(admin_user, tutor, 'approve')
+        assert res.status_code == 200 and res.json()['changed'] is False
+
+    def test_the_tutor_sees_the_latest_feedback_of_a_second_round(self, admin_user):
+        tutor = in_review()
+        post(admin_user, tutor, 'request-changes', reason='First: audio.', requested_changes=['accent_audio'])
+        vetting.transition_teacher(tutor, 'submitted', actor=tutor.user)
+        post(admin_user, tutor, 'start-review')
+        post(admin_user, tutor, 'request-changes', reason='Second: video.', requested_changes=['intro_video'])
+        fb = api(tutor.user).get('/api/v1/teachers/me/').json()['review_feedback']
+        assert fb['reason'] == 'Second: video.' and fb['requested_changes'] == ['intro_video']
+
+    def test_the_packet_lists_only_live_uploads(self, admin_user):
+        tutor = in_review()
+        asset(tutor, 'intro_video', 'old', replaced=True)
+        asset(tutor, 'intro_video', 'new')
+        body = api(admin_user).get(f'/api/v1/admin/teachers/{tutor.id}/review-packet/').json()
+        assert [a['etag'] for a in body['assets']] == ['new']

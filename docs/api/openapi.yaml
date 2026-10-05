@@ -627,6 +627,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/AdminTeacherError'
           description: ''
+  /api/v1/admin/teachers/{id}/review-packet/:
+    get:
+      operationId: v1_admin_teachers_review_packet_retrieve
+      description: Reviewer packet for one tutor (staff only). Scores are never shown
+        to the tutor.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewPacket'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTeacherError'
+          description: ''
   /api/v1/admin/teachers/{id}/start-review/:
     post:
       operationId: v1_admin_teachers_start_review_create
@@ -3916,6 +3945,62 @@ components:
         * `not_cancellable` - not_cancellable
         * `funding_unavailable` - funding_unavailable
         * `not_found` - not_found
+    PacketAsset:
+      type: object
+      properties:
+        kind:
+          type: string
+        etag:
+          type: string
+          description: Send these back in `reviewed_assets` when approving.
+        content_type:
+          type: string
+        size_bytes:
+          type: integer
+        uploaded_at:
+          type: string
+          format: date-time
+      required:
+      - content_type
+      - etag
+      - kind
+      - size_bytes
+      - uploaded_at
+    PacketHistory:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        from_status:
+          type: string
+        to_status:
+          type: string
+        actor:
+          type: string
+        reason:
+          type: string
+        scores:
+          type: object
+          additionalProperties:
+            type: integer
+          nullable: true
+        requested_changes:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+      required:
+      - actor
+      - created_at
+      - from_status
+      - id
+      - reason
+      - requested_changes
+      - scores
+      - to_status
     PaginatedBookingDetailList:
       type: object
       required:
@@ -4621,6 +4706,25 @@ components:
       required:
       - start_time_utc
       - teacher_id
+    ReviewFeedback:
+      type: object
+      properties:
+        status:
+          type: string
+        reason:
+          type: string
+        requested_changes:
+          type: array
+          items:
+            type: string
+        decided_at:
+          type: string
+          format: date-time
+      required:
+      - decided_at
+      - reason
+      - requested_changes
+      - status
     ReviewInputRequest:
       type: object
       description: A student's review. `review` is the legacy name of `private_notes`
@@ -4646,6 +4750,62 @@ components:
           maxLength: 2000
       required:
       - rating
+    ReviewPacket:
+      type: object
+      properties:
+        teacher_id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        status:
+          type: string
+        headline:
+          type: string
+        bio:
+          type: string
+        accent:
+          type: string
+        specialties:
+          type: array
+          items:
+            type: string
+        sla_strikes:
+          type: integer
+        criteria:
+          type: array
+          items:
+            type: string
+          description: The rubric criteria, in order.
+        min_score:
+          type: integer
+          description: Approval needs every criterion at or above this score.
+        required_asset_kinds:
+          type: array
+          items:
+            type: string
+        assets:
+          type: array
+          items:
+            $ref: '#/components/schemas/PacketAsset'
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/PacketHistory'
+      required:
+      - accent
+      - assets
+      - bio
+      - criteria
+      - full_name
+      - headline
+      - history
+      - min_score
+      - required_asset_kinds
+      - sla_strikes
+      - specialties
+      - status
+      - teacher_id
     ReviewResult:
       type: object
       properties:
@@ -5090,6 +5250,11 @@ components:
           type: string
           format: date-time
           readOnly: true
+        review_feedback:
+          allOf:
+          - $ref: '#/components/schemas/ReviewFeedback'
+          nullable: true
+          readOnly: true
       required:
       - accent
       - avatar_url
@@ -5106,6 +5271,7 @@ components:
       - is_verified
       - rating_avg
       - rating_count
+      - review_feedback
       - sla_strikes
       - status
       - training_completed_at
@@ -5118,6 +5284,28 @@ components:
           default: ''
           description: Required (non-blank) for request-changes, reject and suspend.
           maxLength: 500
+        rubric:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          description: 'approve: one whole-number score per criterion (see the review
+            packet).'
+        reviewed_assets:
+          type: object
+          additionalProperties:
+            type: string
+            minLength: 1
+          nullable: true
+          description: 'approve: {kind: etag} of the uploads the reviewer looked at;
+            must equal the tutor''s live uploads.'
+        requested_changes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+          nullable: true
+          description: 'request-changes: the upload kinds the tutor must redo.'
+          maxItems: 10
     TeacherReviewResult:
       type: object
       properties:

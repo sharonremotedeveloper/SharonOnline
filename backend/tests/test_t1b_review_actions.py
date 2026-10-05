@@ -37,8 +37,13 @@ def api(user):
     return c
 
 
+GOOD_RUBRIC = {'pronunciation': 4, 'teaching_presence': 4, 'professionalism': 4, 'credentials': 4}     # T4a: approval needs one
+
+
 def act(user, tutor_id, action, reason='because'):
     body = {} if reason is None else {'reason': reason}
+    if action == 'approve':
+        body['rubric'] = GOOD_RUBRIC
     return api(user).post(f'/api/v1/admin/teachers/{tutor_id}/{action}/', body, format='json')
 
 
@@ -164,6 +169,8 @@ class TestServiceAuthorization:
 
 # ------------------------------------------------------------------ legacy PATCH /admin/teachers/<id>/verify/ (Slice 8 contract)
 def verify(admin, tutor_id, body):
+    if body.get('is_verified') is True:
+        body = {'rubric': GOOD_RUBRIC, **body}
     return api(admin).patch(f'/api/v1/admin/teachers/{tutor_id}/verify/', body, format='json')
 
 

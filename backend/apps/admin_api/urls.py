@@ -4,6 +4,7 @@ from apps.admin_api.refund_views import AdminRefundListView, AdminRefundRetryVie
 from apps.admin_api.teacher_review_views import (  # slice T1b
     CancelTutorFutureLessonsView, SuspendedTutorsWithLessonsView, TeacherReviewActionView,
 )
+from apps.admin_api.teacher_packet_views import TeacherReviewPacketView  # slice T4a
 from apps.teachers.review import ACTIONS as TEACHER_REVIEW_ACTIONS
 from apps.admin_api.views import (
     AdminTelemetryView,
@@ -26,6 +27,7 @@ urlpatterns = [
       for name in TEACHER_REVIEW_ACTIONS],
     path('teachers/<uuid:pk>/cancel-future-lessons/', CancelTutorFutureLessonsView.as_view(),
          name='admin-teacher-cancel-future-lessons'),
+    path('teachers/<uuid:pk>/review-packet/', TeacherReviewPacketView.as_view(), name='admin-teacher-review-packet'),   # T4a
     path('teachers/suspended-with-lessons/', SuspendedTutorsWithLessonsView.as_view(), name='admin-teachers-suspended-with-lessons'),
     # ---- end T1b ----
     path('attendance/live/', LiveSessionsView.as_view(), name='admin-live-sessions'),

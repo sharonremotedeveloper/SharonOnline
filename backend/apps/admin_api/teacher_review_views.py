@@ -25,6 +25,14 @@ _ERROR = inline_serializer('AdminTeacherError', {'error': serializers.CharField(
 class TeacherReviewRequestSerializer(serializers.Serializer):
     reason = serializers.CharField(required=False, allow_blank=True, default='', max_length=REASON_MAX,
                                    help_text='Required (non-blank) for request-changes, reject and suspend.')
+    rubric = serializers.DictField(required=False, allow_null=True,
+                                   help_text='approve: one whole-number score per criterion (see the review packet).')
+    reviewed_assets = serializers.DictField(
+        child=serializers.CharField(), required=False, allow_null=True,
+        help_text="approve: {kind: etag} of the uploads the reviewer looked at; must equal the tutor's live uploads.")
+    requested_changes = serializers.ListField(
+        child=serializers.CharField(), required=False, allow_null=True, max_length=10,
+        help_text='request-changes: the upload kinds the tutor must redo.')
 
 
 class TeacherReviewResultSerializer(serializers.Serializer):
@@ -76,8 +84,9 @@ class TutorWorkQueueItemSerializer(serializers.Serializer):
 
 def _error(exc):
     # 403 cannot reach here: IsPlatformAdmin already refused non-staff, and the actor is always staff.
-    code = 'not_found' if exc.http_status == 404 else ('invalid_transition' if exc.http_status == 409 else 'invalid')
-    return Response({'error': str(exc) if exc.http_status in (400, 404) else 'This tutor cannot be moved to that status.',
+    own_code = getattr(exc, 'code', None)               # rubric / asset-review errors (T4a) explain themselves
+    code = own_code or ('not_found' if exc.http_status == 404 else ('invalid_transition' if exc.http_status == 409 else 'invalid'))
+    return Response({'error': str(exc) if own_code or exc.http_status in (400, 404) else 'This tutor cannot be moved to that status.',
                      'code': code}, status=exc.http_status)
 
 
@@ -96,7 +105,10 @@ class TeacherReviewActionView(_StaffThrottled):
         body = TeacherReviewRequestSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         try:
-            result = review.apply_review_action(pk, self.action_name, actor=request.user, reason=body.validated_data['reason'])
+            result = review.apply_review_action(
+                pk, self.action_name, actor=request.user, reason=body.validated_data['reason'],
+                rubric=body.validated_data.get('rubric'), reviewed_assets=body.validated_data.get('reviewed_assets'),
+                requested_changes=body.validated_data.get('requested_changes'))
         except vetting.VettingError as exc:
             return _error(exc)
         return Response(TeacherReviewResultSerializer({

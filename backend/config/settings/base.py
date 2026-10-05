@@ -242,6 +242,10 @@ LESSON_DELIVERED_MIN_TEACHER_MINUTES = int(os.environ.get('LESSON_DELIVERED_MIN_
 # Training gate (SOW 2.4): an approved tutor is bookable only after onboarding training. PROVISIONAL default OFF until the
 # training content exists; it MUST be ON before launch (the production guard warns while it is off).
 TUTOR_TRAINING_GATE_ENABLED = os.environ.get('TUTOR_TRAINING_GATE_ENABLED', 'False').strip().lower() in ('1', 'true', 'yes')
+# Vetting rubric (slice T4a, PROVISIONAL until D-11): every criterion must score at least this (scale 1-5); the upload kinds
+# (teachers.TeacherAsset.Kind values, comma separated) that must be committed before approval. Empty until D-11 fixes the list.
+VETTING_MIN_RUBRIC_SCORE = int(os.environ.get('VETTING_MIN_RUBRIC_SCORE', '3'))
+VETTING_REQUIRED_ASSET_KINDS = tuple(k.strip() for k in os.environ.get('VETTING_REQUIRED_ASSET_KINDS', '').split(',') if k.strip())
 # Bonus credits a student gets when staff cancel a suspended tutor's lesson (on top of the full refund). PROVISIONAL 0.
 ADMIN_CANCEL_BONUS_CREDITS = int(os.environ.get('ADMIN_CANCEL_BONUS_CREDITS', '0'))
 # ---- end T1b ----

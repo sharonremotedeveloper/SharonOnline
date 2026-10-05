@@ -262,6 +262,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/teachers/{id}/review-packet/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Reviewer packet for one tutor (staff only). Scores are never shown to the tutor. */
+        get: operations["v1_admin_teachers_review_packet_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/teachers/{id}/start-review/": {
         parameters: {
             query?: never;
@@ -1934,6 +1951,29 @@ export interface components {
          * @enum {string}
          */
         OutcomeEnum: "admin_refund" | "released" | "payment_in_flight" | "already_cancelled" | "not_cancellable" | "funding_unavailable" | "not_found";
+        PacketAsset: {
+            kind: string;
+            /** @description Send these back in `reviewed_assets` when approving. */
+            etag: string;
+            content_type: string;
+            size_bytes: number;
+            /** Format: date-time */
+            uploaded_at: string;
+        };
+        PacketHistory: {
+            /** Format: uuid */
+            id: string;
+            from_status: string;
+            to_status: string;
+            actor: string;
+            reason: string;
+            scores: {
+                [key: string]: number;
+            } | null;
+            requested_changes: string[];
+            /** Format: date-time */
+            created_at: string;
+        };
         PaginatedBookingDetailList: {
             /** @example 123 */
             count: number;
@@ -2264,6 +2304,13 @@ export interface components {
             /** Format: date-time */
             start_time_utc: string;
         };
+        ReviewFeedback: {
+            status: string;
+            reason: string;
+            requested_changes: string[];
+            /** Format: date-time */
+            decided_at: string;
+        };
         /** @description A student's review. `review` is the legacy name of `private_notes` (older clients). */
         ReviewInputRequest: {
             rating: number;
@@ -2272,6 +2319,24 @@ export interface components {
             private_notes: string;
             /** @default  */
             review: string;
+        };
+        ReviewPacket: {
+            /** Format: uuid */
+            teacher_id: string;
+            full_name: string;
+            status: string;
+            headline: string;
+            bio: string;
+            accent: string;
+            specialties: string[];
+            sla_strikes: number;
+            /** @description The rubric criteria, in order. */
+            criteria: string[];
+            /** @description Approval needs every criterion at or above this score. */
+            min_score: number;
+            required_asset_kinds: string[];
+            assets: components["schemas"]["PacketAsset"][];
+            history: components["schemas"]["PacketHistory"][];
         };
         ReviewResult: {
             success: boolean;
@@ -2460,6 +2525,7 @@ export interface components {
             readonly created_at: string;
             /** Format: date-time */
             readonly updated_at: string;
+            readonly review_feedback: components["schemas"]["ReviewFeedback"] | null;
         };
         TeacherReviewRequestRequest: {
             /**
@@ -2467,6 +2533,16 @@ export interface components {
              * @default
              */
             reason: string;
+            /** @description approve: one whole-number score per criterion (see the review packet). */
+            rubric?: {
+                [key: string]: unknown;
+            } | null;
+            /** @description approve: {kind: etag} of the uploads the reviewer looked at; must equal the tutor's live uploads. */
+            reviewed_assets?: {
+                [key: string]: string;
+            } | null;
+            /** @description request-changes: the upload kinds the tutor must redo. */
+            requested_changes?: string[] | null;
         };
         TeacherReviewResult: {
             /** Format: uuid */
@@ -3295,6 +3371,35 @@ export interface operations {
                 };
             };
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTeacherError"];
+                };
+            };
+        };
+    };
+    v1_admin_teachers_review_packet_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewPacket"];
+                };
+            };
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
