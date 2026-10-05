@@ -149,6 +149,7 @@ REST_FRAMEWORK = {
         'inquiry': '5/hour',
         'webhook': '120/min',
         'admin_refund_retry': '30/hour',   # staff retrying failed refunds (Task 10.7)
+        'availability': '300/hour',        # tutor availability / time-off / override reads and writes (T2)
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
     # NEVER map 0 to None: DRF treats None as "trust the whole client-supplied X-Forwarded-For header", which lets
@@ -194,7 +195,11 @@ OUTAGE_REPORT_AFTER_END_SECONDS = int(os.environ.get('OUTAGE_REPORT_AFTER_END_SE
 STUDENT_FREE_CANCEL_HOURS = int(os.environ.get('STUDENT_FREE_CANCEL_HOURS', '2'))        # student cancels MORE than this before start: full refund
 RESCHEDULE_MIN_NOTICE_HOURS = int(os.environ.get('RESCHEDULE_MIN_NOTICE_HOURS', '2'))    # old slot must start MORE than this away
 RESCHEDULE_MAX_PER_BOOKING = int(os.environ.get('RESCHEDULE_MAX_PER_BOOKING', '1'))
-RESCHEDULE_MAX_DAYS_AHEAD = int(os.environ.get('RESCHEDULE_MAX_DAYS_AHEAD', '14'))
+# --- T2 (PRP 11.6): availability horizon and notice. One horizon replaces MAX_SLOT_DAYS / SLOT_HORIZON_DAYS /
+# RESCHEDULE_MAX_DAYS_AHEAD. Both are PROVISIONAL (plan section 9) until Anesu confirms them.
+BOOKING_HORIZON_DAYS = int(os.environ.get('BOOKING_HORIZON_DAYS', '14'))             # how far ahead a lesson can be listed, reserved or rescheduled
+TUTOR_MIN_NOTICE_MINUTES = int(os.environ.get('TUTOR_MIN_NOTICE_MINUTES', '10'))     # a slot must start MORE than this away, at listing AND at payment
+# --- end T2
 TUTOR_CANCEL_NO_PENALTY_HOURS = int(os.environ.get('TUTOR_CANCEL_NO_PENALTY_HOURS', '24'))   # tutor cancels at least this early: no bonus, no strike
 TUTOR_EARLY_CANCELS_PER_30D = int(os.environ.get('TUTOR_EARLY_CANCELS_PER_30D', '3'))    # free early cancels per 30 days; the next one is a strike
 TUTOR_CANCEL_BONUS_CREDITS = int(os.environ.get('TUTOR_CANCEL_BONUS_CREDITS', '1'))

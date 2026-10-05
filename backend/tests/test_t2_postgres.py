@@ -3,7 +3,7 @@ Slice T2: database-level behaviour of the availability tables (CHECK constraints
 Postgres-only locking of the atomic weekly replace. The lock tests are skipped on SQLite (CI runs them with `-m postgres`).
 """
 import threading
-from datetime import date, datetime, time, timedelta, timezone as dt_tz
+from datetime import date, datetime, time, timezone as dt_tz
 
 import pytest
 from django.db import IntegrityError, connection, transaction

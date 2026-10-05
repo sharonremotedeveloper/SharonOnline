@@ -25,7 +25,7 @@ from .serializers import (
     LessonMemoSerializer,
     ReviewInputSerializer
 )
-from .services.slot_generator import generate_teacher_slots
+from .services.slot_generator import generate_teacher_slots, horizon_days
 from .services.lock_service import acquire_slot_lock, release_slot_lock
 from .services.reservation import ReservationError, reservation_payload, reserve_slot
 from .services import cancellation, rescheduling
@@ -39,8 +39,6 @@ from apps.payments.services.settlement import successful_transaction
 from apps.payments.services.funding import funding_for_settlement
 from apps.payments.models import CreditWalletEntry
 from apps.materials.models import Material
-
-MAX_SLOT_DAYS = 14
 
 
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
@@ -56,8 +54,8 @@ class TeacherSlotsView(APIView):
 
         raw_days = request.query_params.get('days', '7')
         if not (raw_days.isascii() and raw_days.isdigit() and int(raw_days) >= 1):
-            return Response({"days": "Must be a whole number of days, 1 to 14."}, status=status.HTTP_400_BAD_REQUEST)
-        days_ahead = min(int(raw_days), MAX_SLOT_DAYS)
+            return Response({"days": f"Must be a whole number of days, 1 to {horizon_days()}."}, status=status.HTTP_400_BAD_REQUEST)
+        days_ahead = min(int(raw_days), horizon_days())
 
         viewer_tz = request.query_params.get('tz', 'UTC')
         try:

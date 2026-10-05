@@ -1,5 +1,4 @@
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-
+from apps.common.timezones import is_valid_timezone
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.db import transaction
 from django.db.models import Sum
@@ -38,9 +37,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 def validate_iana_timezone(value):
     """Reject anything that is not a real IANA zone (slot generation feeds this straight into zoneinfo)."""
-    try:
-        ZoneInfo(value)
-    except (ZoneInfoNotFoundError, ValueError, OSError):
+    if not is_valid_timezone(value):
         raise serializers.ValidationError('Enter a valid IANA timezone, e.g. "Africa/Johannesburg".')
     return value
 

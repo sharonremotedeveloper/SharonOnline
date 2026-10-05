@@ -1725,6 +1725,9 @@ paths:
   /api/v1/teachers/availability/manage/:
     get:
       operationId: v1_teachers_availability_manage_list
+      description: Owner-only, throttled base of every availability / time-off / override
+        endpoint (T2).
+      summary: My weekly availability windows (tutor local clock)
       parameters:
       - name: page
         required: false
@@ -1745,6 +1748,9 @@ paths:
           description: ''
     post:
       operationId: v1_teachers_availability_manage_create
+      description: Owner-only, throttled base of every availability / time-off / override
+        endpoint (T2).
+      summary: Add one weekly window
       tags:
       - v1
       requestBody:
@@ -1767,6 +1773,291 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TeacherAvailability'
+          description: ''
+  /api/v1/teachers/availability/manage/{id}/:
+    patch:
+      operationId: v1_teachers_availability_manage_partial_update
+      description: Owner-only, throttled base of every availability / time-off / override
+        endpoint (T2).
+      summary: Edit one weekly window
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAvailabilityUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAvailabilityUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAvailabilityUpdateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityChange'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+          description: ''
+    delete:
+      operationId: v1_teachers_availability_manage_destroy
+      description: Owner-only, throttled base of every availability / time-off / override
+        endpoint (T2).
+      summary: Delete one weekly window
+      parameters:
+      - in: query
+        name: acknowledge_conflicts
+        schema:
+          type: boolean
+        description: Apply even if confirmed lessons fall outside the new hours.
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deleted'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+          description: ''
+  /api/v1/teachers/availability/overrides/:
+    get:
+      operationId: v1_teachers_availability_overrides_list
+      description: Owner-only, throttled base of every availability / time-off / override
+        endpoint (T2).
+      summary: My upcoming specific-date overrides
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTeacherDateOverrideList'
+          description: ''
+    post:
+      operationId: v1_teachers_availability_overrides_create
+      description: Owner-only, throttled base of every availability / time-off / override
+        endpoint (T2).
+      summary: Add or remove hours on one date
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DateOverrideCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DateOverrideCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DateOverrideCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DateOverrideResult'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+          description: ''
+  /api/v1/teachers/availability/overrides/{id}/:
+    delete:
+      operationId: v1_teachers_availability_overrides_destroy
+      description: Owner-only, throttled base of every availability / time-off / override
+        endpoint (T2).
+      summary: Delete a date override
+      parameters:
+      - in: query
+        name: acknowledge_conflicts
+        schema:
+          type: boolean
+        description: Apply even if confirmed lessons fall outside the new hours.
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deleted'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+          description: ''
+  /api/v1/teachers/availability/replace/:
+    put:
+      operationId: v1_teachers_availability_replace_update
+      description: Owner-only, throttled base of every availability / time-off / override
+        endpoint (T2).
+      summary: Atomically replace the whole weekly matrix
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvailabilityMatrixRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AvailabilityMatrixRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AvailabilityMatrixRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityReplaceResult'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+          description: ''
+  /api/v1/teachers/availability/time-off/:
+    get:
+      operationId: v1_teachers_availability_time_off_list
+      description: Owner-only, throttled base of every availability / time-off / override
+        endpoint (T2).
+      summary: My upcoming time off
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTeacherTimeOffList'
+          description: ''
+    post:
+      operationId: v1_teachers_availability_time_off_create
+      description: Owner-only, throttled base of every availability / time-off / override
+        endpoint (T2).
+      summary: Add time off
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeOffCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TimeOffCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TimeOffCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeOffResult'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+          description: ''
+  /api/v1/teachers/availability/time-off/{id}/:
+    delete:
+      operationId: v1_teachers_availability_time_off_destroy
+      description: Owner-only, throttled base of every availability / time-off / override
+        endpoint (T2).
+      summary: Delete a time-off period
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deleted'
           description: ''
   /api/v1/teachers/profile/power-backup/:
     patch:
@@ -1993,6 +2284,64 @@ components:
           description: 'Required for ambiguous failures (exhausted, replay_window,
             already_refunded): the admin has checked the gateway and the money did
             NOT go out.'
+    AvailabilityChange:
+      type: object
+      properties:
+        availability:
+          $ref: '#/components/schemas/TeacherAvailability'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Conflict'
+      required:
+      - availability
+      - conflicts
+    AvailabilityMatrixRequest:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/AvailabilityRowRequest'
+        acknowledge_conflicts:
+          type: boolean
+          default: false
+      required:
+      - rows
+    AvailabilityReplaceResult:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeacherAvailability'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Conflict'
+      required:
+      - conflicts
+      - rows
+    AvailabilityRowRequest:
+      type: object
+      properties:
+        day_of_week:
+          type: integer
+          maximum: 6
+          minimum: 0
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        is_active:
+          type: boolean
+          default: true
+      required:
+      - day_of_week
+      - end_time
+      - start_time
     BankNameEnum:
       enum:
       - Capitec Bank
@@ -2339,6 +2688,39 @@ components:
         * `B2` - Upper-Intermediate B2
         * `C1` - Advanced C1
         * `C2` - Proficient C2
+    Conflict:
+      type: object
+      properties:
+        booking_id:
+          type: string
+          format: uuid
+        start_time_utc:
+          type: string
+          description: ISO 8601 UTC
+        end_time_utc:
+          type: string
+          description: ISO 8601 UTC
+      required:
+      - booking_id
+      - end_time_utc
+      - start_time_utc
+    ConflictError:
+      type: object
+      description: '409 body: nothing was changed. Resend with acknowledge_conflicts=true
+        to apply it anyway.'
+      properties:
+        code:
+          type: string
+        detail:
+          type: string
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Conflict'
+      required:
+      - code
+      - conflicts
+      - detail
     CreditBundleRow:
       type: object
       properties:
@@ -2395,6 +2777,57 @@ components:
       required:
       - password
       - username
+    DateOverrideCreateRequest:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          description: Date in the teacher's local timezone
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+        start_time:
+          type: string
+          format: time
+          nullable: true
+        end_time:
+          type: string
+          format: time
+          nullable: true
+        reason:
+          type: string
+          maxLength: 200
+        acknowledge_conflicts:
+          type: boolean
+          writeOnly: true
+          default: false
+      required:
+      - date
+      - kind
+    DateOverrideResult:
+      type: object
+      properties:
+        override:
+          $ref: '#/components/schemas/TeacherDateOverride'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Conflict'
+      required:
+      - conflicts
+      - override
+    Deleted:
+      type: object
+      properties:
+        deleted:
+          type: boolean
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Conflict'
+      required:
+      - conflicts
+      - deleted
     Detail:
       type: object
       properties:
@@ -2498,6 +2931,14 @@ components:
         * `exhausted` - Retries ran out
         * `replay_window` - Too old to replay blind
         * `provider_failed` - The provider failed it after accepting it
+    KindEnum:
+      enum:
+      - open
+      - closed
+      type: string
+      description: |-
+        * `open` - Extra hours
+        * `closed` - Hours removed
     LessonMemo:
       type: object
       properties:
@@ -2768,6 +3209,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TeacherAvailability'
+    PaginatedTeacherDateOverrideList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeacherDateOverride'
     PaginatedTeacherListList:
       type: object
       required:
@@ -2791,6 +3255,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TeacherList'
+    PaginatedTeacherTimeOffList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeacherTimeOff'
     PasswordChangeRequest:
       type: object
       properties:
@@ -2849,6 +3336,30 @@ components:
           maxLength: 254
       required:
       - email
+    PatchedAvailabilityUpdateRequest:
+      type: object
+      description: One weekly window in the tutor's local clock. Validated against
+        the tutor in `context['teacher']` (absent = read-only use).
+      properties:
+        day_of_week:
+          type: integer
+          maximum: 6
+          minimum: 0
+          description: 0=Monday ... 6=Sunday
+        start_time:
+          type: string
+          format: time
+          description: Start time in teacher local clock, e.g. 09:00:00
+        end_time:
+          type: string
+          format: time
+          description: End time in teacher local clock, e.g. 17:00:00
+        is_active:
+          type: boolean
+        acknowledge_conflicts:
+          type: boolean
+          writeOnly: true
+          default: false
     PatchedPayoutAccountWriteRequest:
       type: object
       properties:
@@ -3400,6 +3911,8 @@ components:
         * `Helpful Examples` - Helpful Examples
     TeacherAvailability:
       type: object
+      description: One weekly window in the tutor's local clock. Validated against
+        the tutor in `context['teacher']` (absent = read-only use).
       properties:
         id:
           type: string
@@ -3407,11 +3920,9 @@ components:
           readOnly: true
         day_of_week:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 6
           minimum: 0
-          format: int64
-          description: 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday, 4=Friday, 5=Saturday,
-            6=Sunday
+          description: 0=Monday ... 6=Sunday
         start_time:
           type: string
           format: time
@@ -3429,14 +3940,14 @@ components:
       - start_time
     TeacherAvailabilityRequest:
       type: object
+      description: One weekly window in the tutor's local clock. Validated against
+        the tutor in `context['teacher']` (absent = read-only use).
       properties:
         day_of_week:
           type: integer
-          maximum: 9223372036854775807
+          maximum: 6
           minimum: 0
-          format: int64
-          description: 0=Monday, 1=Tuesday, 2=Wednesday, 3=Thursday, 4=Friday, 5=Saturday,
-            6=Sunday
+          description: 0=Monday ... 6=Sunday
         start_time:
           type: string
           format: time
@@ -3451,6 +3962,34 @@ components:
       - day_of_week
       - end_time
       - start_time
+    TeacherDateOverride:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        date:
+          type: string
+          format: date
+          description: Date in the teacher's local timezone
+        kind:
+          $ref: '#/components/schemas/KindEnum'
+        start_time:
+          type: string
+          format: time
+          nullable: true
+        end_time:
+          type: string
+          format: time
+          nullable: true
+        reason:
+          type: string
+          maxLength: 200
+      required:
+      - date
+      - id
+      - kind
     TeacherDetail:
       type: object
       properties:
@@ -3613,6 +4152,57 @@ components:
       - is_verified
       - last_name
       - user_id
+    TeacherTimeOff:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        start_utc:
+          type: string
+          format: date-time
+        end_utc:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          maxLength: 200
+      required:
+      - end_utc
+      - id
+      - start_utc
+    TimeOffCreateRequest:
+      type: object
+      properties:
+        start_utc:
+          type: string
+          format: date-time
+        end_utc:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          maxLength: 200
+        acknowledge_conflicts:
+          type: boolean
+          writeOnly: true
+          default: false
+      required:
+      - end_utc
+      - start_utc
+    TimeOffResult:
+      type: object
+      properties:
+        time_off:
+          $ref: '#/components/schemas/TeacherTimeOff'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Conflict'
+      required:
+      - conflicts
+      - time_off
     TokenRefresh:
       type: object
       properties:

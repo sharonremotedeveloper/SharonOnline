@@ -196,8 +196,8 @@ class TestBookingHorizon:
 class TestBlockedIntervals:
     def test_an_overlapping_blocked_interval_hides_the_slots_it_touches(self):
         tutor = tutor_in('Africa/Johannesburg', [(0, time(9, 0), time(11, 0))])
-        blocked = [(utc(2026, 1, 5, 7, 20), utc(2026, 1, 5, 8, 10))]          # touches the 07:00 (till 07:25) and 07:30 slots
-        assert starts(tutor, date(2026, 1, 5), blocked_intervals=blocked) == iso((2026, 1, 5, 8, 30), (2026, 1, 5, 9, 0))
+        blocked = [(utc(2026, 1, 5, 7, 20), utc(2026, 1, 5, 8, 10))]          # touches the 07:00, 07:30 and 08:00 slots
+        assert starts(tutor, date(2026, 1, 5), blocked_intervals=blocked) == iso((2026, 1, 5, 8, 30))
 
     def test_an_interval_that_only_touches_the_edge_blocks_nothing(self):
         tutor = tutor_in('Africa/Johannesburg', [(0, time(9, 0), time(10, 0))])
@@ -210,7 +210,7 @@ class TestTimeOffAndOverrides:
     def test_time_off_hides_overlapping_slots(self):
         tutor = tutor_in('Africa/Johannesburg', [(0, time(9, 0), time(11, 0))])
         TeacherTimeOff.objects.create(teacher=tutor, start_utc=utc(2026, 1, 5, 7, 0), end_utc=utc(2026, 1, 5, 8, 0), reason='dentist')
-        assert starts(tutor, date(2026, 1, 5)) == iso((2026, 1, 5, 8, 0), (2026, 1, 5, 8, 30), (2026, 1, 5, 9, 0))
+        assert starts(tutor, date(2026, 1, 5)) == iso((2026, 1, 5, 8, 0), (2026, 1, 5, 8, 30))
 
     def test_a_closed_date_removes_the_whole_day(self):
         tutor = tutor_in('Africa/Johannesburg', [(0, time(9, 0), time(10, 0))])
@@ -220,7 +220,7 @@ class TestTimeOffAndOverrides:
     def test_a_closed_window_removes_only_those_hours(self):
         tutor = tutor_in('Africa/Johannesburg', [(0, time(9, 0), time(11, 0))])
         TeacherDateOverride.objects.create(teacher=tutor, date=date(2026, 1, 5), kind='closed', start_time=time(9, 0), end_time=time(10, 0))
-        assert starts(tutor, date(2026, 1, 5)) == iso((2026, 1, 5, 8, 0), (2026, 1, 5, 8, 30), (2026, 1, 5, 9, 0))
+        assert starts(tutor, date(2026, 1, 5)) == iso((2026, 1, 5, 8, 0), (2026, 1, 5, 8, 30))
 
     def test_an_open_override_adds_hours_on_a_day_without_any(self):
         tutor = tutor_in('Africa/Johannesburg', [])

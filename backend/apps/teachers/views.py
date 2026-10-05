@@ -1,13 +1,24 @@
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework import generics, permissions, filters, status
+from rest_framework.generics import get_object_or_404
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.views import APIView
 from django.db.models import Q
 from rest_framework.exceptions import PermissionDenied
+from apps.common import clock
 from apps.users.permissions import IsTeacher
-from .models import TeacherProfile, TeacherAvailability
+from .models import TeacherProfile, TeacherAvailability, TeacherDateOverride, TeacherTimeOff
 from .serializers import (
-    PowerBackupSerializer, TeacherListSerializer, TeacherDetailSerializer, TeacherAvailabilitySerializer,
+    AvailabilityChangeSerializer, AvailabilityMatrixSerializer, AvailabilityReplaceResultSerializer,
+    AvailabilityUpdateSerializer, ConflictErrorSerializer, DateOverrideCreateSerializer, DateOverrideResultSerializer,
+    DeletedSerializer, PowerBackupSerializer, TeacherDateOverrideSerializer, TeacherDetailSerializer, TeacherListSerializer,
+    TeacherAvailabilitySerializer, TeacherTimeOffSerializer, TimeOffCreateSerializer, TimeOffResultSerializer,
 )
+from .services import availability
 
 class TeacherListView(generics.ListAPIView):
     serializer_class = TeacherListSerializer
@@ -61,20 +72,157 @@ class TeacherDetailView(generics.RetrieveAPIView):
     permission_classes = (permissions.AllowAny,)
     lookup_field = 'id'
 
-class TeacherAvailabilityManageView(generics.ListCreateAPIView):
-    serializer_class = TeacherAvailabilitySerializer
+class SchedulePagination(PageNumberPagination):
+    """Schedule lists are capped far below this (services.availability.MAX_*), so one page is the whole list."""
+    page_size = 100
+    max_page_size = 100
+
+
+class TutorScheduleMixin:
+    """Owner-only, throttled base of every availability / time-off / override endpoint (T2)."""
     permission_classes = (permissions.IsAuthenticated, IsTeacher)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'availability'
+    pagination_class = SchedulePagination
+
+    def get_teacher(self):
+        profile = getattr(self.request.user, 'teacher_profile', None)
+        if profile is None:
+            raise PermissionDenied('A teacher profile is required (your application has not been set up yet).')
+        return profile
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        profile = getattr(self.request.user, 'teacher_profile', None)
+        if profile is not None:
+            context['teacher'] = profile
+        return context
+
+    def acknowledged(self) -> bool:
+        """Body flag for writes with a body, query flag for DELETE."""
+        value = self.request.data.get('acknowledge_conflicts') if hasattr(self.request.data, 'get') else None
+        if value is None:
+            value = self.request.query_params.get('acknowledge_conflicts')
+        return str(value).lower() in ('1', 'true', 'yes')
+
+
+CONFLICT_RESPONSES = {409: ConflictErrorSerializer}
+
+
+@extend_schema_view(
+    get=extend_schema(summary='My weekly availability windows (tutor local clock)'),
+    post=extend_schema(summary='Add one weekly window', responses={201: TeacherAvailabilitySerializer}),
+)
+class TeacherAvailabilityManageView(TutorScheduleMixin, generics.ListCreateAPIView):
+    serializer_class = TeacherAvailabilitySerializer
 
     def get_queryset(self):
-        user = self.request.user
-        if not hasattr(user, 'teacher_profile'):
-            return TeacherAvailability.objects.none()
-        return TeacherAvailability.objects.filter(teacher=user.teacher_profile)
+        profile = getattr(self.request.user, 'teacher_profile', None)
+        return profile.availabilities.all() if profile else TeacherAvailability.objects.none()
 
-    def perform_create(self, serializer):
-        if not hasattr(self.request.user, 'teacher_profile'):
-            raise PermissionDenied('A teacher profile is required (your application has not been set up yet).')
-        serializer.save(teacher=self.request.user.teacher_profile)
+    def create(self, request, *args, **kwargs):
+        teacher = self.get_teacher()
+        serializer = self.get_serializer(data=request.data)
+        availability.create_row(teacher, serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class TeacherAvailabilityDetailView(TutorScheduleMixin, APIView):
+    @extend_schema(summary='Edit one weekly window', request=AvailabilityUpdateSerializer,
+                   responses={200: AvailabilityChangeSerializer, **CONFLICT_RESPONSES})
+    def patch(self, request, pk):
+        teacher = self.get_teacher()
+        row = get_object_or_404(teacher.availabilities, pk=pk)
+        serializer = AvailabilityUpdateSerializer(row, data=request.data, partial=True, context={'teacher': teacher})
+        outcome = availability.update_row(teacher, row, serializer)
+        return Response({'availability': TeacherAvailabilitySerializer(outcome.obj).data, 'conflicts': outcome.conflicts})
+
+    @extend_schema(summary='Delete one weekly window',
+                   parameters=[OpenApiParameter('acknowledge_conflicts', bool, description='Apply even if confirmed lessons fall outside the new hours.')],
+                   responses={200: DeletedSerializer, **CONFLICT_RESPONSES})
+    def delete(self, request, pk):
+        teacher = self.get_teacher()
+        get_object_or_404(teacher.availabilities, pk=pk)
+        outcome = availability.delete_row(teacher, pk, acknowledged=self.acknowledged())
+        return Response({'deleted': True, 'conflicts': outcome.conflicts})
+
+
+class TeacherAvailabilityReplaceView(TutorScheduleMixin, APIView):
+    @extend_schema(summary='Atomically replace the whole weekly matrix', request=AvailabilityMatrixSerializer,
+                   responses={200: AvailabilityReplaceResultSerializer, **CONFLICT_RESPONSES})
+    def put(self, request):
+        teacher = self.get_teacher()
+        serializer = AvailabilityMatrixSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        outcome = availability.replace_weekly_matrix(
+            teacher, serializer.validated_data['rows'], acknowledged=serializer.validated_data['acknowledge_conflicts'])
+        return Response({'rows': TeacherAvailabilitySerializer(outcome.obj, many=True).data, 'conflicts': outcome.conflicts})
+
+
+@extend_schema_view(
+    get=extend_schema(summary='My upcoming time off'),
+    post=extend_schema(summary='Add time off', request=TimeOffCreateSerializer,
+                       responses={201: TimeOffResultSerializer, **CONFLICT_RESPONSES}),
+)
+class TeacherTimeOffListView(TutorScheduleMixin, generics.ListCreateAPIView):
+    serializer_class = TeacherTimeOffSerializer
+
+    def get_queryset(self):
+        profile = getattr(self.request.user, 'teacher_profile', None)
+        return profile.time_off.filter(end_utc__gt=clock.now()) if profile else TeacherTimeOff.objects.none()
+
+    def create(self, request, *args, **kwargs):
+        teacher = self.get_teacher()
+        serializer = TimeOffCreateSerializer(data=request.data, context={'teacher': teacher})
+        serializer.is_valid(raise_exception=True)
+        data = {k: v for k, v in serializer.validated_data.items() if k != 'acknowledge_conflicts'}
+        outcome = availability.create_time_off(teacher, data, acknowledged=self.acknowledged())
+        return Response({'time_off': TeacherTimeOffSerializer(outcome.obj).data, 'conflicts': outcome.conflicts},
+                        status=status.HTTP_201_CREATED)
+
+
+class TeacherTimeOffDetailView(TutorScheduleMixin, APIView):
+    @extend_schema(summary='Delete a time-off period', responses={200: DeletedSerializer})
+    def delete(self, request, pk):
+        teacher = self.get_teacher()
+        get_object_or_404(teacher.time_off, pk=pk)
+        outcome = availability.delete_time_off(teacher, pk)
+        return Response({'deleted': True, 'conflicts': outcome.conflicts})
+
+
+@extend_schema_view(
+    get=extend_schema(summary='My upcoming specific-date overrides'),
+    post=extend_schema(summary='Add or remove hours on one date', request=DateOverrideCreateSerializer,
+                       responses={201: DateOverrideResultSerializer, **CONFLICT_RESPONSES}),
+)
+class TeacherDateOverrideListView(TutorScheduleMixin, generics.ListCreateAPIView):
+    serializer_class = TeacherDateOverrideSerializer
+
+    def get_queryset(self):
+        profile = getattr(self.request.user, 'teacher_profile', None)
+        if profile is None:
+            return TeacherDateOverride.objects.none()
+        return profile.date_overrides.filter(date__gte=clock.now().date() - timedelta(days=1))
+
+    def create(self, request, *args, **kwargs):
+        teacher = self.get_teacher()
+        serializer = DateOverrideCreateSerializer(data=request.data, context={'teacher': teacher})
+        serializer.is_valid(raise_exception=True)
+        data = {k: v for k, v in serializer.validated_data.items() if k != 'acknowledge_conflicts'}
+        outcome = availability.create_override(teacher, data, acknowledged=self.acknowledged())
+        return Response({'override': TeacherDateOverrideSerializer(outcome.obj).data, 'conflicts': outcome.conflicts},
+                        status=status.HTTP_201_CREATED)
+
+
+class TeacherDateOverrideDetailView(TutorScheduleMixin, APIView):
+    @extend_schema(summary='Delete a date override',
+                   parameters=[OpenApiParameter('acknowledge_conflicts', bool, description='Apply even if confirmed lessons fall outside the new hours.')],
+                   responses={200: DeletedSerializer, **CONFLICT_RESPONSES})
+    def delete(self, request, pk):
+        teacher = self.get_teacher()
+        get_object_or_404(teacher.date_overrides, pk=pk)
+        outcome = availability.delete_override(teacher, pk, acknowledged=self.acknowledged())
+        return Response({'deleted': True, 'conflicts': outcome.conflicts})
 
 
 class TeacherPowerBackupView(generics.UpdateAPIView):

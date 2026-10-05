@@ -3,7 +3,7 @@ Moving a paid lesson to another open slot of the same tutor (Task 9.6, decision 
 
 Rules (all settings): the student only; the lesson is CONFIRMED; its current start is more than RESCHEDULE_MIN_NOTICE_HOURS away;
 at most RESCHEDULE_MAX_PER_BOOKING moves; the new slot is a real open slot of that tutor, at least the minimum notice away and at most
-RESCHEDULE_MAX_DAYS_AHEAD days out. Tutors cannot move a student's lesson: they cancel it (docs/CANCELLATION_AND_REFUNDS.md).
+BOOKING_HORIZON_DAYS days out. Tutors cannot move a student's lesson: they cancel it (docs/CANCELLATION_AND_REFUNDS.md).
 
 The same Booking row moves, so its payment, escrow and id stay put and the 24-hour release simply counts from the new end time.
 The Zoom room is replaced (the old one deleted, a new one provisioned by the usual fulfilment task) and reminders re-arm.
@@ -20,7 +20,7 @@ from apps.bookings.models import Booking, BookingReschedule
 from apps.bookings.services.fulfillment import reset_for_reprovision
 from apps.bookings.services.holds import live_hold_q
 from apps.bookings.services.lock_service import acquire_slot_lock, new_slot_lock_token, release_slot_lock
-from apps.bookings.services.slot_generator import LESSON_DURATION_MINUTES, generate_teacher_slots
+from apps.bookings.services.slot_generator import LESSON_DURATION_MINUTES, generate_teacher_slots, horizon_days, horizon_scan_days
 from apps.integrations.tasks import cleanup_gcal_event, cleanup_zoom_meeting, dispatch_booking_fulfillment
 from django.db.models import Q
 
@@ -55,14 +55,14 @@ def reschedule_booking(booking_id, student, new_start, now=None) -> Booking:
             raise RescheduleError(409, 'reschedule_too_late',
                                   f'A lesson can only be moved more than {settings.RESCHEDULE_MIN_NOTICE_HOURS} hours before it starts.')
 
-        if new_start == booking.start_time_utc or new_start - now < notice or new_start - now > timedelta(days=settings.RESCHEDULE_MAX_DAYS_AHEAD):
+        if new_start == booking.start_time_utc or new_start - now < notice or new_start - now > timedelta(days=horizon_days()):
             raise RescheduleError(400, 'invalid_slot', 'Choose a different time at least '
-                                  f'{settings.RESCHEDULE_MIN_NOTICE_HOURS} hours and at most {settings.RESCHEDULE_MAX_DAYS_AHEAD} days from now.')
+                                  f'{settings.RESCHEDULE_MIN_NOTICE_HOURS} hours and at most {horizon_days()} days from now.')
         teacher = booking.teacher
         if not (teacher.is_active and teacher.is_verified):
             raise RescheduleError(409, 'slot_unavailable', 'This tutor is not available for new times right now.')
 
-        slot = next((s for s in generate_teacher_slots(teacher=teacher, days_ahead=settings.RESCHEDULE_MAX_DAYS_AHEAD + 1)
+        slot = next((s for s in generate_teacher_slots(teacher=teacher, days_ahead=horizon_scan_days())
                      if s['start_time_utc'] and _instant(s['start_time_utc']) == new_start), None)
         if slot is None:
             raise RescheduleError(400, 'invalid_slot', "That time is not one of this tutor's open slots.")
