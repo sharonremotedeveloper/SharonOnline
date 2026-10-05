@@ -327,3 +327,56 @@ class TeacherAvailability(models.Model):
         days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
         day_str = days[self.day_of_week] if 0 <= self.day_of_week <= 6 else str(self.day_of_week)
         return f"{self.teacher.user.username} - {day_str} {self.start_time.strftime('%H:%M')} to {self.end_time.strftime('%H:%M')}"
+
+
+class TeacherTimeOff(models.Model):
+    """
+    A one-off absence (holiday, illness) as an absolute UTC interval (T2). The slot generator hides every slot that overlaps
+    it. It never cancels a lesson: confirmed lessons inside it are returned to the tutor as conflicts to act on.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    teacher = models.ForeignKey(TeacherProfile, on_delete=models.CASCADE, related_name='time_off')
+    start_utc = models.DateTimeField()
+    end_utc = models.DateTimeField()
+    reason = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['start_utc']
+        constraints = [
+            models.CheckConstraint(condition=Q(end_utc__gt=models.F('start_utc')), name='teachertimeoff_end_after_start'),
+        ]
+        indexes = [models.Index(fields=['teacher', 'end_utc'], name='teacher_timeoff_t_end_idx')]
+
+
+class TeacherDateOverride(models.Model):
+    """
+    A specific-date exception to the weekly matrix, in the tutor's LOCAL clock (INV TEA-03, T2).
+    `open`   adds hours on that date (start_time/end_time required).
+    `closed` removes hours from that date: the given window, or the whole day when both times are empty.
+    """
+    class Kind(models.TextChoices):
+        OPEN = 'open', 'Extra hours'
+        CLOSED = 'closed', 'Hours removed'
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    teacher = models.ForeignKey(TeacherProfile, on_delete=models.CASCADE, related_name='date_overrides')
+    date = models.DateField(help_text="Date in the teacher's local timezone")
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    reason = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['date', 'start_time']
+        constraints = [
+            models.CheckConstraint(condition=Q(kind__in=['open', 'closed']), name='teacherdateoverride_kind_valid'),
+            models.CheckConstraint(
+                condition=(Q(start_time__isnull=True, end_time__isnull=True)
+                           | Q(start_time__isnull=False, end_time__isnull=False, start_time__lt=models.F('end_time'))),
+                name='teacherdateoverride_hours_pair_ordered'),
+            models.CheckConstraint(condition=Q(kind='closed') | Q(start_time__isnull=False),
+                                   name='teacherdateoverride_open_needs_hours'),
+        ]
+        indexes = [models.Index(fields=['teacher', 'date'], name='teacher_dateoverride_t_d_idx')]

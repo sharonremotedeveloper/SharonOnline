@@ -1,7 +1,11 @@
 import uuid
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.db import models
+
+from apps.common.timezones import is_valid_timezone
+
 
 class User(AbstractUser):
     class Role(models.TextChoices):
@@ -21,6 +25,12 @@ class User(AbstractUser):
         help_text="Non-empty = the student cannot book (e.g. a lesson was delivered but its payment failed). Staff clear it.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+        """Admin forms and full_clean() callers: a timezone must be a real IANA zone (T2; slot generation relies on it)."""
+        super().clean()
+        if not is_valid_timezone(self.timezone):
+            raise ValidationError({'timezone': 'Enter a valid IANA timezone, e.g. "Africa/Johannesburg".'})
 
     def __str__(self):
         return f"{self.username} ({self.get_role_display()})"

@@ -16,11 +16,10 @@ from apps.bookings.models import Booking
 from apps.bookings.services.booking_block import booking_block_message
 from apps.bookings.services.holds import hold_expires_at, live_hold_q
 from apps.bookings.services.lock_service import acquire_slot_lock, new_slot_lock_token, release_slot_lock
-from apps.bookings.services.slot_generator import LESSON_DURATION_MINUTES, generate_teacher_slots
+from apps.bookings.services.slot_generator import LESSON_DURATION_MINUTES, generate_teacher_slots, horizon_scan_days
 from apps.teachers.models import TeacherProfile
 
 MAX_PENDING_PER_STUDENT = 3  # stops one account from hoarding slots by spamming reserve
-SLOT_HORIZON_DAYS = 15
 
 
 class ReservationError(Exception):
@@ -55,7 +54,7 @@ def reserve_slot(*, student, teacher_id, start_time_utc, material=None) -> Tuple
         return existing, False
 
     # The slot must be a real, currently-bookable slot of this tutor (availability, 25-min grid, future, not booked/held).
-    slot = next((s for s in generate_teacher_slots(teacher=teacher, days_ahead=SLOT_HORIZON_DAYS)
+    slot = next((s for s in generate_teacher_slots(teacher=teacher, days_ahead=horizon_scan_days())
                  if s['start_time_utc'] and _same_instant(s['start_time_utc'], start)), None)
     if slot is None:
         raise ReservationError(409, "That time is not one of this tutor's open slots.")

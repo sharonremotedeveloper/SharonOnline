@@ -842,7 +842,17 @@ export interface TeacherWalletData {
 ### 5. Backend Django REST API Mappings
 | Endpoint | Method | DRF View | Purpose |
 | :--- | :--- | :--- | :--- |
-| `/api/v1/teachers/availability/manage/` | GET, POST | `TeacherAvailabilityManageView` | Saves recurring weekly time blocks |
+| `/api/v1/teachers/availability/manage/` | GET (paginated), POST | `TeacherAvailabilityManageView` | Lists / adds ONE weekly window (it is a single-row endpoint: the old UI POSTed a whole matrix to it and could never save) |
+| `/api/v1/teachers/availability/manage/<id>/` | PATCH, DELETE | `TeacherAvailabilityDetailView` | Edit / remove one window (T2) |
+| `/api/v1/teachers/availability/replace/` | PUT `{rows:[{day_of_week,start_time,end_time,is_active?}], acknowledge_conflicts?}` | `TeacherAvailabilityReplaceView` | **The grid saves here**: atomic swap of the whole weekly matrix; 200 `{rows, conflicts}` (T2) |
+| `/api/v1/teachers/availability/time-off/` (+ `<id>/` DELETE) | GET, POST | `TeacherTimeOffListView` | Absences as UTC intervals; 201 `{time_off, conflicts}` (T2) |
+| `/api/v1/teachers/availability/overrides/` (+ `<id>/` DELETE) | GET, POST | `TeacherDateOverrideListView` | Specific-date extra hours (`open`) or removed hours / closed day (`closed`), INV TEA-03 (T2) |
+
+**Conflict contract (T2).** Any change that would leave a CONFIRMED future lesson outside the tutor's open hours answers **409** `{code:"availability_conflicts", detail, conflicts:[{booking_id,start_time_utc,end_time_utc}]}` and changes nothing. Resending with `acknowledge_conflicts:true` (body, or `?acknowledge_conflicts=true` on DELETE) applies it and returns the same list under `conflicts`; the lessons stay CONFIRMED (availability edits never cancel): the tutor teaches them or cancels through `POST /bookings/<id>/cancel/` (penalty path). Validation errors are 400 with per-field messages. `WeeklyScheduleGrid` uses `lib/availability.ts` for grid <-> windows; the time-off and override UIs are not built yet (T7b). The grid shows times in the tutor's own `User.timezone` and asks for confirmation before a save that would replace off-grid or overlapping windows.
+
+**Timezone changes (T2 QA).** `PATCH /auth/me/` with a new `timezone` for a tutor with confirmed future lessons that would fall outside the shifted hours answers the same 409 `availability_conflicts` unless `acknowledge_conflicts:true` is sent (write-only field of `UserSerializer`); admin edits warn instead of blocking. The profile UI that sends it is T7b.
+
+**Known limits.** (a) Live unpaid PENDING_PAYMENT holds (under 30 minutes) are not part of the conflict list; only CONFIRMED lessons are. (b) The conflict read and a concurrent payment confirming a lesson are not atomic: a lesson confirmed in that instant is not listed (advisory check, no booking lock by design). (c) `end_time` cannot be 24:00 (23:59 at most) and the grid tops out at 21:00.
 | `/api/v1/integrations/eskom/status/` | GET | `EskomStatusView` | Fetches live stage from EskomSePush API |
 | `/api/v1/teachers/profile/power-backup/` | PATCH | `TeacherProfileUpdateView` | Toggles inverter / LTE backup certification |
 | `/api/v1/bookings/<id>/memo/` | POST | `SubmitMemoView` | Advances state to `MEMO_SUBMITTED` |
@@ -854,7 +864,7 @@ export interface TeacherWalletData {
    - Display `EskomStageBanner`: If Stage > 0 and tutor does NOT have inverter backup, display yellow warning: *"Stage {stage} is active in your suburb. Unbooked slots during outage windows are hidden from students."*
 2. Build `WeeklyScheduleGrid.tsx`:
    - Render columns for Monday through Sunday with 30-minute rows.
-   - Click-and-drag to activate/deactivate teaching blocks. Save payload to `/api/v1/teachers/availability/manage/`.
+   - Click-and-drag to activate/deactivate teaching blocks. Save the whole matrix with `PUT /api/v1/teachers/availability/replace/` (see the conflict contract above).
 3. Build `MemoComposer.tsx`:
    - Interactive tag adder for vocabulary: Enter word + hit 'Enter' to add chip.
    - Rich textarea for grammar corrections and homework.

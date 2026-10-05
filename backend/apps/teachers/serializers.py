@@ -3,8 +3,9 @@ from rest_framework import serializers
 
 from apps.common.money import money_str
 from apps.payments.services.pricing import PriceNotConfigured, lesson_price
-from .models import TeacherProfile, TeacherAvailability
+from .models import TeacherProfile, TeacherAvailability, TeacherDateOverride, TeacherTimeOff
 from .profile import VETTED_FIELDS, WRITABLE_FIELDS
+from .services import availability as rules
 
 _CATALOG_USD = '_t1c_catalog_usd'      # serializer-context cache key: one catalog read per response
 
@@ -18,9 +19,131 @@ DEPRECATED_PRICE_SCHEMA = {
 
 
 class TeacherAvailabilitySerializer(serializers.ModelSerializer):
+    """One weekly window in the tutor's local clock. Validated against the tutor in `context['teacher']` (absent = read-only use)."""
+    day_of_week = serializers.IntegerField(min_value=0, max_value=6, help_text='0=Monday ... 6=Sunday')
+
     class Meta:
         model = TeacherAvailability
         fields = ('id', 'day_of_week', 'start_time', 'end_time', 'is_active')
+
+    def validate(self, attrs):
+        teacher = self.context.get('teacher')
+        if teacher is None:
+            return attrs
+        current = self.instance
+
+        def pick(name, default=None):
+            return attrs[name] if name in attrs else (getattr(current, name) if current else default)
+        start, end, day, active = pick('start_time'), pick('end_time'), pick('day_of_week'), pick('is_active', True)
+        # Only a payload that sets the hours (or re-activates the row) is judged on them, so a legacy row with bad hours can
+        # still be deactivated (T2 QA MINOR-6).
+        if current is None or {'start_time', 'end_time'} & attrs.keys() or attrs.get('is_active') is True:
+            errors = rules.window_errors(start, end)
+            if errors:
+                raise serializers.ValidationError(errors)
+        if current is None:
+            rules.check_row_limit(teacher)
+        if active:
+            rules.check_no_overlap(teacher, day, start, end, exclude_id=current.pk if current else None)
+        return attrs
+
+
+class AvailabilityUpdateSerializer(TeacherAvailabilitySerializer):
+    acknowledge_conflicts = serializers.BooleanField(write_only=True, required=False, default=False)
+
+    class Meta(TeacherAvailabilitySerializer.Meta):
+        fields = TeacherAvailabilitySerializer.Meta.fields + ('acknowledge_conflicts',)
+
+
+class AvailabilityRowSerializer(serializers.Serializer):
+    day_of_week = serializers.IntegerField(min_value=0, max_value=6)
+    start_time = serializers.TimeField()
+    end_time = serializers.TimeField()
+    is_active = serializers.BooleanField(required=False, default=True)
+
+    def validate(self, attrs):
+        errors = rules.window_errors(attrs['start_time'], attrs['end_time'])
+        if errors:
+            raise serializers.ValidationError(errors)
+        return attrs
+
+
+class AvailabilityMatrixSerializer(serializers.Serializer):
+    rows = AvailabilityRowSerializer(many=True, allow_empty=True)
+    acknowledge_conflicts = serializers.BooleanField(required=False, default=False)
+
+    def validate_rows(self, rows):
+        return rules.validate_matrix(rows)
+
+
+class ConflictSerializer(serializers.Serializer):
+    booking_id = serializers.UUIDField()
+    start_time_utc = serializers.CharField(help_text='ISO 8601 UTC')
+    end_time_utc = serializers.CharField(help_text='ISO 8601 UTC')
+
+
+class ConflictErrorSerializer(serializers.Serializer):
+    """409 body: nothing was changed. Resend with acknowledge_conflicts=true to apply it anyway."""
+    code = serializers.CharField()
+    detail = serializers.CharField()
+    conflicts = ConflictSerializer(many=True)
+
+
+class AvailabilityChangeSerializer(serializers.Serializer):
+    availability = TeacherAvailabilitySerializer()
+    conflicts = ConflictSerializer(many=True)
+
+
+class AvailabilityReplaceResultSerializer(serializers.Serializer):
+    rows = TeacherAvailabilitySerializer(many=True)
+    conflicts = ConflictSerializer(many=True)
+
+
+class DeletedSerializer(serializers.Serializer):
+    deleted = serializers.BooleanField()
+    conflicts = ConflictSerializer(many=True)
+
+
+class TeacherTimeOffSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TeacherTimeOff
+        fields = ('id', 'start_utc', 'end_utc', 'reason')
+
+
+class TimeOffCreateSerializer(TeacherTimeOffSerializer):
+    acknowledge_conflicts = serializers.BooleanField(write_only=True, required=False, default=False)
+
+    class Meta(TeacherTimeOffSerializer.Meta):
+        fields = TeacherTimeOffSerializer.Meta.fields + ('acknowledge_conflicts',)
+
+    def validate(self, attrs):
+        return rules.validate_time_off(attrs)
+
+
+class TimeOffResultSerializer(serializers.Serializer):
+    time_off = TeacherTimeOffSerializer()
+    conflicts = ConflictSerializer(many=True)
+
+
+class TeacherDateOverrideSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TeacherDateOverride
+        fields = ('id', 'date', 'kind', 'start_time', 'end_time', 'reason')
+
+
+class DateOverrideCreateSerializer(TeacherDateOverrideSerializer):
+    acknowledge_conflicts = serializers.BooleanField(write_only=True, required=False, default=False)
+
+    class Meta(TeacherDateOverrideSerializer.Meta):
+        fields = TeacherDateOverrideSerializer.Meta.fields + ('acknowledge_conflicts',)
+
+    def validate(self, attrs):
+        return rules.validate_override(attrs, self.context['teacher'])
+
+
+class DateOverrideResultSerializer(serializers.Serializer):
+    override = TeacherDateOverrideSerializer()
+    conflicts = ConflictSerializer(many=True)
 
 
 class PowerBackupSerializer(serializers.ModelSerializer):

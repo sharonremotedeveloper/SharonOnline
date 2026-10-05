@@ -1,4 +1,4 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import StudentProfile, SupportInquiry, User
 
@@ -23,6 +23,17 @@ class UserAdmin(BaseUserAdmin):
             'fields': ('role', 'country', 'timezone', 'phone_number')
         }),
     )
+
+    def save_model(self, request, obj, form, change):
+        """T2: staff may change a tutor's timezone, but are told when it strands confirmed lessons (the API asks the tutor to acknowledge)."""
+        if change and 'timezone' in form.changed_data and getattr(obj, 'teacher_profile', None) is not None:
+            from apps.common.timezones import get_zone
+            from apps.teachers.services.availability import conflicts_for
+            conflicts = conflicts_for(obj.teacher_profile, zone=get_zone(obj.timezone))
+            if conflicts:
+                self.message_user(request, f'{len(conflicts)} confirmed lesson(s) of this tutor now fall outside their weekly hours; '
+                                           'they stay booked: ask the tutor to teach or cancel them.', level=messages.WARNING)
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(StudentProfile)

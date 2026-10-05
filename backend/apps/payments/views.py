@@ -25,6 +25,7 @@ from apps.users.permissions import IsTeacher
 from apps.bookings.services.holds import SLOT_OWNING_STATUSES, hold_expires_at, hold_is_live, inflight_grace, max_hold
 from apps.bookings.services.booking_block import booking_block_message
 from apps.bookings.services.lock_service import extend_slot_lock
+from apps.bookings.services.notice import TOO_CLOSE_CODE, TOO_CLOSE_MESSAGE, notice_closed
 from .gateways import payfast, paypal
 from .services import grace
 from .models import BookingFunding, FxRate, LessonPrice, CreditBundle, CreditPack, CreditPurchase, CreditWalletEntry, GatewayAnomaly, PaymentTransaction, TutorPayoutAccount
@@ -217,6 +218,8 @@ class CheckoutInitializeView(APIView):
         now = timezone.now()
         if booking.start_time_utc <= now:
             return Response({"error": "This lesson slot has already started."}, status=409)
+        if notice_closed(booking.start_time_utc, now):      # T2: the notice window is enforced at pay time too
+            return Response({"error": TOO_CLOSE_MESSAGE, "code": TOO_CLOSE_CODE}, status=409)
         if not hold_is_live(booking, now):
             return Response({"error": "This reservation has expired. Please choose the time slot again."}, status=409)
         if Booking.objects.filter(
@@ -525,6 +528,12 @@ class PayPalCaptureView(APIView):
         if not booking.teacher.is_bookable:
             return Response({"error": "This tutor is not currently bookable. You have not been charged.",
                              "code": "tutor_not_bookable", "outcome": "failed", "retryable": False},
+                            status=status.HTTP_409_CONFLICT)
+        now = timezone.now()
+        # T2: refuse BEFORE capture when the notice window closed meanwhile; nothing to refund. A lesson that has already
+        # started keeps its existing path (capture, then the late-payment settlement; docs/BOOKING_HOLDS.md, lead decision).
+        if now < booking.start_time_utc and notice_closed(booking.start_time_utc, now):
+            return Response({"error": TOO_CLOSE_MESSAGE, "code": TOO_CLOSE_CODE, "outcome": "failed", "retryable": False},
                             status=status.HTTP_409_CONFLICT)
         return None
 

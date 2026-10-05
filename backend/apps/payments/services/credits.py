@@ -194,6 +194,9 @@ def redeem_booking_credit(*, booking, student):
         raise CreditRedemptionError(409, 'This tutor is not currently bookable.')
     if not hold_is_live(booking, timezone.now()):
         raise CreditRedemptionError(409, 'This reservation has expired. Please choose the time slot again.')
+    from apps.bookings.services.notice import TOO_CLOSE_MESSAGE, notice_closed      # T2: notice is enforced at pay time
+    if notice_closed(booking.start_time_utc, timezone.now()):
+        raise CreditRedemptionError(409, TOO_CLOSE_MESSAGE)
     if Booking.objects.filter(
         teacher=booking.teacher,
         start_time_utc=booking.start_time_utc,

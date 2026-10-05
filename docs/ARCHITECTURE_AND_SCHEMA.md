@@ -63,6 +63,14 @@
 - `teacher`: ForeignKey (`TeacherProfile`)
 - `day_of_week`: SmallIntegerField (0=Monday ... 6=Sunday)
 - `start_time` / `end_time`: TimeField (Stored in teacher's local timezone for recurring projection)
+- `is_active`: BooleanField. Validated at the API (T2): whole minutes, `end > start`, at least 25 minutes, no overlap with another ACTIVE row of the same weekday (the edited row is excluded), at most 70 rows per tutor. No cross-midnight windows.
+
+#### `TeacherTimeOff` Model (T2, teachers 0011)
+- `teacher` FK, `start_utc` / `end_utc` (absolute UTC, CHECK `end > start`), `reason`. Slots overlapping it are not listed. Never cancels bookings.
+
+#### `TeacherDateOverride` Model (T2, teachers 0011, INV TEA-03)
+- `teacher` FK, `date` (tutor-local), `kind` `open` (extra hours, times required) | `closed` (removes the window, or the whole day when both times are empty), `start_time` / `end_time` (both or neither, ordered; CHECK constraints), `reason`.
+- Slots come from `teachers/services/schedule.py::SchedulePlan` (weekly rows + overrides - time off) read with `zoneinfo`: each slot is built from naive local time, a nonexistent local time is skipped, an ambiguous one takes its first fold, every slot is 25 real minutes. The tutor's `User.timezone` must be a real IANA key (`apps/common/timezones.py`); an invalid stored value yields NO slots and an error log with ids (no Johannesburg fallback).
 
 ---
 

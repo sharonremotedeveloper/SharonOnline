@@ -1,4 +1,5 @@
 import { API_BASE, MOCK, USE_MOCKS, liveRequest, request } from "./http";
+import { matrixToRows, type AvailabilityRow, type LessonConflict, type WeeklyMatrix } from "./availability";
 import type { components } from "@/types/api.generated";
 import { BookingDetail, BookingSlot, CreditLedgerEntry } from "@/types/booking";
 import {
@@ -756,17 +757,21 @@ export const api = {
     return { configured: false };
   },
 
-  async saveTeacherAvailability(availability: any) {
-    const live = await liveRequest(`${API_BASE}/teachers/availability/manage/`, {
-        method: "POST",
-        body: JSON.stringify(availability),
-      });
+  /**
+   * Atomically replaces the weekly matrix (`PUT /teachers/availability/replace/`). A change that would strand confirmed
+   * lessons is refused with a 409 (see `conflictsFromError`) until `acknowledgeConflicts` is true; lessons are never cancelled.
+   */
+  async saveTeacherAvailability(
+    schedule: WeeklyMatrix,
+    acknowledgeConflicts = false
+  ): Promise<{ rows: AvailabilityRow[]; conflicts: LessonConflict[] }> {
+    const live = await liveRequest(`${API_BASE}/teachers/availability/replace/`, {
+      method: "PUT",
+      body: JSON.stringify({ rows: matrixToRows(schedule), acknowledge_conflicts: acknowledgeConflicts }),
+    });
     if (live !== MOCK) return live;
 
-    return {
-      success: true,
-      message: "Weekly availability matrix updated and synced to global slot index.",
-    };
+    return { rows: [], conflicts: [] };
   },
 
   async getAdminTelemetry(): Promise<AdminTelemetry> {
