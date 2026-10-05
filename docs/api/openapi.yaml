@@ -1768,6 +1768,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/TeacherAvailability'
           description: ''
+  /api/v1/teachers/me/:
+    get:
+      operationId: v1_teachers_me_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherOwnProfile'
+          description: ''
+    patch:
+      operationId: v1_teachers_me_partial_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherOwnProfileRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherOwnProfileRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedTeacherOwnProfileRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherOwnProfile'
+          description: ''
   /api/v1/teachers/profile/power-backup/:
     patch:
       operationId: v1_teachers_profile_power_backup_partial_update
@@ -2676,6 +2714,9 @@ components:
       - pdf_file_url
       - slug
       - title
+    NullEnum:
+      enum:
+      - null
     PaginatedBookingDetailList:
       type: object
       required:
@@ -2908,6 +2949,22 @@ components:
         learning_goals:
           type: string
           maxLength: 2000
+    PatchedTeacherOwnProfileRequest:
+      type: object
+      properties:
+        headline:
+          type: string
+          maxLength: 255
+        bio:
+          type: string
+          maxLength: 5000
+        specialties:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 40
+          maxItems: 10
     PatchedUserRequest:
       type: object
       properties:
@@ -3502,7 +3559,11 @@ components:
         price_per_25min_usd:
           type: string
           format: decimal
-          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          nullable: true
+          deprecated: true
+          description: Deprecated. USD catalog price only. Do not display; use `/payments/lesson-prices/`
+            for the student's currency. null when no USD price is configured.
+          readOnly: true
         specialties:
           description: 'List of tags: [''FreeTalk'', ''Business English'', ''Daily
             News'', ''TOEIC'']'
@@ -3540,6 +3601,7 @@ components:
       - intro_audio_url
       - is_verified
       - last_name
+      - price_per_25min_usd
       - timezone
       - user_id
     TeacherList:
@@ -3593,7 +3655,11 @@ components:
         price_per_25min_usd:
           type: string
           format: decimal
-          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          nullable: true
+          deprecated: true
+          description: Deprecated. USD catalog price only. Do not display; use `/payments/lesson-prices/`
+            for the student's currency. null when no USD price is configured.
+          readOnly: true
         specialties:
           description: 'List of tags: [''FreeTalk'', ''Business English'', ''Daily
             News'', ''TOEIC'']'
@@ -3612,7 +3678,112 @@ components:
       - intro_audio_url
       - is_verified
       - last_name
+      - price_per_25min_usd
       - user_id
+    TeacherOwnProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TutorStatusEnum'
+          readOnly: true
+        is_verified:
+          type: boolean
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+        headline:
+          type: string
+          maxLength: 255
+        bio:
+          type: string
+          maxLength: 5000
+        specialties:
+          type: array
+          items:
+            type: string
+            maxLength: 40
+          maxItems: 10
+        accent:
+          allOf:
+          - $ref: '#/components/schemas/AccentEnum'
+          readOnly: true
+        intro_video_url:
+          type: string
+          format: uri
+          readOnly: true
+          description: Cloudflare Stream HLS or preview MP4 URL
+        intro_video_thumbnail:
+          type: string
+          format: uri
+          readOnly: true
+        avatar_url:
+          type: string
+          readOnly: true
+        intro_audio_url:
+          type: string
+          readOnly: true
+        has_tefl_certificate:
+          type: boolean
+          readOnly: true
+        eskom_area_id:
+          type: string
+          readOnly: true
+        has_inverter_backup:
+          type: boolean
+          readOnly: true
+        has_lte_failover:
+          type: boolean
+          readOnly: true
+        rating_avg:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,1}(?:\.\d{0,2})?$
+          readOnly: true
+        rating_count:
+          type: integer
+          readOnly: true
+        sla_strikes:
+          type: integer
+          readOnly: true
+        training_completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - accent
+      - avatar_url
+      - created_at
+      - eskom_area_id
+      - has_inverter_backup
+      - has_lte_failover
+      - has_tefl_certificate
+      - id
+      - intro_audio_url
+      - intro_video_thumbnail
+      - intro_video_url
+      - is_active
+      - is_verified
+      - rating_avg
+      - rating_count
+      - sla_strikes
+      - status
+      - training_completed_at
+      - updated_at
     TokenRefresh:
       type: object
       properties:
@@ -3632,6 +3803,24 @@ components:
           minLength: 1
       required:
       - refresh
+    TutorStatusEnum:
+      enum:
+      - applied
+      - submitted
+      - in_review
+      - approved
+      - changes_requested
+      - rejected
+      - suspended
+      type: string
+      description: |-
+        * `applied` - Applied
+        * `submitted` - Submitted for review
+        * `in_review` - In review
+        * `approved` - Approved
+        * `changes_requested` - Changes requested
+        * `rejected` - Rejected
+        * `suspended` - Suspended
     TutorWallet:
       type: object
       properties:
@@ -3832,6 +4021,15 @@ components:
           nullable: true
           readOnly: true
           description: Vetting status (tutors only; otherwise null).
+        tutor_status:
+          description: 'Tutor lifecycle status (docs/TUTOR_STATUS_MACHINE.md); null
+            for students, admins and a tutor account without a profile. Read-only:
+            changed only by the vetting service.'
+          nullable: true
+          readOnly: true
+          oneOf:
+          - $ref: '#/components/schemas/TutorStatusEnum'
+          - $ref: '#/components/schemas/NullEnum'
       required:
       - avatar_url
       - created_at
@@ -3840,6 +4038,7 @@ components:
       - id
       - is_verified
       - role
+      - tutor_status
       - username
     UserRequest:
       type: object

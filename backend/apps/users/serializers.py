@@ -11,6 +11,9 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.password_validation import validate_password
 from pytz import country_names
 
+from apps.teachers import vetting
+from apps.teachers.models import TeacherProfile
+
 from .models import StudentProfile, SupportInquiry, User
 from .services import queue_verification_email
 from .tokens import check_reset_token, user_from_uid
@@ -54,10 +57,17 @@ def validate_iso_country(value):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    # Query note (T1c QA m4): `avatar_url`, `is_verified` and `tutor_status` all read `user.teacher_profile`, which Django
+    # caches on the user instance, so one user costs one profile query however many of them are serialized. Serializing a
+    # LIST of users with this class (none does today; `/auth/me` is a single user) must use
+    # `select_related('teacher_profile')`. tests/test_t1c_tutor_profile.py pins the /auth/me count.
     # Role-specific extras the UI needs on every page (navbar, checkout). Null-ish for roles they do not apply to.
     credits = serializers.SerializerMethodField(help_text='Remaining lesson credits (students only; otherwise null).')
     avatar_url = serializers.SerializerMethodField(help_text='Tutor profile photo URL (tutors only; otherwise empty).')
     is_verified = serializers.SerializerMethodField(help_text='Vetting status (tutors only; otherwise null).')
+    tutor_status = serializers.SerializerMethodField(
+        help_text='Tutor lifecycle status (docs/TUTOR_STATUS_MACHINE.md); null for students, admins and a tutor account '
+                  'without a profile. Read-only: changed only by the vetting service.')
 
     @extend_schema_field(serializers.IntegerField(allow_null=True))
     def get_credits(self, user):
@@ -75,14 +85,19 @@ class UserSerializer(serializers.ModelSerializer):
         profile = getattr(user, 'teacher_profile', None) if user.role == User.Role.TEACHER else None
         return profile.is_verified if profile else None
 
+    @extend_schema_field(serializers.ChoiceField(choices=TeacherProfile.Status.choices, allow_null=True))
+    def get_tutor_status(self, user):
+        profile = getattr(user, 'teacher_profile', None) if user.role == User.Role.TEACHER else None
+        return profile.status if profile else None
+
     def validate_country(self, value):
         return validate_iso_country(value)
 
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'email_verified', 'first_name', 'last_name', 'role', 'country', 'timezone', 'phone_number', 'created_at',
-                  'credits', 'avatar_url', 'is_verified')
-        read_only_fields = ('id', 'role', 'email_verified', 'created_at', 'credits', 'avatar_url', 'is_verified')
+                  'credits', 'avatar_url', 'is_verified', 'tutor_status')
+        read_only_fields = ('id', 'role', 'email_verified', 'created_at', 'credits', 'avatar_url', 'is_verified', 'tutor_status')
         extra_kwargs = {
             'email': {'validators': [UniqueValidator(queryset=User.objects.all(), lookup='iexact', message='A user with this email already exists.')]},
             'username': {'validators': [UnicodeUsernameValidator(), UniqueValidator(queryset=User.objects.all(), lookup='iexact', message='A user with that username already exists.')]},
@@ -142,6 +157,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate_country(self, value):
         return validate_iso_country(value)
 
+    @transaction.atomic        # the user and their role profile are created together or not at all
     def create(self, validated_data):
         validated_data.pop('password_confirm')
         user = User.objects.create_user(
@@ -156,6 +172,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         )
         if user.role == User.Role.STUDENT:
             StudentProfile.objects.create(user=user)
+        elif user.role == User.Role.TEACHER:
+            # T1c: a tutor account always has a profile, created `applied` by the tutor themself (baseline audit row).
+            vetting.create_teacher_profile(user, status=TeacherProfile.Status.APPLIED, actor=user, reason='signup')
         return user
 
 

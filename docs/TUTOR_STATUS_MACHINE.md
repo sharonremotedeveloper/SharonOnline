@@ -163,7 +163,49 @@ operations live in its migration files), then deploy and start the old code. The
   while cancel / memo / no-show lock booking -> tutor (`add_strike`). A review and a strike on the same lesson can deadlock on
   Postgres (one is retried/aborted). T1b should lock booking -> tutor in the review path (or update the rating with an atomic
   F-expression without a tutor lock) and add a Postgres-marked test.
-- `role=teacher` users without a profile are not given one here (T1c, registration auto-profile).
-- Full-row saves no longer write `status` / `sla_strikes` (§4); T1c's `/teachers/me/` PATCH should still save with explicit
-  `update_fields` limited to the whitelisted fields.
+- ~~`role=teacher` users without a profile are not given one here~~ done in T1c (§8).
+- ~~T1c's `/teachers/me/` PATCH should save with explicit `update_fields`~~ done in T1c (§8).
 - Notifications (`vetting:{change_id}`, `suspended:{change_id}`) hook into `notify_status_change` (N1a).
+
+## 8. Tutor profile at signup and `/teachers/me/` (slice T1c)
+
+**Signup.** `POST /api/v1/auth/register/` with `role=teacher` creates the user and, in the same transaction
+(`RegisterSerializer.create` is `@transaction.atomic`), the profile through
+`create_teacher_profile(user, status='applied', actor=<the new user>, reason='signup')`: status `applied`, baseline audit row
+`'' -> applied` with `actor='user:<username>'`, `actor_user` = the tutor (SELF may only create `applied`). If the profile
+cannot be created, the user is rolled back too. A new tutor is never public (`applied` is not verified).
+
+**Backfill.** Migration `teachers/0009_backfill_teacher_profiles` (data only) gives every existing `role=teacher` user
+without a profile an `applied` profile and a baseline row with actor `system:migration_0009`. Each row is written once
+(`bulk_create`), and on PostgreSQL the step ends with `SET CONSTRAINTS ALL IMMEDIATE` (ERR-192 pattern). Reverse: deletes
+only profiles whose baseline row is `system:migration_0009` and that are untouched (still `applied`, no other audit row,
+no availability, no booking); anything else is kept. Round trip: `tests/test_t1c_profile_backfill.py` (SQLite + Postgres-marked).
+`teachers/0010_specialties_optional`: `specialties` is `blank=True` (no DB change; ERR-158).
+
+**`GET|PATCH /api/v1/teachers/me/`** (`TeacherOwnProfileView`, `TeacherOwnProfileSerializer`, service `apps/teachers/profile.py`):
+- Permission `IsAuthenticated` + `IsTeacher`; the object is always the caller's own profile (no id in the URL), 404 when a
+  tutor account has no profile. `PUT` is 405. Throttles: `UserRateThrottle` always, plus the `teacher_profile` scope
+  (30/hour) on PATCH.
+- Response (`TeacherOwnProfile`): `id, status, is_verified, is_active, headline, bio, specialties, accent, intro_video_url,
+  intro_video_thumbnail, avatar_url, intro_audio_url, has_tefl_certificate, eskom_area_id, has_inverter_backup,
+  has_lte_failover, rating_avg, rating_count, sla_strikes, training_completed_at, created_at, updated_at`. Private document
+  locations (TEFL certificate URL / key) are never returned, only `has_tefl_certificate`.
+- **Writable whitelist** (`WRITABLE_FIELDS`): `headline` (<= 255), `bio` (<= 5000), `specialties` (list of <= 10 strings,
+  each 1..40 chars after trimming; duplicates dropped; may be empty). Every other key in a PATCH body is a **400 naming the
+  field** (never silently ignored): vetted fields (`VETTED_FIELDS`: accent, intro video + thumbnail, accent audio, TEFL
+  certificate, photo) say "reviewed by vetting, changes only through the upload flow"; service-owned (`status`,
+  `sla_strikes`, `training_completed_at`), derived (ratings, flags), staff-owned (`eskom_area_id`: it drives the Eskom
+  shield that waives strikes, so a tutor must not pick it) and deprecated (`price_per_25min_usd`) fields and unknown keys say
+  "cannot be changed here". Name, timezone and country live on the User (`PATCH /auth/me/`); power backup on
+  `PATCH /teachers/profile/power-backup/`.
+- Save: `update_own_profile` writes only the changed whitelisted fields + `updated_at` with explicit `update_fields` (never
+  `status` / `sla_strikes`; nothing at all when nothing changed). No row lock: a concurrent suspension is never undone, and
+  the response re-reads the live `status` / flags / strikes.
+- **Re-vet hook for T3:** `revet_after_vetted_change(profile, *, actor, fields)` moves an `approved` tutor to `in_review`
+  (SELF edge `approved -> in_review`, reason `re-vet: <fields> changed`) and returns the transition result; any other status
+  -> `None`. Vetted fields are not writable in T1c, so nothing calls it yet: **T3's asset commit must call it** after it
+  swaps a vetted asset of an approved tutor (and decides whether commits are allowed for other statuses, plan §3.1).
+
+**`GET /api/v1/auth/me/`** has a read-only `tutor_status` (`TutorStatusEnum` | null): the tutor's status, `null` for students,
+admins and a tutor account without a profile. T5 uses it in `proxy.ts` to route unverified tutors. (Named `tutor_status`, not
+`status`, so it cannot be read as an account status; the TS type is `AuthUser.tutor_status`.)

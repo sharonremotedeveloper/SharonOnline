@@ -20,7 +20,7 @@ export interface PendingTeacherApplication {
   specialties: string[];
   video_url: string;
   tefl_certificate_url?: string;
-  eskom_area?: string;
+  eskom_area?: string | null; // the tutor's real Eskom area id; null when none is set (T1c: no placeholder)
   has_inverter?: boolean;
   applied_at: string;
   status: "pending" | "approved" | "rejected";

@@ -132,7 +132,6 @@ function TutorsContent() {
     accent: searchParams.get("accent") || "",
     specialty: searchParams.get("specialty") || "",
     learning_goal: searchParams.get("goal") || "",
-    max_price: searchParams.get("max_price") ? parseFloat(searchParams.get("max_price")!) : null,
     only_power_guard: searchParams.get("power_guard") === "true",
     only_today: searchParams.get("today") === "true",
   });
@@ -148,7 +147,6 @@ function TutorsContent() {
     if (newFilters.accent) params.set("accent", newFilters.accent);
     if (newFilters.specialty) params.set("specialty", newFilters.specialty);
     if (newFilters.learning_goal) params.set("goal", newFilters.learning_goal);
-    if (newFilters.max_price) params.set("max_price", newFilters.max_price.toString());
     if (newFilters.only_power_guard) params.set("power_guard", "true");
     if (newFilters.only_today) params.set("today", "true");
 
@@ -227,7 +225,6 @@ function TutorsContent() {
             accent: "",
             specialty: "",
             learning_goal: "",
-            max_price: null,
             only_power_guard: false,
             only_today: false,
           })

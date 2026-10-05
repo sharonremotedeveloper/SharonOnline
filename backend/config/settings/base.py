@@ -149,6 +149,8 @@ REST_FRAMEWORK = {
         'inquiry': '5/hour',
         'webhook': '120/min',
         'admin_refund_retry': '30/hour',   # staff retrying failed refunds (Task 10.7)
+        # --- T1c: PATCH /teachers/me/ (tutor editing their own profile) ---
+        'teacher_profile': '30/hour',
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
     # NEVER map 0 to None: DRF treats None as "trust the whole client-supplied X-Forwarded-For header", which lets
@@ -249,6 +251,8 @@ SPECTACULAR_SETTINGS = {
         'BookingStatusEnum': 'apps.bookings.models.Booking.Status',
         'RefundStatusEnum': 'apps.payments.models.RefundRequest.Status',
         'RefundReasonEnum': 'apps.payments.models.RefundRequest.Reason',
+        # --- T1c: TeacherProfile.status on /teachers/me/ and /auth/me/ (tutor_status) ---
+        'TutorStatusEnum': 'apps.teachers.models.TeacherProfile.Status',
     },
 }
 

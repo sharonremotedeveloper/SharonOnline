@@ -397,3 +397,24 @@ def configure_test_settings(settings):
 - **Symptom:** the new admin-add test got 200 with `{'specialties': ['This field is required.']}`.
 - **Root cause:** Django's form `JSONField` treats `[]` as empty and the model field is not `blank=True`.
 - **Fix:** the test posts `["FreeTalk"]` (the field's documented shape). No product change; whether `specialties` should be optional is a T1c question.
+- **Follow-up (T1c):** answered: `specialties` is now `blank=True` (migration `teachers/0010_specialties_optional`, no DB change); a tutor created at signup has no tags yet.
+
+### ERR-170: OpenAPI test looked up a `Teacher` component that does not exist (slice T1c)
+- **Symptom:** `test_openapi_marks_the_field_deprecated` failed with `KeyError: 'Teacher'` once the code was green.
+- **Root cause:** the red test assumed the component name; drf-spectacular names it after the serializer (`TeacherList`, `TeacherDetail`). The TS alias `Teacher` in `frontend/src/types` is hand-written.
+- **Fix:** the test checks both `TeacherList` and `TeacherDetail`. No product change.
+
+### ERR-171: ruff baseline guard failed after T1c (`apps/teachers/serializers.py` F401 no longer present)
+- **Symptom:** full suite: `tests/guards/test_guard_ruff_baseline.py::test_ruff_baseline_only_shrinks` failed (1 failed, 2417 passed).
+- **Root cause:** T1c removed the unused `UserSerializer` import from `teachers/serializers.py`, so its `F401` per-file ignore in `ruff.toml` became stale; the ratchet fails until a fixed offender is removed from the baseline.
+- **Fix:** deleted the `"apps/teachers/serializers.py" = ["F401"]` entry (baseline shrank by one file/code pair).
+
+### ERR-173: the 0009 reverse could delete tutor-entered data (slice T1c, QA M1)
+- **Symptom:** none yet (found in review): a backfilled profile with a `/teachers/me/` bio, a power-backup flag, a staff-set Eskom area or an uploaded photo, but no booking / availability / extra audit row, was still "untouched" and the reverse deleted it (cascading strikes, dossiers, disputes, memos; orphaning stored files).
+- **Root cause:** "untouched" was inferred from three hand-picked traces; profile edits leave no trace of those kinds.
+- **Fix:** the reverse requires every data column to still hold the backfill default (`BACKFILL_DEFAULTS` next to the backfill, with a test that fails when a model column is missing from it) and no row in any reverse relation (`_meta.related_objects`) besides the baseline audit row. Round-trip cases `edited_tutor`, `power_tutor`, `area_tutor`, `photo_tutor`, `tagged_tutor`, `struck_tutor`.
+
+### ERR-172: four T1c mutants survived the first mutation run (slice T1c)
+- **Symptom:** `scripts/mutate.py` round 1: 25/29 killed; survivors: `update_own_profile`'s own whitelist check, the post-save `refresh_from_db` field list in `TeacherOwnProfileView`, the blank-tag check, and two filters in the 0009 reverse.
+- **Root cause:** the whitelist was only exercised through the serializer (which rejects first); the race test checked the DB but not the response body; the blank-tag check duplicated `_TagField(allow_blank=False)`; the reverse test had no pre-existing `applied` profile and no backfilled tutor with history while still `applied`.
+- **Fix:** unit test calling the service directly, response assertion in the race test, redundant check removed, three more rows in the migration round trip. Round 2: 7/8 killed, 1 documented equivalent (`docs/mutation/T1c.md`).

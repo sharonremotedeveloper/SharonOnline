@@ -45,8 +45,12 @@
 - `user`: OneToOneField (`User`)
 - `accent`: CharField Enum (`South African`, `British`, `American`, `International`)
 - `intro_video_url`: URLField (Cloudflare Stream HLS URL)
-- `price_per_25min_usd`: DecimalField (Default: `9.00`)
-- `specialties`: JSONField (e.g. `['FreeTalk', 'Business', 'TOEIC']`)
+- `price_per_25min_usd`: DecimalField (Default: `9.00`). **Deprecated (T1c):** prices come from the platform catalog
+  (`payments.LessonPrice`, Task 10.1); no API reads this column; the public `price_per_25min_usd` field reports the catalog USD
+  price and is marked deprecated in OpenAPI; the column is dropped in a later release.
+- `specialties`: JSONField (e.g. `['FreeTalk', 'Business', 'TOEIC']`), `blank=True` (T1c, migration 0010)
+- Created at signup for `role=teacher` (status `applied`, T1c) and backfilled for older tutor accounts (migration 0009);
+  the tutor edits `headline` / `bio` / `specialties` through `GET|PATCH /api/v1/teachers/me/` (`docs/TUTOR_STATUS_MACHINE.md` §8)
 - `status`: CharField Enum (`applied`, `submitted`, `in_review`, `approved`, `changes_requested`, `rejected`, `suspended`; default `applied`, DB CHECK constraint). The only stored lifecycle column, written only by `teachers/vetting.py` (slice T1a, `docs/TUTOR_STATUS_MACHINE.md`)
 - `is_verified` / `is_active`: Django 5.2 `GeneratedField`s of `status` (stored, indexed, read-only): verified = `approved|suspended`, active = everything but `rejected|suspended`
 - `training_completed_at`: DateTimeField, nullable (live tutors grandfathered by migration 0007)

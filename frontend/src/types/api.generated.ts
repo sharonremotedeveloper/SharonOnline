@@ -1032,6 +1032,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teachers/me/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_teachers_me_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["v1_teachers_me_partial_update"];
+        trace?: never;
+    };
     "/api/v1/teachers/profile/power-backup/": {
         parameters: {
             query?: never;
@@ -1407,6 +1423,8 @@ export interface components {
             readonly pdf_file_url: string;
             readonly audio_snippet_url: string;
         };
+        /** @enum {unknown} */
+        NullEnum: null;
         PaginatedBookingDetailList: {
             /** @example 123 */
             count: number;
@@ -1516,6 +1534,11 @@ export interface components {
             timezone?: string;
             target_level?: string;
             learning_goals?: string;
+        };
+        PatchedTeacherOwnProfileRequest: {
+            headline?: string;
+            bio?: string;
+            specialties?: string[];
         };
         PatchedUserRequest: {
             /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
@@ -1771,8 +1794,12 @@ export interface components {
             rating_avg?: string;
             /** Format: int64 */
             rating_count?: number;
-            /** Format: decimal */
-            price_per_25min_usd?: string;
+            /**
+             * Format: decimal
+             * @deprecated
+             * @description Deprecated. USD catalog price only. Do not display; use `/payments/lesson-prices/` for the student's currency. null when no USD price is configured.
+             */
+            readonly price_per_25min_usd: string | null;
             /** @description List of tags: ['FreeTalk', 'Business English', 'Daily News', 'TOEIC'] */
             specialties?: unknown;
             readonly country: string;
@@ -1801,12 +1828,50 @@ export interface components {
             rating_avg?: string;
             /** Format: int64 */
             rating_count?: number;
-            /** Format: decimal */
-            price_per_25min_usd?: string;
+            /**
+             * Format: decimal
+             * @deprecated
+             * @description Deprecated. USD catalog price only. Do not display; use `/payments/lesson-prices/` for the student's currency. null when no USD price is configured.
+             */
+            readonly price_per_25min_usd: string | null;
             /** @description List of tags: ['FreeTalk', 'Business English', 'Daily News', 'TOEIC'] */
             specialties?: unknown;
             readonly country: string;
             readonly is_verified: boolean;
+        };
+        TeacherOwnProfile: {
+            /** Format: uuid */
+            readonly id: string;
+            readonly status: components["schemas"]["TutorStatusEnum"];
+            readonly is_verified: boolean;
+            readonly is_active: boolean;
+            headline?: string;
+            bio?: string;
+            specialties?: string[];
+            readonly accent: components["schemas"]["AccentEnum"];
+            /**
+             * Format: uri
+             * @description Cloudflare Stream HLS or preview MP4 URL
+             */
+            readonly intro_video_url: string;
+            /** Format: uri */
+            readonly intro_video_thumbnail: string;
+            readonly avatar_url: string;
+            readonly intro_audio_url: string;
+            readonly has_tefl_certificate: boolean;
+            readonly eskom_area_id: string;
+            readonly has_inverter_backup: boolean;
+            readonly has_lte_failover: boolean;
+            /** Format: decimal */
+            readonly rating_avg: string;
+            readonly rating_count: number;
+            readonly sla_strikes: number;
+            /** Format: date-time */
+            readonly training_completed_at: string | null;
+            /** Format: date-time */
+            readonly created_at: string;
+            /** Format: date-time */
+            readonly updated_at: string;
         };
         TokenRefresh: {
             readonly access: string;
@@ -1815,6 +1880,17 @@ export interface components {
         TokenRefreshRequest: {
             refresh: string;
         };
+        /**
+         * @description * `applied` - Applied
+         *     * `submitted` - Submitted for review
+         *     * `in_review` - In review
+         *     * `approved` - Approved
+         *     * `changes_requested` - Changes requested
+         *     * `rejected` - Rejected
+         *     * `suspended` - Suspended
+         * @enum {string}
+         */
+        TutorStatusEnum: "applied" | "submitted" | "in_review" | "approved" | "changes_requested" | "rejected" | "suspended";
         TutorWallet: {
             /** Format: double */
             pending_escrow_zar: number;
@@ -1885,6 +1961,8 @@ export interface components {
             readonly avatar_url: string;
             /** @description Vetting status (tutors only; otherwise null). */
             readonly is_verified: boolean | null;
+            /** @description Tutor lifecycle status (docs/TUTOR_STATUS_MACHINE.md); null for students, admins and a tutor account without a profile. Read-only: changed only by the vetting service. */
+            readonly tutor_status: (components["schemas"]["TutorStatusEnum"] | components["schemas"]["NullEnum"]) | null;
         };
         UserRequest: {
             /** @description Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only. */
@@ -3687,6 +3765,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeacherAvailability"];
+                };
+            };
+        };
+    };
+    v1_teachers_me_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeacherOwnProfile"];
+                };
+            };
+        };
+    };
+    v1_teachers_me_partial_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedTeacherOwnProfileRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedTeacherOwnProfileRequest"];
+                "multipart/form-data": components["schemas"]["PatchedTeacherOwnProfileRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeacherOwnProfile"];
                 };
             };
         };
