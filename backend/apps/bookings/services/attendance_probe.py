@@ -22,7 +22,9 @@ from django.db import transaction
 
 from apps.admin_api.models import DisputeCase
 from apps.bookings.models import AttendanceAudit, Booking
+from apps.bookings.services import video_session_probe
 from apps.bookings.services.state_machine import transition_booking
+from apps.bookings.services.video_provider import uses_video_sdk
 from apps.integrations.services.attendance import STUDENT, TEACHER, present_with_disconnect_grace
 from apps.integrations.zoom import zoom_client
 from apps.notifications.alerts import alert_staff
@@ -36,6 +38,7 @@ logger = logging.getLogger(__name__)
 S = Booking.Status
 STARTED, NOT_STARTED, UNKNOWN = 'started', 'not_started', 'unknown'
 ACTOR = 'system:attendance_audit'
+SDK_SESSION = 'video_sdk'
 LIVE = (S.CONFIRMED, S.IN_PROGRESS)
 
 
@@ -53,6 +56,20 @@ def probe_meeting(meeting_id: str) -> str:
         return _never_held(meeting_id)
     logger.warning('Zoom probe inconclusive: meeting=%s', meeting_id)
     return UNKNOWN
+
+
+def probe_video_session(booking) -> str:
+    """Video SDK lessons (slice V4): same tri-state as `probe_meeting`; a non-answer is UNKNOWN."""
+    answer = video_session_probe.probe_session(booking)
+    return answer if answer in (STARTED, NOT_STARTED) else UNKNOWN
+
+
+def _safe_video_probe(booking) -> str:
+    try:
+        return probe_video_session(booking)
+    except Exception as exc:    # timeout / auth / HTTP / parse failure: no clear answer, no verdict
+        logger.warning('Video SDK probe failed: booking=%s error=%s', booking.id, type(exc).__name__)
+        return UNKNOWN
 
 
 def _never_held(meeting_id: str) -> str:
@@ -79,9 +96,16 @@ def probe_t10_candidates(now) -> dict:
     deadline = time.monotonic() + settings.ATTENDANCE_PROBE_BUDGET_SECONDS
     probes = {}
     for booking in _t10_candidates(now):
-        if booking.status != S.CONFIRMED or not booking.zoom_meeting_id:
+        if booking.status != S.CONFIRMED:
             continue
         if present_with_disconnect_grace(booking, TEACHER, now):
+            continue
+        if uses_video_sdk(booking):
+            # A tutor no-show needs the student's own join as evidence that the room was open (V4 contract).
+            if present_with_disconnect_grace(booking, STUDENT, now):
+                probes[booking.id] = (SDK_SESSION, _safe_video_probe(booking))
+            continue
+        if not booking.zoom_meeting_id:
             continue
         if time.monotonic() >= deadline:
             logger.warning('Zoom probe budget exhausted, deferring: booking=%s', booking.id)
@@ -107,6 +131,9 @@ def _verdict(booking, probe, now, results) -> None:
     student_present = present_with_disconnect_grace(booking, STUDENT, now)
     if booking.status == S.IN_PROGRESS and not teacher_present:
         return    # inconsistent data (room open, no tutor record): the end-of-lesson check disputes it
+    if not teacher_present and uses_video_sdk(booking):
+        _sdk_verdict(booking, probe, student_present, results)
+        return
     if not teacher_present:
         if not booking.zoom_meeting_id:
             dispute_without_verdict(booking, 'no Zoom meeting provisioned: no no-show verdict is possible')
@@ -129,6 +156,21 @@ def _verdict(booking, probe, now, results) -> None:
         transition_booking(booking, S.STUDENT_NO_SHOW, actor=ACTOR, reason='student absent at T+10m, teacher present')
         results['student_no_shows'] += 1
         logger.info('[NO-SHOW] Student absent at T+10m: booking=%s', booking.id)
+
+
+def _sdk_verdict(booking, probe, student_present, results) -> None:
+    """Tutor absent at T+10 on a Video SDK lesson. A no-show needs BOTH the student's join and the SDK's own word that no
+    tutor session started; anything less defers, and the lesson-end check disputes it (V4 contract, F0 semantics)."""
+    outcome = probe[1] if probe and probe[0] == SDK_SESSION else UNKNOWN
+    if outcome == STARTED:
+        _record_probe_presence(booking)
+        return
+    if outcome == NOT_STARTED and student_present:
+        apply_teacher_no_show(booking)
+        results['teacher_no_shows'] += 1
+        return
+    logger.warning('No-show verdict deferred (Video SDK evidence insufficient): booking=%s', booking.id)
+    results['probe_deferred'] = results.get('probe_deferred', 0) + 1
 
 
 def _record_probe_presence(booking) -> None:
@@ -167,6 +209,8 @@ def apply_teacher_no_show(booking) -> None:
 
 def end_of_window_reason(booking) -> str:
     """Why a lesson that is still CONFIRMED at its end never got a verdict (it is disputed, never scored)."""
+    if uses_video_sdk(booking):
+        return 'no attendance verdict before the lesson ended: Video SDK evidence insufficient'
     if not booking.zoom_meeting_id:
         return 'no attendance verdict before the lesson ended: no Zoom meeting provisioned'
     return 'no attendance verdict before the lesson ended: Zoom probe unresolved'

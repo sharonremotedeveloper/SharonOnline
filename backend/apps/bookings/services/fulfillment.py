@@ -29,6 +29,7 @@ from django.utils import timezone
 from apps.bookings.models import Booking
 from apps.integrations.email import send_booking_confirmation_email
 from apps.integrations.google_calendar import sync_booking_to_teacher_gcal
+from apps.bookings.services.video_provider import uses_video_sdk
 from apps.integrations.zoom import zoom_client
 from apps.integrations.zoom_hosts import host_picker
 from apps.notifications.alerts import alert_staff
@@ -272,6 +273,9 @@ def _zoom_step(booking_id, token, now) -> None:
         booking = _locked_confirmed(booking_id, token)
         if booking.zoom_meeting_id:
             _set_step(booking_id, token, 'zoom', St.DONE, now)       # a room exists: reuse it, never build a second one
+            return
+        if uses_video_sdk(booking):
+            _set_step(booking_id, token, 'zoom', St.SKIPPED, now)    # Video SDK lesson: the classroom needs no Meetings room
             return
     student, tutor = booking.student, booking.teacher.user
     # Any earlier attempt (a failed step, OR a worker that died after Zoom built the room and was reclaimed: attempts > 1)
