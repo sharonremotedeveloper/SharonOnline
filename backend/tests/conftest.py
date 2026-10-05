@@ -92,6 +92,21 @@ def admin_user(db):
 
 
 @pytest.fixture(autouse=True)
+def no_video_sdk_credentials(settings):
+    """A developer's real Zoom Video SDK credentials in .env must not switch tests onto the SDK path (it changes how a
+    lesson is provisioned and judged, see tests/test_v4_attendance_contract.py). Tests opt in with `video_sdk_on`."""
+    settings.ZOOM_VIDEO_SDK_KEY = ''
+    settings.ZOOM_VIDEO_SDK_SECRET = ''
+
+
+@pytest.fixture
+def video_sdk_on(settings):
+    settings.ZOOM_VIDEO_SDK_KEY = 'k' * 32
+    settings.ZOOM_VIDEO_SDK_SECRET = 's' * 32
+    return settings
+
+
+@pytest.fixture(autouse=True)
 def fake_paypal_orders(monkeypatch, settings):
     """No test talks to PayPal: checkout order creation is stubbed (tests of the real client mock `requests`)."""
     settings.PAYPAL_CLIENT_ID = settings.PAYPAL_CLIENT_ID or 'test-client-id'
