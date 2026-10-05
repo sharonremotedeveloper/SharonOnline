@@ -25,6 +25,7 @@ from django.db.models.functions import Coalesce
 from apps.common import clock
 from apps.integrations.services import email as email_service
 from apps.integrations.services.email import IN_FLIGHT, RETRYABLE, SENT, InvalidEmailError
+from apps.notifications import registry
 from apps.notifications.models import Notification
 
 logger = logging.getLogger(__name__)
@@ -55,12 +56,21 @@ def claim(notification_id, now):
 
 
 def deliver(notification_id) -> str:
-    """Claim and send one notification e-mail. Returns sent | retryable | failed | not_claimed | revoked."""
+    """Claim and send one notification e-mail. Returns sent | retryable | failed | skipped | not_claimed | revoked.
+
+    Clock: claim times and lease comparisons all use the application clock (`clock.now()`), not the database clock; workers
+    are assumed NTP-synchronised (skew of seconds against a 15-minute lease is harmless). See ADR-0002.
+    """
     now = clock.now()
     token = claim(notification_id, now)
     if token is None:
         return 'not_claimed'
     n = Notification.objects.select_related('user').get(pk=notification_id)
+    if _expired(n, now):
+        if not _owned(n, token).update(email_state=ES.SKIPPED, email_last_error='expired', email_next_attempt_at=None):
+            return _revoked(n)
+        logger.info('notification.expired id=%s kind=%s (no longer worth sending)', n.pk, n.kind)
+        return 'skipped'
     if now - n.email_first_attempt_at >= RESEND_CUTOFF:
         return _fail(n, token, 'stale_needs_review', now)
     to = (n.user.email or '').strip()
@@ -72,6 +82,17 @@ def deliver(notification_id) -> str:
     except InvalidEmailError:
         return _fail(n, token, 'invalid_address', now)
     return _record(n, token, result, now)
+
+
+def _expired(n, now) -> bool:
+    """The kind's `not_after` hook (e.g. a reminder is worthless once the lesson started). A broken hook never blocks mail."""
+    try:
+        kind = registry.get(n.kind)
+        limit = kind.not_after(n.payload, n.booking) if kind.not_after else None
+    except Exception as exc:
+        logger.error('notification.not_after_failed id=%s kind=%s error=%s', n.pk, n.kind, type(exc).__name__)
+        return False
+    return limit is not None and now >= limit
 
 
 def _record(n, token, result, now) -> str:
@@ -100,11 +121,11 @@ def _fail(n, token, code, now) -> str:
                                    email_next_attempt_at=None):
         return _revoked(n)
     logger.error('notification.failed id=%s kind=%s code=%s attempt=%s', n.pk, n.kind, code, n.email_attempts)
-    _alert_failure(n, code)
+    alert_failure(n, code)
     return 'failed'
 
 
-def _alert_failure(n, code) -> None:
+def alert_failure(n, code) -> None:
     from apps.notifications.alerts import alert_staff
     from apps.notifications.builtin_kinds import ADMIN_ALERT
     if n.kind == ADMIN_ALERT:           # recursion guard: a failed alert e-mail never raises another alert

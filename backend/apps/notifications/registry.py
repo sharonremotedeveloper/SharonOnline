@@ -42,6 +42,9 @@ class Kind:
     channels: frozenset
     render: Callable            # (user, payload: dict, booking | None) -> Rendered
     example: Optional[Callable] = None     # (booking) -> payload, for the template tests / golden snapshot
+    # (payload, booking | None) -> aware datetime | None. From that instant on the e-mail is no longer worth sending (a
+    # reminder after the lesson started): delivery marks the row `skipped` / `expired` instead of sending or retrying.
+    not_after: Optional[Callable] = None
 
     @property
     def mandatory(self) -> bool:

@@ -142,5 +142,10 @@ def validate_production_settings(env=os.environ):
         _log.warning('REFUND_GATEWAY_BACKEND is the routing backend but PayPal credentials are blank: PayPal refunds will wait for a person '
                      '(manual answers) until PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET are set.')
 
+    if not (env.get('ADMIN_ALERT_RECIPIENTS', '') or '').strip():
+        _log.warning('ADMIN_ALERT_RECIPIENTS is blank: staff alerts (fulfilment failures, disputes without a verdict, '
+                     'undeliverable notifications) go to every active admin user, and only to the log if there is none. '
+                     'Set it to the on-call staff addresses before go-live (docs/RUNBOOK_NOTIFICATIONS.md).')
+
     if errors:
         raise ImproperlyConfigured('Unsafe production configuration: ' + '; '.join(errors))

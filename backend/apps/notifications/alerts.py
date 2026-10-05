@@ -13,6 +13,7 @@ with its type only and the caller's own `[ADMIN ALERT]` log line remains the fal
 import logging
 
 from django.conf import settings
+from django.db import transaction
 from django.db.models import Q
 
 from apps.notifications.builtin_kinds import ADMIN_ALERT, ALERT_TITLES
@@ -40,14 +41,23 @@ def alert_staff(alert: str, *, key: str, payload=None) -> int:
         raise ValueError(f'unknown staff alert {alert!r}; add it to builtin_kinds.ALERT_TITLES')
     data = {'alert': alert, **(payload or {})}
     try:
-        recipients = staff_recipients()
-        if not recipients:
-            logger.error('[ADMIN ALERT] %s key=%s: no recipient (set ADMIN_ALERT_RECIPIENTS or create an admin)',
-                         alert, key)
-            return 0
-        for user in recipients:
-            notify(user, ADMIN_ALERT, key=f'{key}:{user.pk}', payload=data)
+        with transaction.atomic():              # savepoint: the recipient query must not leave the caller's txn aborted
+            recipients = staff_recipients()
     except Exception as exc:
-        logger.error('[ADMIN ALERT] %s key=%s could not be raised: error=%s', alert, key, type(exc).__name__)
+        logger.error('[ADMIN ALERT] %s key=%s recipients could not be read: error=%s', alert, key, type(exc).__name__)
         return 0
-    return len(recipients)
+    if not recipients:
+        logger.error('[ADMIN ALERT] %s key=%s: no recipient (set ADMIN_ALERT_RECIPIENTS or create an admin)', alert, key)
+        return 0
+    notified = 0
+    for user in recipients:
+        try:
+            # One savepoint per recipient. We swallow every error (an alert must not break fulfilment or adjudication,
+            # which call this inside their own transactions); on PostgreSQL a swallowed DB error would otherwise leave the
+            # CALLER's transaction aborted, so the rollback to this savepoint is what keeps the caller usable.
+            with transaction.atomic():
+                notify(user, ADMIN_ALERT, key=f'{key}:{user.pk}', payload=data)
+            notified += 1
+        except Exception as exc:
+            logger.error('[ADMIN ALERT] %s key=%s could not be raised: error=%s', alert, key, type(exc).__name__)
+    return notified

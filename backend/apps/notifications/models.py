@@ -16,7 +16,7 @@ class Notification(models.Model):
 
     class EmailState(models.TextChoices):
         PENDING = 'pending', 'Pending'
-        SENDING = 'sending', 'Sending (claimed, 15-minute lease)'
+        SENDING = 'sending', 'Sending (claimed; the lease is NOTIFICATION_LEASE_SECONDS)'
         SENT = 'sent', 'Sent'
         RETRYABLE = 'retryable', 'Retryable'
         FAILED = 'failed', 'Failed (needs a person)'

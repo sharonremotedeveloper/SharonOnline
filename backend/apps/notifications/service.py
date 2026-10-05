@@ -8,6 +8,10 @@
 * Renders subject/html/text once and persists them; delivery re-sends exactly those bytes.
 * Preferences: mandatory kinds always e-mail; an optional kind follows `email_by_kind` / `in_app_by_kind`.
 * Delivery is enqueued with `transaction.on_commit`; a broker failure is logged and left to the 2-minute sweep.
+* Producer contract: `notify()` raises only for programming errors (`UnknownKind`, `InvalidNotification`). A renderer
+  error (own savepoint) becomes a minimal in-app row with `email_state=failed` / `render_error` plus a staff alert; a user
+  without an address gets `skipped` / `no_address` at creation. An existing key returns the existing row unchanged, even if
+  the payload differs.
 """
 import logging
 import re
@@ -16,8 +20,10 @@ import uuid
 from django.db import IntegrityError, transaction
 
 from apps.notifications import registry
+from apps.notifications.builtin_kinds import ADMIN_ALERT
 from apps.notifications.models import Notification, NotificationPreference
 from apps.notifications.registry import EMAIL, IN_APP
+from apps.notifications.rendering import one_line
 
 logger = logging.getLogger(__name__)
 
@@ -56,19 +62,43 @@ def notify(user, kind: str, *, key: str, payload: dict, booking=None):
     wants_email, wants_in_app = effective_channels(user, kind_def)
     if not (wants_email or wants_in_app):
         return None
-    rendered = kind_def.render(user, clean, booking)
-    fields = dict(user=user, kind=kind, idempotency_key=key, payload=clean, booking=booking, in_app=wants_in_app,
-                  title=rendered.title, body=rendered.body,
-                  email_state=ES.PENDING if wants_email else ES.SKIPPED)
-    if wants_email:
+    base = dict(user=user, kind=kind, idempotency_key=key, payload=clean, booking=booking, in_app=wants_in_app)
+    try:
+        with transaction.atomic():                      # savepoint: a renderer's DB error never aborts the caller
+            rendered = kind_def.render(user, clean, booking)
+    except Exception as exc:    # a template bug must never break the producer (a booking, a settlement, a cancel)
+        return _render_failed(kind_def, base, exc)
+    # No address: nothing to send and nothing to retry, so the row is born `skipped` (no failed row, no staff alert).
+    has_address = bool((getattr(user, 'email', '') or '').strip())
+    send = wants_email and has_address
+    fields = dict(base, title=rendered.title, body=rendered.body, email_state=ES.PENDING if send else ES.SKIPPED,
+                  email_last_error='no_address' if wants_email and not has_address else '')
+    if send:
         fields.update(rendered_subject=rendered.subject, rendered_html=rendered.html, rendered_text=rendered.text)
+    notification, created = _insert(fields)
+    if send and created:
+        transaction.on_commit(lambda: enqueue_delivery(notification.pk))
+    return notification
+
+
+def _insert(fields):
+    """(row, created). A lost insert race returns the winner's row with created=False."""
     try:
         with transaction.atomic():                      # own savepoint: a duplicate never breaks the caller
-            notification = Notification.objects.create(**fields)
+            return Notification.objects.create(**fields), True
     except IntegrityError:
-        return Notification.objects.get(idempotency_key=key)
-    if wants_email:
-        transaction.on_commit(lambda: enqueue_delivery(notification.pk))
+        return Notification.objects.get(idempotency_key=fields['idempotency_key']), False
+
+
+def _render_failed(kind_def, base, exc):
+    """The renderer raised: keep a minimal in-app row (title only) with a failed e-mail, alert staff, never raise."""
+    logger.error('notification.render_failed kind=%s key=%s error=%s', kind_def.name, base['idempotency_key'],
+                 type(exc).__name__)
+    notification, created = _insert(dict(base, title=one_line(kind_def.name.replace('_', ' ')), body='',
+                                         email_state=ES.FAILED, email_last_error='render_error'))
+    if created and kind_def.name != ADMIN_ALERT:        # recursion guard: a broken alert template cannot alert about itself
+        from apps.notifications.delivery import alert_failure
+        alert_failure(notification, 'render_error')
     return notification
 
 
