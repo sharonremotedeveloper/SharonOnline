@@ -89,6 +89,24 @@ A teacher no-show refunds the student, grants a bonus credit and strikes the tut
   stays. Go-live still needs `ADMIN_ALERT_RECIPIENTS` set (or an active admin) and a worker on the `notifications` queue.
   The staff-host-link warning (Z1) is not routed yet: N2/P1.
 
+## Video SDK lessons (D-9, slices V1-V4; contract `tests/test_v4_attendance_contract.py`)
+
+A lesson with **no `zoom_meeting_id`** while the Video SDK is configured is an SDK lesson (`bookings/services/video_provider.py`):
+the room is the in-browser classroom `lesson-<booking id>`, fulfilment **skips** the Meetings step (`zoom_state = skipped`), and
+lessons that already have a meeting id stay on the Meetings rules above until V5. The verdict rules keep the F0 semantics:
+
+| Situation at T+10 (tutor not in the attendance records) | Result |
+| :--- | :--- |
+| the student has a recorded join AND `probe_video_session` answers `not_started` (Zoom positively says no tutor session started) | `teacher_no_show` (strike, refund, bonus credit) |
+| probe `started` (the tutor is in the live session) | `in_progress` (+ probe attendance row), no no-show |
+| probe `unknown`, an exception, the student also absent, or no evidence at all | deferred; still unresolved at the lesson end -> `disputed` + open `DisputeCase`; **never a no-show** |
+| tutor present in the records, student absent | `student_no_show` (as before) |
+
+Evidence is `AttendanceAudit` rows (classification teacher/student, join/leave, `identity='video_sdk'`, one `zoom_session_id` per
+join) written by V4 from Video SDK webhooks / client heartbeats; V4 never decides a verdict. Completion is unchanged: >= 20
+credited tutor minutes -> `completed_pending_memo`, otherwise `disputed`. Both absent is deliberately **not** a tutor no-show
+here (the Meetings path scores it; the SDK path needs the student's join as proof the room was open).
+
 ## Client contract (Slice Z1, `integrations/zoom.py`, `zoom_auth.py`, `zoom_hosts.py`)
 
 * **Credentials** are Django settings `ZOOM_ACCOUNT_ID` / `ZOOM_CLIENT_ID` / `ZOOM_CLIENT_SECRET` (no environment reads in app

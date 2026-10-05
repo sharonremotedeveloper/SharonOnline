@@ -17,6 +17,23 @@ Landed as one unit (the combined tree was gated as a whole, then committed per o
 
 Open review items for the owners (none blocks the push): **Codex** (C0): the Google callback returns provider/exception text to the browser (return a fixed message, log the type only); R2 copy happens inside `transaction.atomic`, so a rolled-back commit can orphan an object (add a cleanup/`on_commit` ordering note and test); the commit endpoint and callback have no typed serializers (`OpenApiTypes.OBJECT`: guard baseline must not grow); mutation tables `docs/mutation/{T3,G1,R1}.md` and `docs/slices/{T3,G1,R1}.md` do not exist yet. **Antigravity** (A0): require a 32+ character `ZOOM_VIDEO_SDK_SECRET` in the production guard (tests warn about an 18-byte key), add a pagination-free typed schema review, frontend tests for `videoSdk.ts`, browser verification, `docs/mutation/V1-V3.md`.
 
+## 0.46 PROGRESS (2026-10-05, evening; `develop` `cfd21b3`)
+
+**Done by Claude and on `develop`:** V4 contract + seam (`video_provider.py`, `video_session_probe.py`, 14 tests; **Antigravity may
+start V4**, see `docs/slices/V4-contract.md`), T4a (rubric / asset integrity / review packet / tutor feedback / submitted alert), T6
+(training modules + completion + `backfill_training_completed`), T5a (application funnel backend, staff lead-in removed), docs truth
+for SDK attendance (`ZOOM_ATTENDANCE.md`, `SETTLEMENT_PATHS.md`), ADR-0003 (payouts, design only). **Merged from Codex:** the T3/G1/R1
+review fixes and N1b (notification API) after a fix round (ERR-198). Backend 3217 passed; two flaky tests fixed on the way (ERR-197,
+ERR-199). **Contract changes the frontend must follow (T4b / T5b / T7):** approve needs `rubric` (+ `reviewed_assets`) and
+`PATCH verify` without one is 400; the pending queue lists `submitted` / `in_review` only; new endpoints
+`GET /admin/teachers/<id>/review-packet/`, `/teachers/me/application/` (+ `submit/`), `/teachers/me/training/`, `/notifications/*`;
+`GET /teachers/me/` has `review_feedback`.
+**Next for Codex:** N2a-c (use `classroom_url()`), N3, G2, N4, T3b; rebase on `develop` first (new migrations teachers 0013/0014, new
+settings). **Next for Antigravity:** finish the V1-V3 review items, build V4 against the contract, then F2 (N1b is on `develop`), T4b, T5b,
+T7. **Next for Claude:** review the branches that arrive, wave integration, P1 only on Anesu's go. **Environment note:** a worktree has no
+backend `.env`; `tests/test_refund_deploy_check.py` reads the process environment and can fail without PayPal variables (it passes in CI
+and in the main checkout).
+
 ## 0.45 WORKTREES READY (2026-10-05, from `develop` `db3e966`)
 
 | Agent | Worktree (under `Project-files/.claude/worktrees/`) | Branch | First task |
