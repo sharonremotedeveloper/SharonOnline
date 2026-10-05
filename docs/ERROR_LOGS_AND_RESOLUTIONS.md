@@ -408,3 +408,8 @@ def configure_test_settings(settings):
 - **Symptom:** while turning the red tests green two fixtures failed: `LedgerAccount.LIABILITY_DEF501_QUARANTINE` (AttributeError) and a grace transaction without `payer_id` (refused with `payer_unknown` before the new guard ran).
 - **Root cause:** test authoring errors: the DEF-501 account is `LIABILITY_QUARANTINE_DEPOSIT` (2030), and `evaluate_grace` needs a payer id before it reaches the slot guard.
 - **Fix:** the tests use the real constant and a payer id. No product change.
+
+### ERR-162: ruff F811 / F401 on the T1b review-condition tests (slice T1b)
+- **Symptom:** `tests/guards/test_guard_ruff_baseline.py` failed: new violations in `tests/test_t1b_conditions.py` (imported pytest fixtures from other test modules and used them as parameters).
+- **Root cause:** a fixture imported by name is "unused" (F401) and a test parameter of the same name redefines it (F811); new files must be ruff-clean and the baseline may not grow.
+- **Fix:** the fixtures are imported under their own aliases and each test def that takes them carries one targeted `# noqa: F811`; no baseline entry added.

@@ -520,6 +520,12 @@ class PayPalCaptureView(APIView):
         if booking.status != Booking.Status.PENDING_PAYMENT or not hold_is_live(booking, timezone.now()):
             return Response({"error": "This booking can no longer be paid for. Please book a new time.",
                              "outcome": "failed", "retryable": False}, status=status.HTTP_409_CONFLICT)
+        # A hold can outlive a suspension (or the training gate flipping on): refuse BEFORE PayPal captures real money,
+        # otherwise the payment would be taken and then quarantined (slice T1b, review M1).
+        if not booking.teacher.is_bookable:
+            return Response({"error": "This tutor is not currently bookable. You have not been charged.",
+                             "code": "tutor_not_bookable", "outcome": "failed", "retryable": False},
+                            status=status.HTTP_409_CONFLICT)
         return None
 
 

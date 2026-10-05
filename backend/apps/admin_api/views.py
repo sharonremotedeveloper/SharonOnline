@@ -127,8 +127,9 @@ class PendingTeachersListView(APIView):
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class VerifyTeacherView(APIView):
     # Slice 8 contract kept for the vetting page; since T1b built on the explicit review actions (teachers/review.py
-    # ::legacy_verify): start-review when needed, then approve / reject. No path search. A live tutor (reject) or a
-    # suspended / rejected one (approve) is 409: use suspend / reactivate / reopen. (A comment, not a docstring: OpenAPI.)
+    # ::legacy_verify): start-review when needed, then approve / reject. No path search. A live tutor (reject) is 409
+    # (suspend first), as is approving a suspended / rejected one (use reactivate / reopen); rejecting a SUSPENDED tutor is
+    # allowed (the staff-only suspended -> rejected edge). (A comment, not a docstring: it would leak into OpenAPI.)
     permission_classes = [IsPlatformAdmin]
     throttle_classes = (ScopedRateThrottle,)
     throttle_scope = 'admin_teacher_review'

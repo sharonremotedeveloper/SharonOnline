@@ -224,6 +224,13 @@ is the real status (the frontend type was widened; T1c removes the fake Eskom ar
 `suspended` / `rejected`; paid lesson -> `cancelled_by_teacher` (`cancelled_by` = admin) with a full refund through
 `refunds.request_refund` (public API only), **no strike**, `ADMIN_CANCEL_BONUS_CREDITS=0` (provisional); unpaid hold ->
 `cancelled`; idempotent; the student gets the existing cancellation e-mail (`admin` / `admin_unpaid` variants) until N1a/N2.
+A hold whose payment is in flight (INITIALIZED attempt younger than `PAYMENT_INFLIGHT_GRACE_SECONDS`, or a PENDING capture) is
+**not** released: outcome `payment_in_flight`, listed in `payment_in_flight_ids`, left to the capture / webhook path; retry once the
+payment resolved. The default list is capped at 50 lessons per call (`remaining` says whether more are left; flagged holds do
+not count). Per-lesson domain errors (`MissingFunding`, refund state errors, invalid transitions) are reported per lesson and
+never abort the rest. The tutor row is locked after the booking (booking -> tutor) and re-checked, so a concurrent `reactivate`
+wins. PayPal's capture endpoint also refuses (409 `tutor_not_bookable`) BEFORE calling PayPal when the tutor is no longer bookable
+(no charge); PayFast checkout initiation already did (a PayFast payment made after initiation is quarantined by the webhook guard).
 An automatic strike suspension logs `[ADMIN ALERT] tutor <id> suspended by strikes with N future lessons needing action: <ids>`
 after commit (N1a routes it) and the tutor shows in `GET /admin/teachers/suspended-with-lessons/` until the lessons are
 cancelled. `add_strike` on a non-approved tutor records the strike only (idempotent per booking+kind; test

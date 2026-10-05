@@ -2322,12 +2322,25 @@ components:
           format: uuid
         cancelled_count:
           type: integer
+        remaining:
+          type: boolean
+          description: 'The default list was capped (50 lessons per call): call again
+            for the rest.'
+        payment_in_flight_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: 'Unpaid holds whose payment may still complete: left untouched,
+            retry once the payment has resolved.'
         results:
           type: array
           items:
             $ref: '#/components/schemas/AdminCancelRow'
       required:
       - cancelled_count
+      - payment_in_flight_ids
+      - remaining
       - results
       - teacher_id
     AdminCancelRow:
@@ -3219,6 +3232,7 @@ components:
       enum:
       - admin_refund
       - released
+      - payment_in_flight
       - already_cancelled
       - not_cancellable
       - funding_unavailable
@@ -3227,6 +3241,7 @@ components:
       description: |-
         * `admin_refund` - admin_refund
         * `released` - released
+        * `payment_in_flight` - payment_in_flight
         * `already_cancelled` - already_cancelled
         * `not_cancellable` - not_cancellable
         * `funding_unavailable` - funding_unavailable

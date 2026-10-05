@@ -1237,6 +1237,10 @@ export interface components {
             /** Format: uuid */
             teacher_id: string;
             cancelled_count: number;
+            /** @description The default list was capped (50 lessons per call): call again for the rest. */
+            remaining: boolean;
+            /** @description Unpaid holds whose payment may still complete: left untouched, retry once the payment has resolved. */
+            payment_in_flight_ids: string[];
             results: components["schemas"]["AdminCancelRow"][];
         };
         AdminCancelRow: {
@@ -1593,13 +1597,14 @@ export interface components {
         /**
          * @description * `admin_refund` - admin_refund
          *     * `released` - released
+         *     * `payment_in_flight` - payment_in_flight
          *     * `already_cancelled` - already_cancelled
          *     * `not_cancellable` - not_cancellable
          *     * `funding_unavailable` - funding_unavailable
          *     * `not_found` - not_found
          * @enum {string}
          */
-        OutcomeEnum: "admin_refund" | "released" | "already_cancelled" | "not_cancellable" | "funding_unavailable" | "not_found";
+        OutcomeEnum: "admin_refund" | "released" | "payment_in_flight" | "already_cancelled" | "not_cancellable" | "funding_unavailable" | "not_found";
         PaginatedBookingDetailList: {
             /** @example 123 */
             count: number;

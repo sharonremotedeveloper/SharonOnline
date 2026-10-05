@@ -48,14 +48,18 @@ class AdminCancelRequestSerializer(serializers.Serializer):
 
 class AdminCancelRowSerializer(serializers.Serializer):
     booking_id = serializers.UUIDField()
-    outcome = serializers.ChoiceField(choices=['admin_refund', 'released', 'already_cancelled', 'not_cancellable',
-                                               'funding_unavailable', 'not_found'])
+    outcome = serializers.ChoiceField(choices=['admin_refund', 'released', 'payment_in_flight', 'already_cancelled',
+                                               'not_cancellable', 'funding_unavailable', 'not_found'])
     status = serializers.CharField(allow_blank=True)
 
 
 class AdminCancelResultSerializer(serializers.Serializer):
     teacher_id = serializers.UUIDField()
     cancelled_count = serializers.IntegerField()
+    remaining = serializers.BooleanField(help_text="The default list was capped (50 lessons per call): call again for the rest.")
+    payment_in_flight_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        help_text="Unpaid holds whose payment may still complete: left untouched, retry once the payment has resolved.")
     results = AdminCancelRowSerializer(many=True)
 
 
@@ -71,8 +75,8 @@ class TutorWorkQueueItemSerializer(serializers.Serializer):
 
 
 def _error(exc):
-    code = 'not_found' if exc.http_status == 404 else ('invalid_transition' if exc.http_status == 409 else
-                                                       ('forbidden' if exc.http_status == 403 else 'invalid'))
+    # 403 cannot reach here: IsPlatformAdmin already refused non-staff, and the actor is always staff.
+    code = 'not_found' if exc.http_status == 404 else ('invalid_transition' if exc.http_status == 409 else 'invalid')
     return Response({'error': str(exc) if exc.http_status in (400, 404) else 'This tutor cannot be moved to that status.',
                      'code': code}, status=exc.http_status)
 
@@ -110,13 +114,15 @@ class CancelTutorFutureLessonsView(_StaffThrottled):
         body = AdminCancelRequestSerializer(data=request.data)
         body.is_valid(raise_exception=True)
         try:
-            rows = admin_cancellation.cancel_future_lessons(pk, request.user, reason=body.validated_data['reason'].strip(),
-                                                            booking_ids=body.validated_data.get('booking_ids'))
+            batch = admin_cancellation.cancel_future_lessons(pk, request.user, reason=body.validated_data['reason'].strip(),
+                                                             booking_ids=body.validated_data.get('booking_ids'))
         except admin_cancellation.AdminCancelError as exc:
             return Response({'error': exc.message, 'code': exc.code}, status=exc.status_code)
-        cancelled = sum(1 for r in rows if r.outcome in ('admin_refund', 'released'))
+        rows = batch.results
         return Response(AdminCancelResultSerializer({
-            'teacher_id': pk, 'cancelled_count': cancelled,
+            'teacher_id': pk, 'remaining': batch.remaining,
+            'cancelled_count': sum(1 for r in rows if r.outcome in ('admin_refund', 'released')),
+            'payment_in_flight_ids': [r.booking_id for r in rows if r.outcome == 'payment_in_flight'],
             'results': [{'booking_id': r.booking_id, 'outcome': r.outcome, 'status': r.status} for r in rows]}).data)
 
 

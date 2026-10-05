@@ -6,7 +6,6 @@ nits (dead legacy create path, unreachable 403 branch).
 """
 import threading
 import time as pytime
-from datetime import timedelta
 from decimal import Decimal
 
 import pytest
@@ -19,9 +18,9 @@ from apps.bookings.models import Booking
 from apps.payments.models import LedgerEntry, PaymentTransaction, RefundRequest
 from apps.payments.services import refunds
 from payment_helpers import captured
-# fixtures / helpers of the existing PayPal and grace suites
-from test_grace_bookings import make, outbox  # noqa: F401  (fixtures)
-from test_paypal_orders import booking, capture, init, initialised, order_json, pp  # noqa: F401  (fixtures + helpers)
+# fixtures / helpers of the existing PayPal and grace suites, imported under their own aliases (fixture names)
+from test_grace_bookings import make as grace_maker, outbox as sent_emails  # noqa: F401  (fixtures)
+from test_paypal_orders import booking as pending_booking, capture, initialised, order_json, pp as paypal_fake  # noqa: F401
 
 S = Booking.Status
 H = 60
@@ -45,32 +44,32 @@ def rows(res):
 
 # ------------------------------------------------------------------ M1: capture refuses before PayPal is called
 class TestCaptureRefusesUnbookableTutor:
-    def test_a_suspension_between_checkout_and_approval_never_charges(self, student_user, teacher_user, booking, pp):
-        data = initialised(student_user, booking)
+    def test_a_suspension_between_checkout_and_approval_never_charges(self, student_user, teacher_user, pending_booking, paypal_fake):  # noqa: F811
+        data = initialised(student_user, pending_booking)
         f.advance_teacher(teacher_user, 'suspended')
-        pp['order'] = order_json(data['transaction_reference'])
+        paypal_fake['order'] = order_json(data['transaction_reference'])
         res = capture(student_user, data['order_id'])
         assert res.status_code == 409 and res.json()['code'] == 'tutor_not_bookable' and res.json()['outcome'] == 'failed'
         assert res.json()['retryable'] is False
-        assert pp['calls'] == 0
-        booking.refresh_from_db()
-        assert booking.status == S.PENDING_PAYMENT
+        assert paypal_fake['calls'] == 0
+        pending_booking.refresh_from_db()
+        assert pending_booking.status == S.PENDING_PAYMENT
         assert not LedgerEntry.objects.exists()
 
-    def test_the_training_gate_flipping_on_has_the_same_effect(self, student_user, booking, pp, settings):
-        data = initialised(student_user, booking)
+    def test_the_training_gate_flipping_on_has_the_same_effect(self, student_user, pending_booking, paypal_fake, settings):  # noqa: F811
+        data = initialised(student_user, pending_booking)
         settings.TUTOR_TRAINING_GATE_ENABLED = True
         res = capture(student_user, data['order_id'])
-        assert res.status_code == 409 and res.json()['code'] == 'tutor_not_bookable' and pp['calls'] == 0
+        assert res.status_code == 409 and res.json()['code'] == 'tutor_not_bookable' and paypal_fake['calls'] == 0
 
-    def test_a_bookable_tutor_still_captures(self, student_user, booking, pp):
-        data = initialised(student_user, booking)
-        pp['order'] = order_json(data['transaction_reference'])
+    def test_a_bookable_tutor_still_captures(self, student_user, pending_booking, paypal_fake):  # noqa: F811
+        data = initialised(student_user, pending_booking)
+        paypal_fake['order'] = order_json(data['transaction_reference'])
         assert capture(student_user, data['order_id']).json()['outcome'] == 'confirmed'
 
-    def test_payfast_checkout_initiation_refuses_an_unbookable_tutor(self, student_user, teacher_user, booking):
+    def test_payfast_checkout_initiation_refuses_an_unbookable_tutor(self, student_user, teacher_user, pending_booking):  # noqa: F811
         f.advance_teacher(teacher_user, 'suspended')
-        res = api(student_user).post('/api/v1/payments/checkout/init/', {'booking_id': str(booking.id), 'gateway': 'payfast'},
+        res = api(student_user).post('/api/v1/payments/checkout/init/', {'booking_id': str(pending_booking.id), 'gateway': 'payfast'},
                                      format='json')
         assert res.status_code == 409 and not PaymentTransaction.objects.exists()
 
@@ -190,8 +189,8 @@ def test_postgres_a_concurrent_reactivate_wins_over_the_admin_cancel(admin_user,
 
 # ------------------------------------------------------------------ m2: money edges of the admin cancel
 class TestMoneyEdges:
-    def test_a_grace_lesson_awaits_clearance_and_posts_nothing(self, admin_user, make, teacher_user, outbox):
-        tx, lesson = make.grace()
+    def test_a_grace_lesson_awaits_clearance_and_posts_nothing(self, admin_user, grace_maker, teacher_user, sent_emails):  # noqa: F811
+        tx, lesson = grace_maker.grace()
         f.advance_teacher(teacher_user, 'suspended')
         res = cancel_all(admin_user, teacher_user)
         assert rows(res)[str(lesson.id)]['outcome'] == 'admin_refund'
@@ -235,10 +234,10 @@ class TestBatch:
         second = captured(teacher_user, f.make_student(), 72 * H, ref='B2')
         real = refunds.request_refund
 
-        def flaky(booking, *a, **k):
-            if booking.pk == first.pk:
+        def flaky(lesson, *a, **k):
+            if lesson.pk == first.pk:
                 raise error
-            return real(booking, *a, **k)
+            return real(lesson, *a, **k)
         monkeypatch.setattr(refunds, 'request_refund', flaky)
         f.advance_teacher(teacher_user, 'suspended')
         res = cancel_all(admin_user, teacher_user)
