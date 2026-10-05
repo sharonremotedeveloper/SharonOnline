@@ -43,6 +43,16 @@ duplicate e-mails, no lost e-mails, no endless retries, and no event silently su
 - Tested on SQLite; the CAS claim and the concurrent unique insert have Postgres-marked tests
   (`tests/test_notifications_delivery.py`) run in the Postgres CI job.
 
+- **Clock assumption (QA minor 1):** claim times, lease comparisons and due times come from the application clock
+  (`apps.common.clock.now()`) on whichever worker runs, not from the database clock. Chosen over `Now()` expressions
+  because it is the simpler option and keeps the clock seam testable. It assumes workers are NTP-synchronised: skew of a
+  few seconds against a 15-minute lease, a 2-minute sweep and a 20 h cutoff is harmless; skew of minutes is an ops fault.
+- **Producer isolation (QA majors):** `notify()` and `alert_staff()` run their risky parts (renderer, recipient lookup, each
+  insert) in savepoints and never raise into a producer's transaction (PostgreSQL aborts a transaction on any DB error,
+  even a swallowed one, unless it was rolled back to a savepoint).
+- **Expiry:** a kind can register `not_after`; past it the row is `skipped` / `expired` (reminders must not be sent or
+  retried after the lesson started).
+
 ## Alternatives considered
 
 - `select_for_update` around the send: holds a row lock across HTTP; rejected (same reasoning as ADR-0001).

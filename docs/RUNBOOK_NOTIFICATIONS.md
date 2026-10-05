@@ -28,11 +28,17 @@ longer than 20 minutes, the sweep is not running: check beat, the `notifications
 | `not_configured` | `RESEND_API_KEY` missing in resend mode | fix configuration, then re-send |
 | `no_address` / `invalid_address` | the user has no usable e-mail | correct the user's address, then re-send |
 | `attempts_exhausted:<code>` | 8 transient failures | check Resend status; re-send when healthy |
+| `render_error` | the kind's template raised at creation; the row has only a title and no e-mail | fix the template (code change), then create a new notification if the message still matters (re-sending cannot help: no body was stored) |
 | `stale_needs_review` | the first attempt is 20 h old; Resend may no longer know the key | **check first** (below) |
 
 **Check before re-sending** (`stale_needs_review`, `attempts_exhausted`): if `provider_message_id` is set, or the Resend
 dashboard shows a mail with this notification's key/subject to this user, it WAS delivered: leave the row (or mark it
 handled in your notes) and do not re-send. Otherwise re-send.
+
+## `skipped` rows (no alert; informational)
+`email_last_error` `no_address`: the user had no e-mail address when the notification was created (the in-app item exists);
+`expired`: the kind's `not_after` passed before delivery (a reminder after the lesson started); empty: the user's
+preference or the kind has no e-mail. Nothing to do.
 
 ## How to re-send
 Django admin -> Notifications -> select the `failed` rows -> action **"Re-send FAILED e-mails"** (staff with the admin role

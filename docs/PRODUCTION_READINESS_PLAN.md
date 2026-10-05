@@ -178,7 +178,7 @@ Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done.
 
 - [ ] **Task 14.1 (M, ANESU)** Legal copy: Terms, Privacy, Refund/Cancellation, Child-safety, cookie policy (reviewed by counsel); appoint Information Officer.
 - [ ] **Task 14.2 (M, CODEX)** `/legal/[policy]` hub + Data Subject Request form; footer links; consent/cookie banner with a consent log model (cookie, marketing, cross-border video).
-- [ ] **Task 14.3 (L, ARCH)** Data-subject rights: account export (SAR) and erasure/anonymisation pipeline that preserves ledger integrity (anonymise PII, keep immutable financial rows).
+- [ ] **Task 14.3 (L, ARCH)** Data-subject rights: account export (SAR) and erasure/anonymisation pipeline that preserves ledger integrity (anonymise PII, keep immutable financial rows). *Register (Phase 11/12): `notifications.Notification` (payload, `title`/`body`, `rendered_subject/html/text` hold personal text; delete or anonymise on erasure) and `NotificationPreference` (export), alongside `CalendarCredential`, `TeacherStatusChange` and bank snapshots.*
 - [ ] **Task 14.4 (M, ARCH)** General audit log (admin actions, PII access, impersonation) and retention jobs (raw webhook payloads, telemetry, tax archive 7 years).
 - [ ] **Task 14.5 (S, ARCH)** Parental-consent controls for the Kids specialty if retained at launch.
 - [ ] **Task 14.6 (S, ANESU)** Accountant sign-off on SARB/FX treatment and VAT; correct the "bypassed" claim in `PROJECT_MASTER_CONTEXT.md`.

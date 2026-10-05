@@ -116,8 +116,17 @@ notify(user, kind, *, key, payload, booking=None) -> Notification | None
   errors). Payload: flat dict, snake_case keys, values `str` (<= 128 chars) / `int` / `bool` / `None` / UUID (stored as
   str), no float, nothing nested; key names containing `review`, `note`, `dossier`, `token`, `password`, `secret`,
   `email`, `text`, `body`, `message`, `comment`, `statement` are refused. Renderers fetch what they need from ids.
-- Idempotent on `key`: an existing row is returned and nothing is enqueued. The insert runs in its own savepoint, so a
-  lost race returns the winner's row and never breaks the caller's transaction.
+- Idempotent on `key`: an existing row is returned and nothing is enqueued, **even if the new payload differs** (the first
+  event wins; the persisted e-mail never changes). The insert runs in its own savepoint, so a lost race returns the
+  winner's row and never breaks the caller's transaction.
+- **Producer contract.** `notify()` is safe to call inside a producer's transaction (a booking, settlement, cancellation):
+  it raises only for programming errors (`UnknownKind`, `InvalidNotification`). A renderer exception (the renderer runs in
+  its own savepoint) is caught: log `notification.render_failed kind= key= error=<type>` (no message text), a minimal row is
+  created (`title` = the kind name, empty body, `in_app` as the preferences say, `email_state=failed`,
+  `email_last_error=render_error`) and staff get a `notification_failed` alert (not for `admin_alert` itself). A user with
+  no e-mail address gets `email_state=skipped`, `email_last_error=no_address` at creation (the in-app item still shows; no
+  alert). `alert_staff` likewise never raises and rolls back to its own savepoint, so a swallowed database error cannot
+  leave the producer's PostgreSQL transaction aborted.
 - Preferences: a **mandatory** kind (category in `registry.MANDATORY_CATEGORIES`: security, payment, cancellation, refund,
   bank_change, strike, suspension, vetting_outcome, staff_alert) always e-mails and always shows in-app; an optional
   kind follows the user's opt-outs. Both channels off -> no row, returns `None`. E-mail off -> `email_state=skipped`,
@@ -133,6 +142,12 @@ Plan §6 lists every event key. Booking-bound keys carry the generation token `{
 `reminder:24h:{bid}:{g}:student`), so a reschedule re-arms confirmations and reminders. Strike keys use the strike id,
 bank / calendar keys the change-record id, never a timestamp. Keys are 1-200 characters of `A-Z a-z 0-9 : _ . -`
 (they are also Resend's `Idempotency-Key`). Staff alerts append `:{recipient_user_id}`.
+
+**Producer rules for keys (N2a-c, N4).** A key must be built from an event id (booking id + generation, strike id, change
+record id, lot id); never a timestamp or a random value. A key must **never be re-emitted after retention has deleted its
+row** (read in-app items after 180 days, finished e-mail-only rows after 90 days; there are no tombstones, plan note in
+§2.5), or the user would get the message again. Recurring events (credit expiring, Eskom shield) need a window token in the
+key (`credit-expiring:{lot}:{window}`, the existing Eskom key already has its window).
 
 ### 2.4 Delivery state machine
 ```
@@ -155,6 +170,14 @@ pending | retryable(due) --claim (CAS)--> sending --sent--> sent (+ provider id)
 - No countdown messages: the **sweep** (`sweep_notifications_task`, every 2 min, `notifications` queue, beat lock) enqueues
   `pending` rows older than 2 min (lost message / broker outage), `retryable` rows whose time has come and `sending` rows
   past the lease; at most `NOTIFICATION_SWEEP_LIMIT` (200) per run.
+- **Latency:** a delivery message normally goes out at commit. When it is lost, a `pending` row is swept once it is older
+  than 2 minutes, at the next 2-minute sweep tick, so a lost message costs about 2 to 4 minutes; retries are picked up at
+  the sweep tick after their backoff time (up to 2 more minutes).
+- **Expiry (`Kind.not_after`)**: a kind may register `not_after(payload, booking) -> datetime | None`; from that instant
+  (`now >= not_after`) delivery marks the row `skipped` with `email_last_error=expired` instead of sending or retrying. N2a's
+  reminders use the lesson start. A hook that raises is logged (type only) and the mail is sent normally.
+- **Clock:** claim times and lease comparisons use the application clock (`clock.now()`), not the database clock; workers are
+  assumed NTP-synchronised (ADR-0002).
 - `bounced` is reserved for N3 (Resend webhook + suppression).
 
 ### 2.5 Retention (`purge_notifications_task`, daily 03:20 UTC, beat lock, batches of 1000)
@@ -163,8 +186,13 @@ Read in-app items 180 days after `read_at`; e-mail-only rows (`in_app=False`) 90
 for 25 h" is replaced by an equivalent: every deleted row is at least 90 days old, far outside Resend's 24 h key window, so
 a tombstone would protect nothing.
 
+**Admin and personal data.** `rendered_text` and `rendered_subject` contain the recipient's personal text and `rendered_html`
+the same markup. In Django admin nobody sees `rendered_html`; staff with the admin role do not see subject or text either;
+only superusers do. `Notification` (and its payload / rendered fields) must be registered in the Phase 14 data-subject
+register (PRP 14.3 export + erasure; see `PRODUCTION_READINESS_PLAN.md` task 14.3).
+
 ### 2.6 Kinds and how to add one
-`apps/notifications/registry.py`: `Kind(name, category, channels, render, example)`. `render(user, payload, booking)`
+`apps/notifications/registry.py`: `Kind(name, category, channels, render, example, not_after=None)`. `render(user, payload, booking)`
 returns `Rendered(subject, html, text, title, body)`. Rules:
 1. Build HTML with `rendering.render_html` (every value escaped); subjects and titles through `rendering.one_line` (no CR/LF,
    <= 200 characters); times through `rendering.local_time(dt, user)` (recipient's zone; blank/invalid -> UTC with a
@@ -198,5 +226,7 @@ Money alerts stay in `payments/services/alerts.py::alert_admin` (GatewayAnomaly,
 
 ### 2.8 Settings (`settings/base.py`, all in `.env.example`)
 `ADMIN_ALERT_RECIPIENTS`, `NOTIFICATION_MAX_ATTEMPTS` (8), `NOTIFICATION_LEASE_SECONDS` (900),
-`NOTIFICATION_RETRY_SECONDS` (60), `NOTIFICATION_RETRY_MAX_SECONDS` (3600); constants `NOTIFICATION_SWEEP_AGE_SECONDS`
+`NOTIFICATION_RETRY_SECONDS` (60), `NOTIFICATION_RETRY_MAX_SECONDS` (3600). A blank `ADMIN_ALERT_RECIPIENTS` is a production
+boot **warning** (`settings/guard.py`) and a `WARNING` line of `scripts/check_deploy.py` (not a failure: the fallback is every
+active admin). Constants `NOTIFICATION_SWEEP_AGE_SECONDS`
 (120), `NOTIFICATION_SWEEP_LIMIT` (200). Tasks route to the `notifications` queue (`config/celery_schedule.py`).

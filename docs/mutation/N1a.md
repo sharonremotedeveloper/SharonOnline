@@ -47,3 +47,27 @@ Test files per mutant: `TD` = `tests/test_notifications_delivery.py`, `TC` = `..
 | 35 | F:262 | orphaned-meeting alert removed | alert | TA `test_orphaned_zoom_meeting...` | KILLED |
 | 36 | F:335 | orphaned-calendar alert removed | alert | TA `test_orphaned_calendar_event...` | KILLED |
 | 37 | P:191 | disputed-without-verdict alert removed | alert | TA `test_dispute_without_verdict` | KILLED |
+
+## QA round 1 (lines as of `bda40e8`; `TQ` = `tests/test_notifications_qa.py`)
+16 mutants: 14 killed on the first run; 2 survivors pinned by new tests and re-run (killed); 1 survives locally by design.
+
+| # | file:line | mutant | class | killed by | result |
+| :-- | :-- | :-- | :-- | :-- | :-- |
+| 38 | S:63 | both-channels-off check `or` -> `and` | preferences | TC `test_nothing_wanted_creates_nothing` | KILLED |
+| 39 | S:67 | renderer without its savepoint | txn isolation | TQ `test_the_producers_transaction_survives_a_renderer_database_error` | KILLED |
+| 40 | S:69 | renderer errors no longer caught | producer contract | TQ `TestRendererErrors` | KILLED |
+| 41 | S:73 | no-address skip removed (send even without address) | state transition | TQ `TestNoAddress` | KILLED |
+| 42 | S:99 | render-error alert recursion guard inverted | idempotency | TQ `test_a_failing_staff_alert_template_does_not_recurse` | KILLED |
+| 43 | S:99 | render-error alert raised again on a lost insert race | idempotency | TQ `test_a_lost_insert_race_does_not_raise_a_second_render_alert` (new) | SURVIVED, then KILLED |
+| 44 | A:44 | recipient query without its savepoint | txn isolation | Postgres-only: TQ `test_postgres_recipient_query_error_does_not_abort_the_callers_transaction` (SQLite cannot distinguish; CI Postgres job) | SURVIVES on SQLite (equivalent there) |
+| 45 | A:58 | per-recipient alert without savepoint | txn isolation | TQ `test_alert_runs_inside_its_own_savepoint`, `..._leaves_the_callers_transaction_usable` | KILLED |
+| 46 | A:61 | per-recipient errors no longer swallowed | producer contract | TQ `test_a_failing_recipient_does_not_roll_back_the_others`, TA `test_an_alert_never_breaks_the_caller` | KILLED |
+| 47 | D:69 | expiry check disabled | state transition | TQ `TestNotAfter::test_expired_row_is_skipped_not_sent` | KILLED |
+| 48 | D:74 | exact 20 h boundary `>=` -> `>` | idempotency | TQ `test_exactly_20_hours_after_the_first_attempt_is_refused` | KILLED |
+| 49 | D:95 | exact expiry boundary `>=` -> `>` | state transition | TQ `test_expired_row_is_skipped_not_sent` (advances exactly to the start) | KILLED |
+| 50 | D:151 | backoff inner cap removed | retry | TQ `test_backoff_at_the_cap_stays_jittered` (new) | SURVIVED, then KILLED |
+| 51 | D:151 | backoff outer cap removed | retry | TD `test_doubles_and_is_capped` | KILLED |
+| 52 | AD:24 | admin hides bodies from superusers instead of staff | authorization | TQ `TestAdminDisplay` | KILLED |
+| 53 | G:145 | boot warning inverted | config | TQ `TestAlertRecipientsWarning` | KILLED |
+
+Total: 37 + 16 = 53 mutants; 52 killed, 1 (44) is a PostgreSQL-only behaviour covered by a Postgres-marked test.

@@ -10,6 +10,21 @@ Mutation table: `docs/mutation/N1a.md` (37/37 killed).
 - Remaining: none in scope. Follow-ups below.
 - Next command (from `backend/`): `venv python -m pytest tests/test_notifications_core.py tests/test_notifications_delivery.py tests/test_notifications_alerts.py tests/test_notifications_retention.py tests/test_notifications_templates.py tests/guards/test_guard_notification_kinds.py -q`
 
+## QA round 1 (APPROVE WITH CONDITIONS) - fixed
+Red tests first (`efeda5f`: 16 failed, 6 passed, 1 skipped), fixes (`5ff73ba`), survivor-pinning tests (`bda40e8`).
+- MAJOR-1: `alert_staff` runs the recipient query and each recipient in its own `transaction.atomic()` savepoint (tests incl.
+  Postgres-marked).
+- MAJOR-2: `notify()` renders in a savepoint; a renderer error -> minimal in-app row, `failed` / `render_error`, staff alert
+  (not for `admin_alert`), log of type + kind + key only. Producer contract documented (NOTIFICATIONS.md §2.2).
+- MINOR-1: documented the NTP assumption (ADR-0002), simpler than `Now()` expressions. MINOR-3: `Kind.not_after` hook ->
+  `skipped` / `expired`; sweep latency documented (2-4 minutes). MINOR-4: no address -> `skipped` / `no_address` at creation;
+  "existing key returns the existing row even if the payload differs" documented. MINOR-5: key producer rules documented.
+  MINOR-6: boot warning (`guard.py`) + `check_deploy.py` WARNING line. MINOR-7: admin hides `rendered_html` for everyone and
+  subject/text from non-superusers; DSR register note in PRP 14.3.
+- Nits: SENDING label no longer hard-codes "15-minute"; migration 0001 regenerated (unmerged, still the single 0001); mutants
+  added (table 38-53). No new ERR id was needed (ERR-201..209 unused).
+- Gate after QA round: see "Final gate (QA round)" below.
+
 ## Red run (first commit, tests only)
 ```
 E   ModuleNotFoundError: No module named 'apps.notifications'
@@ -57,7 +72,12 @@ ERROR tests/guards/test_guard_notification_kinds.py
 - `scripts/check_deploy.py`: warn in production when `ADMIN_ALERT_RECIPIENTS` resolves to nobody.
 - Sandbox: verify Resend 409 / 24 h key retention (N1c follow-up) before relying on the 20 h cutoff margin.
 
-## Final gate (2026-10-05)
+## Final gate (QA round, 2026-10-05)
+`pytest -q`: **2489 passed, 16 skipped** (N1a files: 138 passed, 4 skipped, all Postgres-marked); `manage.py check` clean;
+`makemigrations --check --dry-run`: No changes detected; `ruff check .`: All checks passed. Mutation: 53 mutants, 52 killed,
+1 PostgreSQL-only (A:44).
+
+## Final gate (first pass, 2026-10-05)
 - `pytest -q`: **2465 passed, 14 skipped** (N1a files: 119 passed, 2 Postgres skips).
 - `manage.py check`: no issues. `makemigrations --check --dry-run`: No changes detected. `ruff check .`: All checks passed.
 - No real Resend / Zoom / Google call was made (tool gate; Resend path tested with the `resend` fixture and console mode).
