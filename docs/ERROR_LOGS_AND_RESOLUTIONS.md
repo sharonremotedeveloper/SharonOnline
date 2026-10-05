@@ -425,6 +425,11 @@ def configure_test_settings(settings):
 - **Root cause:** a test patched `zoom_auth.cache.add` with a lambda that called `zoom_auth.cache.add` (the patched attribute); the admin-action test used a `Mock` where `get_actions` iterates `request.GET`.
 - **Fix:** capture the real method before patching; use `RequestFactory` and a real superuser.
 
+### ERR-144: the HostLinkIssue "Mark reviewed" action had no permission gate and could strand a payout (slice Z1, re-review)
+- **Symptom (review):** any staff user with the model permission could clear a host-link hold (which releases payouts), including the person it was issued to; and a role-admin user without `is_staff` could obtain a staff host link (creating a hold) yet could not reach Django admin to clear it.
+- **Root cause:** the action only used the model-level admin permission, and the link-issuing predicate (`role == admin or is_staff or is_superuser`) differed from who can review.
+- **Fix:** `host_link.can_review` (active, `is_staff`, superuser or role admin) is now both the admin `has_review_permission` (action declared with `permissions=['review']`, `PermissionDenied` inside it) and the predicate for obtaining a staff host link; `review_host_link_issues` refuses a reviewer who issued an open selected row unless superuser. Tests: `tests/test_z1_rereview.py`.
+
 ### ERR-158: admin "add teacher profile" test posted an empty JSON list (slice T1a)
 - **Symptom:** the new admin-add test got 200 with `{'specialties': ['This field is required.']}`.
 - **Root cause:** Django's form `JSONField` treats `[]` as empty and the model field is not `blank=True`.

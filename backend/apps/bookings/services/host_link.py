@@ -25,7 +25,6 @@ from django.utils import timezone as dj_timezone
 from apps.bookings.models import Booking, HostLinkIssue
 from apps.common import clock
 from apps.integrations.zoom import ZoomError, ZoomNotFound, zoom_client
-
 logger = logging.getLogger(__name__)
 
 LIVE = (Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS)
@@ -37,15 +36,22 @@ class HostLinkError(Exception):
         self.status_code, self.code, self.message = status_code, code, message
 
 
-def is_staff(user) -> bool:
-    return bool(getattr(user, 'role', None) == 'admin' or user.is_staff or user.is_superuser)
+class ReviewRefused(Exception):
+    """The reviewer may not clear this hold (not an admin, or reviewing their own link)."""
+
+
+def can_review(user) -> bool:
+    """Who may clear a staff-host hold in Django admin: active, `is_staff`, and superuser or role admin. The SAME predicate
+    decides who may obtain a staff host link at all (QA re-review #2), so a row is never created by someone who cannot reach
+    the admin screen and a non-admin staff member cannot start a lesson as host."""
+    return bool(user.is_active and user.is_staff and (user.is_superuser or getattr(user, 'role', None) == 'admin'))
 
 
 def _authorised_booking(booking_id, user) -> Booking:
     booking = Booking.objects.select_related('teacher').filter(pk=booking_id).first()
     if booking is None:
         raise HostLinkError(404, 'not_found', 'Booking not found.')
-    if booking.teacher.user_id == user.pk or is_staff(user):
+    if booking.teacher.user_id == user.pk or can_review(user):
         return booking
     if booking.student_id == user.pk:
         raise HostLinkError(403, 'host_only', 'Only the tutor of this lesson can start it as host.')
@@ -92,5 +98,13 @@ def fresh_host_link(booking_id, user) -> dict:
 
 
 def review_host_link_issues(queryset, reviewer) -> int:
-    """Stamp still-open audit rows as reviewed (the tutor's real attendance was checked). Returns how many were open."""
-    return queryset.filter(reviewed_at__isnull=True).update(reviewed_at=dj_timezone.now(), reviewed_by=reviewer)
+    """Stamp still-open audit rows as reviewed (the tutor's real attendance was checked). Returns how many were open.
+
+    Refuses (`ReviewRefused`, nothing changed) when `reviewer` cannot review, or when ANY open selected row was issued to the
+    reviewer themselves (a superuser may: with one admin on the platform nobody else could clear the hold)."""
+    if not can_review(reviewer):
+        raise ReviewRefused('not allowed to review host-link audit rows')
+    open_rows = queryset.filter(reviewed_at__isnull=True)
+    if not reviewer.is_superuser and open_rows.filter(issued_by=reviewer).exists():
+        raise ReviewRefused('a host link cannot be reviewed by the person it was issued to')
+    return open_rows.update(reviewed_at=dj_timezone.now(), reviewed_by=reviewer)

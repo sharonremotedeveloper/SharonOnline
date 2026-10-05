@@ -1,6 +1,7 @@
 from django.contrib import admin
+from django.core.exceptions import PermissionDenied
 from .models import AttendanceAudit, Booking, BookingStatusChange, HostLinkIssue, LessonMemo
-from .services.host_link import review_host_link_issues
+from .services.host_link import ReviewRefused, can_review, review_host_link_issues
 
 class LessonMemoInline(admin.StackedInline):
     model = LessonMemo
@@ -48,9 +49,20 @@ class HostLinkIssueAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
-    @admin.action(description='Mark reviewed (the tutor\'s attendance was checked; releases the escrow hold)')
+    def has_review_permission(self, request):
+        """Same predicate as the sibling money admins (fulfilment re-queue, notification re-send), and the one that decides who
+        may obtain a staff host link at all."""
+        return can_review(request.user)
+
+    @admin.action(description='Mark reviewed (the tutor\'s attendance was checked; releases the escrow hold)',
+                  permissions=['review'])
     def mark_reviewed(self, request, queryset):
-        count = review_host_link_issues(queryset, request.user)
+        if not self.has_review_permission(request):
+            raise PermissionDenied
+        try:
+            count = review_host_link_issues(queryset, request.user)
+        except ReviewRefused:
+            raise PermissionDenied from None     # incl. reviewing a link issued to yourself (unless superuser)
         self.message_user(request, f'{count} host-link audit row(s) marked reviewed.')
 
 
