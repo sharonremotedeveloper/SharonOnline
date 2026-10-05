@@ -230,3 +230,10 @@ Money alerts stay in `payments/services/alerts.py::alert_admin` (GatewayAnomaly,
 boot **warning** (`settings/guard.py`) and a `WARNING` line of `scripts/check_deploy.py` (not a failure: the fallback is every
 active admin). Constants `NOTIFICATION_SWEEP_AGE_SECONDS`
 (120), `NOTIFICATION_SWEEP_LIMIT` (200). Tasks route to the `notifications` queue (`config/celery_schedule.py`).
+
+### 2.9 API (N1b)
+The notification centre is owner-scoped and paginated: `GET /api/v1/notifications/` returns only `in_app` rows;
+`GET /unread-count/` returns `{count}`; `POST /<uuid>/read/` marks one owned row read; and `POST /read-all/` marks all
+owned in-app rows read. Other users' ids return 404. `GET|PATCH /preferences/` uses typed channel maps keyed by
+registered kind name. Mandatory categories are rejected when disabled. `email_last_error` is omitted from ordinary user
+responses and is available only to staff.

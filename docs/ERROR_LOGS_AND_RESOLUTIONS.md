@@ -546,3 +546,8 @@ def configure_test_settings(settings):
 - **Symptom:** the prescribed `backend/venv/Scripts/python.exe` failed before pytest with `Unable to create process ... Python312\\python.exe`.
 - **Root cause:** `pyvenv.cfg` points to a Python 3.12 installation absent from this host.
 - **Fix:** no repository workaround was applied; test evidence is explicitly pending a repaired runtime or CI.
+=======
+### ERR-250: N1b notification API was missing (slice N1b)
+- **Symptom:** N1a exposed durable notification rows and preferences but no owner-scoped API, unread count, read transitions, or preference endpoint.
+- **Root cause:** the N1a layer intentionally stopped before the API contract freeze.
+- **Fix:** added paginated notification listing, owner-scoped read/read-all endpoints, unread count, typed preference serializers, mandatory-kind enforcement, and staff-only delivery error visibility. Root URL/settings/Celery registrations are handed to Claude in `docs/slices/N1b.md` and were not edited on this branch.
