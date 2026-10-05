@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'apps.admin_api',
     'apps.crm',
     'apps.srs',
+    'apps.notifications',   # slice N1a
 ]
 
 MIDDLEWARE = [
@@ -173,6 +174,18 @@ RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 RESEND_TIMEOUT_SECONDS = float(os.environ.get('RESEND_TIMEOUT_SECONDS', '10'))
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Sharon ESL <bookings@sharonesl.com>')
 EMAIL_BACKEND_MODE = resolve_email_backend_mode()
+
+# --- Notifications (slice N1a, docs/NOTIFICATIONS.md §2, ADR-0002) ---------------------------------------------------
+# Staff alerts go to these staff accounts (comma-separated e-mails of active is_staff / admin users; anything else is
+# ignored). Empty = every active admin-role user.
+ADMIN_ALERT_RECIPIENTS = [a.strip() for a in os.environ.get('ADMIN_ALERT_RECIPIENTS', '').split(',') if a.strip()]
+NOTIFICATION_MAX_ATTEMPTS = int(os.environ.get('NOTIFICATION_MAX_ATTEMPTS', '8'))              # then failed + staff alert
+NOTIFICATION_LEASE_SECONDS = int(os.environ.get('NOTIFICATION_LEASE_SECONDS', '900'))          # a 'sending' claim older than this is reclaimable
+NOTIFICATION_RETRY_SECONDS = int(os.environ.get('NOTIFICATION_RETRY_SECONDS', '60'))           # first retry delay (doubles, +-20 % jitter)
+NOTIFICATION_RETRY_MAX_SECONDS = int(os.environ.get('NOTIFICATION_RETRY_MAX_SECONDS', '3600'))  # backoff cap
+NOTIFICATION_SWEEP_AGE_SECONDS = 120     # a 'pending' row this old lost its message (broker outage): the sweep sends it
+NOTIFICATION_SWEEP_LIMIT = 200           # rows enqueued per 2-minute sweep
+# --- end N1a ------------------------------------------------------------------------------------------------------------
 
 # Versioned Fernet keyring for encrypted tutor payout details. Example:
 # PAYOUT_DATA_KEYS='{"v1":"<fernet-key>","v2":"<fernet-key>"}' and PAYOUT_DATA_ACTIVE_KEY='v2'.

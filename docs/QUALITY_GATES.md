@@ -37,7 +37,9 @@ Each guard file also has detector tests on synthetic snippets (what is caught, w
 
 Known limits: (a) matches `status` writes only on tutor-looking receivers (T1a adds a stricter guard for its service);
 (d) is deliberately conservative (names only); (f) checks `permission_classes` only - the throttle / typed-schema /
-pagination rules of plan §5 are follow-ups; the per-kind notification-template guard belongs to N1a.
+pagination rules of plan §5 are follow-ups. Guard (i), `test_guard_notification_kinds.py` (slice N1a): every registered
+notification kind has a renderer, an example payload, a known category (mandatory/optional) and a committed golden snapshot
+in `tests/golden/notifications/<kind>.txt`; no orphan snapshot files. No allowlist.
 
 ## 2. ruff (`backend/ruff.toml`, CI job `lint`, blocking)
 

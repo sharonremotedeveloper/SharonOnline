@@ -1,0 +1,11 @@
+subject: Your lesson with Thandi
+title: Lesson with Thandi
+--- body
+Your lesson with Thandi is on Mon 02 Mar 2026, 16:00 (Asia/Tokyo).
+--- text
+Hi Yuki,
+
+Your lesson with Thandi is on Mon 02 Mar 2026, 16:00 (Asia/Tokyo).
+
+--- html
+<p>Hi Yuki,</p><p>Your lesson with Thandi is on Mon 02 Mar 2026, 16:00 (Asia/Tokyo).</p>

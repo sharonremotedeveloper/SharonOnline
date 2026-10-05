@@ -56,8 +56,8 @@ A teacher no-show refunds the student, grants a bonus credit and strikes the tut
   `ATTENDANCE_PROBE_BUDGET_SECONDS` (default 25 s, under the 50 s beat lock); a lesson not probed inside the budget counts as
   `unknown` (deferred). Then, under the task lock, each booking is row-locked (`select_for_update(of=('self',))`), its status
   and meeting id are re-checked, and the verdict applied. A probe of a meeting id that changed meanwhile is ignored (deferred).
-* Admin alert today: the open `DisputeCase` (admin disputes screen) plus a `[ADMIN ALERT]` log line with the booking id.
-  `notify()` to `ADMIN_ALERT_RECIPIENTS` arrives with N1a.
+* Admin alert: the open `DisputeCase` (admin disputes screen), a `[ADMIN ALERT]` log line with the booking id, and (since
+  N1a) `alert_staff('lesson_disputed_without_verdict')`: an in-app item + e-mail to `ADMIN_ALERT_RECIPIENTS`.
 * **Credentials and simulation (review B1).** With Zoom credentials configured, a failed OAuth token request **raises
   `ZoomError`** from create / status / past-instances / delete (logged with the HTTP status only, never the provider body): no
   fabricated room, no simulated `waiting`, no silent "deleted". Simulated rooms and a simulated `waiting` status exist only when
@@ -76,9 +76,9 @@ A teacher no-show refunds the student, grants a bonus credit and strikes the tut
   no-show into DISPUTED (safe but manual); a slow instance would let a just-ended lesson read `waiting` + no instance.
 * **C3 - Z1:** cache the Server-to-Server OAuth token (about 55 min TTL, keyed by account, single-flight, invalidated on 401).
   Today every probe/create/delete requests a new token.
-* **Before go-live (N1a):** every `[ADMIN ALERT]` log line from F0 (fulfilment needs attention / failed, orphaned meeting or
-  calendar event, lesson disputed without a verdict) must be replaced by a `notify()` to `ADMIN_ALERT_RECIPIENTS`; a log
-  line alone is not an alert anyone will see.
+* **Done in N1a:** every `[ADMIN ALERT]` log line from F0 (fulfilment needs attention / failed, orphaned meeting or
+  calendar event, lesson disputed without a verdict) also raises `alert_staff(...)` (`NOTIFICATIONS.md` §2.7); the log line
+  stays. Go-live still needs `ADMIN_ALERT_RECIPIENTS` set (or an active admin) and a worker on the `notifications` queue.
 
 ## Fulfilment (Slice F0, `bookings/services/fulfillment.py`)
 

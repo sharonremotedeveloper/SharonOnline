@@ -353,6 +353,16 @@ def configure_test_settings(settings):
 - **Root cause:** (1) 0008's reverse `restore_booleans` ran three UPDATEs over the same rows; on PostgreSQL a second update of a row already modified in the same transaction queues deferred foreign-key trigger events, and Django creates the restored column's index at the END of the migration (deferred DDL), which PostgreSQL refuses while events are pending. SQLite has no deferred triggers, so every local run passed; the Architect review had judged the migrations safe by reading them. (2) The F0 Postgres smoke test predates review item m3 (`waiting` is `not_started` only if Zoom reports no past instance) and lacked the `zoom_never_held` fixture; being skipped on SQLite it never ran after that change.
 - **Fix:** `restore_booleans` is one UPDATE with `Case/When`; every data step in 0007/0008 ends with `SET CONSTRAINTS ALL IMMEDIATE` on PostgreSQL so nothing is pending when the deferred DDL runs; the F0 test takes `zoom_never_held`. Lesson: a migration that mixes data steps and schema changes must be run on PostgreSQL before merge (Docker Postgres locally, or CI on a pull request), not only reasoned about.
 
+### ERR-200: golden snapshots could not be printed by a scratch pytest file (slice N1a, tooling)
+- **Symptom:** running a scratch test (outside the repo) to print the new golden snapshot text failed at collection:
+  `OSError: [WinError 1920] The file cannot be accessed by the system: '...\AppData\Local\Temp\jb.station.ij.10096.sock'`,
+  then `found no collectors`.
+- **Root cause:** given a path in the 8.3 short-name temp directory, pytest walked up to `AppData\Local\Temp` as rootdir and
+  tried to stat a JetBrains socket file there. No product code involved.
+- **Fix:** no scratch collection: the golden guard (`tests/guards/test_guard_notification_kinds.py`) reports the full rendered
+  text in its assertion diff (`pytest -vv`, without `-q`), which was copied into `tests/golden/notifications/*.txt` with the
+  editor after review. Documented in the guard's docstring ("no auto-write switch").
+
 ### ERR-150: migration round-trip test failed with `NOT NULL constraint failed: users_user.email_verified` (slice T1a)
 - **Symptom:** `tests/test_tutor_status_migrations.py::test_migration_round_trip` failed while building tutors on the 0006 schema.
 - **Root cause:** the test migrated to `[('teachers', '0006_teacherstrike')]` only; `MigrationExecutor.loader.project_state(targets)` then builds the historical `users.User` from the users migrations that teachers 0006 depends on (before `email_verified` existed), while the real table (users left at its leaf) has the NOT NULL column.

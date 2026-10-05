@@ -69,6 +69,14 @@ def email_mode_problems(mode: str) -> list:
     return []
 
 
+def alert_recipient_warnings(env) -> list:
+    """Not a failure (the fallback is every active admin), but go-live should name the on-call staff explicitly."""
+    if (env.get('ADMIN_ALERT_RECIPIENTS') or '').strip():
+        return []
+    return ['ADMIN_ALERT_RECIPIENTS is blank: staff alerts go to every active admin user (or only to the log when there '
+            'is none). Set it before go-live.']
+
+
 def main() -> int:
     os.chdir(BACKEND_DIR)
     sys.path.insert(0, BACKEND_DIR)
@@ -87,6 +95,8 @@ def main() -> int:
     problems = (refund_backend_problems(getattr(settings, 'REFUND_GATEWAY_BACKEND', ''))
                 + zoom_credentials_problems(os.environ)
                 + email_mode_problems(getattr(settings, 'EMAIL_BACKEND_MODE', '')))
+    for warning in alert_recipient_warnings(os.environ):
+        print(f'check --deploy: WARNING {warning}', file=sys.stderr)
     for problem in problems:
         print(f'check --deploy: {problem}', file=sys.stderr)
     if problems:

@@ -30,6 +30,7 @@ from apps.bookings.models import Booking
 from apps.integrations.email import send_booking_confirmation_email
 from apps.integrations.google_calendar import sync_booking_to_teacher_gcal
 from apps.integrations.zoom import zoom_client
+from apps.notifications.alerts import alert_staff
 from apps.payments.models import FulfillmentDispatch
 
 logger = logging.getLogger(__name__)
@@ -200,15 +201,18 @@ def _fail(booking_id, token, step, exc, now) -> str:
     if not _owned(booking_id, token).update(**fields):
         return 'revoked'
     error = type(exc).__name__
-    # TODO(N1a): route both alerts through notify() to ADMIN_ALERT_RECIPIENTS. payments/services/alerts.py is payment-bound
-    # (GatewayAnomaly) and deliberately not reused for lesson fulfilment.
+    # Staff alerts go through notify() (slice N1a); payments/services/alerts.py stays payment-bound. The claim token keys
+    # the alert to this run, so an admin re-queue that fails again alerts again.
+    alert = {'booking_id': str(booking_id), 'step': step, 'error': error, 'attempts': attempts}
     if terminal:
         logger.error('[ADMIN ALERT] FULFILMENT FAILED booking=%s step=%s error=%s attempts=%s permanent=%s',
                      booking_id, step, error, attempts, permanent)
+        alert_staff('fulfilment_failed', key=f'admin:fulfilment-failed:{booking_id}:{token}', payload=alert)
         return 'failed'
     if attempts == settings.FULFILLMENT_MAX_ATTEMPTS:
         logger.error('[ADMIN ALERT] FULFILMENT NEEDS ATTENTION booking=%s step=%s error=%s attempts=%s (still retrying)',
                      booking_id, step, error, attempts)
+        alert_staff('fulfilment_needs_attention', key=f'admin:fulfilment-attention:{booking_id}:{token}', payload=alert)
     logger.warning('Fulfilment step failed, will retry: booking=%s step=%s error=%s attempt=%s in=%ss',
                    booking_id, step, error, attempts, delay)
     _schedule_retry(booking_id, delay)
@@ -255,6 +259,8 @@ def _delete_orphan(meeting_id, booking_id) -> None:
     except Exception as exc:    # broker down: a human must delete it; never hide that
         logger.error('[ADMIN ALERT] ORPHANED ZOOM MEETING meeting=%s booking=%s error=%s',
                      meeting_id, booking_id, type(exc).__name__)
+        alert_staff('orphaned_zoom_meeting', key=f'admin:orphaned-zoom-meeting:{meeting_id}',
+                    payload={'meeting_id': str(meeting_id), 'booking_id': str(booking_id)})
 
 
 def _zoom_step(booking_id, token, now) -> None:
@@ -326,6 +332,8 @@ def _store_event(booking_id, token, event_id, tutor_user_id, now) -> None:
                 cleanup_gcal_event.delay(tutor_user_id, event_id)
             except Exception as exc:
                 logger.error('[ADMIN ALERT] ORPHANED CALENDAR EVENT booking=%s error=%s', booking_id, type(exc).__name__)
+                alert_staff('orphaned_calendar_event', key=f'admin:orphaned-calendar-event:{booking_id}:{token}',
+                            payload={'booking_id': str(booking_id), 'tutor_user_id': str(tutor_user_id)})
 
 
 def email_was_sent(result) -> bool:
