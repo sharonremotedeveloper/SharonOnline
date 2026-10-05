@@ -14,8 +14,8 @@ S = Booking.Status
 User = get_user_model()
 
 
-def finished_lesson(teacher, student, status=S.COMPLETED_PENDING_MEMO):
-    start = timezone.now() - timedelta(hours=2)
+def finished_lesson(teacher, student, status=S.COMPLETED_PENDING_MEMO, hours_ago=2):
+    start = timezone.now() - timedelta(hours=hours_ago)       # a distinct start: two lessons of one tutor may not share it
     return Booking.objects.create(teacher=teacher, student=student, start_time_utc=start,
                                   end_time_utc=start + timedelta(minutes=25), status=status)
 
@@ -196,8 +196,7 @@ def test_student_sees_the_tutors_real_grammar_notes_not_a_placeholder(teacher_us
     memo = c.get('/api/v1/student/lessons/').json()[0]['memo']
     assert memo['grammar_notes'] == VALID['grammar_notes'] and memo['homework'] == 'HW only'
 
-    b2 = finished_lesson(teacher_user, student_user)
-    Booking.objects.filter(pk=b2.pk).update(start_time_utc=timezone.now() - timedelta(hours=5), end_time_utc=timezone.now() - timedelta(hours=4))
+    b2 = finished_lesson(teacher_user, student_user, hours_ago=5)
     post(teacher_user.user, b2, {'feedback_text': 'No grammar notes this time', 'homework': 'only homework'})
     memos = [l['memo'] for l in c.get('/api/v1/student/lessons/').json() if l['memo']['feedback_text'].startswith('No grammar')]
     assert memos[0]['grammar_notes'] == ''          # empty stays empty; never a made-up sentence
