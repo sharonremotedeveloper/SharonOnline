@@ -130,14 +130,14 @@ export function AccountMenu() {
         aria-expanded={open}
         aria-controls={panelId}
         aria-label={`Account menu for ${fullName}${notifs.unreadCount > 0 ? `, ${notifs.unreadCount} unread notifications` : ""}`}
-        className="relative flex min-h-[44px] items-center gap-1.5 rounded-full border border-white/20 bg-white/10 py-1 pl-1 pr-2.5 text-white transition-colors hover:bg-white/20"
+        className="relative flex min-h-[44px] items-center gap-1.5 rounded-full border border-divider bg-white py-1 pl-1 pr-2.5 text-ink shadow-sm transition-colors hover:bg-cream-surface"
       >
         <Avatar src={user.avatar_url} name={fullName} size="sm" />
         <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
         {unread && (
           <span
             aria-hidden="true"
-            className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-sun px-1 text-xs font-extrabold text-ink ring-2 ring-cocoa"
+            className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-sun px-1 text-xs font-extrabold text-ink ring-2 ring-cream"
           >
             {unread}
           </span>

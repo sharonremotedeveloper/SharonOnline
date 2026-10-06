@@ -47,20 +47,20 @@ export function Navbar() {
   }, [mobileMenuOpen]);
 
   const desktopLink =
-    "relative inline-flex min-h-[44px] items-center whitespace-nowrap text-sm font-semibold text-white/90 transition-colors hover:text-gold-bright";
+    "relative inline-flex min-h-[44px] items-center whitespace-nowrap text-sm font-semibold text-ink/80 transition-colors hover:text-primary";
   const drawerLink =
-    "flex min-h-[48px] items-center rounded-xl px-3 text-base font-semibold text-white/90 hover:bg-white/10 hover:text-gold-bright";
+    "flex min-h-[48px] items-center rounded-xl px-3 text-base font-semibold text-ink hover:bg-cream-surface hover:text-primary";
 
   return (
-    <header className="on-dark sticky top-0 z-50 border-b border-white/10 bg-cocoa text-white shadow-md">
+    <header className="sticky top-0 z-50 border-b border-divider bg-cream/95 text-ink shadow-sm backdrop-blur supports-[backdrop-filter]:bg-cream/85">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {/* Brand */}
         <Link href="/" className="flex min-h-[44px] shrink-0 items-center gap-2" aria-label="Sharon Online, home">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gold font-serif text-lg font-bold text-cocoa shadow-sm">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-cocoa font-serif text-lg font-bold text-sun shadow-sm">
             S
           </span>
-          <span className="whitespace-nowrap font-serif text-xl font-extrabold tracking-tight text-white">
-            Sharon<span className="text-gold-bright">Online</span>
+          <span className="whitespace-nowrap font-serif text-xl font-extrabold tracking-tight text-ink">
+            Sharon<span className="text-primary">Online</span>
           </span>
         </Link>
 
@@ -70,7 +70,7 @@ export function Navbar() {
             <Link key={l.href} href={l.href} className={desktopLink} aria-current={pathname === l.href ? "page" : undefined}>
               {l.label}
               {pathname === l.href && (
-                <span className="absolute inset-x-0 bottom-1.5 h-0.5 rounded-full bg-gold-bright" aria-hidden="true" />
+                <span className="absolute inset-x-0 bottom-1.5 h-0.5 rounded-full bg-primary" aria-hidden="true" />
               )}
             </Link>
           ))}
@@ -79,23 +79,23 @@ export function Navbar() {
         {/* Right side. Signed in: one avatar menu at every size. Signed out: currency and the two calls to action. */}
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {isLoading ? (
-            <div className="h-11 w-24 animate-pulse rounded-full bg-white/10" role="status" aria-label="Checking session" />
+            <div className="h-11 w-24 animate-pulse rounded-full bg-cocoa/10" role="status" aria-label="Checking session" />
           ) : signedIn ? (
             <AccountMenu />
           ) : (
             <div className="hidden items-center gap-2 xl:flex">
               <CurrencySwitcher variant="select" />
               {sessionError && (
-                <span title={sessionError} className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs font-bold text-gold-bright">
+                <span title={sessionError} className="rounded-lg border border-divider bg-white px-2 py-1 text-xs font-bold text-primary">
                   Session unavailable
                 </span>
               )}
-              <Link href="/login" className="inline-flex min-h-[44px] items-center whitespace-nowrap px-3 text-sm font-semibold text-white hover:text-gold-bright">
+              <Link href="/login" className="inline-flex min-h-[44px] items-center whitespace-nowrap px-3 text-sm font-semibold text-ink hover:text-primary">
                 Sign In
               </Link>
               <Link
                 href="/tutors"
-                className="inline-flex min-h-[44px] items-center whitespace-nowrap rounded-full bg-sun px-5 text-sm font-bold text-ink shadow-sm transition-colors hover:bg-sun-soft"
+                className="inline-flex min-h-[44px] items-center whitespace-nowrap rounded-full bg-cocoa px-5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-cocoa-hover"
               >
                 Book a Lesson
               </Link>
@@ -109,7 +109,7 @@ export function Navbar() {
             aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-menu"
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-white/90 hover:bg-white/10 hover:text-white xl:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-ink hover:bg-cocoa/10 xl:hidden"
           >
             {mobileMenuOpen ? <X className="h-6 w-6" aria-hidden="true" /> : <Menu className="h-6 w-6" aria-hidden="true" />}
           </button>
@@ -120,7 +120,7 @@ export function Navbar() {
       {mobileMenuOpen && (
         <div
           id="mobile-menu"
-          className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-white/10 bg-cocoa-hover px-4 pb-6 pt-3 xl:hidden"
+          className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-divider bg-cream px-4 pb-6 pt-3 xl:hidden"
         >
           <nav aria-label="Mobile" className="space-y-1">
             {[...NAV_LINKS, ...MOBILE_EXTRA_LINKS].map((l) => (
@@ -132,15 +132,15 @@ export function Navbar() {
 
           {!signedIn && !isLoading && (
             <>
-              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-white/10 p-3">
-                <span className="text-sm font-semibold text-white/85">Show prices in</span>
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-white p-3 border border-divider">
+                <span className="text-sm font-semibold text-ink">Show prices in</span>
                 <CurrencySwitcher variant="select" />
               </div>
-              <div className="mt-3 flex flex-col gap-2 border-t border-white/10 pt-3">
-                <Link href="/tutors" className="flex min-h-[52px] items-center justify-center rounded-full bg-sun text-base font-bold text-ink">
+              <div className="mt-3 flex flex-col gap-2 border-t border-divider pt-3">
+                <Link href="/tutors" className="flex min-h-[52px] items-center justify-center rounded-full bg-cocoa text-base font-bold text-white">
                   Book a Lesson
                 </Link>
-                <Link href="/login" className="flex min-h-[52px] items-center justify-center rounded-full bg-white/10 text-base font-semibold text-white">
+                <Link href="/login" className="flex min-h-[52px] items-center justify-center rounded-full border-2 border-cocoa/20 text-base font-semibold text-ink">
                   Sign In
                 </Link>
               </div>

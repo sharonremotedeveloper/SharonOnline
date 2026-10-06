@@ -13,9 +13,9 @@ export function DemoVideoButton({ src }: { src: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-6 text-base font-bold text-white transition-colors hover:bg-white/20 sm:w-auto"
+        className="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full border-2 border-cocoa/20 bg-white px-6 text-base font-bold text-ink transition-colors hover:border-cocoa sm:w-auto"
       >
-        <Play className="h-4 w-4 fill-gold-bright text-gold-bright" aria-hidden="true" /> Watch a sample lesson
+        <Play className="h-4 w-4 fill-primary text-primary" aria-hidden="true" /> Watch a sample lesson
       </button>
       <Modal isOpen={open} onClose={() => setOpen(false)} title="A Sharon Online lesson">
         <div className="aspect-video overflow-hidden rounded-xl bg-black">
