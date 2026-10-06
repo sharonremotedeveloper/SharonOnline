@@ -166,7 +166,7 @@ export function LessonScheduler({ tutorId, tutorName, days = 14, returnTo }: Les
           value={timezone ?? ""}
           onChange={(e) => setTimezone(e.target.value)}
           disabled={!timezone}
-          className="min-h-[44px] w-full cursor-pointer rounded-xl border border-divider bg-cream-surface px-3 text-sm font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa sm:w-auto sm:min-w-[15rem]"
+          className="min-h-[44px] w-full cursor-pointer rounded-xl border border-strong bg-cream-surface px-3 text-base sm:text-sm font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa sm:w-auto sm:min-w-[15rem]"
         >
           {zones.map((z) => (
             <option key={z} value={z}>

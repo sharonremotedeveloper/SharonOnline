@@ -70,7 +70,7 @@ export function TutorFilters({ filters, onFilterChange, totalCount }: TutorFilte
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by name or topic"
-            className="min-h-[52px] w-full rounded-full border border-divider bg-cream-surface pl-12 pr-4 text-base text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-cocoa"
+            className="min-h-[52px] w-full rounded-full border border-strong bg-cream-surface pl-12 pr-4 text-base text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-cocoa"
           />
         </div>
         {hasActiveFilters && (

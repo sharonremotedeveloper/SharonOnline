@@ -54,7 +54,7 @@ export default async function HomePage() {
       <HeroSection tutors={featuredTutors} />
 
       {/* Facts about the lesson, in a yellow bar like the best tutoring sites. No self-awarded numbers. */}
-      <section aria-label="Lesson basics" className="bg-sun">
+      <section aria-label="Lesson basics" className="focus-cocoa bg-sun">
         <ul className="mx-auto grid max-w-7xl grid-cols-1 gap-x-4 gap-y-3 px-4 py-5 sm:grid-cols-2 sm:px-6 md:grid-cols-4 lg:px-8">
           <li className="flex items-center gap-3 text-ink">
             <Clock className="h-6 w-6 shrink-0" aria-hidden="true" />
@@ -144,7 +144,7 @@ export default async function HomePage() {
       </section>
 
       {/* Statement band */}
-      <section className="mt-20 bg-sun px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8">
+      <section className="focus-cocoa mt-20 bg-sun px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8">
         <div className="mx-auto max-w-3xl">
           <h2 className="font-serif text-4xl font-extrabold leading-tight tracking-tight text-ink sm:text-5xl lg:text-6xl">
             Make mistakes. Learn faster.
@@ -208,7 +208,7 @@ export default async function HomePage() {
 
       {/* Closing call to action */}
       <section className="mx-auto mt-20 max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-[2rem] bg-sun px-6 py-14 text-center shadow-card sm:px-12 sm:py-16">
+        <div className="focus-cocoa rounded-[2rem] bg-sun px-6 py-14 text-center shadow-card sm:px-12 sm:py-16">
           <h2 className="font-serif text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">Ready to start speaking?</h2>
           <p className="mx-auto mt-3 max-w-xl text-lg font-medium text-ink/80">
             Book your first lesson. If it is not right for you, we give your credit back or refund you.

@@ -149,7 +149,7 @@ function RegisterForm() {
               required
               value={formData.first_name}
               onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="min-h-11 w-full px-4 py-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("first_name")}
           </div>
@@ -160,7 +160,7 @@ function RegisterForm() {
               required
               value={formData.last_name}
               onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="min-h-11 w-full px-4 py-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("last_name")}
           </div>
@@ -175,7 +175,7 @@ function RegisterForm() {
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
               placeholder="e.g. aiko_tanaka"
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="min-h-11 w-full px-4 py-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("username")}
           </div>
@@ -187,7 +187,7 @@ function RegisterForm() {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="name@example.com"
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="min-h-11 w-full px-4 py-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("email")}
           </div>
@@ -200,7 +200,7 @@ function RegisterForm() {
               type="text"
               readOnly
               value={formData.timezone}
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-deep/50 cursor-not-allowed"
+              className="min-h-11 w-full px-4 py-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-deep/50 cursor-not-allowed"
             />
           </div>
           <div className="space-y-1">
@@ -211,7 +211,7 @@ function RegisterForm() {
               value={formData.country}
               onChange={(e) => setFormData({ ...formData, country: e.target.value.toUpperCase() })}
               placeholder="e.g. JP, ZA, KR, DE"
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="min-h-11 w-full px-4 py-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("country")}
           </div>
@@ -226,7 +226,7 @@ function RegisterForm() {
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               placeholder="••••••••"
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="min-h-11 w-full px-4 py-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("password")}
           </div>
@@ -238,7 +238,7 @@ function RegisterForm() {
               value={formData.password_confirm}
               onChange={(e) => setFormData({ ...formData, password_confirm: e.target.value })}
               placeholder="••••••••"
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="min-h-11 w-full px-4 py-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("password_confirm")}
           </div>

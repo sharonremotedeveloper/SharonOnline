@@ -74,7 +74,7 @@ export function GoalSelector() {
   const Icon = activeGoal.icon;
 
   return (
-    <div className="overflow-hidden rounded-[2rem] bg-coral p-3 sm:p-5">
+    <div className="focus-cocoa overflow-hidden rounded-[2rem] bg-coral p-3 sm:p-5">
       {/* Goal tabs: a 2/3/5 column grid, so no lone pill wraps onto its own line */}
       <div
         role="tablist"

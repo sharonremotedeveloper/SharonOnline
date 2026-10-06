@@ -666,7 +666,7 @@ export default function AdminVettingPage() {
                     ? "Explain what needs improvement (e.g. video audio had background echo; please re-record in quiet space)..."
                     : "Formal reason for rejection..."
                 }
-                className="w-full p-3 bg-cream-surface rounded-2xl border border-divider text-xs text-ink focus:outline-hidden focus:ring-2 focus:ring-cocoa/30"
+                className="w-full p-3 bg-cream-surface rounded-2xl border border-strong text-base sm:text-sm text-ink focus:outline-hidden focus:ring-2 focus:ring-cocoa/30"
               />
             </div>
 

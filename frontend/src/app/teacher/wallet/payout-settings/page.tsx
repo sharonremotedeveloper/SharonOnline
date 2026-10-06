@@ -179,7 +179,7 @@ export default function TeacherPayoutSettingsPage() {
               <select id="f-bank-institution"
                 value={bankName}
                 onChange={(e) => handleBankChange(e.target.value as BankName)}
-                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
+                className="min-h-11 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
               >
                 {SA_BANKS.map((b) => (
                   <option key={b.name} value={b.name}>
@@ -200,7 +200,7 @@ export default function TeacherPayoutSettingsPage() {
                 value={branchCode}
                 onChange={(e) => setBranchCode(e.target.value)}
                 placeholder="470010"
-                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
+                className="min-h-11 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
                 required
               />
             </div>
@@ -213,7 +213,7 @@ export default function TeacherPayoutSettingsPage() {
               autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
+              className="min-h-11 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
               required
             />
             <p className="text-xs text-ink-muted">Required every time banking details are created or changed.</p>
@@ -233,7 +233,7 @@ export default function TeacherPayoutSettingsPage() {
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ""))}
                 placeholder="6-digit code"
-                className="flex-1 p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
+                className="min-h-11 flex-1 p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
                 required
                 pattern="\d{6}"
               />
@@ -262,7 +262,7 @@ export default function TeacherPayoutSettingsPage() {
                 value={accountHolder}
                 onChange={(e) => setAccountHolder(e.target.value)}
                 placeholder="e.g. Sharon Mupesa"
-                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
+                className="min-h-11 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
                 required
               />
             </div>
@@ -275,7 +275,7 @@ export default function TeacherPayoutSettingsPage() {
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)}
                 placeholder="e.g. 1234567890"
-                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
+                className="min-h-11 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
                 required
               />
             </div>
@@ -321,7 +321,7 @@ export default function TeacherPayoutSettingsPage() {
                 value={idNumber}
                 onChange={(e) => setIdNumber(e.target.value)}
                 placeholder="13-digit SA ID Number"
-                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
+                className="min-h-11 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm font-mono text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
               />
             </div>
           </div>

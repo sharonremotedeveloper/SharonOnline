@@ -401,7 +401,7 @@ export function VideoSdkClassroom({
                 aria-label="Select Camera"
                 value={selectedCamera}
                 onChange={(e) => void switchCameraDevice(e.target.value)}
-                className="w-full bg-cocoa-600 border border-cocoa-500 rounded-xl p-2.5 text-xs text-white focus-visible:outline-2 focus-visible:outline-sun focus-visible:outline-offset-2"
+                className="min-h-11 w-full bg-cocoa-600 border border-strong rounded-xl p-2.5 text-base sm:text-sm text-white focus-visible:outline-2 focus-visible:outline-sun focus-visible:outline-offset-2"
               >
                 {cameras.length === 0 ? (
                   <option value="">Default System Camera</option>
@@ -426,7 +426,7 @@ export function VideoSdkClassroom({
                 aria-label="Select Microphone"
                 value={selectedMic}
                 onChange={(e) => void switchMicDevice(e.target.value)}
-                className="w-full bg-cocoa-600 border border-cocoa-500 rounded-xl p-2.5 text-xs text-white focus-visible:outline-2 focus-visible:outline-sun focus-visible:outline-offset-2"
+                className="min-h-11 w-full bg-cocoa-600 border border-strong rounded-xl p-2.5 text-base sm:text-sm text-white focus-visible:outline-2 focus-visible:outline-sun focus-visible:outline-offset-2"
               >
                 {mics.length === 0 ? (
                   <option value="">Default System Microphone</option>
@@ -451,7 +451,7 @@ export function VideoSdkClassroom({
                 aria-label="Select Speaker"
                 value={selectedSpeaker}
                 onChange={(e) => void switchSpeakerDevice(e.target.value)}
-                className="w-full bg-cocoa-600 border border-cocoa-500 rounded-xl p-2.5 text-xs text-white focus-visible:outline-2 focus-visible:outline-sun focus-visible:outline-offset-2"
+                className="min-h-11 w-full bg-cocoa-600 border border-strong rounded-xl p-2.5 text-base sm:text-sm text-white focus-visible:outline-2 focus-visible:outline-sun focus-visible:outline-offset-2"
               >
                 {speakers.length === 0 ? (
                   <option value="">Default System Speaker</option>

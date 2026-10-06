@@ -91,7 +91,7 @@ function LoginForm() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="you@example.com or username"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="min-h-11 w-full pl-10 pr-4 py-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
           </div>
         </div>
@@ -111,7 +111,7 @@ function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="min-h-11 w-full pl-10 pr-4 py-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
           </div>
         </div>

@@ -68,7 +68,7 @@ export function ChangePasswordCard() {
                 autoComplete={autoComplete}
                 value={values[name]}
                 onChange={(e) => setValues({ ...values, [name]: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+                className="min-h-11 w-full p-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
               />
               {fieldErrors[name]?.length ? <p className="text-sm text-primary font-medium">{fieldErrors[name].join(" ")}</p> : null}
             </div>

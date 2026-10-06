@@ -263,7 +263,7 @@ export default function TeacherClassroomPage() {
                 value={scratchNotes}
                 onChange={(e) => handleNotesChange(e.target.value)}
                 placeholder="Jot down mispronounced words, grammar slips, or praise phrases during the call. These will carry into the post-lesson memo..."
-                className="w-full p-3.5 bg-cream-surface rounded-2xl border border-divider text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa font-sans leading-relaxed"
+                className="w-full p-3.5 bg-cream-surface rounded-2xl border border-strong text-base sm:text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa font-sans leading-relaxed"
               />
             </div>
 

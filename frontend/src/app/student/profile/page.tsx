@@ -174,7 +174,7 @@ export default function StudentProfilePage() {
                 type="text"
                 value={formData.full_name}
                 onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
+                className="min-h-11 w-full text-base sm:text-sm rounded-xl border border-strong p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
                 required
               />
             </div>
@@ -187,7 +187,7 @@ export default function StudentProfilePage() {
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
+                className="min-h-11 w-full text-base sm:text-sm rounded-xl border border-strong p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
                 required
               />
             </div>
@@ -200,7 +200,7 @@ export default function StudentProfilePage() {
                 type="text"
                 value={formData.country}
                 onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
+                className="min-h-11 w-full text-base sm:text-sm rounded-xl border border-strong p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
                 required
               />
             </div>
@@ -212,7 +212,7 @@ export default function StudentProfilePage() {
               <select id="f-local-timezone-iana"
                 value={formData.timezone}
                 onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
+                className="min-h-11 w-full text-base sm:text-sm rounded-xl border border-strong p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
               >
                 {TIMEZONES.map((tz) => (
                   <option key={tz.value} value={tz.value}>
@@ -236,7 +236,7 @@ export default function StudentProfilePage() {
               <select id="f-target-cefr-proficiency"
                 value={formData.target_level}
                 onChange={(e) => setFormData({ ...formData, target_level: e.target.value })}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
+                className="min-h-11 w-full text-base sm:text-sm rounded-xl border border-strong p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
               >
                 {CEFR_LEVELS.map((lvl) => (
                   <option key={lvl.value} value={lvl.value}>
@@ -255,7 +255,7 @@ export default function StudentProfilePage() {
                 onChange={(e) => setFormData({ ...formData, learning_goals: e.target.value })}
                 rows={4}
                 placeholder="Describe your current English challenges, professional speaking requirements, or specific areas you want tutors to emphasize..."
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
+                className="w-full text-base sm:text-sm rounded-xl border border-strong p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
               />
               <p className="text-sm text-ink-400 mt-1">
                 Your booked tutors can view your target CEFR and learning objectives before each lesson to tailor material selection.

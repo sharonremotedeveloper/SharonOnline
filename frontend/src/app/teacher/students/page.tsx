@@ -180,7 +180,7 @@ export default function TeacherStudentsCRMPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search students by name, country, or CEFR level..."
             aria-label="Search students by name, country, or CEFR level..."
-            className="w-full pl-10 pr-4 py-2 bg-cream-50/50 border border-cream-200 rounded-xl text-xs sm:text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
+            className="min-h-11 w-full pl-10 pr-4 py-2 bg-cream-50/50 border border-strong rounded-xl text-base sm:text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
           />
         </div>
 
@@ -274,7 +274,7 @@ export default function TeacherStudentsCRMPage() {
                       value={draftNotes}
                       onChange={(e) => setDraftNotes(e.target.value)}
                       rows={4}
-                      className="w-full text-xs rounded-xl border border-cream-200 p-3 bg-cream-50/50 text-ink-900 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
+                      className="w-full text-base sm:text-sm rounded-xl border border-strong p-3 bg-cream-50/50 text-ink-900 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
                     />
                     <div className="flex justify-end">
                       <button
@@ -326,7 +326,7 @@ export default function TeacherStudentsCRMPage() {
                       onChange={(e) => setDraftMistake(e.target.value)}
                       placeholder="Add recurring slip (e.g. 'Article omission')..."
                       aria-label="Add recurring slip (e.g. 'Article omission')..."
-                      className="flex-1 text-xs rounded-lg border border-cream-200 px-3 py-1.5 bg-white text-ink-900 focus:outline-none focus:ring-1 focus:ring-cocoa-500"
+                      className="min-h-11 flex-1 text-base sm:text-sm rounded-lg border border-strong px-3 py-1.5 bg-white text-ink-900 focus:outline-none focus:ring-1 focus:ring-cocoa-500"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();

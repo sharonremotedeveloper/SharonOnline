@@ -175,7 +175,7 @@ export function ReviewRubricModal({
                 onChange={(e) => setPrivateNotes(e.target.value)}
                 placeholder="Share any specific pacing preferences, topics you'd like to dive into next time, or words of encouragement..."
                 rows={3}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 focus:outline-none focus:ring-2 focus:ring-cocoa-500 focus:border-transparent text-ink-900 bg-cream-50/30"
+                className="w-full text-base sm:text-sm rounded-xl border border-strong p-3 focus:outline-none focus:ring-2 focus:ring-cocoa-500 focus:border-transparent text-ink-900 bg-cream-50/30"
               />
             </div>
 

@@ -159,7 +159,7 @@ export default function AdminFxRatesPage() {
                 setCurrency(e.target.value as FxCurrency);
                 setNeedsConfirm(null);
               }}
-              className="block w-full sm:w-32 rounded-xl border border-divider bg-white px-3 py-2 text-sm text-ink"
+              className="min-h-11 block w-full sm:w-32 rounded-xl border border-strong bg-white px-3 py-2 text-base sm:text-sm text-ink"
             >
               {FX_CURRENCIES.map((c) => (
                 <option key={c} value={c}>
@@ -180,7 +180,7 @@ export default function AdminFxRatesPage() {
               }}
               placeholder={currency === "EUR" ? "e.g. 19.85" : "e.g. 0.12"}
               aria-invalid={fieldError ? true : undefined}
-              className="block w-full rounded-xl border border-divider bg-white px-3 py-2 text-sm text-ink"
+              className="min-h-11 block w-full rounded-xl border border-strong bg-white px-3 py-2 text-base sm:text-sm text-ink"
             />
           </label>
           <button

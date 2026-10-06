@@ -170,7 +170,7 @@ export function PayoutRuns({ onChanged }: { onChanged?: () => void }) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="mt-1 w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs"
+                    className="min-h-11 mt-1 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm"
                   />
                 </label>
                 <button type="submit" className="px-4 py-3 bg-cocoa text-white text-xs font-black rounded-xl">Download</button>

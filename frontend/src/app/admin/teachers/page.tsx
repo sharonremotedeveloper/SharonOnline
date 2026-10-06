@@ -74,7 +74,7 @@ export default function AdminTeachersPage() {
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white p-4 rounded-3xl border border-divider shadow-xs flex items-center gap-3">
+      <div className="bg-white p-4 rounded-3xl border border-strong shadow-xs flex items-center gap-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary">
         <Search className="w-4 h-4 text-ink-muted ml-2" />
         <input
           type="text"
@@ -82,7 +82,7 @@ export default function AdminTeachersPage() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Filter tutors by name, accent, or specialty..."
           aria-label="Filter tutors by name, accent, or specialty..."
-          className="flex-1 bg-transparent text-xs sm:text-sm text-ink focus:outline-none"
+          className="flex-1 bg-transparent text-base sm:text-sm text-ink focus:outline-none"
         />
       </div>
 

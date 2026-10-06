@@ -90,7 +90,7 @@ export default function MaterialsPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search lessons by topic, title, or keywords (e.g. remote work, interview, negotiation)..."
                 aria-label="Search lessons by topic, title, or keywords (e.g. remote work, interview, negotiation)..."
-                className="w-full pl-11 pr-10 py-3 bg-cream-surface rounded-2xl border border-divider text-sm sm:text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa transition-all"
+                className="min-h-11 w-full pl-11 pr-10 py-3 bg-cream-surface rounded-2xl border border-strong text-base sm:text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa transition-all"
               />
               {search && (
                 <button

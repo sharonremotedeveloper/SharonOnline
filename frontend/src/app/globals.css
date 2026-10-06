@@ -18,6 +18,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background-color: #FFF8F2;
   color: #2D2521;
   font-family: var(--font-dm-sans), system-ui, sans-serif;
@@ -35,6 +36,11 @@ button {
   outline: 2px solid #C2410C;
   outline-offset: 3px;
   border-radius: 5px;
+}
+
+/* On sun, coral and sky blocks the orange ring is too faint (3.9 / 1.8 / 3.4): use cocoa there (9.5 / 4.5 / 8.2). */
+.focus-cocoa :focus-visible {
+  outline-color: #4A2C1A;
 }
 
 /* On the dark header, hero and footer the orange ring is too faint: use yellow there. */

@@ -147,7 +147,7 @@ ${initialScratchpad}` : ""
           rows={4}
           value={feedbackText}
           onChange={(e) => setFeedbackText(e.target.value)}
-          className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa leading-relaxed font-sans"
+          className="w-full p-4 bg-cream-surface rounded-2xl border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa leading-relaxed font-sans"
           placeholder="Write thorough feedback for the student..."
           required
         />
@@ -196,7 +196,7 @@ ${initialScratchpad}` : ""
               }
             }}
             placeholder="New word (e.g. Asynchronous)..."
-            className="w-full sm:w-1/3 p-2.5 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
+            className="min-h-11 w-full sm:w-1/3 p-2.5 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
           />
           <input
             type="text"
@@ -209,7 +209,7 @@ ${initialScratchpad}` : ""
               }
             }}
             placeholder="Definition or example sentence..."
-            className="w-full sm:flex-1 p-2.5 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
+            className="min-h-11 w-full sm:flex-1 p-2.5 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
           />
           <button
             type="button"
@@ -232,7 +232,7 @@ ${initialScratchpad}` : ""
           rows={3}
           value={pronunciationNotes}
           onChange={(e) => setPronunciationNotes(e.target.value)}
-          className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa leading-relaxed font-sans"
+          className="w-full p-4 bg-cream-surface rounded-2xl border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa leading-relaxed font-sans"
           placeholder="Phonetic symbols, syllable stress, or tongue placement tips..."
         />
       </div>
@@ -247,7 +247,7 @@ ${initialScratchpad}` : ""
           rows={3}
           value={grammarNotes}
           onChange={(e) => setGrammarNotes(e.target.value)}
-          className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa leading-relaxed font-sans"
+          className="w-full p-4 bg-cream-surface rounded-2xl border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa leading-relaxed font-sans"
           placeholder="Write 'Student said' vs 'More natural native phrasing'..."
         />
       </div>
@@ -262,7 +262,7 @@ ${initialScratchpad}` : ""
           rows={2}
           value={homework}
           onChange={(e) => setHomework(e.target.value)}
-          className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa leading-relaxed font-sans"
+          className="w-full p-4 bg-cream-surface rounded-2xl border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa leading-relaxed font-sans"
           placeholder="Recommended reading or speaking drills for next class..."
         />
       </div>

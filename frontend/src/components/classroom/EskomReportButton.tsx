@@ -109,7 +109,7 @@ export function EskomReportButton({
                 value={reportNote}
                 onChange={(e) => setReportNote(e.target.value)}
                 placeholder="e.g. Stage 4 load shedding sudden trip, inverter empty..."
-                className="w-full px-3.5 py-2.5 rounded-xl bg-cream-surface border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-warning"
+                className="min-h-11 w-full px-3.5 py-2.5 rounded-xl bg-cream-surface border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-warning"
               />
             </div>
 

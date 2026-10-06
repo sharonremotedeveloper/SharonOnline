@@ -108,7 +108,7 @@ export function CurrencySwitcher({ onCurrencyChange, variant = "select" }: Curre
         value={active}
         onChange={(e) => handleChange(e.target.value as CurrencyCode)}
         aria-label="Display currency"
-        className="h-11 min-w-[7.5rem] cursor-pointer rounded-xl border border-divider bg-cream-surface pl-9 pr-3 text-sm font-bold text-ink focus:outline-none focus:ring-2 focus:ring-gold-bright"
+        className="h-11 min-w-[7.5rem] cursor-pointer rounded-xl border border-strong bg-cream-surface pl-9 pr-3 text-base sm:text-sm font-bold text-ink focus:outline-none focus:ring-2 focus:ring-gold-bright"
       >
         {offered.map((code) => (
           <option key={code} value={code}>

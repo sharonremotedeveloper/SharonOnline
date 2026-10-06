@@ -249,7 +249,7 @@ export default function BookingReviewPage() {
                 onChange={(e) => setPrivateNotes(e.target.value)}
                 placeholder="Share any pacing notes, topics you'd like to dive into for your next session, or specific grammar focus..."
                 rows={4}
-                className="w-full text-sm rounded-2xl border border-cream-200 p-4 focus:outline-none focus:ring-2 focus:ring-cocoa-500 focus:border-transparent text-ink-900 bg-cream-50/30"
+                className="w-full text-base sm:text-sm rounded-2xl border border-strong p-4 focus:outline-none focus:ring-2 focus:ring-cocoa-500 focus:border-transparent text-ink-900 bg-cream-50/30"
               />
             </div>
 

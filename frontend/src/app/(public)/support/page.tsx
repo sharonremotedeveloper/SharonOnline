@@ -161,7 +161,7 @@ export default function SupportPage() {
                   placeholder="e.g. Aiko Tanaka"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
+                  className="min-h-11 w-full bg-cream-surface border border-strong rounded-xl px-4 py-2.5 text-base sm:text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
               </div>
 
@@ -173,7 +173,7 @@ export default function SupportPage() {
                   placeholder="aiko@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
+                  className="min-h-11 w-full bg-cream-surface border border-strong rounded-xl px-4 py-2.5 text-base sm:text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
               </div>
 
@@ -185,7 +185,7 @@ export default function SupportPage() {
                   placeholder="e.g. Question about PayPal checkout or slot booking"
                   value={formData.subject}
                   onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
+                  className="min-h-11 w-full bg-cream-surface border border-strong rounded-xl px-4 py-2.5 text-base sm:text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
               </div>
 
@@ -197,7 +197,7 @@ export default function SupportPage() {
                   placeholder="How can we assist you today?"
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
+                  className="w-full bg-cream-surface border border-strong rounded-xl px-4 py-2.5 text-base sm:text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
               </div>
 

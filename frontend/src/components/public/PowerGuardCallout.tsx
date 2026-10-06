@@ -7,7 +7,7 @@ import { BatteryCharging, ArrowRight } from "lucide-react";
  */
 export function PowerGuardCallout() {
   return (
-    <aside className="flex flex-col gap-4 rounded-3xl bg-sky p-5 sm:flex-row sm:items-center sm:p-6">
+    <aside className="flex flex-col gap-4 rounded-3xl focus-cocoa bg-sky p-5 sm:flex-row sm:items-center sm:p-6">
       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cocoa text-sun">
         <BatteryCharging className="h-6 w-6" aria-hidden="true" />
       </span>
