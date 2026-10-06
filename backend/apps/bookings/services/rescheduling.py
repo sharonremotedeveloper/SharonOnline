@@ -104,6 +104,11 @@ def reschedule_booking(booking_id, student, new_start, now=None) -> Booking:
             release_slot_lock(*lock_args, token=token)
             raise taken
         booking_pk = str(booking.id)
+        from apps.notifications.service import booking_key, notify
+        notify(booking.student, 'booking_rescheduled', key=booking_key('booking-rescheduled', booking, 'student'),
+               payload={'booking_id': booking_pk}, booking=booking)
+        notify(teacher.user, 'booking_rescheduled', key=booking_key('booking-rescheduled', booking, 'teacher'),
+               payload={'booking_id': booking_pk}, booking=booking)
         transaction.on_commit(lambda: _after_move(booking_pk, old_meeting))
     return booking
 

@@ -8,6 +8,7 @@ if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_USE_MOCKS =
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   reactStrictMode: true,
   // One-time reset / verification links carry their credential in the URL: never leak it through the Referer header.
   async headers() {

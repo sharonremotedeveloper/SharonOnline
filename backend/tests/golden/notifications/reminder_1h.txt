@@ -1,0 +1,14 @@
+subject: Reminder: Your lesson with Thandi starts in 1 hour
+title: Lesson starting in 1 hour
+--- body
+Your lesson with Thandi begins at Mon 02 Mar 2026, 16:00 (Asia/Tokyo). Please complete the WebRTC hardware check.
+--- text
+Hi Yuki,
+
+Your lesson with Thandi starts in 1 hour at Mon 02 Mar 2026, 16:00 (Asia/Tokyo).
+
+Classroom: http://localhost:3000/student/classroom/00000000-0000-4000-8000-0000000000b1
+
+Please ensure your audio and video are working properly.
+--- html
+<p>Hi Yuki,</p><p>Your lesson with Thandi starts in 1 hour at <strong>Mon 02 Mar 2026, 16:00 (Asia/Tokyo)</strong>.</p><p><a href="http://localhost:3000/student/classroom/00000000-0000-4000-8000-0000000000b1">Open Classroom Preview</a></p><p>Please test your WebRTC audio and video before class starts.</p>

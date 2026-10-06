@@ -99,6 +99,12 @@ def grant_credit(
         currency=currency.upper(), fx_rate_to_zar=fx, fx_source=fx_source,
         booking=booking, description=pack_name, idempotency_key=idempotency_key,
     )
+    try:
+        from apps.notifications.service import notify
+        notify(user, 'credit_granted', key=f'credit-granted:{bundle.id}',
+               payload={'credits': credits, 'reason': str(source)}, booking=booking)
+    except Exception as exc:
+        logger.warning('credit_granted notification failed for bundle %s: %s', bundle.id, type(exc).__name__)
     return bundle
 
 

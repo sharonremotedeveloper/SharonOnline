@@ -1,0 +1,10 @@
+subject: Refund Processed: Sharon ESL
+title: Refund processed
+--- body
+A refund of 25.00 USD for lesson 00000000-0000-4000-8000-0000000000b1 has been processed.
+--- text
+Hi Yuki,
+
+A refund of 25.00 USD for lesson 00000000-0000-4000-8000-0000000000b1 has been processed to your original payment method.
+--- html
+<p>Hi Yuki,</p><p>A refund of <strong>25.00 USD</strong> for lesson <code>00000000-0000-4000-8000-0000000000b1</code> has been processed to your original payment method.</p>

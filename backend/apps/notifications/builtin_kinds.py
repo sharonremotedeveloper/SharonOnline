@@ -17,6 +17,7 @@ ALERT_TITLES = {
     'lesson_disputed_without_verdict': 'Lesson disputed without an attendance verdict',
     'notification_failed': 'A notification e-mail could not be delivered',
     'vetting_submitted': 'A tutor submitted their application for review',
+    'tutor_late': 'Tutor is 5+ minutes late for scheduled lesson',
 }
 
 

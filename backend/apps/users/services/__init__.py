@@ -1,7 +1,8 @@
 from django.db import transaction
 from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
 
-from .tasks import KIND_PASSWORD_RESET, KIND_VERIFY_EMAIL, send_account_email_task, send_support_inquiry_notification
+from ..tasks import KIND_PASSWORD_RESET, KIND_VERIFY_EMAIL, send_account_email_task, send_support_inquiry_notification
+from .data_export import build_user_data_export, generate_user_data_zip
 
 
 def queue_account_email(user, kind: str) -> None:
@@ -30,3 +31,14 @@ def revoke_all_sessions(user) -> int:
         _, created = BlacklistedToken.objects.get_or_create(token=outstanding)
         revoked += int(created)
     return revoked
+
+
+__all__ = [
+    "queue_account_email",
+    "queue_verification_email",
+    "queue_password_reset_email",
+    "queue_support_inquiry",
+    "revoke_all_sessions",
+    "build_user_data_export",
+    "generate_user_data_zip",
+]

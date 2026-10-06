@@ -1,0 +1,14 @@
+subject: Confirmed: Your lesson with Thandi
+title: Lesson confirmed
+--- body
+Your 25-minute lesson with Thandi is confirmed for Mon 02 Mar 2026, 16:00 (Asia/Tokyo).
+--- text
+Hi Yuki,
+
+Your lesson with Thandi is locked in for Mon 02 Mar 2026, 16:00 (Asia/Tokyo).
+
+Classroom: http://localhost:3000/student/classroom/00000000-0000-4000-8000-0000000000b1
+
+See you in class!
+--- html
+<p>Hi Yuki,</p><p>Your 25-minute lesson with <strong>Thandi</strong> is locked in for <strong>Mon 02 Mar 2026, 16:00 (Asia/Tokyo)</strong>.</p><p><a href="http://localhost:3000/student/classroom/00000000-0000-4000-8000-0000000000b1">Launch Classroom</a></p>

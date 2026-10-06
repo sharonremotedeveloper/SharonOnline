@@ -28,6 +28,8 @@ def golden_text(kind):
     from apps.bookings.models import Booking
     from apps.teachers.models import TeacherProfile
     from apps.users.models import User
+    Booking.objects.filter(id=FIXED_BOOKING).delete()
+    User.objects.filter(username__in=['golden_student', 'golden_tutor']).delete()
     student = User.objects.create_user(username='golden_student', email='golden_student@example.test', password='x',
                                        role=User.Role.STUDENT, first_name='Yuki', timezone='Asia/Tokyo')
     tutor_user = User.objects.create_user(username='golden_tutor', email='golden_tutor@example.test', password='x',
@@ -54,6 +56,7 @@ def test_golden_snapshot_matches(kind):
     path = GOLDEN_DIR / f'{kind.name}.txt'
     assert path.exists(), f'missing golden snapshot {path.name}: render golden_text(kind) and commit it'
     assert golden_text(kind) == path.read_text(encoding='utf-8'), f'{kind.name}: template changed, review + update'
+
 
 
 def test_no_orphan_golden_files():

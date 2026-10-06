@@ -1,0 +1,12 @@
+subject: Notice: Tutor No-Show and Compensation
+title: Tutor no-show recorded
+--- body
+Your tutor was absent for lesson 00000000-0000-4000-8000-0000000000b1. Your payment has been refunded and 1 apology credit was added to your wallet.
+--- text
+Hi Yuki,
+
+Your tutor was absent for lesson 00000000-0000-4000-8000-0000000000b1.
+
+You have been issued a 100% refund and 1 bonus lesson credit has been added to your wallet.
+--- html
+<p>Hi Yuki,</p><p>Your tutor was absent for lesson <code>00000000-0000-4000-8000-0000000000b1</code>.</p><p>You have been issued a 100% refund and 1 bonus lesson credit has been added to your wallet.</p>

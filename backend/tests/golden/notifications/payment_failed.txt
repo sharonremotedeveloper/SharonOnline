@@ -1,0 +1,10 @@
+subject: Payment Failed: Lesson Reservation
+title: Payment unsuccessful
+--- body
+Payment could not be processed for lesson 00000000-0000-4000-8000-0000000000b1. The reservation hold has been released.
+--- text
+Hi Yuki,
+
+We could not process payment for lesson 00000000-0000-4000-8000-0000000000b1. The provisional reservation has expired. Please retry with a valid payment method.
+--- html
+<p>Hi Yuki,</p><p>We were unable to process the payment for lesson <code>00000000-0000-4000-8000-0000000000b1</code>.</p><p>The reservation hold has expired. Please book again with a valid payment method.</p>

@@ -9,3 +9,4 @@ class NotificationsConfig(AppConfig):
     def ready(self):
         # Kind modules register their templates on import. Later slices add their module here (N2a-c, N4).
         from apps.notifications import builtin_kinds  # noqa: F401
+        from apps.notifications import domain_kinds   # noqa: F401

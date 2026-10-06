@@ -1,0 +1,12 @@
+subject: Important Notice: Your Sharon ESL tutor account has been suspended
+title: Tutor account suspended
+--- body
+Your tutor account has been suspended (reason: strike_limit). Please contact support for assistance.
+--- text
+Hi Yuki,
+
+Your tutor account has been suspended due to: strike_limit.
+
+Please contact support if you believe this is in error.
+--- html
+<p>Hi Yuki,</p><p>Your tutor account has been suspended due to: <strong>strike_limit</strong>.</p><p>Please contact support if you need assistance or wish to appeal.</p>

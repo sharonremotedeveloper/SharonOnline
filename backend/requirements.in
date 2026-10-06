@@ -1,0 +1,35 @@
+# Sharon Online Platform - Backend Production Requirements (Input)
+# Compile with: uv pip compile requirements.in -o requirements.lock
+
+# Core Framework
+Django>=5.2.17,<5.3
+djangorestframework>=3.15.2
+django-cors-headers>=4.9.0
+djangorestframework-simplejwt>=5.3.1
+drf-spectacular>=0.30.0
+django-filter>=26.1
+
+# Database & Cache
+psycopg2-binary>=2.9.13
+dj-database-url>=3.1.2
+redis>=5.3.1
+
+# Asynchronous Processing
+celery>=5.6.3
+
+# WSGI & Web Server
+gunicorn>=22.0.0
+whitenoise>=6.12.0
+
+# Storage & Assets
+boto3>=1.43.105
+django-storages>=1.14.4
+Pillow>=10.4.0
+reportlab>=4.0.0
+
+# Security & Utilities
+python-dotenv>=1.2.4
+cryptography>=43.0.0
+requests>=2.32.3
+icalendar>=7.3.0
+pytz>=2024.1

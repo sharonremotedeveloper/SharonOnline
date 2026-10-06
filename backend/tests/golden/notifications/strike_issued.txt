@@ -1,0 +1,10 @@
+subject: Important: An SLA strike was recorded on your tutor account
+title: SLA strike recorded
+--- body
+A strike (no_show) was recorded. You have 1 active strike(s) within the 90-day window (threshold: 3).
+--- text
+Hi Yuki,
+
+An SLA strike (no_show) was recorded on your account. You now have 1 active strike(s). Accumulating 3 strikes within 90 days results in account suspension.
+--- html
+<p>Hi Yuki,</p><p>An SLA strike (<code>no_show</code>) was recorded on your account.</p><p>You now have <strong>1</strong> active strike(s). Accumulating 3 strikes results in account suspension.</p>

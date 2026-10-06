@@ -31,7 +31,7 @@ RUFF_COUNTS = {
     ('apps/bookings/services/rescheduling.py', 'B904'): 1,
     ('apps/bookings/services/rescheduling.py', 'C901'): 1,
     ('apps/bookings/services/reservation.py', 'C901'): 1,
-    ('apps/integrations/tasks.py', 'B904'): 4,
+    ('apps/integrations/tasks.py', 'B904'): 3,
     ('apps/integrations/views.py', 'C901'): 1,
     ('apps/materials/models.py', 'S110'): 2,
     ('apps/payments/gateways/payfast.py', 'S324'): 2,

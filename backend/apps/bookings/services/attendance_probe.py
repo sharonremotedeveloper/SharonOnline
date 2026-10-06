@@ -155,6 +155,11 @@ def _verdict(booking, probe, now, results) -> None:
     if not student_present:
         transition_booking(booking, S.STUDENT_NO_SHOW, actor=ACTOR, reason='student absent at T+10m, teacher present')
         results['student_no_shows'] += 1
+        from apps.notifications.service import booking_key, notify
+        notify(booking.teacher.user, 'student_no_show', key=booking_key('student-no-show', booking, 'teacher'),
+               payload={'booking_id': str(booking.id)}, booking=booking)
+        notify(booking.student, 'student_no_show', key=booking_key('student-no-show', booking, 'student'),
+               payload={'booking_id': str(booking.id)}, booking=booking)
         logger.info('[NO-SHOW] Student absent at T+10m: booking=%s', booking.id)
 
 
@@ -187,6 +192,7 @@ def _record_probe_presence(booking) -> None:
 
 def apply_teacher_no_show(booking) -> None:
     """TEACHER_NO_SHOW with its consequences (D-6): strike, gateway refund of the captured amount, 1 bonus credit."""
+    from apps.notifications.service import booking_key, notify
     from apps.payments.models import CreditBundle, RefundRequest
     from apps.payments.services.ledger_service import record_compensation_entry
     from apps.payments.services.refunds import request_refund
@@ -204,6 +210,10 @@ def apply_teacher_no_show(booking) -> None:
     record_compensation_entry(user=booking.student, booking=booking, amount_usd=funding.captured_amount,
                               currency=funding.currency, fx_rate_to_zar=funding.fx_rate_to_zar,
                               fx_source=funding.fx_source, reason='Teacher no-show bonus compensation')
+    notify(booking.student, 'teacher_no_show', key=booking_key('teacher-no-show', booking, 'student'),
+           payload={'booking_id': str(booking.id)}, booking=booking)
+    notify(booking.teacher.user, 'teacher_no_show', key=booking_key('teacher-no-show', booking, 'teacher'),
+           payload={'booking_id': str(booking.id)}, booking=booking)
     logger.error('[NO-SHOW] Teacher absent at T+10m: booking=%s; student refunded and given 1 bonus credit', booking.id)
 
 

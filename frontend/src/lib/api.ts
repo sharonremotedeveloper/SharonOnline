@@ -1,5 +1,7 @@
 import { API_BASE, MOCK, USE_MOCKS, downloadFile, liveRequest, request } from "./http";
 import { matrixToRows, type AvailabilityRow, type LessonConflict, type WeeklyMatrix } from "./availability";
+import type { ReceiptItem } from "@/types";
+
 import type { components } from "@/types/api.generated";
 
 type Receipt = components["schemas"]["Receipt"];
@@ -732,6 +734,29 @@ export const api = {
       ledger: defaultLedger,
       bundles: [{ pack_name: "5-Lesson Pack", remaining: 5, total: 5, purchased_at: "2026-09-20T00:00:00Z" }],
     };
+  },
+
+  async getStudentReceipts(): Promise<ReceiptItem[]> {
+    const live = await liveRequest(`${API_BASE}/payments/receipts/`, {});
+    if (live !== MOCK) {
+      if (Array.isArray(live)) return live as ReceiptItem[];
+      if (live && typeof live === "object" && "results" in live && Array.isArray((live as { results: unknown }).results)) {
+        return (live as { results: ReceiptItem[] }).results;
+      }
+      return [];
+    }
+    return [
+      {
+        id: "rcpt-demo-1",
+        receipt_number: "INV-202610-00124",
+        subtotal: "45.00",
+        tax_amount: "0.00",
+        total_amount: "45.00",
+        currency: "USD",
+        created_at: "2026-10-01T14:30:00Z",
+        description: "5-Lesson Credit Pack",
+      },
+    ];
   },
 
   async getMaterials(params?: { category?: string; cefr?: string; search?: string }) {

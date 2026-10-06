@@ -1,0 +1,10 @@
+subject: Notice: Student No-Show Recorded
+title: Student no-show recorded
+--- body
+You were marked absent for lesson 00000000-0000-4000-8000-0000000000b1. Lesson fee has been forfeited.
+--- text
+Hi Yuki,
+
+You did not attend your lesson 00000000-0000-4000-8000-0000000000b1. In accordance with cancellation policies, the lesson fee is forfeited.
+--- html
+<p>Hi Yuki,</p><p>You did not attend lesson <code>00000000-0000-4000-8000-0000000000b1</code>.</p><p>In accordance with platform policies, the lesson fee is forfeited.</p>

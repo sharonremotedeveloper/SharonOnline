@@ -46,10 +46,11 @@ export function Footer() {
         <div>
           <h4 className="text-white font-bold mb-3 text-xs tracking-wider uppercase font-serif">Legal & Governance</h4>
           <ul className="space-y-2 text-xs text-white/70">
-            <li><span className="cursor-pointer hover:text-gold-bright">Terms of Service</span></li>
-            <li><span className="cursor-pointer hover:text-gold-bright">Privacy & POPIA</span></li>
-            <li><span className="cursor-pointer hover:text-gold-bright">24-Hr Escrow Policy</span></li>
-            <li><span className="cursor-pointer hover:text-gold-bright">Teacher Agreement</span></li>
+            <li><Link href="/legal/terms" className="hover:text-gold-bright transition-colors">Terms of Service</Link></li>
+            <li><Link href="/legal/privacy" className="hover:text-gold-bright transition-colors">Privacy & POPIA</Link></li>
+            <li><Link href="/legal/refunds" className="hover:text-gold-bright transition-colors">Refund & Escrow Policy</Link></li>
+            <li><Link href="/legal/child-safety" className="hover:text-gold-bright transition-colors">Child Safeguarding</Link></li>
+            <li><Link href="/legal/cookies" className="hover:text-gold-bright transition-colors">Cookie Policy</Link></li>
           </ul>
         </div>
       </div>

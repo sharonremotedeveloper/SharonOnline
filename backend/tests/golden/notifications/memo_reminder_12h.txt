@@ -1,0 +1,12 @@
+subject: Action Required: Please submit lesson memo
+title: Lesson memo due within 12 hours
+--- body
+12 hours have passed since lesson 00000000-0000-4000-8000-0000000000b1. Please submit the lesson memo before the 24-hour deadline to avoid an SLA breach.
+--- text
+Hi Yuki,
+
+12 hours have elapsed since lesson 00000000-0000-4000-8000-0000000000b1.
+
+Please submit your student feedback memo within the next 12 hours to maintain SLA compliance.
+--- html
+<p>Hi Yuki,</p><p>12 hours have elapsed since lesson <code>00000000-0000-4000-8000-0000000000b1</code>.</p><p>Please submit your student feedback memo within the next 12 hours to maintain SLA compliance.</p>

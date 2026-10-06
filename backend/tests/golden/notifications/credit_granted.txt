@@ -1,0 +1,10 @@
+subject: 1 credit(s) added to your wallet
+title: Lesson credits added
+--- body
+1 credit(s) have been added to your Sharon ESL wallet (reason: bonus).
+--- text
+Hi Yuki,
+
+1 lesson credit(s) were added to your Sharon ESL wallet for bonus.
+--- html
+<p>Hi Yuki,</p><p><strong>1</strong> lesson credit(s) have been credited to your wallet (reason: bonus).</p>

@@ -1,0 +1,10 @@
+subject: Reminder: Your Sharon ESL credits expire in 7 days
+title: Credits expiring soon
+--- body
+1 lesson credit(s) in your wallet will expire in 7 days. Book your lessons soon!
+--- text
+Hi Yuki,
+
+You have 1 lesson credit(s) that will expire in 7 days. Please book your lessons before expiry.
+--- html
+<p>Hi Yuki,</p><p>You have <strong>1</strong> lesson credit(s) that will expire in 7 days.</p><p>Please book your lessons before expiry.</p>

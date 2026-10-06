@@ -23,6 +23,8 @@ from apps.common.locks import distributed_task_lock
 from apps.integrations.services.attendance import (
     TEACHER, credited_attendance_minutes, present_with_disconnect_grace,
 )
+from apps.notifications.alerts import alert_staff
+from apps.notifications.service import booking_key, notify
 
 logger = logging.getLogger(__name__)
 
@@ -120,15 +122,18 @@ def _flag_late_tutors(now, results):
     ).select_related('teacher__user', 'student')
 
     for booking in late_candidates:
-        teacher_email = booking.teacher.user.email
         has_joined = present_with_disconnect_grace(booking, TEACHER, now)
 
         if not has_joined:
             booking.tutor_late_alert_sent = True
             booking.save(update_fields=['tutor_late_alert_sent', 'updated_at'])
             results["late_alerts"] += 1
+            notify(booking.student, 'tutor_late_warning', key=booking_key('late', booking, 'student'),
+                   payload={'booking_id': str(booking.id)}, booking=booking)
+            alert_staff('tutor_late', key=f'admin:tutor-late:{booking.id}:{booking.reschedule_count}',
+                        payload={'booking_id': str(booking.id), 'tutor_id': str(booking.teacher.id)})
             logger.warning(
-                f"[RADAR ALERT] Tutor {teacher_email} is 5+ minutes late for booking {booking.id}!"
+                f"[RADAR ALERT] Tutor is 5+ minutes late for booking {booking.id}!"
             )
 
 
@@ -193,7 +198,9 @@ def dispatch_pre_lesson_reminders_task():
         booking.reminder_24h_sent = True
         booking.save(update_fields=['reminder_24h_sent', 'updated_at'])
         dispatched["reminders_24h"] += 1
-        logger.info(f"Dispatched T-24h reminder for booking {booking.id} to {booking.student.email}")
+        notify(booking.student, 'reminder_24h', key=booking_key('reminder:24h', booking, 'student'),
+               payload={'booking_id': str(booking.id)}, booking=booking)
+        logger.info(f"Dispatched T-24h reminder for booking {booking.id}")
 
     # 2. T-1h Reminders (Window: 50m to 70m ahead)
     t1_start = now + timedelta(minutes=50)
@@ -209,7 +216,11 @@ def dispatch_pre_lesson_reminders_task():
         booking.reminder_1h_sent = True
         booking.save(update_fields=['reminder_1h_sent', 'updated_at'])
         dispatched["reminders_1h"] += 1
-        logger.info(f"Dispatched T-1h AV reminder for booking {booking.id} to {booking.student.email}")
+        notify(booking.student, 'reminder_1h', key=booking_key('reminder:1h', booking, 'student'),
+               payload={'booking_id': str(booking.id)}, booking=booking)
+        notify(booking.teacher.user, 'reminder_1h', key=booking_key('reminder:1h', booking, 'teacher'),
+               payload={'booking_id': str(booking.id)}, booking=booking)
+        logger.info(f"Dispatched T-1h AV reminder for booking {booking.id}")
 
     # 3. T-10m Reminders (Window: 5m to 15m ahead)
     t10_start = now + timedelta(minutes=5)
@@ -225,7 +236,11 @@ def dispatch_pre_lesson_reminders_task():
         booking.reminder_10m_sent = True
         booking.save(update_fields=['reminder_10m_sent', 'updated_at'])
         dispatched["reminders_10m"] += 1
-        logger.info(f"Dispatched T-10m Zoom launch reminder for booking {booking.id} to {booking.student.email}")
+        notify(booking.student, 'reminder_10m', key=booking_key('reminder:10m', booking, 'student'),
+               payload={'booking_id': str(booking.id)}, booking=booking)
+        notify(booking.teacher.user, 'reminder_10m', key=booking_key('reminder:10m', booking, 'teacher'),
+               payload={'booking_id': str(booking.id)}, booking=booking)
+        logger.info(f"Dispatched T-10m Zoom launch reminder for booking {booking.id}")
 
     return dispatched
 
@@ -259,9 +274,10 @@ def enforce_memo_sla_task():
         booking.memo_reminder_sent = True
         booking.save(update_fields=['memo_reminder_sent', 'updated_at'])
         results["reminders_sent"] += 1
+        notify(booking.teacher.user, 'memo_reminder_12h', key=f'memo-warn:{booking.id}',
+               payload={'booking_id': str(booking.id)}, booking=booking)
         logger.warning(
-            f"[SLA WARNING] 12h elapsed since lesson {booking.id}. "
-            f"Reminder sent to tutor {booking.teacher.user.email}."
+            f"[SLA WARNING] 12h elapsed since lesson {booking.id}. Reminder dispatched."
         )
 
     # Window B: T+24h SLA Breach & Forfeiture

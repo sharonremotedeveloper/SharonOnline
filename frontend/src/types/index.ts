@@ -112,3 +112,15 @@ export interface Material {
 export * from './teacher';
 export * from './admin';
 export * from './student';
+
+export interface ReceiptItem {
+  id: string;
+  receipt_number: string;
+  subtotal: string;
+  tax_amount: string;
+  total_amount: string;
+  currency: string;
+  created_at: string;
+  pdf_storage_key?: string;
+  description?: string;
+}
