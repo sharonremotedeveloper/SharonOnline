@@ -3,11 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Menu, X, LogOut, Coins } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { CurrencySwitcher } from "@/components/public/CurrencySwitcher";
+import { AccountMenu } from "@/components/AccountMenu";
 import { useAuth } from "@/context/AuthContext";
-import { Avatar } from "@/components/ui/Avatar";
-import { NotificationBell } from "@/components/notifications";
 
 // Five labels, one line each. Everything else lives in the footer.
 const NAV_LINKS = [
@@ -25,15 +24,10 @@ const MOBILE_EXTRA_LINKS = [
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, isAuthenticated, logout, role, isLoading, sessionError } = useAuth();
+  const { user, isAuthenticated, isLoading, sessionError } = useAuth();
   const pathname = usePathname();
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-
-  const getDashboardLink = () => {
-    if (role === "admin") return "/admin/dashboard";
-    if (role === "teacher") return "/teacher/dashboard";
-    return "/student/dashboard";
-  };
+  const signedIn = isAuthenticated && !!user;
 
   // Close the drawer on navigation and on Escape (returning focus to the button that opened it).
   useEffect(() => {
@@ -82,47 +76,15 @@ export function Navbar() {
           ))}
         </nav>
 
-        {/* Desktop actions */}
-        <div className="hidden shrink-0 items-center gap-3 xl:flex">
-          <CurrencySwitcher variant="select" />
-
+        {/* Right side. Signed in: one avatar menu at every size. Signed out: currency and the two calls to action. */}
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {isLoading ? (
-            <div className="h-10 w-28 animate-pulse rounded-xl bg-white/10" role="status" aria-label="Checking session" />
-          ) : isAuthenticated && user ? (
-            <div className="flex items-center gap-3 border-l border-white/20 pl-3">
-              {role === "student" && user.credits !== undefined && (
-                <div
-                  className="flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-white/15 bg-white/10 px-3 py-1.5 text-sm font-bold text-gold-bright"
-                  title="Lesson credits"
-                >
-                  <Coins className="h-4 w-4" aria-hidden="true" />
-                  <span>{user.credits}</span>
-                  <span className="sr-only">lesson credits</span>
-                </div>
-              )}
-              <NotificationBell />
-              <Link
-                href={getDashboardLink()}
-                className="flex min-h-[44px] items-center gap-2 rounded-xl px-1 hover:opacity-90"
-                aria-label={`Go to your ${role} dashboard`}
-              >
-                <Avatar src={user.avatar_url} name={`${user.first_name} ${user.last_name}`} size="sm" />
-                <span className="hidden text-left leading-tight 2xl:block">
-                  <span className="block whitespace-nowrap text-sm font-bold text-white">{user.first_name || user.username}</span>
-                  <span className="block text-xs capitalize text-white/75">{role}</span>
-                </span>
-              </Link>
-              <button
-                type="button"
-                onClick={logout}
-                aria-label="Sign out"
-                className="flex h-11 w-11 items-center justify-center rounded-xl text-white/75 transition-colors hover:bg-white/10 hover:text-white"
-              >
-                <LogOut className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </div>
+            <div className="h-11 w-24 animate-pulse rounded-full bg-white/10" role="status" aria-label="Checking session" />
+          ) : signedIn ? (
+            <AccountMenu />
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="hidden items-center gap-2 xl:flex">
+              <CurrencySwitcher variant="select" />
               {sessionError && (
                 <span title={sessionError} className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs font-bold text-gold-bright">
                   Session unavailable
@@ -133,17 +95,13 @@ export function Navbar() {
               </Link>
               <Link
                 href="/tutors"
-                className="inline-flex min-h-[44px] items-center whitespace-nowrap rounded-xl bg-primary px-5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-primary-hover"
+                className="inline-flex min-h-[44px] items-center whitespace-nowrap rounded-full bg-sun px-5 text-sm font-bold text-ink shadow-sm transition-colors hover:bg-sun-soft"
               >
                 Book a Lesson
               </Link>
             </div>
           )}
-        </div>
 
-        {/* Mobile controls */}
-        <div className="flex items-center gap-1 xl:hidden">
-          {isAuthenticated && user && <NotificationBell />}
           <button
             ref={menuButtonRef}
             type="button"
@@ -151,41 +109,19 @@ export function Navbar() {
             aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-menu"
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-white/90 hover:bg-white/10 hover:text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-white/90 hover:bg-white/10 hover:text-white xl:hidden"
           >
             {mobileMenuOpen ? <X className="h-6 w-6" aria-hidden="true" /> : <Menu className="h-6 w-6" aria-hidden="true" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile drawer: scrolls on its own so a short phone never traps the last links off-screen */}
+      {/* Mobile and tablet drawer: site links only. Account things live in the avatar menu. */}
       {mobileMenuOpen && (
         <div
           id="mobile-menu"
           className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-white/10 bg-cocoa-hover px-4 pb-6 pt-3 xl:hidden"
         >
-          {isAuthenticated && user && (
-            <div className="mb-3 flex items-center justify-between rounded-2xl bg-white/10 p-3">
-              <div className="flex items-center gap-3">
-                <Avatar src={user.avatar_url} name={`${user.first_name} ${user.last_name}`} size="sm" />
-                <div>
-                  <div className="text-sm font-bold text-white">{user.first_name} {user.last_name}</div>
-                  <div className="text-xs capitalize text-white/75">{role} account</div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  logout();
-                }}
-                className="min-h-[44px] rounded-xl bg-white/10 px-3 text-sm font-bold text-white hover:bg-white/20"
-              >
-                Sign Out
-              </button>
-            </div>
-          )}
-
           <nav aria-label="Mobile" className="space-y-1">
             {[...NAV_LINKS, ...MOBILE_EXTRA_LINKS].map((l) => (
               <Link key={l.href} href={l.href} className={drawerLink} aria-current={pathname === l.href ? "page" : undefined}>
@@ -194,27 +130,22 @@ export function Navbar() {
             ))}
           </nav>
 
-          <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-white/10 p-3">
-            <span className="text-sm font-semibold text-white/85">Show prices in</span>
-            <CurrencySwitcher variant="select" />
-          </div>
-
-          <div className="mt-3 flex flex-col gap-2 border-t border-white/10 pt-3">
-            {isAuthenticated ? (
-              <Link href={getDashboardLink()} className="flex min-h-[48px] items-center justify-center rounded-xl bg-primary text-base font-bold text-white">
-                Go to my dashboard
-              </Link>
-            ) : (
-              <>
-                <Link href="/tutors" className="flex min-h-[48px] items-center justify-center rounded-xl bg-primary text-base font-bold text-white">
+          {!signedIn && !isLoading && (
+            <>
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-white/10 p-3">
+                <span className="text-sm font-semibold text-white/85">Show prices in</span>
+                <CurrencySwitcher variant="select" />
+              </div>
+              <div className="mt-3 flex flex-col gap-2 border-t border-white/10 pt-3">
+                <Link href="/tutors" className="flex min-h-[52px] items-center justify-center rounded-full bg-sun text-base font-bold text-ink">
                   Book a Lesson
                 </Link>
-                <Link href="/login" className="flex min-h-[48px] items-center justify-center rounded-xl bg-white/10 text-base font-semibold text-white">
+                <Link href="/login" className="flex min-h-[52px] items-center justify-center rounded-full bg-white/10 text-base font-semibold text-white">
                   Sign In
                 </Link>
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          )}
         </div>
       )}
     </header>
