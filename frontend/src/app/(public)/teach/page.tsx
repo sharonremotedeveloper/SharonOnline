@@ -45,6 +45,7 @@ export default function TeachPage() {
                 </div>
                 <input
                   type="range"
+                  aria-label="Lessons per day"
                   min="2"
                   max="14"
                   value={lessonsPerDay}
@@ -60,6 +61,7 @@ export default function TeachPage() {
                 </div>
                 <input
                   type="range"
+                  aria-label="Days per week"
                   min="1"
                   max="7"
                   value={daysPerWeek}

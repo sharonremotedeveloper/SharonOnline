@@ -18,7 +18,7 @@ export function Footer() {
           <p className="max-w-sm text-base leading-relaxed text-white/80">
             Private 25-minute English lessons by video. Certified South African tutors for learners in Asia and Europe.
           </p>
-          <p className="flex max-w-sm items-start gap-2 text-sm leading-relaxed text-white/75">
+          <p className="flex max-w-sm items-start gap-2 text-sm leading-relaxed text-white/85">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-gold-bright" aria-hidden="true" />
             <span>
               We protect your personal data and follow the privacy laws that apply to you, including GDPR (EU), APPI
@@ -61,7 +61,7 @@ export function Footer() {
         </nav>
       </div>
 
-      <div className="border-t border-white/10 px-4 py-6 text-center text-sm text-white/70">
+      <div className="border-t border-white/10 px-4 py-6 text-center text-sm text-white/85">
         © {new Date().getFullYear()} Sharon Online. All rights reserved.
       </div>
     </footer>

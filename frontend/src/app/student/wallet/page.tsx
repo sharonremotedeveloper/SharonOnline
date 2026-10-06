@@ -186,7 +186,7 @@ export default function StudentWalletPage() {
             <span>Book a Lesson</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
-          <span className="text-sm text-white/70">100% Satisfaction Guarantee</span>
+          <span className="text-sm text-white/85">100% Satisfaction Guarantee</span>
         </div>
       </div>
       )}

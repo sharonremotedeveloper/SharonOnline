@@ -257,7 +257,7 @@ export function LessonScheduler({ tutorId, tutorName, days = 14, returnTo }: Les
                         ? "border-cocoa bg-cocoa text-white shadow-sm"
                         : hasTimes
                           ? "border-divider bg-white text-ink hover:border-cocoa hover:bg-cream-surface"
-                          : "cursor-not-allowed border-transparent bg-cream-deep/40 text-ink-muted/60"
+                          : "cursor-not-allowed border-transparent bg-cream-deep/40 text-ink-muted"
                     }`}
                   >
                     <span className={`text-sm font-semibold ${isSelected ? "text-white/90" : "text-ink-muted"}`}>{label.weekday}</span>

@@ -10,7 +10,7 @@ import type { Config } from "tailwindcss";
  *   ink-muted #6B5B53 on cream 6.15 | cream-deep 5.33   (old faint #8A746A was 4.17 on cream: failed)
  *   success #0B5C85 on white 7.28 | cream 6.92 | success-surface #E8F4FB 6.51 | white on success 7.28
  *   warning #7A4B00 on white 7.41 | warning-surface #FFF6C2 6.78 | on sun 5.56 | white on warning 7.41
- *   info #1F5675 on info-surface #DDF1FF 6.84 | white 7.94
+ *   info #4A3A32 (neutral cocoa-ink, deliberately not blue) on info-surface #DDF1FF 9.32 | white 10.81 | cream 10.28 | on sky #9ED8FF 7.06
  *   error #B83232 on white 5.93 | error-surface 5.33 | cream 5.64 | white on error 5.93 | white on error-hover #8F2A1F 8.34
  * Non-text (need >= 3:1):
  *   border-strong #85705F on white 4.69 | cream 4.46 | cream-deep 3.86
@@ -113,7 +113,7 @@ const config: Config = {
         // Opaque base for floating panels (drawers, modals, popovers). Was used as `bg-surface` but never defined.
         surface: { DEFAULT: "#FFFFFF" },
         // Status colours. Deliberately not green/teal/amber: success is a deep cerulean, warning a dark gold-brown on a
-        // sun-yellow tint, info a muted ocean on sky. Always pair with an icon or a word, never colour alone.
+        // sun-yellow tint, info a neutral cocoa-ink on sky-tint (so it never reads as success). Always pair with an icon or a word, never colour alone.
         success: {
           DEFAULT: "#0B5C85",
           hover: "#08455F",
@@ -127,8 +127,8 @@ const config: Config = {
           border: "#E0C200",
         },
         info: {
-          DEFAULT: "#1F5675",
-          hover: "#163F57",
+          DEFAULT: "#4A3A32",
+          hover: "#2D2521",
           surface: "#DDF1FF",
           border: "#9ED8FF",
         },

@@ -185,7 +185,7 @@ export default function AdminLiveSessionsPage() {
                 {/* Student */}
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-cream-surface border border-divider">
                   <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-gold-bright" />
+                    <User className="w-4 h-4 text-star" />
                     <div>
                       <span className="font-bold text-ink block">{sess.student_name}</span>
                       <span className="text-xs text-ink-muted">Enrolled Student</span>

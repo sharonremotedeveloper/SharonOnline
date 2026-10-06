@@ -179,7 +179,7 @@ export default function AdminDisputesPage() {
                     className={`px-3 py-1 rounded-full text-xs font-bold ${
                       isResolved
                         ? "bg-success-surface text-success-hover"
-                        : "bg-error-surface text-error-hover animate-pulse"
+                        : "bg-error-surface text-error-hover"
                     }`}
                   >
                     {isResolved ? `Resolved (${c.resolution})` : "Arbitration Open"}
@@ -192,7 +192,7 @@ export default function AdminDisputesPage() {
                 {/* 1. Student Complaint */}
                 <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-2">
                   <div className="flex items-center gap-2 text-ink font-bold">
-                    <User className="w-4 h-4 text-gold-bright" />
+                    <User className="w-4 h-4 text-star" />
                     <span>Student Complaint Statement</span>
                   </div>
                   <p className="text-ink-muted leading-relaxed font-sans italic bg-white p-3 rounded-xl border border-divider">
@@ -219,15 +219,15 @@ export default function AdminDisputesPage() {
                   </div>
                   <div className="space-y-1.5 text-xs font-mono">
                     <div className="flex justify-between">
-                      <span className="text-cream/60">Student Dwell:</span>
+                      <span className="text-cream/75">Student Dwell:</span>
                       <strong className="text-white">{c.zoom_telemetry.student_dwell_minutes} mins</strong>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-cream/60">Tutor Dwell:</span>
+                      <span className="text-cream/75">Tutor Dwell:</span>
                       <strong className="text-white">{c.zoom_telemetry.teacher_dwell_minutes} mins</strong>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-cream/60">Audio Connected:</span>
+                      <span className="text-cream/75">Audio Connected:</span>
                       <strong className={c.zoom_telemetry.call_connected ? "text-sky" : "text-coral-soft"}>
                         {c.zoom_telemetry.call_connected ? "Yes" : "Failed / Dropped"}
                       </strong>

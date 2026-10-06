@@ -235,7 +235,7 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
               />
               {hasCamera !== true && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-cream/70 bg-ink/80 space-y-2">
-                  <Camera className="w-8 h-8 text-cream/40" />
+                  <Camera className="w-8 h-8 text-cream/75" />
                   <p className="text-xs font-medium">
                     {errorMsg ? "Camera access unavailable or blocked" : "Webcam preview active or awaiting permission"}
                   </p>

@@ -134,7 +134,7 @@ export default function StudentDashboardPage() {
               <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
               Next Scheduled Lesson
             </span>
-            <span className="text-sm text-white/70 font-medium">
+            <span className="text-sm text-white/85 font-medium">
               Reference: <strong className="text-white font-mono">{upcomingLesson.booking_reference}</strong>
             </span>
           </div>

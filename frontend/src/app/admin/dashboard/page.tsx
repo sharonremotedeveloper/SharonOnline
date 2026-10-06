@@ -59,7 +59,7 @@ export default function AdminDashboardPage() {
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <Link
             href="/admin/sessions/live"
-            className="px-4 py-2 bg-error hover:bg-error text-white text-xs font-black rounded-xl shadow-xs flex items-center gap-2 transition-colors animate-pulse"
+            className="px-4 py-2 bg-error hover:bg-error-hover text-white text-xs font-black rounded-xl shadow-xs flex items-center gap-2 transition-colors"
           >
             <Radio className="w-4 h-4" />
             <span>{telemetry.active_zoom_sessions_count} Live Sessions Active</span>

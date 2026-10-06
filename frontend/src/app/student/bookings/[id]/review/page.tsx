@@ -174,10 +174,10 @@ export default function BookingReviewPage() {
           <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-8">
             {/* 5-Star Rubric */}
             <div className="text-center space-y-3">
-              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
+              <p id="rating-label" className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
                 Overall Lesson Rating
-              </label>
-              <div className="flex items-center justify-center gap-2">
+              </p>
+              <div role="group" aria-labelledby="rating-label" className="flex items-center justify-center gap-2">
                 {[1, 2, 3, 4, 5].map((star) => {
                   const filled = (hoverRating !== null ? hoverRating : rating) >= star;
                   return (
@@ -187,6 +187,8 @@ export default function BookingReviewPage() {
                       onMouseEnter={() => setHoverRating(star)}
                       onMouseLeave={() => setHoverRating(null)}
                       onClick={() => setRating(star)}
+                      aria-label={`${star} ${star === 1 ? "star" : "stars"}`}
+                      aria-pressed={rating === star}
                       className="p-1 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary rounded-md"
                     >
                       <Star
@@ -211,10 +213,10 @@ export default function BookingReviewPage() {
 
             {/* Rubric Category Tags */}
             <div className="space-y-3">
-              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
+              <p id="tags-label" className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
                 What did {lesson?.teacher.name || "the tutor"} do especially well?
-              </label>
-              <div className="flex flex-wrap gap-2">
+              </p>
+              <div role="group" aria-labelledby="tags-label" className="flex flex-wrap gap-2">
                 {RUBRIC_TAGS.map((tag) => {
                   const isSelected = selectedTags.includes(tag);
                   return (
@@ -222,6 +224,7 @@ export default function BookingReviewPage() {
                       key={tag}
                       type="button"
                       onClick={() => toggleTag(tag)}
+                      aria-pressed={isSelected}
                       className={`text-sm px-3.5 py-2 rounded-full border transition-all ${
                         isSelected
                           ? "bg-cocoa-600 border-cocoa-600 text-white font-semibold shadow-xs"

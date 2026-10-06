@@ -34,7 +34,7 @@ function RegisterForm() {
 
   const fieldError = (name: string) =>
     fieldErrors[name]?.length ? (
-      <p className="text-sm text-primary font-medium">{fieldErrors[name].join(" ")}</p>
+      <p id={`err-${name}`} role="alert" className="text-sm text-error font-medium">{fieldErrors[name].join(" ")}</p>
     ) : null;
 
   useEffect(() => {
@@ -144,7 +144,7 @@ function RegisterForm() {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <label htmlFor="f-first-name" className="text-sm font-bold text-ink">First Name</label>
-            <input id="f-first-name"
+            <input id="f-first-name" aria-invalid={fieldErrors.first_name?.length ? true : undefined} aria-describedby={fieldErrors.first_name?.length ? "err-first_name" : undefined}
               type="text"
               required
               value={formData.first_name}
@@ -155,7 +155,7 @@ function RegisterForm() {
           </div>
           <div className="space-y-1">
             <label htmlFor="f-last-name" className="text-sm font-bold text-ink">Last Name</label>
-            <input id="f-last-name"
+            <input id="f-last-name" aria-invalid={fieldErrors.last_name?.length ? true : undefined} aria-describedby={fieldErrors.last_name?.length ? "err-last_name" : undefined}
               type="text"
               required
               value={formData.last_name}
@@ -169,7 +169,7 @@ function RegisterForm() {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <label htmlFor="f-username" className="text-sm font-bold text-ink">Username</label>
-            <input id="f-username"
+            <input id="f-username" aria-invalid={fieldErrors.username?.length ? true : undefined} aria-describedby={fieldErrors.username?.length ? "err-username" : undefined}
               type="text"
               required
               value={formData.username}
@@ -181,7 +181,7 @@ function RegisterForm() {
           </div>
           <div className="space-y-1">
             <label htmlFor="f-email-address" className="text-sm font-bold text-ink">Email Address</label>
-            <input id="f-email-address"
+            <input id="f-email-address" aria-invalid={fieldErrors.email?.length ? true : undefined} aria-describedby={fieldErrors.email?.length ? "err-email" : undefined}
               type="email"
               required
               value={formData.email}
@@ -205,7 +205,7 @@ function RegisterForm() {
           </div>
           <div className="space-y-1">
             <label htmlFor="f-country-code" className="text-sm font-bold text-ink">Country Code</label>
-            <input id="f-country-code"
+            <input id="f-country-code" aria-invalid={fieldErrors.country?.length ? true : undefined} aria-describedby={fieldErrors.country?.length ? "err-country" : undefined}
               type="text"
               required
               value={formData.country}
@@ -220,7 +220,7 @@ function RegisterForm() {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <label htmlFor="f-password" className="text-sm font-bold text-ink">Password</label>
-            <input id="f-password"
+            <input id="f-password" aria-invalid={fieldErrors.password?.length ? true : undefined} aria-describedby={fieldErrors.password?.length ? "err-password" : undefined}
               type="password"
               required
               value={formData.password}
@@ -232,7 +232,7 @@ function RegisterForm() {
           </div>
           <div className="space-y-1">
             <label htmlFor="f-confirm-password" className="text-sm font-bold text-ink">Confirm Password</label>
-            <input id="f-confirm-password"
+            <input id="f-confirm-password" aria-invalid={fieldErrors.password_confirm?.length ? true : undefined} aria-describedby={fieldErrors.password_confirm?.length ? "err-password_confirm" : undefined}
               type="password"
               required
               value={formData.password_confirm}

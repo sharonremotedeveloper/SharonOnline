@@ -77,7 +77,7 @@ export default function TeacherDashboardPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sun-soft text-ink text-sm font-bold border border-sun">
-              <Award className="w-3.5 h-3.5 text-gold-bright" />
+              <Award className="w-3.5 h-3.5 text-warning" />
               <span>Tutor workspace</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-black text-ink font-serif tracking-tight">
@@ -218,7 +218,7 @@ export default function TeacherDashboardPage() {
           <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
             <div className="text-xs font-bold text-ink-muted">Tutor Rating</div>
             <div className="text-2xl font-black text-ink flex items-center gap-1.5 font-serif">
-              <Star className="w-5 h-5 text-gold-bright fill-gold-bright" />
+              <Star className="w-5 h-5 text-star fill-star" />
               <span>&mdash;</span>
             </div>
             <p className="text-xs text-ink-muted">Rating summary isn&apos;t available yet.</p>

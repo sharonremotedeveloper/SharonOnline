@@ -70,7 +70,7 @@ export function VideoReelPlayer({ videoUrl, posterUrl, tutorName, headline }: Vi
             <Pause className="w-4 h-4 fill-white" /> Pause
           </button>
 
-          <div className="text-sm text-white/70">60-Sec Audition Reel</div>
+          <div className="text-sm text-white/85">60-Sec Audition Reel</div>
 
           <div className="flex items-center gap-2">
             <button onClick={handleMuteToggle} className="p-1 hover:text-gold-bright">

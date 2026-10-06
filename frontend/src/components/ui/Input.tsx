@@ -35,7 +35,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             aria-invalid={error ? true : undefined}
             aria-describedby={messageId}
-            className={`min-h-[48px] w-full rounded-xl border bg-white px-4 py-3 text-base text-ink placeholder:text-ink-faint transition-colors focus:bg-white focus:outline-none focus:ring-2 ${
+            className={`min-h-[48px] w-full rounded-xl border bg-white px-4 py-3 text-base text-ink placeholder:text-ink-muted transition-colors focus:bg-white focus:outline-none focus:ring-2 ${
               icon ? "pl-10" : ""
             } ${
               error

@@ -89,7 +89,8 @@ export default function MaterialsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search lessons by topic, title, or keywords (e.g. remote work, interview, negotiation)..."
-                className="w-full pl-11 pr-10 py-3 bg-cream-surface rounded-2xl border border-divider text-sm sm:text-sm text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa transition-all"
+                aria-label="Search lessons by topic, title, or keywords (e.g. remote work, interview, negotiation)..."
+                className="w-full pl-11 pr-10 py-3 bg-cream-surface rounded-2xl border border-divider text-sm sm:text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa transition-all"
               />
               {search && (
                 <button
@@ -155,7 +156,7 @@ export default function MaterialsPage() {
           />
         ) : materials.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border border-divider p-8 space-y-4">
-            <BookOpen className="w-12 h-12 text-ink-muted/50 mx-auto" />
+            <BookOpen className="w-12 h-12 text-ink-muted mx-auto" />
             <h3 className="text-lg font-bold text-ink">No lesson materials found</h3>
             <p className="text-sm text-ink-muted max-w-sm mx-auto">
               We couldn&apos;t find any curriculum matching your criteria. Try adjusting your search keywords or CEFR level.
@@ -239,7 +240,7 @@ export default function MaterialsPage() {
                   <div className="pt-1 text-center">
                     <Link
                       href="/tutors"
-                      className="text-sm font-bold text-gold-bright hover:text-warning-hover transition-colors inline-flex items-center gap-1"
+                      className="text-sm font-bold text-primary hover:text-primary-hover transition-colors inline-flex items-center gap-1"
                     >
                       Practice with a Verified Native Tutor <ArrowRight className="w-3 h-3" />
                     </Link>

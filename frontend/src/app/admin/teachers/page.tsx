@@ -81,6 +81,7 @@ export default function AdminTeachersPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Filter tutors by name, accent, or specialty..."
+          aria-label="Filter tutors by name, accent, or specialty..."
           className="flex-1 bg-transparent text-xs sm:text-sm text-ink focus:outline-none"
         />
       </div>
@@ -125,7 +126,7 @@ export default function AdminTeachersPage() {
 
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-1 font-bold text-ink">
-                      <Star className="w-3.5 h-3.5 text-gold-bright fill-gold-bright" />
+                      <Star className="w-3.5 h-3.5 text-star fill-star" />
                       <span>{tutor.rating ?? tutor.rating_avg ?? "—"}</span>
                       <span className="text-xs text-ink-muted">({tutor.review_count ?? tutor.rating_count ?? 0})</span>
                     </div>

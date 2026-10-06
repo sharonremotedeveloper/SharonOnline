@@ -224,7 +224,7 @@ export default function StudentProfilePage() {
           </div>
 
           <h2 className="text-base font-bold text-ink-900 border-b border-cream-100 pb-3 pt-4 flex items-center gap-2">
-            <Target className="w-4 h-4 text-accent-600" />
+            <Target className="w-4 h-4 text-star" />
             <span>Curriculum & Learning Goals</span>
           </h2>
 

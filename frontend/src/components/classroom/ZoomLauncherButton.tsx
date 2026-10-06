@@ -104,7 +104,7 @@ export function ZoomLauncherButton({
           disabled={disabled || starting}
           className={`w-full py-4 px-6 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-lg ${
             disabled
-              ? "bg-cream-surface text-ink-muted/50 cursor-not-allowed border border-divider"
+              ? "bg-cream-surface text-ink-muted cursor-not-allowed border border-divider"
               : isHost
               ? "bg-accent hover:bg-warning text-ink shadow-accent/20 hover:scale-[1.01]"
               : "bg-cocoa hover:bg-cocoa-hover text-white shadow-cocoa/20 hover:scale-[1.01]"

@@ -87,6 +87,7 @@ export default function StudentHistoryPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by tutor name, lesson topic, or booking ID..."
+            aria-label="Search by tutor name, lesson topic, or booking ID..."
             className="w-full pl-10 pr-4 py-2 bg-cream-50/50 border border-cream-200 rounded-xl text-sm sm:text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-cocoa-500 focus:border-transparent"
           />
         </div>

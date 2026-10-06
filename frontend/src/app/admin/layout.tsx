@@ -111,14 +111,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
             >
               <span>Tutor Cockpit</span>
-              <ExternalLink className="w-3 h-3 text-cream/40" />
+              <ExternalLink className="w-3 h-3 text-cream/75" />
             </Link>
             <Link
               href="/"
               className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
             >
               <span>Public Storefront</span>
-              <ExternalLink className="w-3 h-3 text-cream/40" />
+              <ExternalLink className="w-3 h-3 text-cream/75" />
             </Link>
           </div>
         </div>

@@ -128,8 +128,8 @@ export default function SupportPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-ink mb-1">I am a...</label>
-                <div className="flex gap-4 text-sm font-semibold text-ink">
+                <p id="user-type-label" className="block text-sm font-bold text-ink mb-1">I am a...</p>
+                <div role="radiogroup" aria-labelledby="user-type-label" className="flex gap-4 text-sm font-semibold text-ink">
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input
                       type="radio"
