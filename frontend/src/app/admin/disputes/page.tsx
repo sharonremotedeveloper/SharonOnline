@@ -212,7 +212,7 @@ export default function AdminDisputesPage() {
                 </div>
 
                 {/* 3. Authoritative Zoom Webhook Telemetry */}
-                <div className="p-4 rounded-2xl bg-[#201A17] text-cream border border-white/10 space-y-2">
+                <div className="p-4 rounded-2xl bg-[#4A2C1A] text-cream border border-white/10 space-y-2">
                   <div className="flex items-center gap-2 font-bold text-gold-bright">
                     <Radio className="w-4 h-4" />
                     <span>Zoom Server Dwell Logs</span>

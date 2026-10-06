@@ -52,13 +52,13 @@ const config: Config = {
           surface: "#FAF0DC",
           bright: "#D4A84B",
         },
-        // Brand dark: warm near-black (the old cold green, then a plum, were both dropped). Same token as before so
+        // Brand dark: warm chocolate brown (rolled from near-black #201A17 / #120F0D; earlier a cold green, then a plum). Same token as before so
         // every "cocoa" class follows. Surface and border are soft yellow tints.
         cocoa: {
-          DEFAULT: "#201A17",
-          hover: "#120F0D",
-          deep: "#120F0D",
-          mid: "#3A302B",
+          DEFAULT: "#4A2C1A",
+          hover: "#361F12",
+          deep: "#361F12",
+          mid: "#5E3A25",
           surface: "#FFF6CC",
           border: "#EFE0A0",
           // Numeric scale used by older pages: light warm neutrals, then browns, then near-black
@@ -67,12 +67,12 @@ const config: Config = {
           200: "#E9CDBD",
           300: "#B8A89F",
           400: "#8A746A",
-          500: "#5A4A42",
-          600: "#201A17",
-          700: "#120F0D",
-          800: "#120F0D",
-          900: "#0B0908",
-          950: "#050404",
+          500: "#6B4530",
+          600: "#4A2C1A",
+          700: "#361F12",
+          800: "#361F12",
+          900: "#2A170D",
+          950: "#1C0F08",
         },
         // The accent used for gold-style calls to action in older pages: now the brand yellow
         accent: {
