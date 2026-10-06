@@ -203,3 +203,35 @@ describe("mock mode is explicit and off by default", () => {
     }
   });
 });
+
+describe("downloadFile", () => {
+  it("turns a refused download into an ApiError carrying the server's message (no broken file)", async () => {
+    const http = load();
+    globalThis.fetch = (async () => json(403, { code: "reauth_required", message: "Your password is incorrect." })) as any;
+    await assert.rejects(
+      http.downloadFile("/payments/receipts/1/pdf/", "r.pdf"),
+      (err: any) => err instanceof http.ApiError && err.status === 403 && /password is incorrect/.test(err.message)
+    );
+  });
+
+  it("posts a JSON body through the proxy and saves the bytes under the given file name", async () => {
+    const http = load();
+    let seen: { url: string; init: any } | null = null;
+    globalThis.fetch = (async (url: any, init: any) => {
+      seen = { url: String(url), init };
+      return new Response("a,b\r\n", { status: 200, headers: { "Content-Type": "text/csv" } });
+    }) as any;
+    const clicks: Array<{ href: string; download: string }> = [];
+    g.document.createElement = () => {
+      const anchor = { href: "", download: "", click() { clicks.push({ href: anchor.href, download: anchor.download }); } };
+      return anchor;
+    };
+    g.document.body = { appendChild() {}, removeChild() {} };
+    (URL as any).createObjectURL = () => "blob:test";
+    (URL as any).revokeObjectURL = () => {};
+    await http.downloadFile("/admin/payouts/batches/1/export/", "PB-1.csv", { method: "POST", body: JSON.stringify({ password: "x" }) });
+    assert.equal(seen!.url, "/api/proxy/admin/payouts/batches/1/export");
+    assert.equal((seen!.init.headers as Headers).get("Content-Type"), "application/json");
+    assert.deepEqual(clicks, [{ href: "blob:test", download: "PB-1.csv" }]);
+  });
+});

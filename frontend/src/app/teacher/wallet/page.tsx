@@ -17,6 +17,7 @@ import { api } from "@/lib/api";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
 import { EarningsBreakdownCard } from "@/components/teacher/EarningsBreakdownCard";
+import { StatementButton } from "@/components/teacher/StatementButton";
 
 export default function TeacherWalletPage() {
   const { data: wallet, error, loading, reload } = useApiData(() => api.getTeacherWallet(), []);
@@ -72,14 +73,17 @@ export default function TeacherWalletPage() {
             </div>
           </div>
 
-          <Link
-            href="/teacher/wallet/payout-settings"
-            className="px-5 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-2 transition-all self-start sm:self-auto"
-          >
-            <Building2 className="w-4 h-4 text-teal" />
-            <span>Manage EFT Payout Bank</span>
-            <ArrowRight className="w-3.5 h-3.5 text-ink-muted" />
-          </Link>
+          <div className="flex flex-wrap items-start gap-2.5 self-start sm:self-auto">
+            <StatementButton />
+            <Link
+              href="/teacher/wallet/payout-settings"
+              className="px-5 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-2 transition-all"
+            >
+              <Building2 className="w-4 h-4 text-teal" />
+              <span>Manage EFT Payout Bank</span>
+              <ArrowRight className="w-3.5 h-3.5 text-ink-muted" />
+            </Link>
+          </div>
         </div>
 
         {/* Earnings Metric Cards & Fair Revenue Callout */}

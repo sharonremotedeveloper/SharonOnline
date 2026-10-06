@@ -203,6 +203,8 @@ returns `Rendered(subject, html, text, title, body)`. Rules:
    `golden_text(kind)` and commit it after reviewing). `tests/test_notifications_templates.py` renders every kind with hostile
    names and private text present in the database and asserts escaping and no leak.
 
+Payout kinds (2026-10-06): `payout_paid` and `payout_returned` (category `payment`, mandatory; payload `line_id` only, the renderer reads the tutor's OWN line) and `bank_details_changed` (category `bank_change`, mandatory, no bank data). The e-mailed bank-change *code* is deliberately not a notification (it carries a live secret): `payments/services/bank_change_code.py` uses `send_email` directly, like password reset.
+
 Kinds today: `admin_alert` (category `staff_alert`, mandatory; codes in `builtin_kinds.ALERT_TITLES`) and
 `sample_lesson_notice` (category `booking`; exercises the machinery, wired to no event; N2 may delete it).
 

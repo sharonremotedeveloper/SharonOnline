@@ -1,6 +1,8 @@
-import { API_BASE, MOCK, USE_MOCKS, liveRequest, request } from "./http";
+import { API_BASE, MOCK, USE_MOCKS, downloadFile, liveRequest, request } from "./http";
 import { matrixToRows, type AvailabilityRow, type LessonConflict, type WeeklyMatrix } from "./availability";
 import type { components } from "@/types/api.generated";
+
+type Receipt = components["schemas"]["Receipt"];
 import { BookingDetail, BookingSlot, CreditLedgerEntry } from "@/types/booking";
 import {
   EskomStatus,
@@ -17,6 +19,8 @@ import {
   DisputeCase,
   FinanceEscrowItem,
   PayoutBatchItem,
+  PayoutRun,
+  PayoutRunLine,
 } from "@/types/admin";
 import {
   StudentLessonItem,
@@ -1037,6 +1041,48 @@ export const api = {
     }
 
     return [];
+  },
+
+  // ---- Payout runs (slices P1a-c): create -> approve (a different admin) -> export bank CSV -> mark processed ----
+  async listPayoutRuns(): Promise<PayoutRun[]> {
+    return (await request(`${API_BASE}/admin/payouts/batches/`)) as PayoutRun[];
+  },
+  async createPayoutRun(): Promise<PayoutRun> {
+    return (await request(`${API_BASE}/admin/payouts/batches/`, { method: "POST", body: "{}" })) as PayoutRun;
+  },
+  async approvePayoutRun(id: string): Promise<PayoutRun> {
+    return (await request(`${API_BASE}/admin/payouts/batches/${id}/approve/`, { method: "POST" })) as PayoutRun;
+  },
+  async processPayoutRun(id: string): Promise<PayoutRun> {
+    return (await request(`${API_BASE}/admin/payouts/batches/${id}/mark-processed/`, { method: "POST" })) as PayoutRun;
+  },
+  async cancelPayoutRun(id: string, reason: string): Promise<PayoutRun> {
+    return (await request(`${API_BASE}/admin/payouts/batches/${id}/cancel/`, { method: "POST", body: JSON.stringify({ reason }) })) as PayoutRun;
+  },
+  async returnPayoutLine(lineId: string, reason: string): Promise<PayoutRunLine> {
+    return (await request(`${API_BASE}/admin/payouts/batch-lines/${lineId}/return/`, { method: "POST", body: JSON.stringify({ reason }) })) as PayoutRunLine;
+  },
+  /** The bank file. Needs the admin's password again; the server audits every download. */
+  async downloadPayoutRunCsv(id: string, reference: string, password: string): Promise<void> {
+    await downloadFile(`${API_BASE}/admin/payouts/batches/${id}/export/`, `${reference}.csv`, {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    });
+  },
+
+  // ---- Receipts and statements ----
+  async getReceipts(): Promise<Receipt[]> {
+    return (await request(`${API_BASE}/payments/receipts/`)) as Receipt[];
+  },
+  async downloadReceipt(receipt: Pick<Receipt, "id" | "receipt_number">): Promise<void> {
+    await downloadFile(`${API_BASE}/payments/receipts/${receipt.id}/pdf/`, `${receipt.receipt_number}.pdf`);
+  },
+  async downloadTutorStatement(): Promise<void> {
+    await downloadFile(`${API_BASE}/payments/wallet/tutor/statement/`, "sharon-esl-statement.csv");
+  },
+  /** E-mail the signed-in tutor the one-time code that saving bank details requires. */
+  async requestPayoutCode(): Promise<void> {
+    await request(`${API_BASE}/payments/payout-settings/code/`, { method: "POST" });
   },
 
   async getPayoutBatch(): Promise<PayoutBatchItem[]> {

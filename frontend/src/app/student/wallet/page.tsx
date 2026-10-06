@@ -22,6 +22,7 @@ import { useApiData } from "@/hooks/useApiData";
 import { PayPalButtonsWrapper } from "@/components/booking/PayPalButtonsWrapper";
 import type { OutcomeView } from "@/lib/paypalOutcome";
 import { rememberPendingPayFast } from "@/lib/pendingPayment";
+import { ReceiptsList } from "@/components/student/ReceiptsList";
 
 // Generated from the backend OpenAPI schema (`npm run gen:api`), so a contract change breaks the build instead of the page.
 type WalletResponse = components["schemas"]["Wallet"];
@@ -303,6 +304,8 @@ export default function StudentWalletPage() {
           </p>
         </div>
       )}
+
+      <ReceiptsList />
     </div>
   );
 }

@@ -610,3 +610,13 @@ def configure_test_settings(settings):
 - **Symptom:** `manage.py spectacular` raised `TypeError: attribute name must be string, not 'NoneType'` and `/api/schema/` returned 500.
 - **Root cause:** a base view declared `action = None`; drf-spectacular reads `view.action` (a ViewSet concept) and uses it in `getattr`.
 - **Fix:** the attribute was removed.
+
+### ERR-311: reschedule tests still patched `cleanup_gcal_event` after the event started being kept (slice G2 follow-up)
+- **Symptom:** `test_reschedule.py` and `test_z1_host_link.py::test_a_reschedule_clears_the_host_id` failed with `module ... rescheduling has no attribute 'cleanup_gcal_event'`; `test_guard_integrations_silent_failures` failed with "allowlist says 2 but only 1 remain".
+- **Root cause:** a rescheduled lesson now updates its Google event in place, so `rescheduling.py` no longer imports or calls the delete task; the old tests patched it. The `return ""` count in `google_calendar.py` dropped from 2 to 1 and the shrink-only allowlist insists it is lowered.
+- **Fix:** tests no longer patch the removed name and assert the event id is kept; the allowlist is 1.
+
+### ERR-490: statement tests assumed an order the clock cannot give (slice P1b/P2)
+- **Symptom:** `test_tutor_statement.py::test_a_date_range_carries_the_balance_in_and_out` failed once in a full run.
+- **Root cause:** two ledger rows created in the same ~15 ms tick (ERR-193) have no defined order, so a per-row running balance asserted in creation order is flaky; the service orders by `(created_at, id)`, which is deterministic but arbitrary within a tick.
+- **Fix:** the tests assert order-independent facts (set of rows, final balance, opening balance).

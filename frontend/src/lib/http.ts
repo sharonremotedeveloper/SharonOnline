@@ -163,6 +163,38 @@ export async function request<T = any>(url: string, init: RequestInit & { skipAu
 }
 
 /**
+ * Fetch a file (PDF, CSV) through the same proxy and hand it to the browser as a download. Rejects with `ApiError` exactly
+ * like `request`, so a wrong password or a refused action shows the server's message instead of a broken file.
+ */
+export async function downloadFile(url: string, filename: string, init: RequestInit = {}): Promise<void> {
+  const headers = new Headers(init.headers);
+  if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  let res: Response;
+  try {
+    res = await fetch(resolve(url), { ...init, headers, credentials: "same-origin" });
+  } catch (e) {
+    throw new ApiError(0, "Network error", e);
+  }
+  if (!res.ok) {
+    const body = await readBody(res);
+    if (res.status === 401) {
+      endSession();
+      throw new ApiError(401, "Your session has expired. Please sign in again.", body);
+    }
+    const { message, fieldErrors } = parseDrfError(res.status, body);
+    throw new ApiError(res.status, message, body, fieldErrors);
+  }
+  const href = URL.createObjectURL(await res.blob());
+  const link = document.createElement("a");
+  link.href = href;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(href);
+}
+
+/**
  * Live call used by the data layer. Failures THROW an `ApiError` - except in explicit mock mode, where it resolves
  * with the `MOCK` sentinel so the caller can return its dev fixture.
  */

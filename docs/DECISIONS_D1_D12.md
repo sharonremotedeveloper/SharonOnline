@@ -20,7 +20,8 @@
 
 | Ref | Question | Recommendation |
 | :--- | :--- | :--- |
-| D-3 | Payout cadence + rail + maker-checker | Bi-weekly (matches code); bank EFT/ACB CSV export for MVP (no API cost); maker-checker **yes**, since one person should not both build and approve a payout batch. |
+| D-3 | Payout cadence + rail + maker-checker | Bi-weekly (matches code); bank EFT/ACB CSV export for MVP (no API cost); maker-checker **yes**, since one person should not both build and approve a payout batch. **Built 2026-10-06** (manual run, maker-checker enforced in code, bank CSV, bank-change e-mail code): only the answer to cadence/rail, the R100 minimum, the 72 h hold and a **second admin account** are missing. Checklist and dry run: `PAYOUTS_GO_LIVE.md`. |
+| D-13 | **New (2026-10-06): how money moves from PayPal / PayFast into the bank account, and who records it** | Ledger account 1030 has no inflow (gap G2): payouts credit it but nothing debits it, and PayPal pays out USD/EUR/JPY. Needs: which bank account, how often money is withdrawn from each gateway, whether PayPal or the bank converts to ZAR. Recommendation: an admin "record gateway withdrawal" form posting DR 1030 / CR 1010 or 1020 with the captured rate and fee, FX difference to a new expense account the accountant confirms (D-12). I build it as soon as this is answered (`PAYOUTS_GO_LIVE.md` section 3). |
 | D-4 | Memo SLA | 12h reminder, 24h deadline; late memo forfeits the tutor's pay for that lesson (code behaviour); memo does **not** block student escrow clearing; platform funds any apology credit. |
 | D-7 | Credit bundles | Bundles of 5 / 10 / 20 at 0 / 5 / 10 % off; **no subscriptions in MVP**. |
 | D-10 | Stack | Backend Railway or Render (Docker), frontend Vercel, R2 for files, Django JWT (no Neon Auth). Domain `sharonesl.com` (already used in the R2 CDN config). |

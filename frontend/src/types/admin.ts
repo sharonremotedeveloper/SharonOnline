@@ -1,3 +1,5 @@
+import type { components } from "./api.generated";
+
 export interface AdminTelemetry {
   gmv_today_usd: string;
   gmv_month_usd: string;
@@ -75,6 +77,11 @@ export interface FinanceEscrowItem {
   escrow_status: "holding" | "cleared" | "refunded";
   release_date: string;
 }
+
+/** A payout run and its lines (slices P1a-c). Money is an exact decimal string; the API never returns bank numbers. */
+export type PayoutRun = components["schemas"]["PayoutBatch"];
+export type PayoutRunLine = components["schemas"]["PayoutLine"];
+export type PayoutRunStatus = "pending" | "approved" | "exported" | "processed" | "cancelled";
 
 export interface PayoutBatchItem {
   id: string;

@@ -34,6 +34,9 @@ export default function TeacherPayoutSettingsPage() {
   const [accountType, setAccountType] = useState<"cheque" | "savings">("savings");
   const [idNumber, setIdNumber] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [codeSending, setCodeSending] = useState(false);
+  const [codeSent, setCodeSent] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -57,6 +60,19 @@ export default function TeacherPayoutSettingsPage() {
     }
   };
 
+  const handleSendCode = async () => {
+    setError(null);
+    setCodeSending(true);
+    try {
+      await api.requestPayoutCode();
+      setCodeSent(true);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setCodeSending(false);
+    }
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -76,6 +92,7 @@ export default function TeacherPayoutSettingsPage() {
     try {
       const payload: TeacherPayoutBankAccountInput = {
         current_password: currentPassword,
+        verification_code: verificationCode.trim(),
         bank_name: bankName,
         account_holder_name: accountHolder,
         account_number: accountNumber,
@@ -88,6 +105,8 @@ export default function TeacherPayoutSettingsPage() {
       setAccountNumber("");
       setIdNumber("");
       setCurrentPassword("");
+      setVerificationCode("");
+      setCodeSent(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
@@ -198,6 +217,40 @@ export default function TeacherPayoutSettingsPage() {
               required
             />
             <p className="text-[11px] text-ink-muted">Required every time banking details are created or changed.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold uppercase tracking-wider text-ink block" htmlFor="verification-code">
+              E-mailed Verification Code
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="verification-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ""))}
+                placeholder="6-digit code"
+                className="flex-1 p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+                required
+                pattern="\d{6}"
+              />
+              <button
+                type="button"
+                onClick={handleSendCode}
+                disabled={codeSending}
+                className="px-4 py-3 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider disabled:opacity-60"
+              >
+                {codeSending ? "Sending..." : codeSent ? "Send a new code" : "E-mail me a code"}
+              </button>
+            </div>
+            <p className="text-[11px] text-ink-muted" role="status">
+              {codeSent
+                ? "We sent a 6-digit code to your account e-mail. It expires in 10 minutes."
+                : "We e-mail you a code so nobody with only your password can redirect your payouts."}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -54,6 +54,8 @@ Migration leaves today: `teachers 0010` (T2 adds 0011), `bookings 0016`, `paymen
 
 ## 5. Decisions still open for Anesu (do not encode them; ship provisional defaults)
 
+**Payouts go-live asks (2026-10-06): see `PAYOUTS_GO_LIVE.md` section 2 (D-3, second admin, D-13 treasury, D-12 tax, production keys, Google project, merge go).**
+
 From plan §9 and later: payout batches P1 as a deliberate exception to "execution waits on D-3" (needs a second admin; no self-approval); training gate must be ON before launch (currently OFF, boot warning); a **second private R2 bucket**; PDF tooling for receipts/payslips/memos; **D-4** memo pay-forfeiture (only the 12 h reminder ships); `BOOKING_HORIZON_DAYS=14` and `TUTOR_MIN_NOTICE_MINUTES=10` (provisional); `ADMIN_CANCEL_BONUS_CREDITS=0`, `LATE_WARNING_MINUTES=5`, `CREDIT_EXPIRY_WARNING_DAYS=7`; **should any payment be refused once the notice window has closed even after the lesson started** (T2 kept the old capture-then-late-settlement path; `BOOKING_HORIZON`/`docs/BOOKING_HOLDS.md`); retention/erasure for `TeacherStatusChange` (the Django admin cannot delete a tutor until Phase 14); PayPal sandbox credentials; D-3, D-10, D-12. **Answered:** D-8 (no recording in the MVP, Sharon signed off); staff-only `suspended -> rejected` edge (built in T1b).
 
 ## 6. Zoom: the Video SDK plan changes direction (unconfirmed by Claude)

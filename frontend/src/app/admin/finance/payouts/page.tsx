@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
-  CreditCard,
-  Download,
   CheckCircle2,
   Building2,
   ShieldCheck,
@@ -15,6 +13,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { PayoutBatchItem } from "@/types/admin";
+import { PayoutRuns } from "@/components/admin/PayoutRuns";
 import { ErrorState } from "@/components/ui/ErrorState";
 
 import { groupMoney, sumMoney } from "@/lib/moneyString";
@@ -49,27 +48,6 @@ export default function AdminPayoutsPage() {
   }, [reloadTick]);
 
   const totalPayoutZar = sumMoney(batch.map((b) => b.payout_amount_zar));
-
-  // Generate and download verified South African ACB CSV
-  const handleExportCsv = () => {
-    if (batch.length === 0) return;
-    const headers = "RecipientName,BankName,UniversalBranchCode,AccountNumberMasked,LessonCount,AmountZAR,BatchDate\n";
-    const rows = batch
-      .map(
-        (b) =>
-          `"${b.teacher_name}","${b.bank_name}","${b.branch_code}","${b.account_number_masked}",${b.cleared_lessons_count},${b.payout_amount_zar},"${new Date().toISOString().split("T")[0]}"`
-      )
-      .join("\n");
-
-    const blob = new Blob([headers + rows], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `SHARON_ONLINE_ACB_BATCH_${new Date().toISOString().split("T")[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   if (loading) {
     return (
@@ -108,7 +86,7 @@ export default function AdminPayoutsPage() {
               <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
                 ACB / EFT ORCHESTRATOR
               </span>
-              <span className="text-xs font-bold text-ink-muted">Bi-Weekly Settlement Cycle</span>
+              <span className="text-xs font-bold text-ink-muted">Preview of what is owed now</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-ink font-serif">
               Bank Batch Payout Orchestrator
@@ -116,26 +94,6 @@ export default function AdminPayoutsPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="px-4 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-2 transition-all"
-          >
-            <Download className="w-4 h-4 text-teal" />
-            <span>Export Bank ACB CSV</span>
-          </button>
-
-          <button
-            type="button"
-            disabled
-            title="Requires an approved banking rail and maker-checker workflow"
-            className="px-5 py-2.5 bg-ink-muted text-white text-xs font-black rounded-xl shadow-sm flex items-center gap-2 opacity-60 cursor-not-allowed"
-          >
-            <CreditCard className="w-4 h-4" />
-            <span>Payout execution unavailable</span>
-          </button>
-        </div>
       </div>
 
       {/* Summary Stats */}
@@ -159,17 +117,19 @@ export default function AdminPayoutsPage() {
 
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
           <span className="text-xs font-bold text-ink-muted">Settlement Schedule</span>
-          <div className="text-2xl sm:text-3xl font-black text-ink font-serif">1st &amp; 15th</div>
-          <p className="text-[11px] text-ink-muted">Automated bi-weekly clearing window</p>
+          <div className="text-2xl sm:text-3xl font-black text-ink font-serif">Manual</div>
+          <p className="text-[11px] text-ink-muted">A person creates, approves and confirms every run</p>
         </div>
       </div>
+
+      <PayoutRuns onChanged={() => setReloadTick((t) => t + 1)} />
 
       {/* Payout Batch Table */}
       <div className="bg-white rounded-3xl border border-divider shadow-card overflow-hidden">
         <div className="p-6 border-b border-divider flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-black text-ink font-serif">Recipients Roster</h3>
-            <p className="text-xs text-ink-muted">Verified 6-digit universal branch codes</p>
+            <h3 className="text-lg font-black text-ink font-serif">Owed now (preview)</h3>
+            <p className="text-xs text-ink-muted">Cleared balances of tutors with a bank account. Create a payout run above to pay them.</p>
           </div>
           <span className="text-xs font-bold text-ink-muted">{batch.length} Accounts Queued</span>
         </div>
