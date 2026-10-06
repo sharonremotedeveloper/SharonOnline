@@ -104,7 +104,7 @@ export default async function HomePage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div className="mx-auto grid max-w-2xl grid-cols-1 gap-4 xl:max-w-none xl:grid-cols-3 xl:gap-5">
               {featuredTutors.map((tutor) => (
                 <FeaturedTutorCard key={tutor.id} tutor={tutor} />
               ))}

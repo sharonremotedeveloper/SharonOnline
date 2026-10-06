@@ -31,7 +31,7 @@ export function TutorPortrait({ src, name, className = "aspect-[4/5] w-full", si
 
   return (
     <div className={`${className} relative overflow-hidden bg-cream-deep`}>
-      <Image src={src} alt={name} fill sizes={sizes} priority={priority} className="object-cover" />
+      <Image src={src} alt={name} fill sizes={sizes} priority={priority} className="object-cover object-top" />
     </div>
   );
 }
