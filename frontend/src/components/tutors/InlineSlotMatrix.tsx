@@ -27,6 +27,7 @@ export function InlineSlotMatrix({ tutorId, tutorName }: InlineSlotMatrixProps) 
   const [slotsData, setSlotsData] = useState<TeacherSlotsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+  const [confirmingSlot, setConfirmingSlot] = useState<Slot | null>(null);
   const [reserving, setReserving] = useState(false);
   const [reserveError, setReserveError] = useState<unknown>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
@@ -58,14 +59,19 @@ export function InlineSlotMatrix({ tutorId, tutorName }: InlineSlotMatrixProps) 
     loadSlots();
   }, [tutorId, timezone, reloadTick]);
 
-  const handleSelectSlot = async (slot: Slot) => {
+  const handleSelectSlot = (slot: Slot) => {
     if (!slot.is_bookable) return;
-    setSelectedSlot(slot);
+    setConfirmingSlot(slot);
+  };
+
+  const confirmSlot = async () => {
+    if (!confirmingSlot) return;
+    setSelectedSlot(confirmingSlot);
     setReserving(true);
     setReserveError(null);
 
     try {
-      const res = await api.reserveSlot(tutorId, slot.start_time_utc);
+      const res = await api.reserveSlot(tutorId, confirmingSlot.start_time_utc);
       // Route directly to checkout or student booking summary
       if (!res?.booking_id) throw new Error("The server did not return a booking for this slot. Please try again.");
       router.push(`/student/checkout/${res.booking_id}`);
@@ -174,6 +180,8 @@ export function InlineSlotMatrix({ tutorId, tutorName }: InlineSlotMatrixProps) 
           </div>
         </div>
       )}
+
+      {confirmingSlot && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-5" role="dialog" aria-modal="true"><div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"><h4 className="text-xl font-bold text-ink">Reserve this lesson?</h4><p className="mt-2 text-sm text-ink-muted">{tutorName} · {confirmingSlot.local_date} at {confirmingSlot.local_start_time}</p><div className="mt-6 flex justify-end gap-3"><button className="rounded-lg border px-4 py-2" disabled={reserving} onClick={() => setConfirmingSlot(null)}>Cancel</button><button className="rounded-lg bg-teal px-4 py-2 font-bold text-white disabled:opacity-50" disabled={reserving} onClick={() => void confirmSlot()}>{reserving ? "Holding…" : "Continue"}</button></div></div></div>}
     </div>
   );
 }

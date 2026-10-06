@@ -27,6 +27,7 @@ const ROLES: SessionRole[] = ["student", "teacher", "admin"];
 export interface SessionClaims {
   uid: string;
   role: SessionRole;
+  tutor_status?: string | null;
   /** Expiry, seconds since epoch. */
   exp: number;
 }
@@ -92,14 +93,14 @@ export async function verifySession(token: string | undefined | null, nowSeconds
     ) {
       return null;
     }
-    return { uid: claims.uid, role: claims.role, exp: claims.exp };
+    return { uid: claims.uid, role: claims.role, ...(typeof claims.tutor_status === "string" ? { tutor_status: claims.tutor_status } : {}), exp: claims.exp };
   } catch {
     return null;
   }
 }
 
-export function newSessionClaims(uid: string, role: SessionRole, nowSeconds = Date.now() / 1000): SessionClaims {
-  return { uid, role, exp: Math.floor(nowSeconds) + SESSION_TTL_SECONDS };
+export function newSessionClaims(uid: string, role: SessionRole, nowSeconds = Date.now() / 1000, tutorStatus?: string | null): SessionClaims {
+  return { uid, role, ...(tutorStatus ? { tutor_status: tutorStatus } : {}), exp: Math.floor(nowSeconds) + SESSION_TTL_SECONDS };
 }
 
 export function isSessionRole(value: unknown): value is SessionRole {
