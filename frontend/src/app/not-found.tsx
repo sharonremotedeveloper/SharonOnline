@@ -8,7 +8,7 @@ export default function NotFound() {
       <p className="text-sm text-ink-muted">The link may be out of date, or the page may have moved.</p>
       <Link
         href="/"
-        className="inline-block px-5 py-2.5 rounded-md bg-cocoa text-white text-sm font-medium hover:bg-cocoa-hover transition-colors"
+        className="min-h-11 inline-flex items-center inline-block px-5 py-2.5 rounded-md bg-cocoa text-white text-sm font-medium hover:bg-cocoa-hover transition-colors"
       >
         Back to home
       </Link>

@@ -11,7 +11,7 @@ export function PrintButton() {
           window.print();
         }
       }}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-divider bg-cream-surface hover:bg-cream-deep text-sm font-bold text-ink transition-colors"
+      className="min-h-11 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-divider bg-cream-surface hover:bg-cream-deep text-sm font-bold text-ink transition-colors"
       aria-label="Print policy document"
     >
       <Printer className="w-3.5 h-3.5" />

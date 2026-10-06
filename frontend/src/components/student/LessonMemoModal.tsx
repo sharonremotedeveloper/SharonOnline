@@ -84,7 +84,7 @@ ${memo.homework}
 
             <button
               onClick={onClose}
-              className="p-2 text-cocoa-200 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-2 text-cocoa-200 hover:text-white hover:bg-white/10 rounded-full transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -186,7 +186,7 @@ ${memo.homework}
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopyNotes}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-ink-700 hover:text-ink-900 bg-white border border-cream-200 rounded-xl transition-colors shadow-xs"
+              className="min-h-11 inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-ink-700 hover:text-ink-900 bg-white border border-cream-200 rounded-xl transition-colors shadow-xs"
             >
               {copied ? (
                 <>
@@ -200,7 +200,7 @@ ${memo.homework}
             </button>
             <button
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-ink-700 hover:text-ink-900 bg-white border border-cream-200 rounded-xl transition-colors shadow-xs"
+              className="min-h-11 inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-ink-700 hover:text-ink-900 bg-white border border-cream-200 rounded-xl transition-colors shadow-xs"
             >
               <Printer className="w-3.5 h-3.5" /> Print
             </button>
@@ -208,7 +208,7 @@ ${memo.homework}
 
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-ink-900 hover:bg-ink-800 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+            className="min-h-11 inline-flex items-center px-5 py-2 bg-ink-900 hover:bg-ink-800 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
           >
             Close Memo
           </button>

@@ -122,7 +122,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
             setFilter("all");
             setCurrentIndex(0);
           }}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 text-white font-medium rounded-xl text-sm transition-colors shadow-sm"
+          className="min-h-11 inline-flex items-center gap-2 px-5 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 text-white font-medium rounded-xl text-sm transition-colors shadow-sm"
         >
           <Layers className="w-4 h-4" /> Reset Filter to All Words
         </button>
@@ -148,7 +148,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
               setCurrentIndex(0);
               setIsFlipped(false);
             }}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
+            className={`min-h-11 inline-flex items-center px-3 py-1.5 rounded-lg transition-colors ${
               filter === "all" ? "bg-white text-ink-900 shadow-sm font-semibold" : "text-ink-600 hover:text-ink-900"
             }`}
           >
@@ -160,7 +160,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
               setCurrentIndex(0);
               setIsFlipped(false);
             }}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
+            className={`min-h-11 inline-flex items-center px-3 py-1.5 rounded-lg transition-colors ${
               filter === "learning" ? "bg-white text-warning-hover shadow-sm font-semibold" : "text-ink-600 hover:text-ink-900"
             }`}
           >
@@ -172,7 +172,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
               setCurrentIndex(0);
               setIsFlipped(false);
             }}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
+            className={`min-h-11 inline-flex items-center px-3 py-1.5 rounded-lg transition-colors ${
               filter === "mastered" ? "bg-white text-success-hover shadow-sm font-semibold" : "text-ink-600 hover:text-ink-900"
             }`}
           >
@@ -184,7 +184,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
           <button
             onClick={handleShuffle}
             title="Shuffle Deck"
-            className="p-2 text-ink-600 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
+            className="min-w-11 justify-center min-h-11 inline-flex items-center p-2 text-ink-600 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
           >
             <Shuffle className="w-4 h-4" />
           </button>
@@ -239,7 +239,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
                 <button
                   type="button"
                   onClick={handleSpeak}
-                  className={`p-2.5 rounded-full border border-cocoa-200 bg-cocoa-50 text-cocoa-700 hover:bg-cocoa-100 transition-colors shadow-xs ${
+                  className={`min-h-11 inline-flex items-center p-2.5 rounded-full border border-cocoa-200 bg-cocoa-50 text-cocoa-700 hover:bg-cocoa-100 transition-colors shadow-xs ${
                     isSpeaking ? "animate-pulse ring-2 ring-cocoa-400" : ""
                   }`}
                   title="Listen to American / Neutral Audio Pronunciation"
@@ -312,7 +312,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
         <div className="grid grid-cols-3 gap-3">
           <button
             onClick={() => handleGrade("again")}
-            className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-error-border bg-error-surface/50 hover:bg-error-surface/70 text-error-hover font-medium transition-colors"
+            className="min-h-11 flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-error-border bg-error-surface/50 hover:bg-error-surface/70 text-error-hover font-medium transition-colors"
           >
             <span className="text-sm font-bold">Again</span>
             <span className="text-sm text-error/80">&lt; 1 day</span>
@@ -320,7 +320,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
 
           <button
             onClick={() => handleGrade("good")}
-            className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-warning-border bg-warning-surface/50 hover:bg-warning-surface/70 text-warning-hover font-medium transition-colors"
+            className="min-h-11 flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-warning-border bg-warning-surface/50 hover:bg-warning-surface/70 text-warning-hover font-medium transition-colors"
           >
             <span className="text-sm font-bold">Good</span>
             <span className="text-sm text-warning/80">3 days</span>
@@ -328,7 +328,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
 
           <button
             onClick={() => handleGrade("easy")}
-            className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-success-border bg-success-surface/50 hover:bg-success-surface/70 text-success-hover font-medium transition-colors"
+            className="min-h-11 flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-success-border bg-success-surface/50 hover:bg-success-surface/70 text-success-hover font-medium transition-colors"
           >
             <span className="text-sm font-bold flex items-center gap-1">
               <CheckCircle className="w-3.5 h-3.5" /> Easy
@@ -342,7 +342,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
       <div className="flex items-center justify-between">
         <button
           onClick={handlePrev}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-cream-50 text-ink-700 border border-cream-200 rounded-xl text-sm font-medium transition-colors shadow-xs"
+          className="min-h-11 inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-cream-50 text-ink-700 border border-cream-200 rounded-xl text-sm font-medium transition-colors shadow-xs"
         >
           <ChevronLeft className="w-4 h-4" /> Previous Card
         </button>
@@ -353,7 +353,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
 
         <button
           onClick={handleNext}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-cream-50 text-ink-700 border border-cream-200 rounded-xl text-sm font-medium transition-colors shadow-xs"
+          className="min-h-11 inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-cream-50 text-ink-700 border border-cream-200 rounded-xl text-sm font-medium transition-colors shadow-xs"
         >
           Next Card <ChevronRight className="w-4 h-4" />
         </button>

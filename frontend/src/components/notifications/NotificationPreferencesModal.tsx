@@ -103,13 +103,13 @@ export function NotificationPreferencesModal({
             <h2 id="notification-prefs-title" className="text-base font-bold text-ink">
               Notification Preferences
             </h2>
-            <p className="text-xs text-ink-muted">
+            <p className="text-sm text-ink-muted">
               Choose how you want to be notified across channels
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-ink-muted hover:text-ink rounded-lg hover:bg-cocoa-100 transition-colors"
+            className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 text-ink-muted hover:text-ink rounded-lg hover:bg-cocoa-100 transition-colors"
             aria-label="Close preferences"
           >
             <X className="w-5 h-5" />
@@ -143,7 +143,7 @@ export function NotificationPreferencesModal({
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">
+                  <p className="text-sm text-ink-muted mt-0.5 leading-relaxed">
                     {cat.description}
                   </p>
                 </div>
@@ -157,7 +157,7 @@ export function NotificationPreferencesModal({
                     aria-checked={inAppEnabled}
                     disabled={cat.isMandatory}
                     onClick={() => handleToggle("in_app", cat.key, cat.isMandatory)}
-                    className={`w-16 flex justify-center py-1 rounded-md transition-colors ${
+                    className={`min-h-11 items-center w-16 flex justify-center py-1 rounded-md transition-colors ${
                       cat.isMandatory
                         ? "opacity-60 cursor-not-allowed"
                         : "hover:bg-cocoa-100"
@@ -184,7 +184,7 @@ export function NotificationPreferencesModal({
                     aria-checked={emailEnabled}
                     disabled={cat.isMandatory}
                     onClick={() => handleToggle("email", cat.key, cat.isMandatory)}
-                    className={`w-16 flex justify-center py-1 rounded-md transition-colors ${
+                    className={`min-h-11 items-center w-16 flex justify-center py-1 rounded-md transition-colors ${
                       cat.isMandatory
                         ? "opacity-60 cursor-not-allowed"
                         : "hover:bg-cocoa-100"

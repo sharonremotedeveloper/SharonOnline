@@ -78,7 +78,7 @@ export function ChangePasswordCard() {
           <button
             type="submit"
             disabled={submitting}
-            className="px-5 py-2.5 bg-cocoa text-white text-sm font-bold rounded-xl shadow-sm disabled:opacity-50"
+            className="min-h-11 inline-flex items-center px-5 py-2.5 bg-cocoa text-white text-sm font-bold rounded-xl shadow-sm disabled:opacity-50"
           >
             {submitting ? "Updating..." : "Update password"}
           </button>

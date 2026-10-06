@@ -122,10 +122,10 @@ function PayFastReturn() {
       {ref && <p className="text-sm text-ink-muted">Payment reference: {ref}</p>}
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-        <Link href="/student/dashboard" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-cocoa text-white rounded-xl text-sm font-bold">
+        <Link href="/student/dashboard" className="min-h-11 inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-cocoa text-white rounded-xl text-sm font-bold">
           My bookings <ArrowRight className="w-3.5 h-3.5" />
         </Link>
-        <Link href="/student/wallet" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 border border-divider rounded-xl text-sm font-bold text-ink">
+        <Link href="/student/wallet" className="min-h-11 inline-flex items-center justify-center gap-2 px-5 py-2.5 border border-divider rounded-xl text-sm font-bold text-ink">
           My wallet
         </Link>
       </div>

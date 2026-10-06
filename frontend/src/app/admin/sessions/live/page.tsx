@@ -77,7 +77,7 @@ export default function AdminLiveSessionsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/admin/dashboard"
-            className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+            className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
@@ -101,7 +101,7 @@ export default function AdminLiveSessionsPage() {
         <button
           type="button"
           onClick={fetchSessions}
-          className="px-4 py-2 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-2 transition-all self-start sm:self-auto"
+          className="min-h-11 px-4 py-2 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-2 transition-all self-start sm:self-auto"
         >
           <RefreshCw className="w-3.5 h-3.5 text-cocoa" />
           <span>{lastRefreshed ? `Updated ${lastRefreshed.toLocaleTimeString()}` : "Refresh"}</span>

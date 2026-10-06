@@ -63,7 +63,7 @@ export default function StudentVocabularyPage() {
           <div className="flex items-center gap-2">
             <Link
               href="/student/dashboard"
-              className="p-1.5 text-ink-400 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 text-ink-400 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
             </Link>
@@ -80,7 +80,7 @@ export default function StudentVocabularyPage() {
         <div className="flex items-center gap-1.5 bg-cream-100 p-1 rounded-2xl border border-cream-200 text-sm font-semibold">
           <button
             onClick={() => setActiveTab("flashcards")}
-            className={`px-4 py-2 rounded-xl transition-all ${
+            className={`min-h-11 inline-flex items-center px-4 py-2 rounded-xl transition-all ${
               activeTab === "flashcards"
                 ? "bg-white text-cocoa-900 shadow-xs font-bold"
                 : "text-ink-600 hover:text-ink-900"
@@ -90,7 +90,7 @@ export default function StudentVocabularyPage() {
           </button>
           <button
             onClick={() => setActiveTab("wordbank")}
-            className={`px-4 py-2 rounded-xl transition-all ${
+            className={`min-h-11 inline-flex items-center px-4 py-2 rounded-xl transition-all ${
               activeTab === "wordbank"
                 ? "bg-white text-cocoa-900 shadow-xs font-bold"
                 : "text-ink-600 hover:text-ink-900"
@@ -189,7 +189,7 @@ export default function StudentVocabularyPage() {
                     <td className="py-3.5 px-4 text-right">
                       <button
                         onClick={() => speakWord(card.word)}
-                        className="p-1.5 text-cocoa-700 hover:text-cocoa-900 hover:bg-cocoa-50 rounded-lg transition-colors"
+                        className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 text-cocoa-700 hover:text-cocoa-900 hover:bg-cocoa-50 rounded-lg transition-colors"
                         title="Listen"
                       >
                         <Volume2 className="w-4 h-4" />

@@ -112,7 +112,7 @@ export function ReservationTimer({
               setShowExpiredModal(false);
               if (onRestart) onRestart();
             }}
-            className="w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-sm"
+            className="min-h-11 w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-sm"
           >
             <RotateCcw className="w-4 h-4" /> Pick a New Slot
           </button>

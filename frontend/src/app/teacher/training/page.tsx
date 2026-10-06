@@ -36,12 +36,12 @@ export default function TeacherTrainingPage() {
 
         {data && <section className="grid gap-4 md:grid-cols-2">
           {[...data.modules].sort((a, b) => a.position - b.position).map((module) => (
-            <Link key={module.slug} href={`/teacher/training/${module.slug}`} className="group rounded-3xl border border-divider bg-white p-6 shadow-card transition hover:-translate-y-0.5 hover:border-cocoa/30">
+            <Link key={module.slug} href={`/teacher/training/${module.slug}`} className="min-w-11 justify-center min-h-11 inline-flex items-center group rounded-3xl border border-divider bg-white p-6 shadow-card transition hover:-translate-y-0.5 hover:border-cocoa/30">
               <div className="flex items-start justify-between gap-4"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cocoa/10 text-cocoa"><BookOpen className="h-5 w-5" /></span>{module.completed ? <CheckCircle2 className="h-6 w-6 text-success" /> : <ArrowRight className="h-5 w-5 text-ink-muted transition group-hover:translate-x-1" />}</div>
               <p className="mt-5 text-xs font-bold uppercase tracking-wider text-ink-muted">Module {module.position}{module.is_required ? " · Required" : " · Optional"}</p>
               <h2 className="mt-2 font-serif text-2xl font-black text-ink">{module.title}</h2>
               <p className="mt-3 text-sm leading-6 text-ink-muted">{module.summary}</p>
-              <p className="mt-5 flex items-center gap-1.5 text-xs font-bold text-cocoa"><Clock className="h-3.5 w-3.5" /> {module.estimated_minutes} min</p>
+              <p className="mt-5 flex items-center gap-1.5 text-sm font-bold text-cocoa"><Clock className="h-3.5 w-3.5" /> {module.estimated_minutes} min</p>
             </Link>
           ))}
         </section>}

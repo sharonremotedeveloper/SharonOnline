@@ -24,7 +24,7 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
           <div className="text-2xl sm:text-3xl font-black text-success-hover font-serif">
             R{wallet.cleared_balance_zar.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
           </div>
-          <p className="text-xs text-ink-muted">Derived from ledger account 2020.</p>
+          <p className="text-sm text-ink-muted">Derived from ledger account 2020.</p>
         </div>
 
         {/* Card 2: Pending Escrow */}
@@ -39,7 +39,7 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
             R{wallet.pending_escrow_zar.toFixed(2)}{" "}
             <span className="text-xs font-normal text-ink-muted">ZAR value</span>
           </div>
-          <p className="text-xs text-ink-muted">
+          <p className="text-sm text-ink-muted">
             Captured funding valued at each lesson&apos;s stored FX snapshot.
           </p>
         </div>
@@ -55,7 +55,7 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
           <div className="text-2xl sm:text-3xl font-black text-cocoa font-serif">
             {wallet.fx_context.length}
           </div>
-          <p className="text-xs text-ink-muted">
+          <p className="text-sm text-ink-muted">
             {wallet.fx_context.length ? wallet.fx_context.map((fx) => `${fx.currency} @ ${fx.fx_rate_to_zar}`).join(" · ") : "No funded lessons yet"}
           </p>
         </div>
@@ -67,7 +67,7 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
           <Info className="w-4 h-4 shrink-0" />
           <span>Fair Payout Structure &amp; Escrow Guarantee</span>
         </div>
-        <p className="text-xs text-ink-muted">
+        <p className="text-sm text-ink-muted">
           Tutors receive an <strong>80% share of the amount actually captured</strong>, including the discount when a
           student used a lesson pack. Every row retains its transaction currency and capture-time ZAR valuation;
           escrow releases only after the verified settlement workflow completes.

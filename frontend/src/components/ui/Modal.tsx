@@ -52,11 +52,11 @@ export function Modal({
           <div className="px-6 py-4 border-b border-divider flex items-center justify-between">
             <div>
               {title && <h2 className="text-lg font-bold text-ink">{title}</h2>}
-              {subtitle && <p className="text-xs text-ink-muted mt-0.5">{subtitle}</p>}
+              {subtitle && <p className="text-sm text-ink-muted mt-0.5">{subtitle}</p>}
             </div>
             <button
               onClick={onClose}
-              className="text-ink-muted hover:text-ink p-1 rounded-md transition-colors"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center text-ink-muted hover:text-ink p-1 rounded-md transition-colors"
               aria-label="Close modal"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

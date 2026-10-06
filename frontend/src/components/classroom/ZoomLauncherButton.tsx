@@ -102,7 +102,7 @@ export function ZoomLauncherButton({
           type="button"
           onClick={handleLaunch}
           disabled={disabled || starting}
-          className={`w-full py-4 px-6 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-lg ${
+          className={`min-h-11 w-full py-4 px-6 rounded-2xl font-black text-sm flex items-center justify-center gap-3 transition-all shadow-lg ${
             disabled
               ? "bg-cream-surface text-ink-muted cursor-not-allowed border border-divider"
               : isHost
@@ -124,12 +124,12 @@ export function ZoomLauncherButton({
         </button>
 
         {isHost && hostProblem && (
-          <p role="alert" data-host-problem={hostProblem.kind} className="text-xs font-semibold text-error bg-white border border-divider rounded-xl p-3">
+          <p role="alert" data-host-problem={hostProblem.kind} className="text-sm font-semibold text-error bg-white border border-divider rounded-xl p-3">
             {hostProblem.message}
           </p>
         )}
         {isHost && openedLink && !hostProblem && (
-          <p className="text-xs text-ink-muted text-center">
+          <p className="text-sm text-ink-muted text-center">
             Zoom should open in a new tab.{" "}
             <a href={openedLink} target="_blank" rel="noopener noreferrer" className="font-bold text-cocoa hover:underline">
               Nothing opened? Start the lesson here
@@ -143,7 +143,7 @@ export function ZoomLauncherButton({
           <button
             type="button"
             onClick={() => setPreferWeb(false)}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors ${
+            className={`min-h-11 flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors ${
               !preferWeb ? "bg-cream-surface text-cocoa font-bold border border-divider" : "hover:text-ink"
             }`}
           >
@@ -154,7 +154,7 @@ export function ZoomLauncherButton({
           <button
             type="button"
             onClick={() => setPreferWeb(true)}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors ${
+            className={`min-h-11 flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors ${
               preferWeb ? "bg-cream-surface text-cocoa font-bold border border-divider" : "hover:text-ink"
             }`}
           >
@@ -176,7 +176,7 @@ export function ZoomLauncherButton({
           <button
             type="button"
             onClick={() => copyToClipboard(cleanConfNo || "9876543210", false)}
-            className="p-1.5 rounded-lg bg-white hover:bg-cream-deep text-ink-muted hover:text-ink border border-divider transition-colors"
+            className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 rounded-lg bg-white hover:bg-cream-deep text-ink-muted hover:text-ink border border-divider transition-colors"
             title="Copy Meeting ID"
           >
             {copiedId ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
@@ -192,7 +192,7 @@ export function ZoomLauncherButton({
               <button
                 type="button"
                 onClick={() => copyToClipboard(password, true)}
-                className="p-1.5 rounded-lg bg-white hover:bg-cream-deep text-ink-muted hover:text-ink border border-divider transition-colors"
+                className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 rounded-lg bg-white hover:bg-cream-deep text-ink-muted hover:text-ink border border-divider transition-colors"
                 title="Copy Passcode"
               >
                 {copiedPwd ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}

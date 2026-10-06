@@ -98,7 +98,7 @@ export default function AdminFxRatesPage() {
       <div className="flex items-center gap-3">
         <Link
           href="/admin/dashboard"
-          className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+          className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
           aria-label="Back to dashboard"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -133,7 +133,7 @@ export default function AdminFxRatesPage() {
               {r.rate_to_zar === null ? "No rate set" : `R${r.rate_to_zar}`}
             </div>
             {r.rate_to_zar !== null && (
-              <p className="text-xs text-ink-muted">
+              <p className="text-sm text-ink-muted">
                 Source: {r.source ?? "-"} &middot; set by {r.set_by ?? "unknown"} &middot; {r.age_hours ?? "?"}h old
               </p>
             )}
@@ -151,7 +151,7 @@ export default function AdminFxRatesPage() {
       >
         <h2 className="text-base font-bold text-ink font-serif">Add a rate</h2>
         <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-          <label className="text-xs font-bold text-ink-muted space-y-1">
+          <label className="text-sm font-bold text-ink-muted space-y-1">
             <span>Currency</span>
             <select
               value={currency}
@@ -168,7 +168,7 @@ export default function AdminFxRatesPage() {
               ))}
             </select>
           </label>
-          <label className="text-xs font-bold text-ink-muted space-y-1 flex-1">
+          <label className="text-sm font-bold text-ink-muted space-y-1 flex-1">
             <span>Rate (ZAR per 1 {currency})</span>
             <input
               inputMode="decimal"
@@ -186,14 +186,14 @@ export default function AdminFxRatesPage() {
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2.5 rounded-xl bg-cocoa text-white text-xs font-bold disabled:opacity-50"
+            className="min-h-11 inline-flex items-center px-5 py-2.5 rounded-xl bg-cocoa text-white text-xs font-bold disabled:opacity-50"
           >
             {saving && !needsConfirm ? "Saving..." : "Save rate"}
           </button>
         </div>
-        {fieldError && <p role="alert" className="text-xs font-medium text-error">{fieldError}</p>}
+        {fieldError && <p role="alert" className="text-sm font-medium text-error">{fieldError}</p>}
         <InlineError error={saveError} />
-        {savedNote && <p className="text-xs font-bold text-success-hover">{savedNote}</p>}
+        {savedNote && <p className="text-sm font-bold text-success-hover">{savedNote}</p>}
 
         {needsConfirm && (
           <div role="alert" className="rounded-2xl border border-warning-border bg-warning-surface p-4 space-y-3 text-sm text-warning-hover">
@@ -202,7 +202,7 @@ export default function AdminFxRatesPage() {
               type="button"
               disabled={saving}
               onClick={() => void submit(true)}
-              className="px-4 py-2 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold disabled:opacity-50"
+              className="min-h-11 inline-flex items-center px-4 py-2 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold disabled:opacity-50"
             >
               {saving ? "Saving..." : "Confirm and save"}
             </button>
@@ -213,7 +213,7 @@ export default function AdminFxRatesPage() {
       <div className="bg-white rounded-3xl border border-divider shadow-card overflow-x-auto">
         <h2 className="text-base font-bold text-ink font-serif p-6 pb-3">History (last 20)</h2>
         {data.history.length === 0 ? (
-          <p className="px-6 pb-6 text-xs text-ink-muted">No rates have been recorded yet.</p>
+          <p className="px-6 pb-6 text-sm text-ink-muted">No rates have been recorded yet.</p>
         ) : (
           <table className="w-full text-xs">
             <thead className="text-left text-ink-muted">

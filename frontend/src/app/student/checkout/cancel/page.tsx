@@ -11,10 +11,10 @@ export default function PayFastCancelPage() {
         short while; you can pick it up again from your dashboard, or choose a new time with your tutor.
       </p>
       <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-        <Link href="/student/dashboard" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-cocoa text-white rounded-xl text-sm font-bold">
+        <Link href="/student/dashboard" className="min-h-11 inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-cocoa text-white rounded-xl text-sm font-bold">
           Back to my dashboard <ArrowRight className="w-3.5 h-3.5" />
         </Link>
-        <Link href="/tutors" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 border border-divider rounded-xl text-sm font-bold text-ink">
+        <Link href="/tutors" className="min-h-11 inline-flex items-center justify-center gap-2 px-5 py-2.5 border border-divider rounded-xl text-sm font-bold text-ink">
           Find a tutor
         </Link>
       </div>

@@ -39,7 +39,7 @@ export default function TeacherWalletPage() {
         <div className="max-w-xl mx-auto px-4 space-y-4">
           <ErrorState error={error ?? "No wallet data returned."} title="We couldn't load your earnings wallet" onRetry={reload} />
           <div className="text-center">
-            <Link href="/teacher/dashboard" className="text-xs font-bold text-cocoa hover:underline">
+            <Link href="/teacher/dashboard" className="min-h-11 inline-flex items-center text-sm font-bold text-cocoa hover:underline">
               Return to dashboard
             </Link>
           </div>
@@ -56,7 +56,7 @@ export default function TeacherWalletPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/teacher/dashboard"
-              className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
@@ -77,7 +77,7 @@ export default function TeacherWalletPage() {
             <StatementButton />
             <Link
               href="/teacher/wallet/payout-settings"
-              className="px-5 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-2 transition-all"
+              className="min-h-11 px-5 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-2 transition-all"
             >
               <Building2 className="w-4 h-4 text-cocoa" />
               <span>Manage EFT Payout Bank</span>
@@ -104,7 +104,7 @@ export default function TeacherWalletPage() {
                   <h3 className="text-lg font-black text-ink font-serif">
                     {wallet.payout_bank_account.bank_name} · {wallet.payout_bank_account.account_number_masked}
                   </h3>
-                  <p className="text-xs text-ink-muted">
+                  <p className="text-sm text-ink-muted">
                     Branch Code: <span className="font-mono font-bold text-ink">{wallet.payout_bank_account.branch_code}</span> ·{" "}
                     Account Type: <span className="capitalize">{wallet.payout_bank_account.account_type}</span>
                   </p>
@@ -112,7 +112,7 @@ export default function TeacherWalletPage() {
               ) : (
                 <>
                   <h3 className="text-lg font-black text-ink font-serif">No payout account on file</h3>
-                  <p className="text-xs text-ink-muted">Add your bank details to receive payouts.</p>
+                  <p className="text-sm text-ink-muted">Add your bank details to receive payouts.</p>
                 </>
               )}
             </div>
@@ -133,13 +133,13 @@ export default function TeacherWalletPage() {
           <div className="flex items-center justify-between border-b border-divider pb-4">
             <div>
               <h3 className="text-lg font-black text-ink font-serif">Lesson Clearing Ledger</h3>
-              <p className="text-xs text-ink-muted">Transparent breakdown of gross USD fees and net ZAR settlement</p>
+              <p className="text-sm text-ink-muted">Transparent breakdown of gross USD fees and net ZAR settlement</p>
             </div>
             <span className="text-xs font-bold text-ink-muted">Showing {wallet.transactions.length} entries</span>
           </div>
 
           {wallet.transactions.length === 0 ? (
-            <p className="text-xs text-ink-muted text-center py-6">No transactions yet.</p>
+            <p className="text-sm text-ink-muted text-center py-6">No transactions yet.</p>
           ) : (
           <div className="overflow-x-auto rounded-2xl border border-divider">
             <table className="w-full min-w-[700px] border-collapse text-xs">

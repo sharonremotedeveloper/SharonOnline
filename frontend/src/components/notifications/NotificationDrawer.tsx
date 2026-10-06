@@ -113,7 +113,7 @@ export function NotificationDrawer({
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-ink-muted">Stay updated on lessons and alerts</p>
+                <p className="text-sm text-ink-muted">Stay updated on lessons and alerts</p>
               </div>
             </div>
 
@@ -122,7 +122,7 @@ export function NotificationDrawer({
                 <button
                   type="button"
                   onClick={onMarkAllRead}
-                  className="p-2 text-ink-muted hover:text-cocoa hover:bg-cocoa-100 rounded-lg transition-colors flex items-center gap-1 text-xs font-medium"
+                  className="min-w-11 justify-center min-h-11 p-2 text-ink-muted hover:text-cocoa hover:bg-cocoa-100 rounded-lg transition-colors flex items-center gap-1 text-xs font-medium"
                   title="Mark all as read"
                   aria-label="Mark all as read"
                 >
@@ -134,7 +134,7 @@ export function NotificationDrawer({
               <button
                 type="button"
                 onClick={onOpenPreferences}
-                className="p-2 text-ink-muted hover:text-ink hover:bg-cocoa-100 rounded-lg transition-colors"
+                className="min-w-11 justify-center min-h-11 inline-flex items-center p-2 text-ink-muted hover:text-ink hover:bg-cocoa-100 rounded-lg transition-colors"
                 title="Notification preferences"
                 aria-label="Notification preferences"
               >
@@ -144,7 +144,7 @@ export function NotificationDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 text-ink-muted hover:text-ink hover:bg-cocoa-100 rounded-lg transition-colors"
+                className="min-w-11 justify-center min-h-11 inline-flex items-center p-2 text-ink-muted hover:text-ink hover:bg-cocoa-100 rounded-lg transition-colors"
                 aria-label="Close notification panel"
               >
                 <X className="w-5 h-5" />
@@ -157,7 +157,7 @@ export function NotificationDrawer({
             {isLoading ? (
               <div className="p-12 text-center space-y-3">
                 <Loader2 className="w-8 h-8 text-cocoa animate-spin mx-auto" />
-                <p className="text-xs font-medium text-ink-muted">Loading notifications...</p>
+                <p className="text-sm font-medium text-ink-muted">Loading notifications...</p>
               </div>
             ) : notifications.length === 0 ? (
               <div className="py-20 px-6 text-center space-y-3">
@@ -165,7 +165,7 @@ export function NotificationDrawer({
                   <Bell className="w-7 h-7 opacity-75" />
                 </div>
                 <h3 className="text-sm font-bold text-ink">All caught up!</h3>
-                <p className="text-xs text-ink-muted max-w-xs mx-auto">
+                <p className="text-sm text-ink-muted max-w-xs mx-auto">
                   You don&apos;t have any notifications right now. Lesson reminders and account updates will appear here.
                 </p>
               </div>
@@ -216,7 +216,7 @@ export function NotificationDrawer({
                       </h4>
 
                       {item.body && (
-                        <p className="text-xs text-ink-muted mt-1 leading-relaxed break-words line-clamp-3">
+                        <p className="text-sm text-ink-muted mt-1 leading-relaxed break-words line-clamp-3">
                           {item.body}
                         </p>
                       )}
@@ -259,7 +259,7 @@ export function NotificationDrawer({
                   type="button"
                   onClick={onFetchMore}
                   disabled={isLoadingMore}
-                  className="w-full py-2 px-4 rounded-xl text-xs font-bold text-cocoa bg-white border border-cocoa/20 hover:bg-cocoa-50 transition-colors flex items-center justify-center gap-2"
+                  className="min-h-11 w-full py-2 px-4 rounded-xl text-xs font-bold text-cocoa bg-white border border-cocoa/20 hover:bg-cocoa-50 transition-colors flex items-center justify-center gap-2"
                 >
                   {isLoadingMore ? (
                     <>

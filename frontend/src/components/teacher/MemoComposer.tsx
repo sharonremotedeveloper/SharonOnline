@@ -98,7 +98,7 @@ ${initialScratchpad}` : ""
 
         <div className="space-y-2">
           <h3 className="text-2xl font-black text-ink font-serif">Lesson Memo Published!</h3>
-          <p className="text-xs text-ink-muted max-w-md mx-auto leading-relaxed">
+          <p className="text-sm text-ink-muted max-w-md mx-auto leading-relaxed">
             Your detailed evaluation, vocabulary bank, and pronunciation tips have been sent to{" "}
             <strong>{studentName}</strong> and added to their study portal.
           </p>
@@ -106,7 +106,7 @@ ${initialScratchpad}` : ""
 
         <div className="p-4 rounded-2xl bg-cream-surface border border-divider max-w-sm mx-auto text-xs space-y-1">
           <span className="font-bold text-ink">Smart Flashcards Activated</span>
-          <p className="text-xs text-ink-muted">
+          <p className="text-sm text-ink-muted">
             The {vocabList.length} vocabulary words were automatically ingested into the student&apos;s spaced repetition deck.
           </p>
         </div>
@@ -127,7 +127,7 @@ ${initialScratchpad}` : ""
         <h2 className="text-2xl font-black text-ink font-serif">
           Evaluate Session with {studentName}
         </h2>
-        <p className="text-xs text-ink-muted">
+        <p className="text-sm text-ink-muted">
           Lesson Material: <span className="font-semibold text-ink">{lessonTitle}</span>
         </p>
       </div>
@@ -140,7 +140,7 @@ ${initialScratchpad}` : ""
           <Award className="w-4 h-4 text-cocoa" aria-hidden="true" />
           <span>Overall Feedback &amp; Speaking Fluency</span>
         </label>
-        <p className="text-xs text-ink-muted">
+        <p className="text-sm text-ink-muted">
           Praise strengths, evaluate conversational confidence, and summarize key conversational highlights.
         </p>
         <textarea
@@ -159,7 +159,7 @@ ${initialScratchpad}` : ""
           <BookOpen className="w-4 h-4 text-cocoa" />
           <span>Target Vocabulary Words ({vocabList.length})</span>
         </label>
-        <p className="text-xs text-ink-muted">
+        <p className="text-sm text-ink-muted">
           Add newly introduced or practiced vocabulary. These will convert into spaced-repetition student flashcards.
         </p>
 
@@ -214,7 +214,7 @@ ${initialScratchpad}` : ""
           <button
             type="button"
             onClick={addVocabWord}
-            className="w-full sm:w-auto px-4 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors shrink-0"
+            className="min-h-11 w-full sm:w-auto px-4 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Word</span>
@@ -272,7 +272,7 @@ ${initialScratchpad}` : ""
         <button
           type="submit"
           disabled={submitting}
-          className="px-8 py-3.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-2xl flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
+          className="min-h-11 px-8 py-3.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-2xl flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
         >
           <Send className="w-4 h-4" />
           <span>{submitting ? "Publishing Memo..." : "Submit Memo & Send to Student"}</span>

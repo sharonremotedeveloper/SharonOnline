@@ -42,7 +42,7 @@ export default function TeacherMemoPage() {
           <div className="text-center">
             <Link
               href="/teacher/dashboard"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-cocoa text-white text-xs font-bold"
+              className="min-h-11 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-cocoa text-white text-xs font-bold"
             >
               <ArrowLeft className="w-4 h-4" /> Return to Teacher Dashboard
             </Link>
@@ -85,7 +85,7 @@ export default function TeacherMemoPage() {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-ink-muted">
+              <p className="text-sm text-ink-muted">
                 {booking.local_date} · {booking.local_start_time} - {booking.local_end_time} ({booking.viewer_timezone})
               </p>
             </div>

@@ -46,7 +46,7 @@ export function EskomReportButton({
         <ShieldCheck className="w-5 h-5 text-warning shrink-0 mt-0.5" />
         <div className="space-y-1 text-xs">
           <p className="font-extrabold text-warning-hover">Eskom Power Outage Recorded</p>
-          <p className="text-xs text-warning-hover leading-relaxed">
+          <p className="text-sm text-warning-hover leading-relaxed">
             Lesson marked as interrupted. 1 full lesson credit has been automatically credited back to the student, and tutor ratings are shielded under Eskom Power Guard.
           </p>
         </div>
@@ -59,7 +59,7 @@ export function EskomReportButton({
       <button
         type="button"
         onClick={() => setModalOpen(true)}
-        className={`px-3.5 py-2 rounded-xl bg-warning-surface hover:bg-warning-surface text-warning-hover border border-warning-border text-xs font-bold flex items-center gap-2 transition-colors ${className}`}
+        className={`min-h-11 px-3.5 py-2 rounded-xl bg-warning-surface hover:bg-warning-surface text-warning-hover border border-warning-border text-xs font-bold flex items-center gap-2 transition-colors ${className}`}
         title="Report Eskom power or fiber outage"
       >
         <Zap className="w-4 h-4 text-warning fill-warning" />
@@ -76,7 +76,7 @@ export function EskomReportButton({
               </div>
               <button
                 onClick={() => setModalOpen(false)}
-                className="p-1 rounded-lg text-ink-muted hover:text-ink"
+                className="min-w-11 justify-center min-h-11 inline-flex items-center p-1 rounded-lg text-ink-muted hover:text-ink"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -84,7 +84,7 @@ export function EskomReportButton({
 
             <div className="space-y-2">
               <h3 className="text-xl font-black text-ink font-serif">Report Sudden Power Interruption</h3>
-              <p className="text-xs text-ink-muted leading-relaxed">
+              <p className="text-sm text-ink-muted leading-relaxed">
                 Did sudden municipal load-shedding, battery depletion, or fiber loss disrupt this synchronous session?
               </p>
             </div>
@@ -119,7 +119,7 @@ export function EskomReportButton({
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-ink-muted hover:text-ink"
+                className="min-h-11 inline-flex items-center px-4 py-2 rounded-xl text-xs font-bold text-ink-muted hover:text-ink"
               >
                 Cancel
               </button>
@@ -127,7 +127,7 @@ export function EskomReportButton({
                 type="button"
                 disabled={submitting}
                 onClick={handleConfirmReport}
-                className="px-5 py-2.5 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black flex items-center gap-2 transition-colors shadow-sm"
+                className="min-h-11 px-5 py-2.5 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black flex items-center gap-2 transition-colors shadow-sm"
               >
                 <Zap className="w-4 h-4 fill-white" />
                 <span>{submitting ? "Reporting..." : "Confirm & Report Outage"}</span>

@@ -59,7 +59,7 @@ export default function StudentHistoryPage() {
           <div className="flex items-center gap-2">
             <Link
               href="/student/dashboard"
-              className="p-1.5 text-ink-400 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 text-ink-400 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
             </Link>
@@ -72,7 +72,7 @@ export default function StudentHistoryPage() {
 
         <Link
           href="/student/vocabulary"
-          className="px-4 py-2.5 bg-white border border-cream-200 hover:bg-cream-50 text-cocoa-800 font-bold text-sm rounded-xl shadow-xs transition-colors flex items-center gap-2"
+          className="min-h-11 px-4 py-2.5 bg-white border border-cream-200 hover:bg-cream-50 text-cocoa-800 font-bold text-sm rounded-xl shadow-xs transition-colors flex items-center gap-2"
         >
           <Sparkles className="w-4 h-4 text-warning" /> Go to Vocabulary SRS Deck
         </Link>
@@ -95,7 +95,7 @@ export default function StudentHistoryPage() {
         <div className="flex items-center gap-1.5 bg-cream-50 p-1 rounded-xl border border-cream-200 text-sm font-medium">
           <button
             onClick={() => setStatusFilter("all")}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
+            className={`min-h-11 inline-flex items-center px-3 py-1.5 rounded-lg transition-colors ${
               statusFilter === "all" ? "bg-white text-ink-900 shadow-sm font-semibold" : "text-ink-600 hover:text-ink-900"
             }`}
           >
@@ -103,7 +103,7 @@ export default function StudentHistoryPage() {
           </button>
           <button
             onClick={() => setStatusFilter("completed")}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
+            className={`min-h-11 inline-flex items-center px-3 py-1.5 rounded-lg transition-colors ${
               statusFilter === "completed"
                 ? "bg-white text-cocoa-800 shadow-sm font-semibold"
                 : "text-ink-600 hover:text-ink-900"
@@ -113,7 +113,7 @@ export default function StudentHistoryPage() {
           </button>
           <button
             onClick={() => setStatusFilter("interrupted")}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
+            className={`min-h-11 inline-flex items-center px-3 py-1.5 rounded-lg transition-colors ${
               statusFilter === "interrupted"
                 ? "bg-white text-warning-hover shadow-sm font-semibold"
                 : "text-ink-600 hover:text-ink-900"
@@ -216,7 +216,7 @@ export default function StudentHistoryPage() {
                   {lesson.memo ? (
                     <button
                       onClick={() => setActiveMemoLesson(lesson)}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-cocoa-600 hover:bg-cocoa-700 text-white text-sm font-bold rounded-xl transition-colors shadow-xs"
+                      className="min-h-11 inline-flex items-center gap-1.5 px-4 py-2 bg-cocoa-600 hover:bg-cocoa-700 text-white text-sm font-bold rounded-xl transition-colors shadow-xs"
                     >
                       <FileText className="w-3.5 h-3.5" /> Read Memo & Vocab
                     </button>
@@ -234,7 +234,7 @@ export default function StudentHistoryPage() {
                       ) : (
                         <button
                           onClick={() => setActiveReviewLesson(lesson)}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-warning-surface hover:bg-warning-surface border border-warning-border text-warning-hover text-sm font-bold rounded-xl transition-colors"
+                          className="min-h-11 inline-flex items-center gap-1.5 px-4 py-2 bg-warning-surface hover:bg-warning-surface border border-warning-border text-warning-hover text-sm font-bold rounded-xl transition-colors"
                         >
                           <Star className="w-3.5 h-3.5 fill-warning text-warning" /> Review Tutor
                         </button>
@@ -245,7 +245,7 @@ export default function StudentHistoryPage() {
                   {lesson.material_slug && (
                     <Link
                       href={`/materials/${lesson.material_slug}`}
-                      className="inline-flex items-center gap-1 px-3 py-2 bg-cream-100 hover:bg-cream-200 text-ink-700 text-sm font-medium rounded-xl transition-colors"
+                      className="min-h-11 inline-flex items-center gap-1 px-3 py-2 bg-cream-100 hover:bg-cream-200 text-ink-700 text-sm font-medium rounded-xl transition-colors"
                     >
                       <BookOpen className="w-3.5 h-3.5" /> Open Sheet
                     </Link>

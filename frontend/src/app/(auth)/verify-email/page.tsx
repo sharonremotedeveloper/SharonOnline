@@ -49,7 +49,7 @@ function Verify() {
         <>
           <CheckCircle2 className="w-10 h-10 text-success mx-auto" aria-hidden="true" />
           <h1 className="text-lg font-extrabold text-ink font-serif">E-mail confirmed</h1>
-          <Link href={isAuthenticated && user ? dashboardFor(user.role) : "/login"} className="inline-block px-4 py-2 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold">
+          <Link href={isAuthenticated && user ? dashboardFor(user.role) : "/login"} className="min-h-11 inline-flex items-center inline-block px-4 py-2 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold">
             {isAuthenticated ? "Continue" : "Sign in"}
           </Link>
         </>
@@ -65,7 +65,7 @@ function Verify() {
               ? "It may have expired, or the address on your account has changed. Sign in and use “Resend” in the banner to get a new link."
               : message}
           </p>
-          <Link href="/login" className="inline-block px-4 py-2 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold">
+          <Link href="/login" className="min-h-11 inline-flex items-center inline-block px-4 py-2 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold">
             Sign in
           </Link>
         </>

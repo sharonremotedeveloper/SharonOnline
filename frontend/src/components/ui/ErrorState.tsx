@@ -26,7 +26,7 @@ export function ErrorState({ error, title = "We couldn't load this", onRetry, cl
         <button
           type="button"
           onClick={onRetry}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-cocoa text-white text-xs font-bold hover:bg-cocoa-hover transition-colors"
+          className="min-h-11 inline-flex items-center gap-2 px-4 py-2 rounded-md bg-cocoa text-white text-xs font-bold hover:bg-cocoa-hover transition-colors"
         >
           <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" /> Try again
         </button>

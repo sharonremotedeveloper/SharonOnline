@@ -225,7 +225,7 @@ export default function AdminVettingPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/admin/dashboard"
-            className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+            className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
@@ -266,12 +266,12 @@ export default function AdminVettingPage() {
             <CheckCircle2 className="w-8 h-8" />
           </div>
           <h2 className="text-xl font-black text-ink font-serif">All Tutor Applications Processed</h2>
-          <p className="text-xs text-ink-muted max-w-sm mx-auto">
+          <p className="text-sm text-ink-muted max-w-sm mx-auto">
             The applicant queue is clear. New auditions will appear here as South African educators complete registration.
           </p>
           <Link
             href="/admin/teachers"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cocoa text-white text-xs font-bold"
+            className="min-h-11 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cocoa text-white text-xs font-bold"
           >
             <span>View Active Tutor Roster</span>
           </Link>
@@ -297,7 +297,7 @@ export default function AdminVettingPage() {
                       setActiveModal(null);
                       setActionError(null);
                     }}
-                    className={`w-full text-left p-3.5 rounded-2xl border transition-all space-y-1.5 ${
+                    className={`min-h-11 inline-flex items-center w-full text-left p-3.5 rounded-2xl border transition-all space-y-1.5 ${
                       isSelected
                         ? "bg-cocoa/10 border-cocoa text-ink shadow-xs"
                         : "bg-cream-surface border-divider hover:bg-cream-deep text-ink-muted"
@@ -317,7 +317,7 @@ export default function AdminVettingPage() {
                         {status.replace("_", " ")}
                       </span>
                     </div>
-                    <p className="text-xs text-ink-muted">{app.accent}</p>
+                    <p className="text-sm text-ink-muted">{app.accent}</p>
                     <div className="flex items-center gap-2 text-xs text-ink-muted pt-1">
                       <MapPin className="w-3 h-3 text-cocoa" />
                       <span className="truncate">{app.country}</span>
@@ -347,7 +347,7 @@ export default function AdminVettingPage() {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-ink-muted">
+                  <p className="text-sm text-ink-muted">
                     {selectedApp.email} &middot; Applied on {new Date(selectedApp.applied_at).toLocaleDateString()}
                   </p>
                 </div>
@@ -423,7 +423,7 @@ export default function AdminVettingPage() {
                   <span className="font-bold text-ink flex items-center gap-1.5">
                     <BatteryCharging className="w-4 h-4 text-warning" /> Municipal Power Declaration
                   </span>
-                  <p className="text-xs text-ink-muted">
+                  <p className="text-sm text-ink-muted">
                     Area: {selectedApp.eskom_area || "Western Cape"}
                   </p>
                   <div className="pt-1">
@@ -445,7 +445,7 @@ export default function AdminVettingPage() {
                 <span className="text-xs font-bold uppercase tracking-wider text-ink-muted block">
                   Educator Statement &amp; Specialties
                 </span>
-                <p className="text-xs text-ink leading-relaxed font-sans bg-cream-surface p-4 rounded-2xl border border-divider">
+                <p className="text-sm text-ink leading-relaxed font-sans bg-cream-surface p-4 rounded-2xl border border-divider">
                   {selectedApp.bio}
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
@@ -468,7 +468,7 @@ export default function AdminVettingPage() {
                       <Award className="w-5 h-5 text-cocoa" />
                       <h4 className="text-base font-bold text-ink">4-Criterion Vetting Rubric</h4>
                     </div>
-                    <p className="text-xs text-ink-muted">
+                    <p className="text-sm text-ink-muted">
                       Score candidate from 1 (Unacceptable) to 5 (Mastery). Passing requires $\ge 3$ per criterion and total $\ge 12/20$.
                     </p>
                   </div>
@@ -514,7 +514,7 @@ export default function AdminVettingPage() {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                           <div>
                             <span className="text-xs font-bold text-ink">{meta.label}</span>
-                            <p className="text-xs text-ink-muted leading-tight">
+                            <p className="text-sm text-ink-muted leading-tight">
                               {meta.description}
                             </p>
                           </div>
@@ -528,7 +528,7 @@ export default function AdminVettingPage() {
                                   key={score}
                                   type="button"
                                   onClick={() => handleScoreChange(criterion, score)}
-                                  className={`w-8 h-8 rounded-xl font-bold text-xs transition-all flex items-center justify-center ${
+                                  className={`w-11 h-11 rounded-xl font-bold text-xs transition-all flex items-center justify-center ${
                                     isSelected
                                       ? "bg-cocoa text-white shadow-xs scale-105"
                                       : "bg-cream-surface border border-divider text-ink-muted hover:bg-cream-deep hover:text-ink"
@@ -619,7 +619,7 @@ export default function AdminVettingPage() {
                 {activeModal === "request_changes" && `Request Application Changes from ${selectedApp.full_name}`}
                 {activeModal === "reject" && `Reject ${selectedApp.full_name}`}
               </h3>
-              <p className="text-xs text-ink-muted mt-1">
+              <p className="text-sm text-ink-muted mt-1">
                 {activeModal === "approve" && `Final verification passing with score ${rubricTotal}/20.`}
                 {activeModal === "request_changes" && "Select the upload kinds the tutor must redo before resubmitting."}
                 {activeModal === "reject" && "Provide a clear and respectful formal reason for declining this application."}
@@ -631,7 +631,7 @@ export default function AdminVettingPage() {
               <div className="space-y-2 p-3 bg-cream-surface rounded-2xl border border-divider">
                 <span className="text-xs font-bold text-ink block mb-1">Required Items to Redo:</span>
                 {ASSET_CHANGE_OPTIONS.map((item) => (
-                  <label key={item.kind} className="flex items-center gap-2.5 text-xs text-ink cursor-pointer py-1">
+                  <label key={item.kind} className="flex items-center gap-2.5 text-sm text-ink cursor-pointer py-1">
                     <input
                       type="checkbox"
                       checked={selectedChanges.includes(item.kind)}
@@ -652,7 +652,7 @@ export default function AdminVettingPage() {
 
             {/* Reason Textarea */}
             <div className="space-y-1.5">
-              <label htmlFor="f-activemodal-approve-revi" className="text-xs font-bold text-ink">
+              <label htmlFor="f-activemodal-approve-revi" className="text-sm font-bold text-ink">
                 {activeModal === "approve" ? "Reviewer Notes (Optional)" : "Feedback / Reason (Required)"}
               </label>
               <textarea id="f-activemodal-approve-revi"

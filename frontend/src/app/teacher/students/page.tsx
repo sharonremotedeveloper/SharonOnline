@@ -135,7 +135,7 @@ export default function TeacherStudentsCRMPage() {
           <div className="flex items-center gap-2">
             <Link
               href="/teacher/dashboard"
-              className="p-1.5 text-ink-400 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 text-ink-400 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
             </Link>
@@ -143,7 +143,7 @@ export default function TeacherStudentsCRMPage() {
               Student Pedagogical Dossier CRM
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-ink-600 mt-1 pl-8">
+          <p className="text-sm sm:text-sm text-ink-600 mt-1 pl-8">
             Confidential tutor notes, student learning goals, recurring grammar slips, and lesson histories.
           </p>
         </div>
@@ -154,7 +154,7 @@ export default function TeacherStudentsCRMPage() {
           </div>
           <Link
             href="/teacher/dashboard"
-            className="px-4 py-2 bg-cream-100 hover:bg-cream-200 text-ink-800 text-xs font-semibold rounded-xl transition-colors"
+            className="min-h-11 inline-flex items-center px-4 py-2 bg-cream-100 hover:bg-cream-200 text-ink-800 text-xs font-semibold rounded-xl transition-colors"
           >
             Tutor Dashboard
           </Link>
@@ -254,7 +254,7 @@ export default function TeacherStudentsCRMPage() {
                   {editingStudentId !== student.student_id ? (
                     <button
                       onClick={() => handleStartEdit(student)}
-                      className="text-xs font-semibold text-cocoa-700 hover:text-cocoa-900 flex items-center gap-1"
+                      className="min-h-11 text-xs font-semibold text-cocoa-700 hover:text-cocoa-900 flex items-center gap-1"
                     >
                       <Edit3 className="w-3 h-3" /> Edit Notes
                     </button>
@@ -280,7 +280,7 @@ export default function TeacherStudentsCRMPage() {
                       <button
                         onClick={() => handleSaveNotes(student.student_id)}
                         disabled={isSaving}
-                        className="inline-flex items-center gap-1 px-4 py-2 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs"
+                        className="min-h-11 inline-flex items-center gap-1 px-4 py-2 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs"
                       >
                         <Save className="w-3.5 h-3.5" /> Save
                       </button>
@@ -311,7 +311,7 @@ export default function TeacherStudentsCRMPage() {
                         <button
                           type="button"
                           onClick={() => handleRemoveMistake(student.student_id, idx)}
-                          className="text-warning hover:text-warning-hover ml-0.5"
+                          className="inline-flex min-h-11 min-w-11 items-center justify-center -my-2 text-warning hover:text-warning-hover" aria-label={`Remove `}
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -337,7 +337,7 @@ export default function TeacherStudentsCRMPage() {
                     <button
                       type="button"
                       onClick={() => handleAddMistake(student.student_id)}
-                      className="p-1.5 bg-cocoa-600 hover:bg-cocoa-700 text-white rounded-lg text-xs"
+                      className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 bg-cocoa-600 hover:bg-cocoa-700 text-white rounded-lg text-xs"
                       title="Add slip"
                     >
                       <Plus className="w-3.5 h-3.5" />

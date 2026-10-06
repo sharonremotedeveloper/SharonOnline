@@ -65,7 +65,7 @@ function ResetForm() {
         <p className="text-sm text-ink-muted leading-relaxed">
           Reset links work once and expire after an hour. Request a fresh one and use the newest e-mail.
         </p>
-        <Link href="/forgot-password" className="inline-block px-4 py-2 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold">
+        <Link href="/forgot-password" className="min-h-11 inline-flex items-center inline-block px-4 py-2 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold">
           Request a new link
         </Link>
       </div>
@@ -113,7 +113,7 @@ function ResetForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold shadow-sm disabled:opacity-50"
+        className="min-h-11 inline-flex items-center w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold shadow-sm disabled:opacity-50"
       >
         {submitting ? "Saving..." : "Update password"}
       </button>

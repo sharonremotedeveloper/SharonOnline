@@ -50,7 +50,7 @@ export default function TeachPage() {
                   max="14"
                   value={lessonsPerDay}
                   onChange={(e) => setLessonsPerDay(parseInt(e.target.value))}
-                  className="w-full accent-cocoa cursor-pointer"
+                  className="h-11 w-full accent-cocoa cursor-pointer"
                 />
               </div>
 
@@ -66,7 +66,7 @@ export default function TeachPage() {
                   max="7"
                   value={daysPerWeek}
                   onChange={(e) => setDaysPerWeek(parseInt(e.target.value))}
-                  className="w-full accent-cocoa cursor-pointer"
+                  className="h-11 w-full accent-cocoa cursor-pointer"
                 />
               </div>
             </div>
@@ -121,7 +121,7 @@ export default function TeachPage() {
           <p className="text-sm text-white/80">Submit your application in 5 minutes with your SA ID and TEFL certificate.</p>
           <Link
             href="/register?role=teacher"
-            className="inline-flex items-center gap-2 px-8 py-3.5 bg-accent hover:bg-accent-500 text-ink font-extrabold rounded-xl text-sm shadow-sm transition-all"
+            className="min-h-11 inline-flex items-center gap-2 px-8 py-3.5 bg-accent hover:bg-accent-500 text-ink font-extrabold rounded-xl text-sm shadow-sm transition-all"
           >
             Apply to Teach <ArrowRight className="w-4 h-4" />
           </Link>

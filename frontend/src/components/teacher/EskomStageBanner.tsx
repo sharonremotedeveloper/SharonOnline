@@ -48,7 +48,7 @@ export function EskomStageBanner({ status, className = "" }: EskomStageBannerPro
               </span>
             </div>
 
-            <p className="text-xs font-medium opacity-90">
+            <p className="text-sm font-medium opacity-90">
               {status.has_inverter_backup ? (
                 <span className="flex items-center gap-1.5 text-success-hover font-semibold">
                   <ShieldCheck className="w-3.5 h-3.5 text-success" />
@@ -84,7 +84,7 @@ export function EskomStageBanner({ status, className = "" }: EskomStageBannerPro
 
           <Link
             href="/teacher/power-guard"
-            className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-cream-surface text-ink text-xs font-bold border border-divider shadow-xs flex items-center gap-1 transition-all"
+            className="min-h-11 px-3.5 py-1.5 rounded-xl bg-white hover:bg-cream-surface text-ink text-xs font-bold border border-divider shadow-xs flex items-center gap-1 transition-all"
           >
             <span>Power Guard</span>
             <ArrowRight className="w-3 h-3 text-ink-muted" />

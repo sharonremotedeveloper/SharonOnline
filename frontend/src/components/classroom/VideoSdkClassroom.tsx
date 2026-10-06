@@ -389,7 +389,7 @@ export function VideoSdkClassroom({
             </button>
           </div>
 
-          <div className="space-y-3.5 text-xs">
+          <div className="space-y-3.5 text-sm">
             {/* Camera Selection */}
             <div className="space-y-1.5">
               <label htmlFor="camera-select" className="font-semibold text-cocoa-100 flex items-center gap-1.5">
@@ -470,7 +470,7 @@ export function VideoSdkClassroom({
             <button
               type="button"
               onClick={() => setShowSettings(false)}
-              className="px-4 py-2 rounded-xl bg-sun text-ink font-bold text-xs hover:bg-accent-300 transition-colors"
+              className="min-h-11 inline-flex items-center px-4 py-2 rounded-xl bg-sun text-ink font-bold text-sm hover:bg-accent-300 transition-colors"
             >
               Done
             </button>
@@ -487,11 +487,11 @@ export function VideoSdkClassroom({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-cocoa animate-pulse" />
-            <span className="text-xs font-bold uppercase tracking-wider text-sun">
+            <span className="text-sm font-bold uppercase tracking-wider text-sun">
               In-Browser Classroom
             </span>
           </div>
-          <span className="text-xs text-cocoa-200 flex items-center gap-1">
+          <span className="text-sm text-cocoa-200 flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-sun" /> WebRTC HD
           </span>
         </div>
@@ -502,14 +502,14 @@ export function VideoSdkClassroom({
           </div>
           <div className="space-y-1">
             <h3 className="text-lg font-bold">Live Synchronous Classroom</h3>
-            <p className="text-xs text-cocoa-200 max-w-sm mx-auto">
+            <p className="text-sm text-cocoa-200 max-w-sm mx-auto">
               Your lesson with <span className="text-white font-medium">{partnerName}</span> runs
               directly in this browser tab. No Zoom app or download required.
             </p>
           </div>
 
           {problem && (
-            <div className="p-3.5 rounded-2xl bg-sun/10 border border-sun/30 text-xs text-sun-soft max-w-md mx-auto flex items-start gap-2.5 text-left">
+            <div className="p-3.5 rounded-2xl bg-sun/10 border border-sun/30 text-sm text-sun-soft max-w-md mx-auto flex items-start gap-2.5 text-left">
               <AlertTriangle className="w-4 h-4 text-sun shrink-0 mt-0.5" />
               <span>{problem.message}</span>
             </div>
@@ -520,7 +520,7 @@ export function VideoSdkClassroom({
               type="button"
               onClick={joinSession}
               disabled={connecting}
-              className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-sun text-ink font-black text-sm hover:bg-accent-300 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+              className="min-h-11 w-full sm:w-auto px-6 py-3 rounded-2xl bg-sun text-ink font-black text-sm hover:bg-accent-300 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
             >
               {connecting ? (
                 <>
@@ -541,7 +541,7 @@ export function VideoSdkClassroom({
                 setShowSettings(true);
                 void loadDevices();
               }}
-              className="w-full sm:w-auto px-4 py-3 rounded-2xl bg-cocoa-600 text-cocoa-100 font-bold text-xs hover:bg-cocoa-500 transition-all flex items-center justify-center gap-1.5 border border-cocoa-500"
+              className="min-h-11 w-full sm:w-auto px-4 py-3 rounded-2xl bg-cocoa-600 text-cocoa-100 font-bold text-sm hover:bg-cocoa-500 transition-all flex items-center justify-center gap-1.5 border border-cocoa-500"
             >
               <Settings className="w-3.5 h-3.5 text-sun" />
               <span>Device Settings</span>
@@ -552,7 +552,7 @@ export function VideoSdkClassroom({
                 href={legacyJoinUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full sm:w-auto px-4 py-3 rounded-2xl bg-cocoa-600 text-cocoa-100 font-bold text-xs hover:bg-cocoa-500 transition-all flex items-center justify-center gap-1.5 border border-cocoa-500"
+                className="min-h-11 w-full sm:w-auto px-4 py-3 rounded-2xl bg-cocoa-600 text-cocoa-100 font-bold text-sm hover:bg-cocoa-500 transition-all flex items-center justify-center gap-1.5 border border-cocoa-500"
               >
                 <span>Launch in Zoom App</span>
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -573,10 +573,10 @@ export function VideoSdkClassroom({
       <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
         <div className="bg-cocoa-800/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-cocoa-500/60 shadow-md flex items-center gap-2 pointer-events-auto">
           <span className="w-2 h-2 rounded-full bg-sky animate-pulse" />
-          <span className="text-xs font-bold text-white">Live · {remoteUserName}</span>
+          <span className="text-sm font-bold text-white">Live · {remoteUserName}</span>
         </div>
 
-        <div className="bg-cocoa-800/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-cocoa-500/60 shadow-md flex items-center gap-1.5 text-xs text-cocoa-100 pointer-events-auto">
+        <div className="bg-cocoa-800/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-cocoa-500/60 shadow-md flex items-center gap-1.5 text-sm text-cocoa-100 pointer-events-auto">
           <ShieldCheck className="w-3.5 h-3.5 text-sun" />
           <span>Encrypted Session</span>
         </div>
@@ -602,7 +602,7 @@ export function VideoSdkClassroom({
             </div>
             <div className="space-y-1">
               <p className="text-sm font-bold text-white">Waiting for {partnerName} to join...</p>
-              <p className="text-xs text-cocoa-200">
+              <p className="text-sm text-cocoa-200">
                 You are in the classroom. The video will start automatically when they connect.
               </p>
             </div>
@@ -618,12 +618,12 @@ export function VideoSdkClassroom({
             className={`w-full h-full object-cover ${isVideoOff ? "hidden" : "block"}`}
           />
           {isVideoOff && (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-cocoa-800 text-cocoa-300 text-xs font-bold">
+            <div className="w-full h-full flex flex-col items-center justify-center bg-cocoa-800 text-cocoa-300 text-sm font-bold">
               <VideoOff className="w-5 h-5 mb-1 text-cocoa-300" />
               <span>Camera Off</span>
             </div>
           )}
-          <span className="absolute bottom-1.5 left-2 text-xs font-bold bg-cocoa-800/80 px-1.5 py-0.5 rounded text-white backdrop-blur-xs">
+          <span className="absolute bottom-1.5 left-2 text-sm font-bold bg-cocoa-800/80 px-1.5 py-0.5 rounded text-white backdrop-blur-xs">
             You
           </span>
         </div>
@@ -700,7 +700,7 @@ export function VideoSdkClassroom({
         <button
           type="button"
           onClick={leaveSession}
-          className="min-h-11 px-3 py-2 sm:px-5 sm:py-2.5 rounded-2xl bg-error text-white font-bold text-xs hover:bg-error-hover transition-all flex items-center gap-1.5 sm:gap-2 shadow-lg shrink-0"
+          className="min-h-11 px-3 py-2 sm:px-5 sm:py-2.5 rounded-2xl bg-error text-white font-bold text-sm hover:bg-error-hover transition-all flex items-center gap-1.5 sm:gap-2 shadow-lg shrink-0"
         >
           <PhoneOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           <span>Leave Room</span>

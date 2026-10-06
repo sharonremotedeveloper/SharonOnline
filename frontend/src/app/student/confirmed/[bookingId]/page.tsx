@@ -54,7 +54,7 @@ export default function BookingConfirmedPage() {
         </p>
         <Link
           href={booking.status === "pending_payment" ? `/student/checkout/${booking.id}` : "/student/dashboard"}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-cocoa text-white rounded-xl text-sm font-bold"
+          className="min-h-11 inline-flex items-center gap-2 px-5 py-2.5 bg-cocoa text-white rounded-xl text-sm font-bold"
         >
           {booking.status === "pending_payment" ? "Back to checkout" : "Return to dashboard"} <ArrowRight className="w-3.5 h-3.5" />
         </Link>
@@ -166,7 +166,7 @@ export default function BookingConfirmedPage() {
 
           <Link
             href={`/student/classroom/${booking.id}`}
-            className="w-full sm:w-auto px-5 py-2.5 bg-accent hover:bg-accent-500 text-ink rounded-xl text-sm font-extrabold transition-all shadow-sm text-center"
+            className="min-h-11 inline-flex items-center w-full sm:w-auto px-5 py-2.5 bg-accent hover:bg-accent-500 text-ink rounded-xl text-sm font-extrabold transition-all shadow-sm text-center"
           >
             Open Live Classroom Pad
           </Link>
@@ -182,14 +182,14 @@ export default function BookingConfirmedPage() {
               href={gcalUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="py-3 px-4 rounded-xl border border-divider hover:bg-cream-surface text-sm font-bold text-ink flex items-center justify-center gap-2 transition-all"
+              className="min-h-11 py-3 px-4 rounded-xl border border-divider hover:bg-cream-surface text-sm font-bold text-ink flex items-center justify-center gap-2 transition-all"
             >
               <ExternalLink className="w-3.5 h-3.5 text-cocoa" /> Add to Google Calendar
             </a>
 
             <button
               onClick={handleDownloadIcs}
-              className="py-3 px-4 rounded-xl border border-divider hover:bg-cream-surface text-sm font-bold text-ink flex items-center justify-center gap-2 transition-all"
+              className="min-h-11 py-3 px-4 rounded-xl border border-divider hover:bg-cream-surface text-sm font-bold text-ink flex items-center justify-center gap-2 transition-all"
             >
               <Download className="w-3.5 h-3.5 text-primary" /> Download .ICS (Apple / Outlook)
             </button>

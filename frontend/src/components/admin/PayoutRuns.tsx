@@ -34,7 +34,7 @@ function LineRow({ line, canReturn, onReturn }: { line: PayoutRunLine; canReturn
       </td>
       <td className="py-2.5 px-4 text-right">
         {canReturn && line.status === "paid" && (
-          <button type="button" onClick={() => onReturn(line)} className="text-xs font-bold text-error-hover hover:underline">
+          <button type="button" onClick={() => onReturn(line)} className="text-sm font-bold text-error-hover hover:underline">
             Mark returned by bank
           </button>
         )}
@@ -88,7 +88,7 @@ export function PayoutRuns({ onChanged }: { onChanged?: () => void }) {
       <div className="p-6 border-b border-divider flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 id="payout-runs-heading" className="text-lg font-black text-ink font-serif">Payout runs</h2>
-          <p className="text-xs text-ink-muted">
+          <p className="text-sm text-ink-muted">
             The admin who creates a run cannot approve it or mark it paid. Another admin must do both.
           </p>
         </div>
@@ -96,7 +96,7 @@ export function PayoutRuns({ onChanged }: { onChanged?: () => void }) {
           type="button"
           disabled={busy === "create"}
           onClick={() => act("create", () => api.createPayoutRun())}
-          className="px-4 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-xl flex items-center gap-2 self-start disabled:opacity-60"
+          className="min-h-11 px-4 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-xl flex items-center gap-2 self-start disabled:opacity-60"
         >
           <Plus className="w-4 h-4" />
           <span>{busy === "create" ? "Creating..." : "Create payout run"}</span>
@@ -105,8 +105,8 @@ export function PayoutRuns({ onChanged }: { onChanged?: () => void }) {
 
       <div className="p-6 space-y-4">
         <InlineError error={error || actionError} />
-        {loading && <p className="text-xs text-ink-muted">Loading payout runs...</p>}
-        {!loading && runs && runs.length === 0 && <p className="text-xs text-ink-muted">No payout runs yet.</p>}
+        {loading && <p className="text-sm text-ink-muted">Loading payout runs...</p>}
+        {!loading && runs && runs.length === 0 && <p className="text-sm text-ink-muted">No payout runs yet.</p>}
 
         {runs?.map((run) => (
           <article key={run.id} className="border border-divider rounded-2xl overflow-hidden">
@@ -130,24 +130,24 @@ export function PayoutRuns({ onChanged }: { onChanged?: () => void }) {
               <div className="flex flex-wrap items-center gap-2">
                 {run.status === "pending" && (
                   <button type="button" disabled={busy === `approve:${run.id}`} onClick={() => act(`approve:${run.id}`, () => api.approvePayoutRun(run.id))}
-                    className="px-3.5 py-2 bg-white border border-divider rounded-xl text-xs font-bold text-ink flex items-center gap-1.5 disabled:opacity-60">
+                    className="min-h-11 px-3.5 py-2 bg-white border border-divider rounded-xl text-xs font-bold text-ink flex items-center gap-1.5 disabled:opacity-60">
                     <ShieldCheck className="w-3.5 h-3.5 text-cocoa" /> Approve
                   </button>
                 )}
                 {(run.status === "approved" || run.status === "exported") && (
                   <button type="button" onClick={() => setExporting(exporting === run.id ? null : run.id)}
-                    className="px-3.5 py-2 bg-white border border-divider rounded-xl text-xs font-bold text-ink flex items-center gap-1.5">
+                    className="min-h-11 px-3.5 py-2 bg-white border border-divider rounded-xl text-xs font-bold text-ink flex items-center gap-1.5">
                     <Download className="w-3.5 h-3.5 text-cocoa" /> {run.status === "exported" ? "Download bank CSV again" : "Download bank CSV"}
                   </button>
                 )}
                 {run.status === "exported" && (
                   <button type="button" disabled={busy === `process:${run.id}`} onClick={() => act(`process:${run.id}`, () => api.processPayoutRun(run.id))}
-                    className="px-3.5 py-2 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-xs font-black disabled:opacity-60">
+                    className="min-h-11 inline-flex items-center px-3.5 py-2 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-xs font-black disabled:opacity-60">
                     Mark as paid (bank run done)
                   </button>
                 )}
                 {(run.status === "pending" || run.status === "approved") && (
-                  <button type="button" onClick={() => cancel(run)} className="px-3.5 py-2 text-xs font-bold text-error-hover hover:underline">
+                  <button type="button" onClick={() => cancel(run)} className="px-3.5 py-2 text-sm font-bold text-error-hover hover:underline">
                     Cancel run
                   </button>
                 )}
@@ -162,7 +162,7 @@ export function PayoutRuns({ onChanged }: { onChanged?: () => void }) {
                   void exportCsv(run);
                 }}
               >
-                <label className="text-xs font-bold text-ink flex-1">
+                <label className="text-sm font-bold text-ink flex-1">
                   Confirm your password to download bank details
                   <input
                     type="password"
@@ -173,7 +173,7 @@ export function PayoutRuns({ onChanged }: { onChanged?: () => void }) {
                     className="min-h-11 mt-1 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm"
                   />
                 </label>
-                <button type="submit" className="px-4 py-3 bg-cocoa text-white text-xs font-black rounded-xl">Download</button>
+                <button type="submit" className="min-h-11 inline-flex items-center px-4 py-3 bg-cocoa text-white text-sm font-black rounded-xl">Download</button>
               </form>
             )}
 

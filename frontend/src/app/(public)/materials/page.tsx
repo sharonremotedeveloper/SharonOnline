@@ -128,7 +128,7 @@ export default function MaterialsPage() {
                   <button
                     key={lvl}
                     onClick={() => setCefr(lvl)}
-                    className={`px-3.5 py-1.5 rounded-xl text-sm font-bold transition-all ${
+                    className={`min-h-11 inline-flex items-center px-3.5 py-1.5 rounded-xl text-sm font-bold transition-all ${
                       isActive
                         ? "bg-ink text-white shadow-sm"
                         : "bg-cream-surface text-ink-muted hover:bg-cream-deep hover:text-ink border border-divider"
@@ -163,7 +163,7 @@ export default function MaterialsPage() {
             </p>
             <button
               onClick={clearFilters}
-              className="px-4 py-2 bg-cocoa text-white rounded-xl text-sm font-bold hover:bg-cocoa-hover transition-colors"
+              className="min-h-11 inline-flex items-center px-4 py-2 bg-cocoa text-white rounded-xl text-sm font-bold hover:bg-cocoa-hover transition-colors"
             >
               Reset Filters
             </button>
@@ -216,7 +216,7 @@ export default function MaterialsPage() {
                   <div className="flex items-center justify-between gap-2">
                     <Link
                       href={`/materials/${mat.slug}`}
-                      className="px-4 py-2.5 rounded-xl bg-cream-surface hover:bg-cocoa hover:text-white text-sm font-bold text-ink border border-divider flex items-center gap-1.5 transition-all"
+                      className="min-h-11 px-4 py-2.5 rounded-xl bg-cream-surface hover:bg-cocoa hover:text-white text-sm font-bold text-ink border border-divider flex items-center gap-1.5 transition-all"
                     >
                       <BookOpen className="w-3.5 h-3.5" />
                       <span>Study Lesson</span>
@@ -230,7 +230,7 @@ export default function MaterialsPage() {
                         rel="noopener noreferrer"
                         download
                         title="Download printable worksheet"
-                        className="p-2.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink-muted hover:text-ink border border-divider transition-colors"
+                        className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink-muted hover:text-ink border border-divider transition-colors"
                       >
                         <Download className="w-4 h-4" />
                       </a>

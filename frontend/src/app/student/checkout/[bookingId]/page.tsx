@@ -240,7 +240,7 @@ export default function StudentCheckoutPage() {
         </p>
         <Link
           href={confirmed ? `/student/confirmed/${booking.id}` : `/student/book/${booking.teacher.id}`}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-cocoa text-white rounded-xl text-sm font-bold"
+          className="min-h-11 inline-flex items-center gap-2 px-5 py-2.5 bg-cocoa text-white rounded-xl text-sm font-bold"
         >
           {confirmed ? "View confirmation" : "Choose a new slot"} <ArrowRight className="w-3.5 h-3.5" />
         </Link>
@@ -301,7 +301,7 @@ export default function StudentCheckoutPage() {
               <button
                 type="button"
                 onClick={() => setActiveGateway("credit")}
-                className={`py-2.5 px-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+                className={`min-h-11 py-2.5 px-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
                   activeGateway === "credit"
                     ? "bg-cocoa text-white shadow-sm"
                     : "text-ink-muted hover:text-ink"
@@ -315,7 +315,7 @@ export default function StudentCheckoutPage() {
               <button
                 type="button"
                 onClick={() => setActiveGateway("paypal")}
-                className={`py-2.5 px-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+                className={`min-h-11 py-2.5 px-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
                   activeGateway === "paypal"
                     ? "bg-cocoa text-white shadow-sm"
                     : "text-ink-muted hover:text-ink"
@@ -328,7 +328,7 @@ export default function StudentCheckoutPage() {
               <button
                 type="button"
                 onClick={() => setActiveGateway("payfast")}
-                className={`py-2.5 px-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+                className={`min-h-11 py-2.5 px-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
                   activeGateway === "payfast"
                     ? "bg-cocoa text-white shadow-sm"
                     : "text-ink-muted hover:text-ink"
@@ -360,7 +360,7 @@ export default function StudentCheckoutPage() {
                     <button
                       onClick={handleRedeemCredit}
                       disabled={submitting}
-                      className="w-full py-4 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="min-h-11 w-full py-4 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {submitting ? (
                         "Redeeming Credit..."
@@ -380,7 +380,7 @@ export default function StudentCheckoutPage() {
                     </p>
                     <Link
                       href="/pricing"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-cocoa text-white rounded-xl text-sm font-bold"
+                      className="min-h-11 inline-flex items-center gap-2 px-4 py-2 bg-cocoa text-white rounded-xl text-sm font-bold"
                     >
                       Top Up Lesson Pack <ArrowRight className="w-3.5 h-3.5" />
                     </Link>

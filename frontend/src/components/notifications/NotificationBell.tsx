@@ -43,7 +43,7 @@ export function NotificationBell({ className = "" }: NotificationBellProps) {
         aria-label={ariaLabel}
         aria-expanded={isOpen}
         aria-haspopup="dialog"
-        className={`relative p-2 rounded-xl text-white/90 hover:text-white hover:bg-white/10 transition-colors focus:outline-hidden focus:ring-2 focus:ring-gold ${className}`}
+        className={`min-h-11 inline-flex items-center relative p-2 rounded-xl text-white/90 hover:text-white hover:bg-white/10 transition-colors focus:outline-hidden focus:ring-2 focus:ring-gold ${className}`}
       >
         <Bell className="w-5 h-5" />
 

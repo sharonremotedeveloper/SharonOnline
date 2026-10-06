@@ -74,7 +74,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm disabled:opacity-50"
+              className="min-h-11 inline-flex items-center w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm disabled:opacity-50"
             >
               {submitting ? "Sending..." : "Send reset link"}
             </button>
@@ -82,7 +82,7 @@ export default function ForgotPasswordPage() {
         )}
 
         <div className="text-center">
-          <Link href="/login" className="inline-flex items-center gap-1.5 text-sm font-bold text-cocoa hover:underline">
+          <Link href="/login" className="min-h-11 inline-flex items-center gap-1.5 text-sm font-bold text-cocoa hover:underline">
             <ArrowLeft className="w-3.5 h-3.5" /> Return to Login
           </Link>
         </div>

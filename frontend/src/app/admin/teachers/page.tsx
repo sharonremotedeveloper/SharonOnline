@@ -66,7 +66,7 @@ export default function AdminTeachersPage() {
 
         <Link
           href="/admin/teachers/vetting"
-          className="px-5 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 transition-colors self-start sm:self-auto"
+          className="min-h-11 px-5 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 transition-colors self-start sm:self-auto"
         >
           <span>Review Pending Auditions</span>
           <ArrowRight className="w-3.5 h-3.5" />
@@ -82,14 +82,14 @@ export default function AdminTeachersPage() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Filter tutors by name, accent, or specialty..."
           aria-label="Filter tutors by name, accent, or specialty..."
-          className="flex-1 bg-transparent text-base sm:text-sm text-ink focus:outline-none"
+          className="min-h-11 flex-1 bg-transparent text-base sm:text-sm text-ink focus:outline-none"
         />
       </div>
 
       {/* Roster Table */}
       <div className="bg-white rounded-3xl border border-divider shadow-card overflow-hidden">
         {filtered.length === 0 && (
-          <p className="p-8 text-center text-xs text-ink-muted">
+          <p className="p-8 text-center text-sm text-ink-muted">
             {tutors.length === 0 ? "No tutors have been onboarded yet." : "No tutors match your filter."}
           </p>
         )}
@@ -153,7 +153,7 @@ export default function AdminTeachersPage() {
                       <Link
                         href={`/tutors/${tutor.slug || tutor.id}`}
                         target="_blank"
-                        className="p-2 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink-muted hover:text-ink transition-colors"
+                        className="min-w-11 justify-center min-h-11 inline-flex items-center p-2 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink-muted hover:text-ink transition-colors"
                         title="View Public Profile"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -161,7 +161,7 @@ export default function AdminTeachersPage() {
 
                       <Link
                         href={`/admin/sessions/live`}
-                        className="p-2 rounded-xl bg-cocoa/10 hover:bg-cocoa/20 text-cocoa transition-colors"
+                        className="min-w-11 justify-center min-h-11 inline-flex items-center p-2 rounded-xl bg-cocoa/10 hover:bg-cocoa/20 text-cocoa transition-colors"
                         title="Live Activity Radar"
                       >
                         <Video className="w-3.5 h-3.5" />

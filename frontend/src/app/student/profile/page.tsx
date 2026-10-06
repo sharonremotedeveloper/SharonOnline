@@ -134,7 +134,7 @@ export default function StudentProfilePage() {
           <div className="flex items-center gap-2">
             <Link
               href="/student/dashboard"
-              className="p-1.5 text-ink-400 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 text-ink-400 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
             </Link>
@@ -273,7 +273,7 @@ export default function StudentProfilePage() {
           <button
             type="submit"
             disabled={isSaving}
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
+            className="min-h-11 inline-flex items-center gap-2 px-6 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
           >
             {isSaving ? (
               <>Saving...</>

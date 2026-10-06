@@ -101,7 +101,7 @@ export default function StudentClassroomPage() {
           />
           <Link
             href="/student/dashboard"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-cocoa text-white text-sm font-bold"
+            className="min-h-11 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-cocoa text-white text-sm font-bold"
           >
             <ArrowLeft className="w-4 h-4" /> Return to Student Dashboard
           </Link>
@@ -121,7 +121,7 @@ export default function StudentClassroomPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/student/dashboard"
-              className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
@@ -143,7 +143,7 @@ export default function StudentClassroomPage() {
             <button
               type="button"
               onClick={() => setHardwareModalOpen(true)}
-              className={`px-3.5 py-2 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 shadow-xs ${
+              className={`min-h-11 px-3.5 py-2 rounded-xl text-sm font-bold border transition-colors flex items-center gap-2 shadow-xs ${
                 hardwareChecked
                   ? "bg-success-surface text-success-hover border-success-border"
                   : "bg-white text-ink border-divider hover:bg-cream-surface"

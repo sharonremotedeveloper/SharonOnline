@@ -124,7 +124,7 @@ export default function TeacherPayoutSettingsPage() {
         <div className="flex items-center justify-between">
           <Link
             href="/teacher/wallet"
-            className="inline-flex items-center gap-2 text-xs font-bold text-ink-muted hover:text-ink transition-colors"
+            className="min-h-11 inline-flex items-center gap-2 text-xs font-bold text-ink-muted hover:text-ink transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Return to Earnings Wallet</span>
@@ -142,7 +142,7 @@ export default function TeacherPayoutSettingsPage() {
             </div>
             <div>
               <h1 className="text-2xl font-black text-ink font-serif">South African EFT Payout Settings</h1>
-              <p className="text-xs text-ink-muted">
+              <p className="text-sm text-ink-muted">
                 Store a South African bank account for a future approved payout process in ZAR.
               </p>
             </div>
@@ -154,7 +154,7 @@ export default function TeacherPayoutSettingsPage() {
           <Lock className="w-4 h-4 text-cocoa shrink-0 mt-0.5" />
           <div className="space-y-0.5">
             <span className="font-bold text-ink">Encrypted payout details</span>
-            <p className="text-xs text-ink-muted leading-relaxed">
+            <p className="text-sm text-ink-muted leading-relaxed">
               Your banking details are encrypted at rest with a versioned application key. Payout execution remains
               disabled until an approved banking rail and maker-checker process are in place.
             </p>
@@ -216,7 +216,7 @@ export default function TeacherPayoutSettingsPage() {
               className="min-h-11 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
               required
             />
-            <p className="text-xs text-ink-muted">Required every time banking details are created or changed.</p>
+            <p className="text-sm text-ink-muted">Required every time banking details are created or changed.</p>
           </div>
 
           <div className="space-y-1.5">
@@ -233,7 +233,7 @@ export default function TeacherPayoutSettingsPage() {
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ""))}
                 placeholder="6-digit code"
-                className="min-h-11 flex-1 p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
+                className="min-w-11 justify-center min-h-11 flex-1 p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
                 required
                 pattern="\d{6}"
               />
@@ -241,12 +241,12 @@ export default function TeacherPayoutSettingsPage() {
                 type="button"
                 onClick={handleSendCode}
                 disabled={codeSending}
-                className="px-4 py-3 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider disabled:opacity-60"
+                className="min-h-11 inline-flex items-center px-4 py-3 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider disabled:opacity-60"
               >
                 {codeSending ? "Sending..." : codeSent ? "Send a new code" : "E-mail me a code"}
               </button>
             </div>
-            <p className="text-xs text-ink-muted" role="status">
+            <p className="text-sm text-ink-muted" role="status">
               {codeSent
                 ? "We sent a 6-digit code to your account e-mail. It expires in 10 minutes."
                 : "We e-mail you a code so nobody with only your password can redirect your payouts."}
@@ -289,7 +289,7 @@ export default function TeacherPayoutSettingsPage() {
                 <button
                   type="button"
                   onClick={() => setAccountType("savings")}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-colors ${
+                  className={`min-h-11 inline-flex items-center py-2.5 px-3 rounded-xl text-xs font-bold border transition-colors ${
                     accountType === "savings"
                       ? "bg-cocoa text-white border-cocoa shadow-xs"
                       : "bg-cream-surface text-ink-muted border-divider hover:bg-cream-deep"
@@ -300,7 +300,7 @@ export default function TeacherPayoutSettingsPage() {
                 <button
                   type="button"
                   onClick={() => setAccountType("cheque")}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-colors ${
+                  className={`min-h-11 inline-flex items-center py-2.5 px-3 rounded-xl text-xs font-bold border transition-colors ${
                     accountType === "cheque"
                       ? "bg-cocoa text-white border-cocoa shadow-xs"
                       : "bg-cream-surface text-ink-muted border-divider hover:bg-cream-deep"
@@ -331,7 +331,7 @@ export default function TeacherPayoutSettingsPage() {
             <button
               type="submit"
               disabled={saving}
-              className="px-8 py-3.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-2xl flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
+              className="min-h-11 px-8 py-3.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-2xl flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
             >
               <ShieldCheck className="w-4 h-4" />
               <span>{saving ? "Verifying & Encrypting..." : "Save Payout Bank Details"}</span>

@@ -83,7 +83,7 @@ export default function TeacherDashboardPage() {
             <h1 className="text-3xl sm:text-4xl font-black text-ink font-serif tracking-tight">
               Your tutor dashboard
             </h1>
-            <p className="text-xs sm:text-sm text-ink-muted">
+            <p className="text-sm sm:text-sm text-ink-muted">
               Manage your upcoming synchronous classes, submit lesson memos, and monitor Eskom Power Guard.
             </p>
           </div>
@@ -91,7 +91,7 @@ export default function TeacherDashboardPage() {
           <div className="flex flex-wrap items-center gap-2.5">
             <Link
               href="/teacher/schedule"
-              className="px-4 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-1.5 transition-colors"
+              className="min-h-11 px-4 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-1.5 transition-colors"
             >
               <Calendar className="w-3.5 h-3.5 text-cocoa" />
               <span>Availability</span>
@@ -99,7 +99,7 @@ export default function TeacherDashboardPage() {
 
             <Link
               href="/teacher/power-guard"
-              className="px-4 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-1.5 transition-colors"
+              className="min-h-11 px-4 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-1.5 transition-colors"
             >
               <Zap className="w-3.5 h-3.5 text-warning fill-warning" />
               <span>Power Guard</span>
@@ -107,7 +107,7 @@ export default function TeacherDashboardPage() {
 
             <Link
               href="/teacher/wallet"
-              className="px-4 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-xl shadow-sm flex items-center gap-1.5 transition-colors"
+              className="min-h-11 px-4 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-xl shadow-sm flex items-center gap-1.5 transition-colors"
             >
               <DollarSign className="w-3.5 h-3.5" />
               <span>{wallet ? `Wallet: R${wallet.cleared_balance_zar.toFixed(0)} ZAR` : "Wallet"}</span>
@@ -148,7 +148,7 @@ export default function TeacherDashboardPage() {
 
             <Link
               href={`/teacher/bookings/${pendingMemo.id}/memo`}
-              className="px-5 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all shrink-0"
+              className="min-h-11 px-5 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all shrink-0"
             >
               <span>Compose Memo</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -162,7 +162,7 @@ export default function TeacherDashboardPage() {
         ) : bookingsQ.error ? null : !upcomingLesson ? (
           <div className="bg-white rounded-3xl p-8 border border-divider shadow-card text-center space-y-1">
             <h3 className="text-lg font-black text-ink font-serif">No upcoming lessons</h3>
-            <p className="text-xs text-ink-muted">Confirmed bookings will appear here once students book your slots.</p>
+            <p className="text-sm text-ink-muted">Confirmed bookings will appear here once students book your slots.</p>
           </div>
         ) : (
           <div className="bg-cocoa text-white rounded-3xl p-6 sm:p-10 shadow-card space-y-6 relative overflow-hidden">
@@ -193,7 +193,7 @@ export default function TeacherDashboardPage() {
                 </div>
 
                 {upcomingLesson.student.learning_goals && (
-                  <p className="text-xs text-cream/70 italic border-l-2 border-accent pl-3">
+                  <p className="text-sm text-cream/70 italic border-l-2 border-accent pl-3">
                     Focus: &ldquo;{upcomingLesson.student.learning_goals}&rdquo;
                   </p>
                 )}
@@ -202,7 +202,7 @@ export default function TeacherDashboardPage() {
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
                 <Link
                   href={`/teacher/classroom/${upcomingLesson.id}`}
-                  className="px-6 py-4 bg-accent hover:bg-accent-500 text-ink font-black rounded-2xl text-xs sm:text-sm transition-all shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01]"
+                  className="min-h-11 px-6 py-4 bg-accent hover:bg-accent-500 text-ink font-black rounded-2xl text-xs sm:text-sm transition-all shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01]"
                 >
                   <Video className="w-4 h-4" />
                   <span>Enter Classroom Staging Pad</span>
@@ -221,7 +221,7 @@ export default function TeacherDashboardPage() {
               <Star className="w-5 h-5 text-star fill-star" />
               <span>&mdash;</span>
             </div>
-            <p className="text-xs text-ink-muted">Rating summary isn&apos;t available yet.</p>
+            <p className="text-sm text-ink-muted">Rating summary isn&apos;t available yet.</p>
           </div>
 
           <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
@@ -229,7 +229,7 @@ export default function TeacherDashboardPage() {
             <div className="text-2xl font-black text-cocoa font-serif">
               {bookingsQ.data ? `${completedThisMonth} ${completedThisMonth === 1 ? "Class" : "Classes"}` : "—"}
             </div>
-            <p className="text-xs text-ink-muted">
+            <p className="text-sm text-ink-muted">
               {bookingsQ.error != null ? "Couldn't load your lessons." : "Based on your bookings."}
             </p>
           </div>
@@ -243,12 +243,12 @@ export default function TeacherDashboardPage() {
                 <div className="text-2xl font-black text-success-hover font-serif">
                   R{wallet.cleared_balance_zar.toFixed(2)} ZAR
                 </div>
-                <p className="text-xs text-ink-muted">Ledger-cleared and awaiting an approved payout workflow.</p>
+                <p className="text-sm text-ink-muted">Ledger-cleared and awaiting an approved payout workflow.</p>
               </>
             ) : (
               <>
                 <div className="text-2xl font-black text-ink-muted font-serif">&mdash;</div>
-                <p className="text-xs text-error">
+                <p className="text-sm text-error">
                   Wallet isn&apos;t available yet.{" "}
                   <button type="button" onClick={walletQ.reload} className="underline font-bold">
                     Retry
@@ -264,7 +264,7 @@ export default function TeacherDashboardPage() {
           <div className="flex items-center justify-between border-b border-divider pb-4">
             <div>
               <h3 className="text-lg font-black text-ink font-serif">Today&apos;s Class Schedule</h3>
-              <p className="text-xs text-ink-muted">All sessions synchronized across timezones</p>
+              <p className="text-sm text-ink-muted">All sessions synchronized across timezones</p>
             </div>
             {bookingsQ.data && (
               <span className="text-xs font-bold text-cocoa bg-cocoa/10 px-3 py-1 rounded-full">
@@ -276,9 +276,9 @@ export default function TeacherDashboardPage() {
           {bookingsQ.loading ? (
             <div className="h-16 rounded-2xl bg-cream-surface animate-pulse" />
           ) : bookingsQ.error != null ? (
-            <p className="text-xs text-error">Today&apos;s schedule couldn&apos;t be loaded.</p>
+            <p className="text-sm text-error">Today&apos;s schedule couldn&apos;t be loaded.</p>
           ) : todayLessons.length === 0 ? (
-            <p className="text-xs text-ink-muted text-center py-4">No lessons scheduled for today.</p>
+            <p className="text-sm text-ink-muted text-center py-4">No lessons scheduled for today.</p>
           ) : (
             <div className="divide-y divide-divider">
               {todayLessons.map((b, i) => (

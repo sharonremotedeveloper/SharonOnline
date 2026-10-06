@@ -73,7 +73,7 @@ export default function TeacherPowerGuardPage() {
             onRetry={reload}
           />
           <div className="text-center">
-            <Link href="/teacher/dashboard" className="text-xs font-bold text-cocoa hover:underline">
+            <Link href="/teacher/dashboard" className="min-h-11 inline-flex items-center text-sm font-bold text-cocoa hover:underline">
               Return to dashboard
             </Link>
           </div>
@@ -97,7 +97,7 @@ export default function TeacherPowerGuardPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/teacher/dashboard"
-              className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
@@ -118,7 +118,7 @@ export default function TeacherPowerGuardPage() {
             type="button"
             onClick={handleSaveCertification}
             disabled={saving}
-            className="px-6 py-2.5 bg-ink hover:bg-black text-white text-xs font-black rounded-xl shadow-sm flex items-center gap-2 transition-all self-start sm:self-auto"
+            className="min-h-11 px-6 py-2.5 bg-ink hover:bg-black text-white text-xs font-black rounded-xl shadow-sm flex items-center gap-2 transition-all self-start sm:self-auto"
           >
             {saved ? <Check className="w-4 h-4 text-gold-bright" /> : <ShieldCheck className="w-4 h-4" />}
             <span>{saving ? "Saving..." : saved ? "Certification Saved!" : "Save Hardware Settings"}</span>
@@ -145,7 +145,7 @@ export default function TeacherPowerGuardPage() {
                 <Zap className="w-5 h-5 text-warning fill-warning" />
                 <span>Stage {status.stage} Currently Active</span>
               </h2>
-              <p className="text-xs text-ink-muted">
+              <p className="text-sm text-ink-muted">
                 Cached EskomSePush reading · Area: <strong>{status.area_name}</strong>
               </p>
             </div>
@@ -176,7 +176,7 @@ export default function TeacherPowerGuardPage() {
               <div className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink font-semibold">
                 {status.area_name}
               </div>
-              <p className="text-xs text-ink-muted">Area mapping is managed by support and provider identifiers are not guessed in this form.</p>
+              <p className="text-sm text-ink-muted">Area mapping is managed by support and provider identifiers are not guessed in this form.</p>
             </div>
 
             <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-1">
@@ -189,7 +189,7 @@ export default function TeacherPowerGuardPage() {
                   ? `${new Date(status.next_outage_start).toLocaleString()} - ${new Date(status.next_outage_end).toLocaleString()}`
                   : "No outage window reported"}
               </p>
-              <p className="text-xs text-ink-muted">
+              <p className="text-sm text-ink-muted">
                 Uncertified tutors have unbooked slots hidden during this block.
               </p>
             </div>
@@ -200,7 +200,7 @@ export default function TeacherPowerGuardPage() {
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">
           <div className="border-b border-divider pb-4 space-y-1">
             <h3 className="text-lg font-black text-ink font-serif">Power &amp; Fiber Redundancy Certification</h3>
-            <p className="text-xs text-ink-muted">
+            <p className="text-sm text-ink-muted">
               Record the backup hardware used when the platform evaluates risk for upcoming lessons.
             </p>
           </div>
@@ -227,7 +227,7 @@ export default function TeacherPowerGuardPage() {
                   <span className="text-sm font-extrabold text-ink block">
                     Inverter / Solar Lithium Battery Backup
                   </span>
-                  <p className="text-xs text-ink-muted leading-relaxed">
+                  <p className="text-sm text-ink-muted leading-relaxed">
                     I certify that my workstation is powered by an inverter, UPS, or solar setup capable of sustaining
                     at least <strong>4 continuous hours</strong> of laptop and Wi-Fi operation during municipal outages.
                   </p>
@@ -264,7 +264,7 @@ export default function TeacherPowerGuardPage() {
                   <span className="text-sm font-extrabold text-ink block">
                     Secondary Cellular LTE / 5G Failover Router
                   </span>
-                  <p className="text-xs text-ink-muted leading-relaxed">
+                  <p className="text-sm text-ink-muted leading-relaxed">
                     I maintain an active 4G/5G mobile data router or hotspot that auto-connects if the local fiber node
                     loses power during neighborhood load-shedding.
                   </p>

@@ -55,7 +55,7 @@ export default function AdminLedgerPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/admin/dashboard"
-            className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+            className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
@@ -74,7 +74,7 @@ export default function AdminLedgerPage() {
 
         <Link
           href="/admin/finance/payouts"
-          className="px-5 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold rounded-xl shadow-xs transition-colors self-start sm:self-auto"
+          className="min-h-11 inline-flex items-center px-5 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold rounded-xl shadow-xs transition-colors self-start sm:self-auto"
         >
           View Bank Batch Payouts &rarr;
         </Link>
@@ -87,13 +87,13 @@ export default function AdminLedgerPage() {
           <div className="text-2xl sm:text-3xl font-black text-ink font-serif">
             ${groupMoney(totalHoldingUsd)} USD
           </div>
-          <p className="text-xs text-ink-muted">R{groupMoney(totalHoldingZar)} ZAR in active holding buffer</p>
+          <p className="text-sm text-ink-muted">R{groupMoney(totalHoldingZar)} ZAR in active holding buffer</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-2">
           <span className="text-xs font-bold text-ink-muted">Entries Holding in Escrow</span>
           <div className="text-2xl sm:text-3xl font-black text-cocoa font-serif">{holdingCount}</div>
-          <p className="text-xs text-ink-muted">Awaiting the 24-hour clearance window</p>
+          <p className="text-sm text-ink-muted">Awaiting the 24-hour clearance window</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-2">
@@ -102,7 +102,7 @@ export default function AdminLedgerPage() {
             <ShieldCheck className="w-7 h-7 text-success" />
             <span>{clearedCount}</span>
           </div>
-          <p className="text-xs text-ink-muted">Counted from the entries listed below</p>
+          <p className="text-sm text-ink-muted">Counted from the entries listed below</p>
         </div>
       </div>
 
@@ -111,13 +111,13 @@ export default function AdminLedgerPage() {
         <div className="p-6 border-b border-divider flex items-center justify-between">
           <div>
             <h3 className="text-lg font-black text-ink font-serif">Individual Escrow Ledger Entries</h3>
-            <p className="text-xs text-ink-muted">24-hour automatic clearance lifecycle</p>
+            <p className="text-sm text-ink-muted">24-hour automatic clearance lifecycle</p>
           </div>
           <span className="text-xs font-bold text-ink-muted">{items.length} Transactions</span>
         </div>
 
         {items.length === 0 ? (
-          <p className="p-8 text-center text-xs text-ink-muted">No escrow ledger entries yet.</p>
+          <p className="p-8 text-center text-sm text-ink-muted">No escrow ledger entries yet.</p>
         ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[750px] border-collapse text-xs">

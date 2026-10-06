@@ -56,7 +56,7 @@ export function ReceiptsList() {
                   onClick={() => download(receipt)}
                   disabled={busyId === receipt.id}
                   aria-label={`Download receipt ${receipt.receipt_number}`}
-                  className="p-2 rounded-xl bg-cream-surface hover:bg-cream-deep border border-divider text-cocoa disabled:opacity-60"
+                  className="min-w-11 justify-center min-h-11 inline-flex items-center p-2 rounded-xl bg-cream-surface hover:bg-cream-deep border border-divider text-cocoa disabled:opacity-60"
                 >
                   <Download className="w-4 h-4" />
                 </button>

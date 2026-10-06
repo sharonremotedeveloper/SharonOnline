@@ -140,7 +140,7 @@ export function Navbar() {
                 <Link href="/tutors" className="flex min-h-[52px] items-center justify-center rounded-full bg-cocoa text-base font-bold text-white">
                   Book a Lesson
                 </Link>
-                <Link href="/login" className="flex min-h-[52px] items-center justify-center rounded-full border-2 border-cocoa/20 text-base font-semibold text-ink">
+                <Link href="/login" className="min-h-11 flex min-h-[52px] items-center justify-center rounded-full border-2 border-cocoa/20 text-base font-semibold text-ink">
                   Sign In
                 </Link>
               </div>

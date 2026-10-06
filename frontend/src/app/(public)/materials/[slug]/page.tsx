@@ -132,7 +132,7 @@ export default function MaterialReaderPage() {
           </p>
           <Link
             href="/materials"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-cocoa text-white text-sm font-bold hover:bg-cocoa-hover transition-colors"
+            className="min-h-11 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-cocoa text-white text-sm font-bold hover:bg-cocoa-hover transition-colors"
           >
             <ArrowLeft className="w-4 h-4" /> Return to Catalog
           </Link>
@@ -160,7 +160,7 @@ export default function MaterialReaderPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleShare}
-              className="px-3 py-1.5 rounded-xl bg-white border border-divider text-sm font-bold text-ink hover:bg-cream-surface transition-colors flex items-center gap-1.5 shadow-sm"
+              className="min-h-11 px-3 py-1.5 rounded-xl bg-white border border-divider text-sm font-bold text-ink hover:bg-cream-surface transition-colors flex items-center gap-1.5 shadow-sm"
               title="Copy lesson link"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Share2 className="w-3.5 h-3.5" />}
@@ -173,7 +173,7 @@ export default function MaterialReaderPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 download
-                className="px-3.5 py-1.5 rounded-xl bg-white border border-divider text-sm font-bold text-cocoa hover:bg-cocoa hover:text-white transition-all flex items-center gap-1.5 shadow-sm"
+                className="min-h-11 px-3.5 py-1.5 rounded-xl bg-white border border-divider text-sm font-bold text-cocoa hover:bg-cocoa hover:text-white transition-all flex items-center gap-1.5 shadow-sm"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Worksheet PDF</span>
@@ -223,7 +223,7 @@ export default function MaterialReaderPage() {
                   <span className="text-sm font-bold text-ink-muted px-1.5">Text Size:</span>
                   <button
                     onClick={() => setFontSize("sm")}
-                    className={`px-2 py-0.5 text-sm font-bold rounded-lg transition-colors ${
+                    className={`min-h-11 inline-flex items-center px-2 py-0.5 text-sm font-bold rounded-lg transition-colors ${
                       fontSize === "sm" ? "bg-white text-cocoa shadow-xs" : "text-ink-muted hover:text-ink"
                     }`}
                   >
@@ -231,7 +231,7 @@ export default function MaterialReaderPage() {
                   </button>
                   <button
                     onClick={() => setFontSize("base")}
-                    className={`px-2 py-0.5 text-sm font-bold rounded-lg transition-colors ${
+                    className={`min-h-11 inline-flex items-center px-2 py-0.5 text-sm font-bold rounded-lg transition-colors ${
                       fontSize === "base" ? "bg-white text-cocoa shadow-xs" : "text-ink-muted hover:text-ink"
                     }`}
                   >
@@ -239,7 +239,7 @@ export default function MaterialReaderPage() {
                   </button>
                   <button
                     onClick={() => setFontSize("lg")}
-                    className={`px-2 py-0.5 text-sm font-bold rounded-lg transition-colors ${
+                    className={`min-h-11 inline-flex items-center px-2 py-0.5 text-sm font-bold rounded-lg transition-colors ${
                       fontSize === "lg" ? "bg-white text-cocoa shadow-xs" : "text-ink-muted hover:text-ink"
                     }`}
                   >
@@ -301,7 +301,7 @@ export default function MaterialReaderPage() {
               <div className="pt-2">
                 <Link
                   href="/tutors"
-                  className="w-full py-3 px-4 rounded-2xl bg-accent hover:bg-accent-500 text-ink font-extrabold text-sm flex items-center justify-center gap-2 transition-all shadow-md"
+                  className="min-h-11 w-full py-3 px-4 rounded-2xl bg-accent hover:bg-accent-500 text-ink font-extrabold text-sm flex items-center justify-center gap-2 transition-all shadow-md"
                 >
                   <Calendar className="w-4 h-4" />
                   <span>Choose Date & Book Session</span>
@@ -342,7 +342,7 @@ export default function MaterialReaderPage() {
                             type="button"
                             onClick={() => handleSpeakWord(vocab.word)}
                             title="Hear pronunciation"
-                            className="p-1.5 rounded-lg bg-white hover:bg-cream-deep text-ink-muted hover:text-ink transition-colors border border-divider"
+                            className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 rounded-lg bg-white hover:bg-cream-deep text-ink-muted hover:text-ink transition-colors border border-divider"
                           >
                             <Volume2 className="w-3.5 h-3.5" />
                           </button>
@@ -351,7 +351,7 @@ export default function MaterialReaderPage() {
                             type="button"
                             onClick={() => toggleSaveVocab(vocab.id)}
                             title={isSaved ? "Saved to your list" : "Save vocabulary"}
-                            className={`p-1.5 rounded-lg transition-colors border ${
+                            className={`min-h-11 inline-flex items-center p-1.5 rounded-lg transition-colors border ${
                               isSaved
                                 ? "bg-success text-white border-success"
                                 : "bg-white hover:bg-cream-deep text-ink-muted hover:text-ink border-divider"
@@ -393,7 +393,7 @@ export default function MaterialReaderPage() {
                   target="_blank"
                   rel="noopener noreferrer"
                   download
-                  className="w-full py-2.5 px-4 rounded-xl bg-cream-surface hover:bg-cream-deep border border-divider text-ink text-sm font-bold flex items-center justify-center gap-2 transition-colors"
+                  className="min-h-11 w-full py-2.5 px-4 rounded-xl bg-cream-surface hover:bg-cream-deep border border-divider text-ink text-sm font-bold flex items-center justify-center gap-2 transition-colors"
                 >
                   <ExternalLink className="w-3.5 h-3.5 text-cocoa" />
                   <span>Download R2 Worksheet</span>

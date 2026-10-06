@@ -51,7 +51,7 @@ export default function AdminDashboardPage() {
           <h1 className="text-3xl sm:text-4xl font-black text-ink font-serif tracking-tight">
             Executive Command Center
           </h1>
-          <p className="text-xs sm:text-sm text-ink-muted mt-1">
+          <p className="text-sm sm:text-sm text-ink-muted mt-1">
             Real-time multi-currency telemetry, live Zoom classroom radar, and tutor audition pipeline.
           </p>
         </div>
@@ -59,7 +59,7 @@ export default function AdminDashboardPage() {
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <Link
             href="/admin/sessions/live"
-            className="px-4 py-2 bg-error hover:bg-error-hover text-white text-xs font-black rounded-xl shadow-xs flex items-center gap-2 transition-colors"
+            className="min-h-11 px-4 py-2 bg-error hover:bg-error-hover text-white text-xs font-black rounded-xl shadow-xs flex items-center gap-2 transition-colors"
           >
             <Radio className="w-4 h-4" />
             <span>{telemetry.active_zoom_sessions_count} Live Sessions Active</span>
@@ -73,7 +73,7 @@ export default function AdminDashboardPage() {
         <Link
           href="/admin/finance/fx-rates"
           role="alert"
-          className="flex items-center gap-3 rounded-2xl border border-error-border bg-error-surface p-4 text-sm text-error-hover hover:bg-error-surface transition-colors"
+          className="min-w-11 justify-center min-h-11 flex items-center gap-3 rounded-2xl border border-error-border bg-error-surface p-4 text-sm text-error-hover hover:bg-error-surface transition-colors"
         >
           <AlertTriangle className="w-5 h-5 shrink-0" aria-hidden="true" />
           <span className="flex-1">
@@ -94,7 +94,7 @@ export default function AdminDashboardPage() {
           <div className="text-2xl sm:text-3xl font-black text-ink font-serif">
             ${groupMoney(telemetry.gmv_today_usd)}
           </div>
-          <p className="text-xs text-ink-muted">
+          <p className="text-sm text-ink-muted">
             MTD: ${groupMoney(telemetry.gmv_month_usd)} USD
           </p>
         </div>
@@ -110,7 +110,7 @@ export default function AdminDashboardPage() {
           <div className="text-2xl sm:text-3xl font-black text-cocoa font-serif">
             R{groupMoney(telemetry.escrow_liability_zar)}
           </div>
-          <p className="text-xs text-ink-muted">
+          <p className="text-sm text-ink-muted">
             Equivalent to ${telemetry.escrow_liability_usd} USD in escrow
           </p>
         </div>
@@ -126,7 +126,7 @@ export default function AdminDashboardPage() {
           <div className="text-2xl sm:text-3xl font-black text-warning-hover font-serif">
             {telemetry.pending_vetting_count} Applications
           </div>
-          <p className="text-xs text-ink-muted">
+          <p className="text-sm text-ink-muted">
             Video reels &amp; TEFL certificates awaiting review
           </p>
         </div>
@@ -142,7 +142,7 @@ export default function AdminDashboardPage() {
           <div className="text-2xl sm:text-3xl font-black text-error font-serif">
             {telemetry.open_disputes_count} Open Cases
           </div>
-          <p className="text-xs text-ink-muted">
+          <p className="text-sm text-ink-muted">
             Awaiting admin arbitration against Zoom logs
           </p>
         </div>
@@ -157,14 +157,14 @@ export default function AdminDashboardPage() {
               <UserCheck className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-black text-ink font-serif">Tutor Video Auditions</h3>
-            <p className="text-xs text-ink-muted leading-relaxed">
+            <p className="text-sm text-ink-muted leading-relaxed">
               Review 60-second introduction videos, verify 120h TEFL certificates, and confirm municipal Eskom battery backup declarations.
             </p>
           </div>
 
           <Link
             href="/admin/teachers/vetting"
-            className="w-full py-3 px-4 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
+            className="min-h-11 w-full py-3 px-4 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
           >
             <span>Review {telemetry.pending_vetting_count} Pending Application{telemetry.pending_vetting_count === 1 ? "" : "s"}</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -178,14 +178,14 @@ export default function AdminDashboardPage() {
               <Scale className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-black text-ink font-serif">Dispute Arbitration</h3>
-            <p className="text-xs text-ink-muted leading-relaxed">
+            <p className="text-sm text-ink-muted leading-relaxed">
               Inspect student complaints side-by-side with tutor statements and authoritative Zoom webhook dwell-time logs. Execute 1-click refunds.
             </p>
           </div>
 
           <Link
             href="/admin/disputes"
-            className="w-full py-3 px-4 rounded-xl bg-error hover:bg-error-hover text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
+            className="min-h-11 w-full py-3 px-4 rounded-xl bg-error hover:bg-error-hover text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
           >
             <span>Arbitrate {telemetry.open_disputes_count} Open Case{telemetry.open_disputes_count === 1 ? "" : "s"}</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -199,14 +199,14 @@ export default function AdminDashboardPage() {
               <CreditCard className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-black text-ink font-serif">South African EFT Payouts</h3>
-            <p className="text-xs text-ink-muted leading-relaxed">
+            <p className="text-sm text-ink-muted leading-relaxed">
               Generate standardized ACB / EFT CSV batch files for cleared ZAR balances. Seamless transfer to Capitec, FNB, Standard Bank, and Nedbank.
             </p>
           </div>
 
           <Link
             href="/admin/finance/payouts"
-            className="w-full py-3 px-4 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
+            className="min-h-11 w-full py-3 px-4 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
           >
             <span>Open Payout Orchestrator</span>
             <ArrowRight className="w-3.5 h-3.5" />

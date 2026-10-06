@@ -31,7 +31,7 @@ export function ClassroomSplitLayout({
           <button
             type="button"
             onClick={() => setViewMode("split")}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`min-h-11 px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
               viewMode === "split"
                 ? "bg-white text-cocoa shadow-xs border border-divider"
                 : "text-ink-muted hover:text-ink"
@@ -44,7 +44,7 @@ export function ClassroomSplitLayout({
           <button
             type="button"
             onClick={() => setViewMode("video_focus")}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`min-h-11 px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
               viewMode === "video_focus"
                 ? "bg-white text-cocoa shadow-xs border border-divider"
                 : "text-ink-muted hover:text-ink"
@@ -58,7 +58,7 @@ export function ClassroomSplitLayout({
             <button
               type="button"
               onClick={() => setViewMode("material_focus")}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`min-h-11 px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                 viewMode === "material_focus"
                   ? "bg-white text-cocoa shadow-xs border border-divider"
                   : "text-ink-muted hover:text-ink"

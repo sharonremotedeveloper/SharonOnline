@@ -80,7 +80,7 @@ export default function HowItWorksPage() {
           <p className="text-base text-ink-muted">Choose a tutor and book a time. It takes about a minute.</p>
           <Link
             href="/tutors"
-            className="inline-flex items-center gap-2 px-8 py-3.5 bg-cocoa hover:bg-cocoa-hover text-white font-bold rounded-xl text-sm shadow-sm transition-all"
+            className="min-h-11 inline-flex items-center gap-2 px-8 py-3.5 bg-cocoa hover:bg-cocoa-hover text-white font-bold rounded-xl text-sm shadow-sm transition-all"
           >
             Find a Tutor Now <ArrowRight className="w-4 h-4" />
           </Link>

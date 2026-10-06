@@ -189,7 +189,7 @@ export default function BookingReviewPage() {
                       onClick={() => setRating(star)}
                       aria-label={`${star} ${star === 1 ? "star" : "stars"}`}
                       aria-pressed={rating === star}
-                      className="p-1 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary rounded-md"
+                      className="min-w-11 justify-center min-h-11 inline-flex items-center p-1 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary rounded-md"
                     >
                       <Star
                         className={`w-9 h-9 ${
@@ -225,7 +225,7 @@ export default function BookingReviewPage() {
                       type="button"
                       onClick={() => toggleTag(tag)}
                       aria-pressed={isSelected}
-                      className={`text-sm px-3.5 py-2 rounded-full border transition-all ${
+                      className={`min-h-11 inline-flex items-center text-sm px-3.5 py-2 rounded-full border transition-all ${
                         isSelected
                           ? "bg-cocoa-600 border-cocoa-600 text-white font-semibold shadow-xs"
                           : "bg-cream-50 border-cream-200 text-ink-700 hover:border-cream-300"
@@ -270,14 +270,14 @@ export default function BookingReviewPage() {
             <div className="flex items-center justify-end gap-3 pt-2">
               <Link
                 href="/student/history"
-                className="px-5 py-2.5 text-sm font-semibold text-ink-600 hover:text-ink-900 rounded-xl"
+                className="min-h-11 inline-flex items-center px-5 py-2.5 text-sm font-semibold text-ink-600 hover:text-ink-900 rounded-xl"
               >
                 Skip for now
               </Link>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="inline-flex items-center gap-2 px-7 py-3 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
+                className="min-h-11 inline-flex items-center gap-2 px-7 py-3 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
               >
                 {isSubmitting ? (
                   <>Submitting...</>

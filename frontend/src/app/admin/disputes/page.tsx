@@ -111,7 +111,7 @@ export default function AdminDisputesPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/admin/dashboard"
-            className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+            className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
@@ -233,7 +233,7 @@ export default function AdminDisputesPage() {
                       </strong>
                     </div>
                     {c.zoom_telemetry.interrupted_reason && (
-                      <p className="text-xs text-sun-soft pt-1 border-t border-white/10">
+                      <p className="text-sm text-sun-soft pt-1 border-t border-white/10">
                         {c.zoom_telemetry.interrupted_reason}
                       </p>
                     )}
@@ -258,7 +258,7 @@ export default function AdminDisputesPage() {
                         type="button"
                         disabled={resolvingId === c.id}
                         onClick={() => handleResolve(c.id, pendingConfirm.action)}
-                        className="px-3 py-1.5 rounded-lg bg-error text-white text-xs font-bold hover:bg-error-hover disabled:opacity-50"
+                        className="min-h-11 inline-flex items-center px-3 py-1.5 rounded-lg bg-error text-white text-xs font-bold hover:bg-error-hover disabled:opacity-50"
                       >
                         {resolvingId === c.id ? "Executing..." : "Confirm & execute"}
                       </button>
@@ -266,7 +266,7 @@ export default function AdminDisputesPage() {
                         type="button"
                         disabled={resolvingId === c.id}
                         onClick={() => setPendingConfirm(null)}
-                        className="px-3 py-1.5 rounded-lg bg-white border border-divider text-xs font-bold text-ink disabled:opacity-50"
+                        className="min-h-11 inline-flex items-center px-3 py-1.5 rounded-lg bg-white border border-divider text-xs font-bold text-ink disabled:opacity-50"
                       >
                         Cancel
                       </button>
@@ -277,7 +277,7 @@ export default function AdminDisputesPage() {
                       type="button"
                       disabled={resolvingId === c.id || pendingConfirm?.caseId === c.id}
                       onClick={() => setPendingConfirm({ caseId: c.id, action: "full_refund_student" })}
-                      className="px-4 py-2 rounded-xl bg-cocoa text-white text-xs font-bold hover:bg-cocoa-hover transition-colors shadow-xs"
+                      className="min-h-11 inline-flex items-center px-4 py-2 rounded-xl bg-cocoa text-white text-xs font-bold hover:bg-cocoa-hover transition-colors shadow-xs"
                     >
                       100% Refund to Student
                     </button>
@@ -286,7 +286,7 @@ export default function AdminDisputesPage() {
                       type="button"
                       disabled={resolvingId === c.id || pendingConfirm?.caseId === c.id}
                       onClick={() => setPendingConfirm({ caseId: c.id, action: "split_50_50" })}
-                      className="px-4 py-2 rounded-xl bg-cocoa text-white text-xs font-bold hover:bg-cocoa-hover transition-colors shadow-xs"
+                      className="min-h-11 inline-flex items-center px-4 py-2 rounded-xl bg-cocoa text-white text-xs font-bold hover:bg-cocoa-hover transition-colors shadow-xs"
                     >
                       Split 50/50 Goodwill
                     </button>
@@ -295,7 +295,7 @@ export default function AdminDisputesPage() {
                       type="button"
                       disabled={resolvingId === c.id || pendingConfirm?.caseId === c.id}
                       onClick={() => setPendingConfirm({ caseId: c.id, action: "release_tutor" })}
-                      className="px-4 py-2 rounded-xl bg-ink text-white text-xs font-bold hover:bg-black transition-colors shadow-xs"
+                      className="min-h-11 inline-flex items-center px-4 py-2 rounded-xl bg-ink text-white text-xs font-bold hover:bg-black transition-colors shadow-xs"
                     >
                       Release 100% to Tutor
                     </button>

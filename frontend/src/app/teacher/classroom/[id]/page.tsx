@@ -121,7 +121,7 @@ export default function TeacherClassroomPage() {
           <div className="text-center">
             <Link
               href="/teacher/dashboard"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-cocoa text-white text-xs font-bold"
+              className="min-h-11 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-cocoa text-white text-xs font-bold"
             >
               <ArrowLeft className="w-4 h-4" /> Return to Teacher Dashboard
             </Link>
@@ -142,7 +142,7 @@ export default function TeacherClassroomPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/teacher/dashboard"
-              className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
@@ -163,7 +163,7 @@ export default function TeacherClassroomPage() {
             <button
               type="button"
               onClick={() => setHardwareModalOpen(true)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors flex items-center gap-2 shadow-xs ${
+              className={`min-h-11 px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors flex items-center gap-2 shadow-xs ${
                 hardwareChecked
                   ? "bg-success-surface text-success-hover border-success-border"
                   : "bg-white text-ink border-divider hover:bg-cream-surface"
@@ -209,7 +209,7 @@ export default function TeacherClassroomPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-black text-ink">{booking.student.full_name}</h3>
-                    <p className="text-xs text-ink-muted">{booking.student.email}</p>
+                    <p className="text-sm text-ink-muted">{booking.student.email}</p>
                   </div>
                 </div>
 
@@ -222,7 +222,7 @@ export default function TeacherClassroomPage() {
 
               <div className="text-xs text-ink-muted bg-white p-3 rounded-xl border border-divider">
                 <span className="font-bold text-ink block mb-0.5">Student Focus &amp; Goals:</span>
-                <p className="text-xs leading-relaxed">
+                <p className="text-sm leading-relaxed">
                   {booking.student.learning_goals || "The student has not shared any learning goals yet."}
                 </p>
               </div>
@@ -241,7 +241,7 @@ export default function TeacherClassroomPage() {
                 }
               />
               {materialError != null && (
-                <p className="text-xs text-error">Lesson material could not be loaded.</p>
+                <p className="text-sm text-error">Lesson material could not be loaded.</p>
               )}
             </div>
 
@@ -271,7 +271,7 @@ export default function TeacherClassroomPage() {
             <div className="pt-2 flex items-center justify-between">
               <Link
                 href={`/teacher/bookings/${booking.id}/memo`}
-                className="w-full py-3 px-4 rounded-xl bg-ink hover:bg-black text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-sm"
+                className="min-h-11 w-full py-3 px-4 rounded-xl bg-ink hover:bg-black text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-sm"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Open Post-Lesson Memo Studio</span>

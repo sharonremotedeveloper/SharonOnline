@@ -116,7 +116,7 @@ export function ReceiptDrawer({ isOpen, onClose }: ReceiptDrawerProps) {
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-cream-deep transition-colors"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-cream-deep transition-colors"
               aria-label="Close drawer"
             >
               <X className="w-5 h-5" />
@@ -159,7 +159,7 @@ export function ReceiptDrawer({ isOpen, onClose }: ReceiptDrawerProps) {
                 <button
                   type="button"
                   onClick={loadReceipts}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-ink text-white text-sm font-bold hover:bg-ink-light transition-colors"
+                  className="min-h-11 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-ink text-white text-sm font-bold hover:bg-ink-light transition-colors"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>Retry</span>
@@ -224,7 +224,7 @@ export function ReceiptDrawer({ isOpen, onClose }: ReceiptDrawerProps) {
                           type="button"
                           disabled={isDownloading}
                           onClick={() => handleDownloadPdf(rcpt)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cream-surface hover:bg-cream-deep border border-divider text-sm font-bold text-ink transition-colors disabled:opacity-50"
+                          className="min-h-11 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cream-surface hover:bg-cream-deep border border-divider text-sm font-bold text-ink transition-colors disabled:opacity-50"
                         >
                           <Download className="w-3.5 h-3.5" />
                           <span>{isDownloading ? "Downloading..." : "Download PDF"}</span>

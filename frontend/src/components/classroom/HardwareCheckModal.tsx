@@ -190,14 +190,14 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
         <div className="p-6 bg-cream-surface border-b border-divider flex items-center justify-between">
           <div className="space-y-1">
             <h3 className="text-xl font-black text-ink font-serif">Hardware AV Readiness Check</h3>
-            <p className="text-xs text-ink-muted">Test your webcam, microphone, and speakers before entering the Zoom lesson</p>
+            <p className="text-sm text-ink-muted">Test your webcam, microphone, and speakers before entering the Zoom lesson</p>
           </div>
           <button
             onClick={() => {
               stopMedia();
               onClose();
             }}
-            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-white transition-colors"
+            className="min-w-11 justify-center min-h-11 inline-flex items-center p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-white transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -236,7 +236,7 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
               {hasCamera !== true && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-cream/70 bg-ink/80 space-y-2">
                   <Camera className="w-8 h-8 text-cream/75" />
-                  <p className="text-xs font-medium">
+                  <p className="text-sm font-medium">
                     {errorMsg ? "Camera access unavailable or blocked" : "Webcam preview active or awaiting permission"}
                   </p>
                 </div>
@@ -285,7 +285,7 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
               <button
                 type="button"
                 onClick={playTestChime}
-                className="w-full py-2 px-3 rounded-xl bg-white hover:bg-cream-deep border border-divider text-xs font-bold text-ink flex items-center justify-center gap-2 transition-colors shadow-xs"
+                className="min-h-11 w-full py-2 px-3 rounded-xl bg-white hover:bg-cream-deep border border-divider text-xs font-bold text-ink flex items-center justify-center gap-2 transition-colors shadow-xs"
               >
                 <Play className="w-3.5 h-3.5 text-cocoa" />
                 <span>{speakerTested ? "Play Sound Again" : "Play Test Chime"}</span>
@@ -326,7 +326,7 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
           <button
             type="button"
             onClick={handleFinish}
-            className="px-6 py-2.5 rounded-2xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-extrabold flex items-center gap-2 transition-all shadow-md"
+            className="min-h-11 px-6 py-2.5 rounded-2xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-extrabold flex items-center gap-2 transition-all shadow-md"
           >
             <CheckCircle2 className="w-4 h-4" />
             <span>Ready for Lesson</span>

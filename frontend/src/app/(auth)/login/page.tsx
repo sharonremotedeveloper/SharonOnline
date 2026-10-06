@@ -99,7 +99,7 @@ function LoginForm() {
         <div className="space-y-1">
           <div className="flex items-center justify-between">
             <label htmlFor="f-password" className="text-sm font-bold text-ink">Password</label>
-            <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+            <Link href="/forgot-password" className="min-h-11 inline-flex items-center text-sm text-primary hover:underline">
               Forgot?
             </Link>
           </div>
@@ -120,7 +120,7 @@ function LoginForm() {
           <button
             type="submit"
             disabled={submitting || isLoading}
-            className="w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+            className="min-h-11 w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {submitting ? "Signing in..." : "Sign In"} <ArrowRight className="w-4 h-4" />
           </button>
@@ -129,7 +129,7 @@ function LoginForm() {
 
       <div className="pt-2 text-center text-sm text-ink-muted">
         Don't have an account?{" "}
-        <Link href="/register" className="text-cocoa font-bold hover:underline">
+        <Link href="/register" className="min-h-11 inline-flex items-center text-cocoa font-bold hover:underline">
           Create Account
         </Link>
       </div>

@@ -77,7 +77,7 @@ export default function StudentDashboardPage() {
           </div>
           <Link
             href="/tutors"
-            className="px-4 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 text-white font-bold text-sm rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+            className="min-h-11 px-4 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 text-white font-bold text-sm rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
           >
             <Calendar className="w-3.5 h-3.5" /> Book Lesson
           </Link>
@@ -88,25 +88,25 @@ export default function StudentDashboardPage() {
       <div className="flex flex-wrap items-center gap-2 border-b border-cream-200 pb-3">
         <Link
           href="/student/dashboard"
-          className="px-3.5 py-1.5 bg-cocoa-50 text-cocoa-800 font-bold rounded-xl text-sm border border-cocoa-200"
+          className="min-h-11 inline-flex items-center px-3.5 py-1.5 bg-cocoa-50 text-cocoa-800 font-bold rounded-xl text-sm border border-cocoa-200"
         >
           Overview
         </Link>
         <Link
           href="/student/history"
-          className="px-3.5 py-1.5 text-ink-600 hover:text-ink-900 hover:bg-cream-100 font-medium rounded-xl text-sm transition-colors flex items-center gap-1.5"
+          className="min-h-11 px-3.5 py-1.5 text-ink-600 hover:text-ink-900 hover:bg-cream-100 font-medium rounded-xl text-sm transition-colors flex items-center gap-1.5"
         >
           <History className="w-3.5 h-3.5" /> Lesson History & Memos
         </Link>
         <Link
           href="/student/vocabulary"
-          className="px-3.5 py-1.5 text-ink-600 hover:text-ink-900 hover:bg-cream-100 font-medium rounded-xl text-sm transition-colors flex items-center gap-1.5"
+          className="min-h-11 px-3.5 py-1.5 text-ink-600 hover:text-ink-900 hover:bg-cream-100 font-medium rounded-xl text-sm transition-colors flex items-center gap-1.5"
         >
           <Layers className="w-3.5 h-3.5 text-warning" /> Flashcard Deck{cardsQ.data ? ` (${flashcards.length})` : ""}
         </Link>
         <Link
           href="/student/profile"
-          className="px-3.5 py-1.5 text-ink-600 hover:text-ink-900 hover:bg-cream-100 font-medium rounded-xl text-sm transition-colors flex items-center gap-1.5"
+          className="min-h-11 px-3.5 py-1.5 text-ink-600 hover:text-ink-900 hover:bg-cream-100 font-medium rounded-xl text-sm transition-colors flex items-center gap-1.5"
         >
           <User className="w-3.5 h-3.5" /> Learning Profile & Timezone
         </Link>
@@ -121,7 +121,7 @@ export default function StudentDashboardPage() {
         <div className="bg-white rounded-3xl border border-cream-200 p-8 text-center space-y-3">
           <h2 className="text-base font-bold text-ink-900">No upcoming lessons</h2>
           <p className="text-sm text-ink-500">You do not have a confirmed lesson scheduled yet.</p>
-          <Link href="/tutors" className="inline-flex px-4 py-2 bg-cocoa-600 hover:bg-cocoa-700 text-white font-bold text-sm rounded-xl">
+          <Link href="/tutors" className="min-h-11 items-center inline-flex px-4 py-2 bg-cocoa-600 hover:bg-cocoa-700 text-white font-bold text-sm rounded-xl">
             Find a tutor
           </Link>
         </div>
@@ -171,7 +171,7 @@ export default function StudentDashboardPage() {
 
               <Link
                 href={`/student/classroom/${upcomingLesson.id}`}
-                className="px-6 py-3.5 bg-accent hover:bg-accent-500 text-ink font-black rounded-2xl text-sm transition-all shadow-lg flex items-center justify-center gap-2 text-center"
+                className="min-h-11 px-6 py-3.5 bg-accent hover:bg-accent-500 text-ink font-black rounded-2xl text-sm transition-all shadow-lg flex items-center justify-center gap-2 text-center"
               >
                 <Video className="w-4 h-4 text-ink-950" /> Enter Classroom Staging
               </Link>
@@ -196,7 +196,7 @@ export default function StudentDashboardPage() {
             </div>
             <Link
               href="/student/vocabulary"
-              className="text-sm font-semibold text-cocoa-700 hover:text-cocoa-900 flex items-center gap-1"
+              className="min-h-11 text-sm font-semibold text-cocoa-700 hover:text-cocoa-900 flex items-center gap-1"
             >
               Open Full Study Deck <ChevronRight className="w-3.5 h-3.5" />
             </Link>
@@ -236,7 +236,7 @@ export default function StudentDashboardPage() {
                 <Link
                   key={card.id}
                   href="/student/vocabulary"
-                  className="px-3 py-1.5 bg-cream-50 hover:bg-cocoa-50 border border-cream-200 hover:border-cocoa-200 rounded-xl text-sm font-semibold text-ink-800 flex items-center gap-2 transition-colors"
+                  className="min-h-11 px-3 py-1.5 bg-cream-50 hover:bg-cocoa-50 border border-cream-200 hover:border-cocoa-200 rounded-xl text-sm font-semibold text-ink-800 flex items-center gap-2 transition-colors"
                 >
                   <span className="font-mono text-cocoa-800">{card.word}</span>
                   <span className="text-sm text-ink-400 italic">({card.part_of_speech})</span>
@@ -278,7 +278,7 @@ export default function StudentDashboardPage() {
 
           <Link
             href="/student/profile"
-            className="w-full text-center py-2.5 px-4 bg-cream-100 hover:bg-cream-200 text-ink-800 text-sm font-semibold rounded-xl transition-colors block"
+            className="min-h-11 items-center w-full text-center py-2.5 px-4 bg-cream-100 hover:bg-cream-200 text-ink-800 text-sm font-semibold rounded-xl transition-colors block"
           >
             Update Goals & Timezone
           </Link>
@@ -335,7 +335,7 @@ export default function StudentDashboardPage() {
                 {item.memo && (
                   <button
                     onClick={() => setSelectedMemoLesson(item)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cocoa-50 hover:bg-cocoa-100 border border-cocoa-200 text-cocoa-800 text-sm font-semibold rounded-xl transition-colors"
+                    className="min-h-11 inline-flex items-center gap-1.5 px-3 py-1.5 bg-cocoa-50 hover:bg-cocoa-100 border border-cocoa-200 text-cocoa-800 text-sm font-semibold rounded-xl transition-colors"
                   >
                     <FileText className="w-3.5 h-3.5" /> View Tutor Memo
                   </button>
@@ -348,7 +348,7 @@ export default function StudentDashboardPage() {
                 ) : (
                   <button
                     onClick={() => setReviewLesson(item)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-warning-surface hover:bg-warning-surface border border-warning-border text-warning-hover text-sm font-semibold rounded-xl transition-colors"
+                    className="min-h-11 inline-flex items-center gap-1.5 px-3 py-1.5 bg-warning-surface hover:bg-warning-surface border border-warning-border text-warning-hover text-sm font-semibold rounded-xl transition-colors"
                   >
                     <Star className="w-3.5 h-3.5 text-warning fill-warning" /> Leave Review
                   </button>

@@ -77,7 +77,7 @@ export default function AdminPayoutsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/admin/dashboard"
-            className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+            className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
@@ -103,7 +103,7 @@ export default function AdminPayoutsPage() {
           <div className="text-2xl sm:text-3xl font-black text-success-hover font-serif">
             R{groupMoney(totalPayoutZar)} ZAR
           </div>
-          <p className="text-xs text-ink-muted">Across {batch.length} tutor{batch.length === 1 ? "" : "s"}</p>
+          <p className="text-sm text-ink-muted">Across {batch.length} tutor{batch.length === 1 ? "" : "s"}</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
@@ -112,13 +112,13 @@ export default function AdminPayoutsPage() {
             <Building2 className="w-6 h-6" />
             <span>SARB ACB</span>
           </div>
-          <p className="text-xs text-ink-muted">Direct South African EFT inter-bank clearing</p>
+          <p className="text-sm text-ink-muted">Direct South African EFT inter-bank clearing</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
           <span className="text-xs font-bold text-ink-muted">Settlement Schedule</span>
           <div className="text-2xl sm:text-3xl font-black text-ink font-serif">Manual</div>
-          <p className="text-xs text-ink-muted">A person creates, approves and confirms every run</p>
+          <p className="text-sm text-ink-muted">A person creates, approves and confirms every run</p>
         </div>
       </div>
 
@@ -129,13 +129,13 @@ export default function AdminPayoutsPage() {
         <div className="p-6 border-b border-divider flex items-center justify-between">
           <div>
             <h3 className="text-lg font-black text-ink font-serif">Owed now (preview)</h3>
-            <p className="text-xs text-ink-muted">Cleared balances of tutors with a bank account. Create a payout run above to pay them.</p>
+            <p className="text-sm text-ink-muted">Cleared balances of tutors with a bank account. Create a payout run above to pay them.</p>
           </div>
           <span className="text-xs font-bold text-ink-muted">{batch.length} Accounts Queued</span>
         </div>
 
         {batch.length === 0 ? (
-          <p className="p-8 text-center text-xs text-ink-muted">No cleared balances are waiting for payout.</p>
+          <p className="p-8 text-center text-sm text-ink-muted">No cleared balances are waiting for payout.</p>
         ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[750px] border-collapse text-xs">

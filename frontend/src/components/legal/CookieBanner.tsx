@@ -130,7 +130,7 @@ export function CookieBanner() {
               <button
                 type="button"
                 onClick={() => setShowCustomize(false)}
-                className="p-1 rounded-lg text-ink-muted hover:text-ink transition-colors"
+                className="min-w-11 justify-center min-h-11 inline-flex items-center p-1 rounded-lg text-ink-muted hover:text-ink transition-colors"
                 aria-label="Back to summary"
               >
                 <X className="w-5 h-5" />
@@ -209,14 +209,14 @@ export function CookieBanner() {
                 <button
                   type="button"
                   onClick={handleRejectNonEssential}
-                  className="px-4 py-2 rounded-xl border border-divider bg-white hover:bg-cream-surface text-sm font-bold text-ink transition-colors"
+                  className="min-h-11 inline-flex items-center px-4 py-2 rounded-xl border border-divider bg-white hover:bg-cream-surface text-sm font-bold text-ink transition-colors"
                 >
                   Reject All Optional
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveCustom}
-                  className="px-6 py-2 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-sm font-bold transition-all shadow-sm"
+                  className="min-h-11 inline-flex items-center px-6 py-2 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-sm font-bold transition-all shadow-sm"
                 >
                   Save My Preferences
                 </button>

@@ -83,7 +83,7 @@ export function ReviewRubricModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-ink-400 hover:text-ink-700 hover:bg-cream-200/50 rounded-full transition-colors"
+            className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 text-ink-400 hover:text-ink-700 hover:bg-cream-200/50 rounded-full transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -116,7 +116,7 @@ export function ReviewRubricModal({
                       onMouseEnter={() => setHoverRating(star)}
                       onMouseLeave={() => setHoverRating(null)}
                       onClick={() => setRating(star)}
-                      className="p-1 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary rounded-md"
+                      className="min-w-11 justify-center min-h-11 inline-flex items-center p-1 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary rounded-md"
                     >
                       <Star
                         className={`w-8 h-8 ${
@@ -151,7 +151,7 @@ export function ReviewRubricModal({
                       key={tag}
                       type="button"
                       onClick={() => toggleTag(tag)}
-                      className={`text-sm px-3 py-1.5 rounded-full border transition-all ${
+                      className={`min-h-11 inline-flex items-center text-sm px-3 py-1.5 rounded-full border transition-all ${
                         isSelected
                           ? "bg-cocoa-600 border-cocoa-600 text-white font-semibold shadow-xs"
                           : "bg-cream-50 border-cream-200 text-ink-700 hover:border-cream-300"
@@ -197,14 +197,14 @@ export function ReviewRubricModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-semibold text-ink-600 hover:text-ink-900 rounded-xl"
+                className="min-h-11 inline-flex items-center px-4 py-2 text-sm font-semibold text-ink-600 hover:text-ink-900 rounded-xl"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
+                className="min-h-11 inline-flex items-center gap-2 px-6 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
               >
                 {isSubmitting ? (
                   <>Submitting...</>

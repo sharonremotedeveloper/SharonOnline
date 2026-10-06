@@ -112,7 +112,7 @@ function RegisterForm() {
         <button
           type="button"
           onClick={() => setRole("student")}
-          className={`py-2.5 rounded-xl text-sm font-bold transition-all ${
+          className={`min-h-11 inline-flex items-center py-2.5 rounded-xl text-sm font-bold transition-all ${
             role === "student"
               ? "bg-cocoa text-white shadow-sm"
               : "text-ink-muted hover:text-ink"
@@ -123,7 +123,7 @@ function RegisterForm() {
         <button
           type="button"
           onClick={() => setRole("teacher")}
-          className={`py-2.5 rounded-xl text-sm font-bold transition-all ${
+          className={`min-h-11 inline-flex items-center py-2.5 rounded-xl text-sm font-bold transition-all ${
             role === "teacher"
               ? "bg-cocoa text-white shadow-sm"
               : "text-ink-muted hover:text-ink"
@@ -277,7 +277,7 @@ function RegisterForm() {
           <button
             type="submit"
             disabled={submitting || isLoading}
-            className="w-full py-3.5 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+            className="min-h-11 w-full py-3.5 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {submitting ? "Creating Account..." : role === "teacher" ? "Submit Tutor Application" : "Create Student Account"} <ArrowRight className="w-4 h-4" />
           </button>
@@ -286,7 +286,7 @@ function RegisterForm() {
 
       <div className="pt-2 text-center text-sm text-ink-muted">
         Already have an account?{" "}
-        <Link href="/login" className="text-cocoa font-bold hover:underline">
+        <Link href="/login" className="min-h-11 inline-flex items-center text-cocoa font-bold hover:underline">
           Sign In
         </Link>
       </div>

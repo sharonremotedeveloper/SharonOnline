@@ -35,7 +35,7 @@ export function VerifyEmailBanner() {
       {state === "sent" ? (
         <span className="font-bold text-success">Link sent - check your inbox.</span>
       ) : (
-        <button type="button" onClick={resend} disabled={state === "sending"} className="font-bold text-cocoa hover:underline disabled:opacity-50">
+        <button type="button" onClick={resend} disabled={state === "sending"} className="inline-flex min-h-11 items-center px-2 font-bold text-cocoa hover:underline disabled:opacity-50">
           {state === "sending" ? "Sending..." : "Resend link"}
         </button>
       )}

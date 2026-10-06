@@ -120,7 +120,7 @@ export default function SupportPage() {
               <p className="text-sm text-ink-muted leading-relaxed">{responseMsg}</p>
               <button
                 onClick={() => setSubmitted(false)}
-                className="px-4 py-2 bg-cocoa text-white rounded-xl text-sm font-bold"
+                className="min-h-11 inline-flex items-center px-4 py-2 bg-cocoa text-white rounded-xl text-sm font-bold"
               >
                 Send Another Message
               </button>
@@ -130,7 +130,7 @@ export default function SupportPage() {
               <div>
                 <p id="user-type-label" className="block text-sm font-bold text-ink mb-1">I am a...</p>
                 <div role="radiogroup" aria-labelledby="user-type-label" className="flex gap-4 text-sm font-semibold text-ink">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
+                  <label className="flex min-h-11 items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
                       name="user_type"
@@ -140,7 +140,7 @@ export default function SupportPage() {
                     />
                     Student
                   </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer">
+                  <label className="flex min-h-11 items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
                       name="user_type"
@@ -206,7 +206,7 @@ export default function SupportPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50"
+                className="min-h-11 w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50"
               >
                 {loading ? "Submitting..." : <><Send className="w-4 h-4" /> Send Message</>}
               </button>

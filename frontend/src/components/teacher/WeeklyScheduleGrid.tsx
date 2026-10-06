@@ -165,7 +165,7 @@ export function WeeklyScheduleGrid() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-divider pb-6">
         <div>
           <h2 className="text-xl font-black text-ink font-serif">Weekly Recurring Teaching Matrix</h2>
-          <p className="text-xs text-ink-muted">
+          <p className="text-sm text-ink-muted">
             All slots are in your account timezone ({tutorZone}).
             Converted automatically on student booking pads.
           </p>
@@ -175,7 +175,7 @@ export function WeeklyScheduleGrid() {
           <button
             type="button"
             onClick={copyMondayToWeekdays}
-            className="px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold border border-divider flex items-center gap-1.5 transition-colors"
+            className="min-h-11 px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold border border-divider flex items-center gap-1.5 transition-colors"
           >
             <Copy className="w-3.5 h-3.5 text-cocoa" />
             <span>Copy Mon &rarr; Weekdays</span>
@@ -184,7 +184,7 @@ export function WeeklyScheduleGrid() {
           <button
             type="button"
             onClick={() => applyPreset("business")}
-            className="px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold border border-divider transition-colors"
+            className="min-h-11 inline-flex items-center px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold border border-divider transition-colors"
           >
             08:00 - 17:00 Preset
           </button>
@@ -192,7 +192,7 @@ export function WeeklyScheduleGrid() {
           <button
             type="button"
             onClick={() => applyPreset("evening")}
-            className="px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold border border-divider transition-colors"
+            className="min-h-11 inline-flex items-center px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold border border-divider transition-colors"
           >
             Evening Preset
           </button>
@@ -200,7 +200,7 @@ export function WeeklyScheduleGrid() {
           <button
             type="button"
             onClick={() => applyPreset("clear")}
-            className="px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink-muted hover:text-ink text-xs font-bold border border-divider transition-colors"
+            className="min-h-11 inline-flex items-center px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink-muted hover:text-ink text-xs font-bold border border-divider transition-colors"
           >
             Clear All
           </button>
@@ -209,7 +209,7 @@ export function WeeklyScheduleGrid() {
             type="button"
             onClick={() => handleSave(false)}
             disabled={saving}
-            className="px-5 py-2 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black flex items-center gap-2 shadow-sm transition-all ml-auto lg:ml-2"
+            className="min-h-11 px-5 py-2 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black flex items-center gap-2 shadow-sm transition-all ml-auto lg:ml-2"
           >
             {saved ? <Check className="w-4 h-4 text-gold-bright" /> : <Save className="w-4 h-4" />}
             <span>{saving ? "Saving..." : saved ? "Schedule Saved!" : "Save Availability"}</span>
@@ -219,12 +219,12 @@ export function WeeklyScheduleGrid() {
 
       <InlineError error={saveError} />
       {availability?.truncated && (
-        <p className="text-xs text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2">
+        <p className="text-sm text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2">
           Only part of your saved availability could be loaded, so this grid may be incomplete. Do not save from here.
         </p>
       )}
       {availability && wouldChangeSavedWindows(availability.rows) && (
-        <p className="text-xs text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2">
+        <p className="text-sm text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2">
           Some saved windows do not line up with this hourly grid (or overlap each other). Saving here replaces them with
           the blocks shown.
         </p>
@@ -249,14 +249,14 @@ export function WeeklyScheduleGrid() {
               type="button"
               disabled={saving}
               onClick={() => handleSave(true)}
-              className="px-3 py-1.5 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white font-black"
+              className="min-h-11 inline-flex items-center px-3 py-1.5 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white font-black"
             >
               Save anyway
             </button>
             <button
               type="button"
               onClick={() => setPendingConflicts(null)}
-              className="px-3 py-1.5 rounded-xl bg-white border border-divider font-bold"
+              className="min-h-11 inline-flex items-center px-3 py-1.5 rounded-xl bg-white border border-divider font-bold"
             >
               Keep editing
             </button>
@@ -264,7 +264,7 @@ export function WeeklyScheduleGrid() {
         </div>
       )}
       {leftConflicts.length > 0 && (
-        <p className="text-xs text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2">
+        <p className="text-sm text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2">
           Saved. {leftConflicts.length} confirmed lesson{leftConflicts.length === 1 ? " is" : "s are"} outside your new hours but
           still booked: teach {leftConflicts.length === 1 ? "it" : "them"} or cancel from your lessons.
         </p>

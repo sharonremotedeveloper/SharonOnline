@@ -163,7 +163,7 @@ export default async function LegalPolicyPage({ params }: LegalPageProps) {
       <div className="border-b border-divider bg-white print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-ink-muted">
-            <Link href="/" className="hover:text-ink transition-colors">
+            <Link href="/" className="min-h-11 inline-flex items-center hover:text-ink transition-colors">
               Home
             </Link>
             <ChevronRight className="w-3.5 h-3.5" />
@@ -174,7 +174,7 @@ export default async function LegalPolicyPage({ params }: LegalPageProps) {
 
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-sm font-bold text-ink-muted hover:text-ink transition-colors"
+            className="min-h-11 inline-flex items-center gap-1.5 text-sm font-bold text-ink-muted hover:text-ink transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Return to Sharon Online</span>
@@ -199,7 +199,7 @@ export default async function LegalPolicyPage({ params }: LegalPageProps) {
                     <Link
                       key={item.slug}
                       href={`/legal/${item.slug}`}
-                      className={`block px-3.5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                      className={`min-h-11 items-center block px-3.5 py-2.5 rounded-xl text-sm font-bold transition-all ${
                         isActive
                           ? "bg-cocoa text-white shadow-sm"
                           : "text-ink hover:bg-cream-surface hover:text-cocoa"
@@ -223,7 +223,7 @@ export default async function LegalPolicyPage({ params }: LegalPageProps) {
                     <a
                       key={item.id}
                       href={`#${item.id}`}
-                      className={`block text-ink-muted hover:text-cocoa transition-colors leading-snug ${
+                      className={`block py-3 text-ink-muted hover:text-cocoa transition-colors leading-snug ${
                         item.level === 3 ? "pl-3 text-sm" : "font-semibold"
                       }`}
                     >
