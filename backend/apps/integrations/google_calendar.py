@@ -1,13 +1,17 @@
 import secrets
 import hashlib
+from datetime import date, time, timedelta, timezone as dt_timezone
 from urllib.parse import urlencode
 import requests
 import logging
 from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.db import transaction
+from apps.common import clock
 from apps.common.crypto import decrypt_integration_secret, encrypt_integration_secret
+from apps.teachers.services.schedule import InvalidTeacherTimezone, boundary_utc, teacher_zone
 from .models import CalendarCredential, CalendarOAuthState
 
 logger = logging.getLogger(__name__)
@@ -15,6 +19,13 @@ logger = logging.getLogger(__name__)
 GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'  # noqa: S105 - endpoint, not a secret
 GOOGLE_REVOKE_URL = 'https://oauth2.googleapis.com/revoke'
+GOOGLE_CALENDAR_URL = 'https://www.googleapis.com/calendar/v3'
+
+UTC = dt_timezone.utc
+# Private extended property stamped on every lesson event we create; the busy hint ignores events that carry it.
+OWN_EVENT_MARKER = 'sharon_booking_id'
+EVENTS_PAGE_SIZE, EVENTS_MAX_PAGES = 250, 8
+BUSY_CACHE_TTL = 7200       # the 30-minute refresh keeps it warm; a dead sync lets it lapse after two hours
 
 
 def oauth_authorization_url(user):
@@ -86,21 +97,113 @@ def exchange_oauth_code(user, code, state):
     return True
 
 
-def fetch_freebusy(user, time_min, time_max):
-    """Return Google primary-calendar busy intervals for the requested UTC window."""
+class CalendarUnavailable(RuntimeError):
+    """Google could not be asked (not connected, token refused, throttled, 5xx). Callers degrade to "no hiding"."""
+
+
+def busy_cache_key(teacher_id) -> str:
+    return f'gcal:busy:{teacher_id}'
+
+
+def _event_makes_tutor_busy(event: dict) -> bool:
+    """Opaque, live events the tutor is attending, and not one of our own lesson events (private marker)."""
+    if event.get('status') == 'cancelled' or event.get('transparency') == 'transparent':
+        return False
+    if event.get('eventType') == 'workingLocation':
+        return False
+    if (event.get('extendedProperties') or {}).get('private', {}).get(OWN_EVENT_MARKER):
+        return False
+    return not any(a.get('self') and a.get('responseStatus') == 'declined' for a in event.get('attendees') or [])
+
+
+def _event_interval(event: dict, zone):
+    """(start_utc, end_utc) of an event; an all-day event spans the tutor's local days. None when it cannot be read."""
+    start, end = event.get('start') or {}, event.get('end') or {}
+    if 'dateTime' in start and 'dateTime' in end:
+        first, last = parse_datetime(start['dateTime']), parse_datetime(end['dateTime'])
+    elif 'date' in start and 'date' in end:
+        first, last = (boundary_utc(date.fromisoformat(side['date']), time.min, zone) for side in (start, end))
+    else:
+        return None
+    if first is None or last is None or first >= last:
+        return None
+    return first.astimezone(UTC), last.astimezone(UTC)
+
+
+def fetch_external_busy(user, time_min, time_max, zone):
+    """
+    The tutor's own busy intervals on their primary calendar in [time_min, time_max): events.list, not freeBusy.query,
+    because freeBusy cannot tell our lesson events from the tutor's own. Raises CalendarUnavailable on any provider problem.
+    """
     access_token = _access_token(user)
     if not access_token:
-        raise RuntimeError('Google Calendar is not connected.')
-    response = requests.post(
-        'https://www.googleapis.com/calendar/v3/freeBusy',
-        headers={'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'},
-        json={'timeMin': time_min.isoformat(), 'timeMax': time_max.isoformat(),
-              'items': [{'id': 'primary'}]}, timeout=10,
-    )
-    if response.status_code != 200:
-        raise RuntimeError(f'Google Calendar free/busy failed: HTTP {response.status_code}')
-    calendars = response.json().get('calendars') or {}
-    return calendars.get('primary', {}).get('busy') or []
+        raise CalendarUnavailable('Google Calendar is not connected or refused the stored grant.')
+    params = {'timeMin': time_min.isoformat(), 'timeMax': time_max.isoformat(), 'singleEvents': 'true',
+              'showDeleted': 'false', 'maxResults': EVENTS_PAGE_SIZE,
+              'fields': 'nextPageToken,items(id,status,transparency,eventType,start,end,attendees(self,responseStatus),'
+                        'extendedProperties/private)'}
+    intervals = []
+    for _page in range(EVENTS_MAX_PAGES):
+        try:
+            response = requests.get(f'{GOOGLE_CALENDAR_URL}/calendars/primary/events', params=params,
+                                    headers={'Authorization': f'Bearer {access_token}'}, timeout=10)
+        except requests.RequestException as exc:
+            raise CalendarUnavailable(f'Google Calendar request failed: {type(exc).__name__}') from exc
+        if response.status_code != 200:
+            raise CalendarUnavailable(f'Google Calendar events.list failed: HTTP {response.status_code}')
+        body = response.json()
+        for event in body.get('items') or []:
+            interval = _event_interval(event, zone) if _event_makes_tutor_busy(event) else None
+            if interval:
+                intervals.append(interval)
+        if not body.get('nextPageToken'):
+            return intervals
+        params['pageToken'] = body['nextPageToken']
+    logger.warning('Google Calendar events.list for user %s exceeded %s pages; the busy hint is partial',
+                   user.pk, EVENTS_MAX_PAGES)
+    return intervals
+
+
+def external_busy_intervals(teacher):
+    """
+    The cached busy hint for the PUBLIC slot listing as (start_utc, end_utc) pairs. Empty unless the tutor has an active
+    connection and left "block my busy times" on (read live, so turning it off takes effect at once). A cache that cannot be
+    read hides nothing.
+    """
+    if not CalendarCredential.objects.filter(user_id=teacher.user_id, revoked_at__isnull=True, block_busy=True).exists():
+        return []
+    try:
+        cached = cache.get(busy_cache_key(teacher.id)) or []
+    except Exception:       # a cache outage must not take the listing down: the hint is optional by design
+        logger.warning('Busy-hint cache unreadable for teacher %s; listing without it', teacher.id)
+        return []
+    intervals = []
+    for start, end in cached:
+        first, last = parse_datetime(str(start)), parse_datetime(str(end))
+        if first and last and first < last:
+            intervals.append((first, last))
+    return intervals
+
+
+def refresh_busy_hint(teacher) -> str:
+    """Re-read one tutor's busy times into the cache. Returns what happened; never raises for a Google problem."""
+    credential = CalendarCredential.objects.filter(user_id=teacher.user_id, revoked_at__isnull=True).first()
+    if credential is None:
+        cache.delete(busy_cache_key(teacher.id))
+        return 'not_connected'
+    if not credential.block_busy:
+        cache.set(busy_cache_key(teacher.id), [], timeout=BUSY_CACHE_TTL)
+        return 'opted_out'
+    now = clock.now()
+    try:
+        intervals = fetch_external_busy(teacher.user, now, now + timedelta(days=settings.BOOKING_HORIZON_DAYS + 1),
+                                        teacher_zone(teacher))
+    except (CalendarUnavailable, InvalidTeacherTimezone) as exc:
+        # Keep the last good hint (it expires by itself): a throttled hour must not flip every slot back and forth.
+        logger.warning('Google Calendar busy hint not refreshed for teacher %s: %s', teacher.id, exc)
+        return 'unavailable'
+    cache.set(busy_cache_key(teacher.id), [(a.isoformat(), b.isoformat()) for a, b in intervals], timeout=BUSY_CACHE_TTL)
+    return 'ok'
 
 
 def disconnect_calendar(user):
@@ -167,6 +270,7 @@ def sync_booking_to_teacher_gcal(booking) -> str:
             "dateTime": booking.end_time_utc.isoformat(),
             "timeZone": "UTC"
         },
+        "extendedProperties": {"private": {OWN_EVENT_MARKER: str(booking.id)}},
         "reminders": {
             "useDefault": False,
             "overrides": [

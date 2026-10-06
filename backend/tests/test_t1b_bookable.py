@@ -253,14 +253,23 @@ class TestOperationalTutors:
         assert self._areas([]) == {'live', 'suspended-with-lesson'}
 
     def test_gcal_reconcile_follows_the_same_rule(self):
-        from apps.integrations.tasks import reconcile_teacher_gcal_task
-        token = {'access_token': 'x'}
-        f.make_teacher_profile(status='approved', user=f.make_user('teacher', google_calendar_token=token))
-        suspended = f.make_teacher_profile(status='suspended', user=f.make_user('teacher', google_calendar_token=token))
+        from unittest import mock
+
+        from apps.integrations.models import CalendarCredential
+        from apps.integrations.tasks import reconcile_teacher_gcal_task, sync_tutor_busy_task
+
+        def connected(profile):
+            CalendarCredential.objects.create(user=profile.user, refresh_token_enc='x')
+            return profile
+
+        approved = connected(f.make_teacher_profile(status='approved'))
+        suspended = connected(f.make_teacher_profile(status='suspended'))
         f.make_booking(teacher=suspended, status=S.CONFIRMED, offset_hours=3)
-        f.make_teacher_profile(status='suspended', user=f.make_user('teacher', google_calendar_token=token))
-        f.make_teacher_profile(status='applied', user=f.make_user('teacher', google_calendar_token=token))
-        assert reconcile_teacher_gcal_task() == {'reconciled_tutors': 2}
+        connected(f.make_teacher_profile(status='suspended'))
+        connected(f.make_teacher_profile(status='applied'))
+        with mock.patch.object(sync_tutor_busy_task, 'delay') as delay:
+            assert reconcile_teacher_gcal_task() == {'queued_tutors': 2}
+        assert {call.args[0] for call in delay.call_args_list} == {str(approved.id), str(suspended.id)}
 
     def test_operational_is_distinct_with_several_lessons(self):
         tutor = f.make_teacher_profile(status='suspended')

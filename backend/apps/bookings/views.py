@@ -63,18 +63,12 @@ class TeacherSlotsView(APIView):
         except DRFValidationError:
             return Response({"tz": 'Enter a valid IANA timezone, e.g. "Asia/Tokyo".'}, status=status.HTTP_400_BAD_REQUEST)
 
-        from django.core.cache import cache
-        from django.utils.dateparse import parse_datetime
-        busy = []
-        for start, end in cache.get(f'gcal:busy:{teacher.id}', []) or []:
-            start_dt, end_dt = parse_datetime(str(start)), parse_datetime(str(end))
-            if start_dt and end_dt and start_dt < end_dt:
-                busy.append((start_dt, end_dt))
+        # The tutor's own calendar events hide slots here only (G2): reserve and checkout read strict records.
         slots = generate_teacher_slots(
             teacher=teacher,
             days_ahead=days_ahead,
             viewer_tz_name=viewer_tz,
-            blocked_intervals=busy,
+            include_external_busy=True,
         )
         return Response({
             "teacher_id": str(teacher.id),

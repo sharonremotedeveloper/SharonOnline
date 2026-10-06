@@ -61,7 +61,6 @@ def sync_eskom_stages_task():
 
 def sync_eskom_statuses(provider, now=None):
     """Provider-injected implementation used by the beat task and deterministic tests."""
-    from django.conf import settings
     from django.core.cache import cache
     from django.db import transaction
     from django.utils.dateparse import parse_datetime
@@ -173,52 +172,35 @@ def send_eskom_notification_task(self, attempt_id):
 @shared_task(name='apps.integrations.tasks.reconcile_teacher_gcal_task')
 def reconcile_teacher_gcal_task():
     """
-    Periodic task running every 30 minutes:
-    Synchronizes connected teacher Google Calendars to detect external busy blocks
-    and caches them in Redis for availability slot deduction.
+    Every 30 minutes: queue one `sync_tutor_busy_task` per tutor who can use the hint (operational, connected, "block my
+    busy times" on). One job per tutor, so a slow or throttled Google account delays only itself.
     """
-    from django.core.cache import cache
-    from django.utils.dateparse import parse_datetime
-    from .google_calendar import fetch_freebusy
-    from apps.teachers.models import TeacherProfile
     from apps.common.locks import distributed_task_lock
+    from apps.teachers.models import TeacherProfile
 
-    @distributed_task_lock('lock:beat:reconcile_teacher_gcal', timeout_seconds=1600)
+    @distributed_task_lock('lock:beat:reconcile_teacher_gcal', timeout_seconds=300)
     def _execute():
-        # Same rule as the Eskom sync (slice T1b): approved tutors and suspended ones with lessons left; no applicants.
-        tutors = TeacherProfile.objects.operational().filter(
-            user__calendar_credential__revoked_at__isnull=True
-        ).select_related('user', 'user__calendar_credential')
-
-        reconciled = 0
-        for tutor in tutors:
-            credential = getattr(tutor.user, 'calendar_credential', None)
-            local_mode = settings.DEBUG or getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False)
-            if credential or (local_mode and isinstance(tutor.user.google_calendar_token, dict)
-                              and tutor.user.google_calendar_token.get('access_token')):
-                cache_key = f"gcal:busy:{tutor.id}"
-                # No credential row = the local-simulation legacy token: nothing to fetch, cache an empty busy list.
-                if credential is None or not credential.block_busy:
-                    cache.set(cache_key, [], timeout=7200)
-                    reconciled += 1
-                    continue
-                now = timezone.now()
-                try:
-                    busy = fetch_freebusy(tutor.user, now, now + timedelta(days=settings.BOOKING_HORIZON_DAYS + 1))
-                    intervals = []
-                    for item in busy:
-                        start, end = parse_datetime(str(item.get('start') or '')), parse_datetime(str(item.get('end') or ''))
-                        if start and end and start < end:
-                            intervals.append((start.isoformat(), end.isoformat()))
-                    cache.set(cache_key, intervals, timeout=7200)
-                    reconciled += 1
-                    logger.info('Reconciled Google Calendar free/busy for tutor %s', tutor.user.username)
-                except Exception as exc:
-                    logger.warning('Google Calendar free/busy unavailable for tutor %s: %s', tutor.user.username, exc)
-
-        return {"reconciled_tutors": reconciled}
+        tutor_ids = TeacherProfile.objects.operational().filter(
+            user__calendar_credential__isnull=False, user__calendar_credential__revoked_at__isnull=True,
+            user__calendar_credential__block_busy=True,
+        ).values_list('id', flat=True)
+        queued = 0
+        for tutor_id in tutor_ids:
+            sync_tutor_busy_task.delay(str(tutor_id))
+            queued += 1
+        return {"queued_tutors": queued}
 
     return _execute()
+
+
+@shared_task(name='apps.integrations.tasks.sync_tutor_busy_task')
+def sync_tutor_busy_task(tutor_id: str) -> str:
+    """Slice G2: refresh one tutor's Google busy hint. A Google failure leaves the last hint and never fails the task."""
+    from apps.teachers.models import TeacherProfile
+    from .google_calendar import refresh_busy_hint
+
+    tutor = TeacherProfile.objects.select_related('user').filter(pk=tutor_id).first()
+    return refresh_busy_hint(tutor) if tutor else 'not_found'
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=120, name='apps.integrations.tasks.cleanup_zoom_meeting')

@@ -78,6 +78,7 @@ def generate_teacher_slots(
     days_ahead: int = 7,
     viewer_tz_name: str = 'UTC',
     blocked_intervals: Optional[Iterable] = None,
+    include_external_busy: bool = False,
 ) -> list:
     """
     Projects a teacher's availability (weekly rows + date overrides - time off) into concrete 25-minute UTC slots, annotated
@@ -85,6 +86,9 @@ def generate_teacher_slots(
 
     `blocked_intervals` is the generic hook for "this tutor is busy then" sources (Google busy times, Eskom outage windows):
     an iterable of (start_utc, end_utc); any slot it touches is not listed.
+
+    `include_external_busy` adds the tutor's own Google Calendar events (slice G2) to that. It is a HINT for the public
+    listing only: reserve, reschedule and checkout leave it False so the database stays the only authority on a booking.
     """
     now_utc = clock.now()
     try:
@@ -98,6 +102,9 @@ def generate_teacher_slots(
         start_date = now_utc.astimezone(teacher_tz).date()
     plan = load_plan(teacher, teacher_tz, since=start_date - timedelta(days=1))
     extra_blocked = list(blocked_intervals or [])
+    if include_external_busy:
+        from apps.integrations.google_calendar import external_busy_intervals
+        extra_blocked += external_busy_intervals(teacher)
     booked, held = _booking_spans(teacher, boundary_utc(start_date, time.min, teacher_tz),
                                   boundary_utc(start_date + timedelta(days=days_ahead + 1), time.min, teacher_tz), now_utc)
     earliest = now_utc + min_notice()           # a slot must start MORE than the notice from now

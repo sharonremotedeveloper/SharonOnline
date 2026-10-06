@@ -106,6 +106,7 @@ CELERY_TASK_ROUTES = {
     'apps.payments.tasks.reconcile_pending_transactions_task': {'queue': 'financial_escrow'},
     'apps.integrations.tasks.sync_eskom_stages_task': {'queue': 'scheduler_beat'},
     'apps.integrations.tasks.reconcile_teacher_gcal_task': {'queue': 'scheduler_beat'},
+    'apps.integrations.tasks.sync_tutor_busy_task': {'queue': 'scheduler_beat'},
     'apps.integrations.tasks.dispatch_booking_fulfillment': {'queue': 'critical_io'},
     'apps.integrations.tasks.retry_fulfillment_dispatches_task': {'queue': 'critical_io'},
     # Notifications (slice N1a)

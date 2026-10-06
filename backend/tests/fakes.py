@@ -28,7 +28,7 @@ import itertools
 import json as jsonlib
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 import requests
@@ -297,6 +297,8 @@ class FakeGoogle(_FailureQueue):
         self.events = {}
         self.deleted = set()
         self.busy = []
+        self.external = []          # events the tutor made themselves (not created through our insert)
+        self.page_size = 250
         self.access_token = 'fake-google-access-token'
         self.revoked = False
         self._ids = itertools.count(1)
@@ -306,6 +308,18 @@ class FakeGoogle(_FailureQueue):
 
     def add_busy(self, start: datetime, end: datetime, calendar='primary'):
         self.busy.append({'calendar': calendar, 'start': start.isoformat(), 'end': end.isoformat()})
+
+    def add_external_event(self, start: datetime = None, end: datetime = None, *, transparent=False, status='confirmed',
+                           all_day=None, summary='Dentist'):
+        """A calendar entry the tutor made themselves. `all_day=(date, date)` gives a date-only (all-day) event."""
+        event = {'id': f'ext{len(self.external) + 1}', 'status': status, 'summary': summary,
+                 'transparency': 'transparent' if transparent else 'opaque'}
+        if all_day:
+            event['start'], event['end'] = {'date': all_day[0].isoformat()}, {'date': all_day[1].isoformat()}
+        else:
+            event['start'], event['end'] = {'dateTime': start.isoformat()}, {'dateTime': end.isoformat()}
+        self.external.append(event)
+        return event
 
     def handle(self, req):
         self.requests.append(req)
@@ -318,6 +332,8 @@ class FakeGoogle(_FailureQueue):
         path = urlparse(req.url).path.removeprefix('/calendar/v3')
         if path == '/freeBusy' and req.method == 'POST':
             return self.pop_response('freebusy') or self._freebusy(req.json or {})
+        if re.fullmatch(r'/calendars/([^/]+)/events', path) and req.method == 'GET':
+            return self.pop_response('list') or self._list(req.params or {})
         if re.fullmatch(r'/calendars/([^/]+)/events', path) and req.method == 'POST':
             return self.pop_response('insert') or self._insert(req.json or {})
         one = re.fullmatch(r'/calendars/([^/]+)/events/([^/]+)', path)
@@ -360,6 +376,26 @@ class FakeGoogle(_FailureQueue):
             return FakeResponse(409, {'error': {'code': 409, 'message': 'The requested identifier already exists.'}})
         self.events[event_id] = {**body, 'id': event_id}
         return FakeResponse(200, self.events[event_id])
+
+    @staticmethod
+    def _bounds(event):
+        def point(side):
+            if 'dateTime' in side:
+                return datetime.fromisoformat(side['dateTime'])
+            return datetime.fromisoformat(side['date']).replace(tzinfo=timezone.utc)
+        return point(event['start']), point(event['end'])
+
+    def _list(self, params):
+        """events.list: events overlapping [timeMin, timeMax), `page_size` per page, pageToken = next offset."""
+        lo, hi = datetime.fromisoformat(params['timeMin']), datetime.fromisoformat(params['timeMax'])
+        inside = [e for e in [*self.events.values(), *self.external]
+                  if self._bounds(e)[0] < hi and self._bounds(e)[1] > lo]
+        offset = int(params.get('pageToken') or 0)
+        page = inside[offset:offset + self.page_size]
+        body = {'kind': 'calendar#events', 'items': page}
+        if offset + self.page_size < len(inside):
+            body['nextPageToken'] = str(offset + self.page_size)
+        return FakeResponse(200, body)
 
     def _freebusy(self, body):
         calendars = {}
