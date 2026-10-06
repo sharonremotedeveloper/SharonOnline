@@ -1,52 +1,29 @@
-import { Zap, ShieldCheck, BatteryCharging, Radio } from "lucide-react";
+import Link from "next/link";
+import { BatteryCharging, ArrowRight } from "lucide-react";
 
+/**
+ * A single calm reassurance line. It used to be a full-width "100% uninterrupted, guaranteed" banner: that overclaimed
+ * and made overseas students think about power cuts. The detail now lives on /trust-safety.
+ */
 export function PowerGuardCallout() {
   return (
-    <div className="bg-gradient-to-r from-teal to-teal-mid text-white rounded-3xl p-8 sm:p-10 shadow-card relative overflow-hidden">
-      {/* Background Decorative Pattern */}
-      <div className="absolute -right-12 -bottom-12 w-64 h-64 rounded-full bg-white/5 pointer-events-none blur-2xl" />
-
-      <div className="max-w-4xl space-y-6 relative z-10">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-accent-surface">
-          <Zap className="w-3.5 h-3.5 text-accent animate-pulse" />
-          <span>EskomSePush-backed Power Resilience</span>
-        </div>
-
-        <h3 className="text-2xl sm:text-3xl font-extrabold font-serif leading-snug">
-          100% Uninterrupted Lessons. Guaranteed Power Resilience.
-        </h3>
-
-        <p className="text-sm sm:text-base text-white/85 leading-relaxed">
-          South African tutors are mandatory-verified for solar, inverter, or UPS battery backups. 
-          Power Guard caches municipal outage windows, identifies vulnerable upcoming lessons, and sends proactive warnings without inventing a grid stage when the provider is unavailable.
+    <aside className="flex flex-col gap-4 rounded-2xl border border-teal-border bg-teal-surface p-5 sm:flex-row sm:items-center sm:p-6">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal text-gold-bright">
+        <BatteryCharging className="h-6 w-6" aria-hidden="true" />
+      </span>
+      <div className="flex-1">
+        <h3 className="font-serif text-lg font-bold text-ink">Your lesson is protected if the power goes out</h3>
+        <p className="mt-1 text-base leading-relaxed text-ink-muted">
+          Our tutors use backup power for their internet. If a lesson is still cut off, you get a new lesson or your
+          money back.
         </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-          <div className="bg-white/10 rounded-xl p-4 border border-white/15 flex items-center gap-3">
-            <ShieldCheck className="w-5 h-5 text-accent flex-shrink-0" />
-            <div>
-              <div className="text-xs font-bold text-white">Power Backups</div>
-              <div className="text-[11px] text-white/70">Verified inverter/UPS setup</div>
-            </div>
-          </div>
-
-          <div className="bg-white/10 rounded-xl p-4 border border-white/15 flex items-center gap-3">
-            <Radio className="w-5 h-5 text-accent flex-shrink-0" />
-            <div>
-              <div className="text-xs font-bold text-white">Grid Telemetry</div>
-              <div className="text-[11px] text-white/70">EskomSePush suburb sync</div>
-            </div>
-          </div>
-
-          <div className="bg-white/10 rounded-xl p-4 border border-white/15 flex items-center gap-3">
-            <BatteryCharging className="w-5 h-5 text-accent flex-shrink-0" />
-            <div>
-              <div className="text-xs font-bold text-white">Zero Disruption</div>
-              <div className="text-[11px] text-white/70">Auto 100% refund protection</div>
-            </div>
-          </div>
-        </div>
       </div>
-    </div>
+      <Link
+        href="/trust-safety"
+        className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 text-base font-bold text-teal underline-offset-4 hover:underline"
+      >
+        How we protect lessons <ArrowRight className="h-4 w-4" aria-hidden="true" />
+      </Link>
+    </aside>
   );
 }

@@ -71,59 +71,42 @@ export function CookieBanner() {
     <div
       role="region"
       aria-label="Cookie consent and privacy options"
-      className="fixed bottom-0 inset-x-0 z-50 p-4 sm:p-6 pointer-events-none print:hidden animate-in slide-in-from-bottom duration-300"
+      className="fixed bottom-0 inset-x-0 z-40 p-2 sm:p-4 pointer-events-none print:hidden animate-in slide-in-from-bottom duration-300"
     >
-      <div className="max-w-4xl mx-auto bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-2xl pointer-events-auto ring-1 ring-ink/5">
+      <div className="max-w-5xl mx-auto bg-white rounded-2xl p-4 sm:p-5 border border-divider shadow-2xl pointer-events-auto ring-1 ring-ink/5">
         {!showCustomize ? (
-          /* Primary Summary View */
-          <div className="space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="p-2.5 rounded-2xl bg-teal/10 text-teal shrink-0">
-                <Cookie className="w-6 h-6" />
-              </div>
-              <div className="space-y-1.5 flex-1">
-                <h2 className="text-base sm:text-lg font-bold font-serif text-ink tracking-tight">
-                  Your Privacy & Cookie Choices
-                </h2>
-                <p className="text-xs sm:text-sm text-ink-muted leading-relaxed">
-                  We use essential cookies to maintain secure authenticated logins and high-quality classroom video streaming. With your permission, we also use performance analytics cookies to optimize latency and platform features. Learn more in our{" "}
-                  <Link href="/legal/cookies" className="text-teal font-semibold underline hover:text-teal-deep">
-                    Cookie Policy
-                  </Link>{" "}
-                  and{" "}
-                  <Link href="/legal/privacy" className="text-teal font-semibold underline hover:text-teal-deep">
-                    Privacy Policy
-                  </Link>.
-                </p>
-              </div>
-            </div>
+          /* Slim bar: a few lines on a phone so the menu and the page stay reachable */
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-6">
+            <p className="flex-1 text-sm text-ink-muted leading-snug">
+              <Cookie className="mr-1.5 -mt-0.5 inline h-4 w-4 text-teal" aria-hidden="true" />
+              We use essential cookies to keep you signed in and lessons running. Optional analytics cookies help us improve the site, and only run if you say yes.{" "}
+              <Link href="/legal/cookies" className="text-teal font-semibold underline underline-offset-2 hover:text-teal-hover">
+                Cookie policy
+              </Link>
+            </p>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 pt-2 border-t border-divider">
-              <button
-                type="button"
-                onClick={() => setShowCustomize(true)}
-                className="px-4 py-2.5 rounded-xl border border-divider bg-cream-surface hover:bg-cream-deep text-xs font-bold text-ink transition-colors flex items-center justify-center gap-2 focus:ring-2 focus:ring-teal focus:outline-none"
-              >
-                <Settings2 className="w-3.5 h-3.5" />
-                <span>Customize Preferences</span>
-              </button>
-
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={handleRejectNonEssential}
-                className="px-4 py-2.5 rounded-xl border border-divider bg-white hover:bg-cream-surface text-xs font-bold text-ink transition-colors flex items-center justify-center gap-1.5 focus:ring-2 focus:ring-teal focus:outline-none"
+                className="col-span-1 min-h-[44px] px-4 rounded-xl border border-ink/20 bg-white hover:bg-cream-surface text-sm font-bold text-ink transition-colors focus-visible:ring-2 focus-visible:ring-teal focus:outline-none"
               >
-                <X className="w-3.5 h-3.5" />
-                <span>Reject Non-Essential</span>
+                Reject optional
               </button>
-
               <button
                 type="button"
                 onClick={handleAcceptAll}
-                className="px-6 py-2.5 rounded-xl bg-teal hover:bg-teal-hover text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 focus:ring-2 focus:ring-teal focus:outline-none"
+                className="col-span-1 min-h-[44px] px-4 rounded-xl bg-teal hover:bg-teal-hover text-white text-sm font-bold transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-teal focus:outline-none"
               >
-                <Check className="w-3.5 h-3.5" />
-                <span>Accept All Cookies</span>
+                Accept all
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCustomize(true)}
+                className="col-span-2 sm:col-span-1 min-h-[44px] px-3 rounded-xl text-sm font-semibold text-teal underline underline-offset-2 hover:text-teal-hover flex items-center justify-center gap-1.5 focus-visible:ring-2 focus-visible:ring-teal focus:outline-none"
+              >
+                <Settings2 className="w-4 h-4" aria-hidden="true" />
+                <span>Choose</span>
               </button>
             </div>
           </div>
@@ -154,7 +137,7 @@ export function CookieBanner() {
               </button>
             </div>
 
-            <div className="space-y-4 max-h-72 overflow-y-auto pr-1 text-xs">
+            <div className="space-y-4 max-h-[45vh] overflow-y-auto pr-1 text-sm">
               {/* Essential Tier */}
               <div className="p-4 rounded-2xl bg-cream-surface/70 border border-divider flex items-start justify-between gap-4">
                 <div className="space-y-1">
