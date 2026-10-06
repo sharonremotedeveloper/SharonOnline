@@ -20,6 +20,7 @@ import { CurrencySwitcher } from "@/components/public/CurrencySwitcher";
 import { useAuth } from "@/context/AuthContext";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
+import { NotificationBell } from "@/components/notifications";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -80,6 +81,8 @@ export function Navbar() {
                   <span>{user.credits} Credits</span>
                 </div>
               )}
+
+              <NotificationBell />
 
               <Link
                 href={getDashboardLink()}
@@ -142,6 +145,7 @@ export function Navbar() {
 
         {/* Mobile Hamburger */}
         <div className="lg:hidden flex items-center gap-2">
+          {isAuthenticated && user && <NotificationBell />}
           <CurrencySwitcher variant="select" />
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
