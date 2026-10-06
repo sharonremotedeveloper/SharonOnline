@@ -18,7 +18,6 @@ from apps.notifications.serializers import (
     NotificationPreferenceSerializer,
     NotificationSerializer,
     ReadAllResponseSerializer,
-    ResendWebhookResponseSerializer,
     UnreadCountSerializer,
 )
 from apps.notifications.svix import WebhookVerificationError, verify_svix_signature
@@ -93,7 +92,7 @@ class NotificationPreferenceView(NotificationBaseView):
         return Response(NotificationPreferenceSerializer(serializer.instance).data)
 
 
-@extend_schema(responses={200: ResendWebhookResponseSerializer})
+@extend_schema(exclude=True)
 class ResendWebhookView(APIView):
     """
     Public Svix webhook receiver for Resend transactional email events (Slice N3).

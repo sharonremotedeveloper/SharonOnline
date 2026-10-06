@@ -178,6 +178,7 @@ class SupportInquiryView(APIView):
         )
 
 
+@extend_schema(exclude=True)
 class UserDataExportView(APIView):
     """
     Generate a Subject Access Request (SAR) export under GDPR Art. 15 / POPIA Section 23.

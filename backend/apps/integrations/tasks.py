@@ -137,6 +137,8 @@ def sync_eskom_statuses(provider, now=None):
 @shared_task(bind=True, max_retries=8)
 def send_eskom_notification_task(self, attempt_id):
     from django.db.models import F
+    from django.utils.html import escape
+    from apps.integrations.email import EmailDeliveryError, EmailPermanentError, log_permanent_failure, send_email
     from apps.integrations.models import EskomNotificationAttempt
     from apps.notifications.service import notify
 
@@ -155,13 +157,30 @@ def send_eskom_notification_task(self, attempt_id):
             payload={'booking_id': str(booking.id), 'area_name': attempt.area_status.area_name},
             booking=booking,
         )
-    except Exception as exc:
+    except Exception:
+        logger.exception("notify failed for eskom_shield_alert on attempt %s", attempt.pk)
+
+    subject = 'Power Guard warning for your upcoming lesson'
+    time_text = booking.start_time_utc.strftime('%Y-%m-%d %H:%M UTC')
+    area = escape(attempt.area_status.area_name)
+    html = (f'<h2>Power Guard warning</h2><p>An outage window reported for {area} overlaps your '
+            f'lesson at {escape(time_text)}.</p><p>Please prepare backup connectivity or contact support.</p>')
+    text = f'An outage window reported for {attempt.area_status.area_name} overlaps your lesson at {time_text}.'
+    try:
+        send_email(attempt.recipient.email, subject, html, text)
+    except EmailPermanentError as exc:                      # retrying cannot help: record it, do not retry
+        EskomNotificationAttempt.objects.filter(pk=attempt.pk).update(last_error=f'permanent: {exc}'[:500])
+        log_permanent_failure('send_eskom_notification_task', attempt.pk, exc)
+        raise
+    except EmailDeliveryError as exc:
         EskomNotificationAttempt.objects.filter(pk=attempt.pk).update(
             state=EskomNotificationAttempt.State.RETRYABLE, last_error=str(exc)[:500],
         )
         raise self.retry(exc=exc, countdown=min(30 * (2 ** self.request.retries), 1800))
     EskomNotificationAttempt.objects.filter(pk=attempt.pk).update(
-        state=EskomNotificationAttempt.State.SENT, last_error='', sent_at=timezone.now(),
+        state=EskomNotificationAttempt.State.SENT,
+        last_error='',
+        sent_at=timezone.now(),
     )
 
 
@@ -226,30 +245,70 @@ def cleanup_zoom_meeting(self, meeting_id: str):
         raise self.retry(exc=exc)
 
 
+def _cancellation_recipients(booking, cancelled_by: str):
+    outcome = 'full_refund' if cancelled_by in ('teacher', 'admin') else ('fee_forfeited' if cancelled_by == 'student_late' else 'cancelled')
+    if cancelled_by == 'student':
+        recipients = [booking.teacher.user]
+    elif cancelled_by in ('teacher', 'admin', 'admin_unpaid'):
+        recipients = [booking.student]
+    else:
+        recipients = [booking.student, booking.teacher.user]
+    return recipients, outcome
+
+
+def _cancellation_email_content(booking, cancelled_by: str):
+    when = booking.start_time_utc.strftime('%A %d %B %Y, %H:%M UTC')
+    if cancelled_by == 'payment_failed':
+        return booking.teacher.user.email, 'A lesson was cancelled', (
+            f"The lesson on {when} was cancelled because the student's payment did not go through."
+        )
+    if cancelled_by == 'admin':
+        return booking.student.email, 'Your lesson was cancelled', (
+            f"Your lesson on {when} was cancelled because your tutor is no longer available. You will be refunded to your "
+            f"original payment method, or you can turn the refund into lesson credit in your wallet."
+        )
+    if cancelled_by == 'admin_unpaid':
+        return booking.student.email, 'Your reservation was released', (
+            f"Your reservation for the lesson on {when} was released because the tutor is no longer available. "
+            f"Nothing was charged."
+        )
+    if cancelled_by == 'student':
+        name = booking.student.first_name or booking.student.username
+        return booking.teacher.user.email, 'A lesson was cancelled', f"{name} cancelled the lesson on {when}."
+    return booking.student.email, 'Your lesson was cancelled by your tutor', (
+        f"Your tutor had to cancel the lesson on {when}. You will be refunded to your original payment method, "
+        f"or you can turn the refund into lesson credit in your wallet."
+    )
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=120, name='apps.integrations.tasks.send_cancellation_emails')
 def send_cancellation_emails(self, booking_id: str, cancelled_by: str):
     """Tell affected parties a lesson was cancelled (slice N2b)."""
+    from .email import EmailDeliveryError, EmailPermanentError, log_permanent_failure, send_email
+    from .services.email import render_html
     from apps.notifications.service import notify
     booking = Booking.objects.select_related('teacher__user', 'student').filter(id=booking_id).first()
     if booking is None:
         return False
 
-    outcome = 'full_refund' if cancelled_by in ('teacher', 'admin') else ('fee_forfeited' if cancelled_by == 'student_late' else 'cancelled')
-    
-    if cancelled_by == 'student':
-        recipients = [booking.teacher.user]
-    elif cancelled_by in ('teacher', 'admin', 'admin_unpaid'):
-        recipients = [booking.student]
-    elif cancelled_by == 'payment_failed':
-        recipients = [booking.student, booking.teacher.user]
-    else:
-        recipients = [booking.student, booking.teacher.user]
-
+    recipients, outcome = _cancellation_recipients(booking, cancelled_by)
     for recipient in recipients:
         key = f'booking-cancelled:{booking.id}:{recipient.id}'
-        notify(recipient, 'booking_cancelled', key=key,
-               payload={'booking_id': str(booking.id), 'cancelled_by': cancelled_by, 'refund_outcome': outcome},
-               booking=booking)
+        try:
+            notify(recipient, 'booking_cancelled', key=key,
+                   payload={'booking_id': str(booking.id), 'cancelled_by': cancelled_by, 'refund_outcome': outcome},
+                   booking=booking)
+        except Exception:
+            logger.exception("notify failed for booking_cancelled on %s", key)
+
+    to, subject, line = _cancellation_email_content(booking, cancelled_by)
+    try:
+        send_email(to, subject, render_html('<p>{line}</p>', line=line), line)
+    except EmailPermanentError as exc:                      # retrying cannot help
+        log_permanent_failure('send_cancellation_emails', booking_id, exc)
+        raise
+    except EmailDeliveryError as exc:
+        raise self.retry(exc=exc) from exc
 
     return True
 
