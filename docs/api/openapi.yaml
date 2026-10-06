@@ -1841,6 +1841,41 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedMaterialListList'
           description: ''
+  /api/v1/materials/{material_id}/assets/commit/:
+    post:
+      operationId: v1_materials_assets_commit_create
+      description: 'T3b: attach a quarantined PDF or audio upload to a material (admin
+        only).'
+      parameters:
+      - in: path
+        name: material_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MaterialAssetCommitRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MaterialAssetCommitRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MaterialAssetCommitRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MaterialAssetCommitResponse'
+          description: ''
   /api/v1/materials/{slug}/:
     get:
       operationId: v1_materials_retrieve
@@ -4220,6 +4255,44 @@ components:
           minLength: 1
       required:
       - refresh
+    MaterialAssetCommitRequest:
+      type: object
+      properties:
+        kind:
+          type: string
+          minLength: 1
+          description: '''pdf'' or ''audio'''
+          maxLength: 5
+        key:
+          type: string
+          minLength: 1
+          maxLength: 512
+        etag:
+          type: string
+          default: ''
+          maxLength: 128
+      required:
+      - key
+      - kind
+    MaterialAssetCommitResponse:
+      type: object
+      properties:
+        kind:
+          type: string
+        key:
+          type: string
+        url:
+          type: string
+        etag:
+          type: string
+        content_type:
+          type: string
+      required:
+      - content_type
+      - etag
+      - key
+      - kind
+      - url
     MaterialDetail:
       type: object
       properties:

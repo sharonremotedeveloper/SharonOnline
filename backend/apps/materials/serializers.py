@@ -19,3 +19,22 @@ class MaterialDetailSerializer(MaterialListSerializer):
     class Meta(MaterialListSerializer.Meta):
         fields = MaterialListSerializer.Meta.fields + ('content_html', 'created_at', 'updated_at')
 
+
+
+class MaterialAssetCommitSerializer(serializers.Serializer):
+    kind = serializers.CharField(max_length=5, help_text="'pdf' or 'audio'")
+    key = serializers.CharField(max_length=512)
+    etag = serializers.CharField(max_length=128, required=False, allow_blank=True, default='')
+
+    def validate_kind(self, value):
+        if value not in ('pdf', 'audio'):
+            raise serializers.ValidationError("Must be 'pdf' or 'audio'.")
+        return value
+
+
+class MaterialAssetCommitResponseSerializer(serializers.Serializer):
+    kind = serializers.CharField()
+    key = serializers.CharField()
+    url = serializers.CharField()
+    etag = serializers.CharField()
+    content_type = serializers.CharField()

@@ -1,7 +1,7 @@
 """Per-prefix upload policy for presigned R2 uploads (content-type allowlist + size cap)."""
 MB = 1024 * 1024
 IMAGES = frozenset({'image/jpeg', 'image/png', 'image/webp'})
-AUDIO = frozenset({'audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/webm'})
+AUDIO = frozenset({'audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/webm', 'audio/ogg'})
 DOCS = frozenset({'application/pdf'})
 
 # (key prefix, allowed content types, max bytes) - first match wins
