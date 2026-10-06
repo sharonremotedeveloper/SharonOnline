@@ -5,6 +5,10 @@ from apps.admin_api.teacher_review_views import (  # slice T1b
     CancelTutorFutureLessonsView, SuspendedTutorsWithLessonsView, TeacherReviewActionView,
 )
 from apps.admin_api.teacher_packet_views import TeacherReviewPacketView  # slice T4a
+from apps.admin_api.payout_views import (  # slices P1a-c
+    PayoutBatchApproveView, PayoutBatchCancelView, PayoutBatchDetailView, PayoutBatchExportView,
+    PayoutBatchListCreateView, PayoutBatchProcessView, PayoutLineReturnView,
+)
 from apps.teachers.review import ACTIONS as TEACHER_REVIEW_ACTIONS
 from apps.admin_api.views import (
     AdminTelemetryView,
@@ -39,4 +43,12 @@ urlpatterns = [
     path('refunds/<uuid:refund_id>/retry/', AdminRefundRetryView.as_view(), name='admin-refund-retry'),
     path('payouts/batch/', PayoutBatchView.as_view(), name='admin-payouts-batch'),
     path('payouts/execute-batch/', ExecutePayoutBatchView.as_view(), name='admin-execute-payout'),
+    # ---- P1a-c: payout batches (ADR-0003) ----
+    path('payouts/batches/', PayoutBatchListCreateView.as_view(), name='admin-payout-batches'),
+    path('payouts/batches/<uuid:batch_id>/', PayoutBatchDetailView.as_view(), name='admin-payout-batch'),
+    path('payouts/batches/<uuid:batch_id>/approve/', PayoutBatchApproveView.as_view(), name='admin-payout-batch-approve'),
+    path('payouts/batches/<uuid:batch_id>/export/', PayoutBatchExportView.as_view(), name='admin-payout-batch-export'),
+    path('payouts/batches/<uuid:batch_id>/mark-processed/', PayoutBatchProcessView.as_view(), name='admin-payout-batch-process'),
+    path('payouts/batches/<uuid:batch_id>/cancel/', PayoutBatchCancelView.as_view(), name='admin-payout-batch-cancel'),
+    path('payouts/batch-lines/<uuid:line_id>/return/', PayoutLineReturnView.as_view(), name='admin-payout-line-return'),
 ]

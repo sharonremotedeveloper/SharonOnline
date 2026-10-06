@@ -100,6 +100,122 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/payouts/batch-lines/{line_id}/return/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["v1_admin_payouts_batch_lines_return_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/payouts/batches/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_admin_payouts_batches_list"];
+        put?: never;
+        post: operations["v1_admin_payouts_batches_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/payouts/batches/{batch_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["v1_admin_payouts_batches_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/payouts/batches/{batch_id}/approve/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /payouts/batches/<id>/<action>/ -> the batch after the action, or {code, message}. */
+        post: operations["v1_admin_payouts_batches_approve_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/payouts/batches/{batch_id}/cancel/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /payouts/batches/<id>/<action>/ -> the batch after the action, or {code, message}. */
+        post: operations["v1_admin_payouts_batches_cancel_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/payouts/batches/{batch_id}/export/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description The bank CSV. Needs the admin's password again (fresh re-auth) and is never cached. */
+        post: operations["v1_admin_payouts_batches_export_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/payouts/batches/{batch_id}/mark-processed/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description POST /payouts/batches/<id>/<action>/ -> the batch after the action, or {code, message}. */
+        post: operations["v1_admin_payouts_batches_mark_processed_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/payouts/execute-batch/": {
         parameters: {
             query?: never;
@@ -922,6 +1038,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/materials/{material_id}/assets/commit/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description T3b: attach a quarantined PDF or audio upload to a material (admin only). */
+        post: operations["v1_materials_assets_commit_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/materials/{slug}/": {
         parameters: {
             query?: never;
@@ -1134,6 +1267,40 @@ export interface paths {
          *     locked, idempotent path the webhook uses (PAYPAL_CAPTURE_CONFIRMS=False leaves confirmation to the webhook).
          */
         post: operations["v1_payments_paypal_capture_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/receipts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Task 10.8: the signed-in student's own receipts, newest first. */
+        get: operations["v1_payments_receipts_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/receipts/{receipt_id}/pdf/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description The receipt as a PDF. Scoped to its owner in the query, so someone else's id is a plain 404 (no existence oracle). */
+        get: operations["v1_payments_receipts_pdf_retrieve"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2025,6 +2192,9 @@ export interface components {
             /** Format: date-time */
             retrieved_at: string;
         };
+        ExportRequestRequest: {
+            password: string;
+        };
         /**
          * @description * `rejected` - The provider refused it
          *     * `already_refunded` - The provider says the payment is already fully refunded
@@ -2103,6 +2273,20 @@ export interface components {
         };
         LogoutRequestRequest: {
             refresh: string;
+        };
+        MaterialAssetCommitRequest: {
+            /** @description 'pdf' or 'audio' */
+            kind: string;
+            key: string;
+            /** @default  */
+            etag: string;
+        };
+        MaterialAssetCommitResponse: {
+            kind: string;
+            key: string;
+            url: string;
+            etag: string;
+            content_type: string;
         };
         MaterialDetail: {
             /** Format: uuid */
@@ -2457,6 +2641,27 @@ export interface components {
             account_type: components["schemas"]["AccountTypeEnum"];
             identification_number?: string;
         };
+        PayoutBatch: {
+            /** Format: uuid */
+            id: string;
+            batch_reference: string;
+            status: string;
+            total_payout_zar: string;
+            recipients_count: number;
+            created_by: string | null;
+            approved_by: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            approved_at: string | null;
+            /** Format: date-time */
+            exported_at: string | null;
+            /** Format: date-time */
+            executed_at: string | null;
+            cancel_reason: string;
+            carried_over_count?: number;
+            lines: components["schemas"]["PayoutLine"][];
+        };
         PayoutBatchItem: {
             id: string;
             teacher_id: string;
@@ -2469,12 +2674,43 @@ export interface components {
             payout_amount_zar: number;
             status: string;
         };
+        PayoutLine: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            teacher_id: string;
+            teacher_name: string;
+            amount_zar: string;
+            status: string;
+            skip_reason: string;
+            account_last_four: string;
+            /** Format: date-time */
+            paid_at: string | null;
+            /** Format: date-time */
+            returned_at: string | null;
+        };
         PowerBackup: {
             has_inverter_backup?: boolean;
             has_lte_failover?: boolean;
         };
         ReadAllResponse: {
             updated: number;
+        };
+        ReasonRequest: {
+            reason: string;
+        };
+        Receipt: {
+            /** Format: uuid */
+            id: string;
+            receipt_number: string;
+            currency: string;
+            subtotal: string;
+            tax_amount: string;
+            total_amount: string;
+            description: string;
+            /** Format: date-time */
+            issued_at: string;
+            pdf_url: string;
         };
         Refund: {
             /** Format: uuid */
@@ -3242,6 +3478,188 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PayoutBatchItem"][];
+                };
+            };
+        };
+    };
+    v1_admin_payouts_batch_lines_return_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                line_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReasonRequest"];
+                "multipart/form-data": components["schemas"]["ReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutLine"];
+                };
+            };
+        };
+    };
+    v1_admin_payouts_batches_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutBatch"][];
+                };
+            };
+        };
+    };
+    v1_admin_payouts_batches_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutBatch"];
+                };
+            };
+        };
+    };
+    v1_admin_payouts_batches_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutBatch"];
+                };
+            };
+        };
+    };
+    v1_admin_payouts_batches_approve_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutBatch"];
+                };
+            };
+        };
+    };
+    v1_admin_payouts_batches_cancel_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReasonRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ReasonRequest"];
+                "multipart/form-data": components["schemas"]["ReasonRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutBatch"];
+                };
+            };
+        };
+    };
+    v1_admin_payouts_batches_export_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExportRequestRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["ExportRequestRequest"];
+                "multipart/form-data": components["schemas"]["ExportRequestRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+        };
+    };
+    v1_admin_payouts_batches_mark_processed_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                batch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutBatch"];
                 };
             };
         };
@@ -4881,6 +5299,33 @@ export interface operations {
             };
         };
     };
+    v1_materials_assets_commit_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                material_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialAssetCommitRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["MaterialAssetCommitRequest"];
+                "multipart/form-data": components["schemas"]["MaterialAssetCommitRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialAssetCommitResponse"];
+                };
+            };
+        };
+    };
     v1_materials_retrieve: {
         parameters: {
             query?: never;
@@ -5268,6 +5713,46 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    v1_payments_receipts_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Receipt"][];
+                };
+            };
+        };
+    };
+    v1_payments_receipts_pdf_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                receipt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
                 };
             };
         };

@@ -585,3 +585,28 @@ def configure_test_settings(settings):
 - **Root cause:** `probe_session` consolidated HTTP retry loops, JSON payload validation, topic matching, inline user parsing, and secondary REST calls into a single monolithic routine.
 - **Fix:** Decomposed `probe_session` into single-responsibility helpers: `_get_matching_sessions`, `_parse_sessions_data`, `_session_contains_tutor`, and `_user_list_contains_tutor`. Each helper remains under 7 cyclomatic complexity. Full suite (139 backend + 186 frontend tests, ruff clean) verified green.
 
+
+### ERR-510: receipts slice failed the env-example guard and the committed OpenAPI contract (Task 10.8)
+- **Symptom:** after adding `PLATFORM_VAT_RATE`, `tests/guards/test_guard_env_example.py` and `test_api_contract.py::test_committed_schema_is_current` failed.
+- **Root cause:** the new setting was read from the environment without an `.env.example` entry, and the two new receipt endpoints changed the schema without regenerating `docs/api/openapi.yaml`.
+- **Fix:** `.env.example` lists `PLATFORM_VAT_RATE=0`; OpenAPI and `api.generated.ts` regenerated. Both are gates, not product bugs.
+
+### ERR-470: T3b commit service tripped ruff C901 and an OpenAPI enum-name collision (slice T3b)
+- **Symptom:** `ruff check` reported `commit_material_asset` complexity 13 > 12; `spectacular --fail-on-warn` warned `Kind88cEnum` (enum naming collision on a field named `kind`).
+- **Root cause:** every validation step sat in one function; a `ChoiceField(('pdf','audio'))` named `kind` collided with the tutor-asset `kind` choice set.
+- **Fix:** the pre-copy checks moved into `_verify_quarantined`; the serializer uses a `CharField` with `validate_kind`.
+
+### ERR-310: a G2 test patched the shared cache object and broke the slot lock check (slice G2)
+- **Symptom:** `test_an_unreadable_cache_never_breaks_the_listing` raised the simulated `ConnectionError` out of the slot listing.
+- **Root cause:** `mock.patch('apps.integrations.google_calendar.cache.get')` patches the one global cache object, so the unrelated `is_slot_locked` read failed too; production code was right (the busy-hint read fails open).
+- **Fix:** the test replaces only the module's `cache` reference.
+
+### ERR-480: payout migration broke the teachers migration round-trip tests (slice P1a)
+- **Symptom:** `test_tutor_status_migrations`, `test_t1c_profile_backfill`, `test_t2_postgres` failed with `table teachers_teacherprofile has no column named status`.
+- **Root cause:** `makemigrations` made `admin_api/0002_payout_batches` depend on the latest `teachers` migration (0014); those tests migrate `teachers` back to 0006 while every other app stays at its leaf, which is impossible for a dependent of 0014.
+- **Fix:** the dependency is `('teachers', '0002_initial')`, the migration where `TeacherProfile` first exists, like `admin_api/0001`. Rule for later slices: a cross-app FK migration depends on the earliest migration that defines the target model.
+
+### ERR-481: payout action view crashed OpenAPI generation (slice P1a)
+- **Symptom:** `manage.py spectacular` raised `TypeError: attribute name must be string, not 'NoneType'` and `/api/schema/` returned 500.
+- **Root cause:** a base view declared `action = None`; drf-spectacular reads `view.action` (a ViewSet concept) and uses it in `getattr`.
+- **Fix:** the attribute was removed.

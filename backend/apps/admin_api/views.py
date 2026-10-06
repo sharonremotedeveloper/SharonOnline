@@ -383,8 +383,8 @@ class PayoutBatchView(APIView):
     permission_classes = [IsPlatformAdmin]
 
     def get(self, request):
-        from apps.payments.models import LedgerAccount, LedgerEntry
         from apps.payments.serializers import masked_payout_account
+        from apps.payments.services.payable import payable_totals
         from apps.payments.services.payout_crypto import PayoutDataError
 
         items = []
@@ -394,15 +394,8 @@ class PayoutBatchView(APIView):
             user__payout_account__isnull=False,
         ).select_related('user', 'user__payout_account')
         for t in teachers:
-            totals = LedgerEntry.objects.filter(
-                user=t.user, account=LedgerAccount.LIABILITY_TUTOR_PAYABLE
-            ).aggregate(
-                credits=Sum('amount_zar', filter=Q(entry_type=LedgerEntry.EntryType.CREDIT)),
-                debits=Sum('amount_zar', filter=Q(entry_type=LedgerEntry.EntryType.DEBIT)),
-                lessons=Count('booking', distinct=True, filter=Q(event_type__in=[
-                    LedgerEntry.EventType.ESCROW_CLEARED, LedgerEntry.EventType.PAYMENT_FAILURE_ABSORBED])),
-            )
-            payable = (totals['credits'] or Decimal('0.00')) - (totals['debits'] or Decimal('0.00'))
+            totals = payable_totals(t.user)
+            payable = totals['credits'] - totals['debits']
             if payable <= 0:
                 continue
             try:
@@ -416,7 +409,7 @@ class PayoutBatchView(APIView):
                 'bank_name': payout['bank_name'],
                 'account_number_masked': payout['account_number_masked'],
                 'branch_code': payout['branch_code'],
-                'cleared_lessons_count': totals['lessons'] or 0,
+                'cleared_lessons_count': totals['lessons'],
                 'payout_amount_zar': money_str(payable, 'ZAR'),
                 'status': 'pending'
             })

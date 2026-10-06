@@ -443,6 +443,27 @@ def record_payout_batch_entry(
     )
 
 
+def record_payout_return_entry(payout_batch, amount_zar: Decimal, user, description: Optional[str] = None) -> List[LedgerEntry]:
+    """
+    The bank returned a payout (wrong account, closed account): put the money back on the tutor's books with a REVERSING journal,
+    because ledger rows are immutable.
+    DR Asset: Operating Bank Cash (ZAR)
+    CR Liability: Tutor Payables (ZAR)
+    """
+    amount = Decimal(str(amount_zar)).quantize(Decimal('0.01'))
+    desc = description or f"EFT returned by the bank, batch {payout_batch.batch_reference}"
+    entries = [
+        {'account': LedgerAccount.ASSET_OPERATING_BANK, 'entry_type': LedgerEntry.EntryType.DEBIT,
+         'amount': amount, 'currency': 'ZAR', 'description': desc},
+        {'account': LedgerAccount.LIABILITY_TUTOR_PAYABLE, 'entry_type': LedgerEntry.EntryType.CREDIT,
+         'amount': amount, 'currency': 'ZAR', 'description': desc},
+    ]
+    return record_journal_entries(
+        entries=entries, event_type=LedgerEntry.EventType.PAYOUT_RETURNED, description=desc, payout_batch=payout_batch,
+        user=user, currency='ZAR', fx_rate_to_zar=Decimal('1.000000'), fx_source='transaction_currency',
+    )
+
+
 def record_dispute_settlement_entry(
     dispute_case,
     resolution: str,

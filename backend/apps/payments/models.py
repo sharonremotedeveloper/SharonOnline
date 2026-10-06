@@ -603,6 +603,7 @@ class LedgerEntry(models.Model):
         GATEWAY_REFUND_PAID = 'gateway_refund_paid', 'Gateway Refund Paid to Original Payment Method'
         CREDIT_EXPIRED = 'credit_expired', 'Wallet Credit Expired (breakage)'
         PAYMENT_FAILURE_ABSORBED = 'payment_failure_absorbed', 'Tutor Paid by Platform After Pending Payment Failed'
+        PAYOUT_RETURNED = 'payout_returned', 'Tutor EFT Payout Returned by the Bank (reversal)'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     journal_batch_id = models.UUIDField(db_index=True, help_text="Groups balancing debits and credits of a single transaction")
@@ -638,6 +639,12 @@ class LedgerEntry(models.Model):
             models.Index(fields=['journal_batch_id']),
             models.Index(fields=['account', 'created_at']),
             models.Index(fields=['event_type', 'created_at']),
+        ]
+        constraints = [
+            # DB backstop for payout posting (P1c): a tutor is debited/credited at most once per batch and event type, so a
+            # replayed mark_processed can never double-pay even if the service guard failed.
+            models.UniqueConstraint(fields=['payout_batch', 'user', 'account', 'event_type'],
+                                    condition=models.Q(payout_batch__isnull=False), name='ledger_one_payout_posting_per_tutor_batch'),
         ]
 
     def save(self, *args, **kwargs):

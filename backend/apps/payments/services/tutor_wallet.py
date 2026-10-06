@@ -1,9 +1,8 @@
 from decimal import Decimal, ROUND_HALF_UP
 
-from django.db.models import Q, Sum
-
 from apps.bookings.models import Booking
 from apps.payments.models import BookingFunding, LedgerAccount, LedgerEntry
+from apps.payments.services.payable import payable_balance_zar
 
 
 CENT = Decimal('0.01')
@@ -21,11 +20,7 @@ def _money(value):
 
 def tutor_wallet_payload(user):
     payable_entries = LedgerEntry.objects.filter(user=user, account=LedgerAccount.LIABILITY_TUTOR_PAYABLE)
-    totals = payable_entries.aggregate(
-        credits=Sum('amount_zar', filter=Q(entry_type=LedgerEntry.EntryType.CREDIT)),
-        debits=Sum('amount_zar', filter=Q(entry_type=LedgerEntry.EntryType.DEBIT)),
-    )
-    cleared_balance_zar = _money(totals['credits']) - _money(totals['debits'])
+    cleared_balance_zar = payable_balance_zar(user)
 
     cleared = {
         entry.booking_id: entry

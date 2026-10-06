@@ -142,6 +142,7 @@ REST_FRAMEWORK = {
         'cancel': '30/hour',
         'review': '30/hour',
         'payout_settings': '5/hour',
+        'payout_admin': '60/hour',            # staff payout actions (create/approve/export/process): money moves here
         'password_reset': '5/hour',          # per IP; plus 3/hour per target address (PasswordResetEmailThrottle)
         'password_reset_email': '3/hour',
         'password_reset_confirm': '10/hour',
@@ -201,6 +202,11 @@ try:
 except json.JSONDecodeError:
     PAYOUT_DATA_KEYS = {}
 PAYOUT_DATA_ACTIVE_KEY = os.environ.get('PAYOUT_DATA_ACTIVE_KEY', '')
+
+# Payout batches (slices P1a-c, ADR-0003). Both PROVISIONAL until Anesu settles D-3: balances under the minimum carry over to the
+# next run; a tutor whose bank details changed less than this many hours ago is held back (a stolen-login payout defence).
+PAYOUT_MIN_ZAR = Decimal(os.environ.get('PAYOUT_MIN_ZAR', '100'))
+PAYOUT_BANK_CHANGE_HOLD_HOURS = int(os.environ.get('PAYOUT_BANK_CHANGE_HOLD_HOURS', '72'))
 
 try:
     INTEGRATION_DATA_KEYS = json.loads(os.environ.get('INTEGRATION_DATA_KEYS', '{}'))

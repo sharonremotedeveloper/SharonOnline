@@ -137,6 +137,15 @@ ADMIN_ROUTES = [
     ('get', '/api/v1/admin/attendance/live/'), ('get', '/api/v1/admin/disputes/'),
     ('get', '/api/v1/admin/finance/ledger/'), ('get', '/api/v1/admin/payouts/batch/'),
     ('post', '/api/v1/admin/payouts/execute-batch/'),
+    # P1a-c payout batches and T3b material assets
+    ('get', '/api/v1/admin/payouts/batches/'), ('post', '/api/v1/admin/payouts/batches/'),
+    ('get', '/api/v1/admin/payouts/batches/00000000-0000-0000-0000-000000000001/'),
+    ('post', '/api/v1/admin/payouts/batches/00000000-0000-0000-0000-000000000001/approve/'),
+    ('post', '/api/v1/admin/payouts/batches/00000000-0000-0000-0000-000000000001/export/'),
+    ('post', '/api/v1/admin/payouts/batches/00000000-0000-0000-0000-000000000001/mark-processed/'),
+    ('post', '/api/v1/admin/payouts/batches/00000000-0000-0000-0000-000000000001/cancel/'),
+    ('post', '/api/v1/admin/payouts/batch-lines/00000000-0000-0000-0000-000000000001/return/'),
+    ('post', '/api/v1/materials/00000000-0000-0000-0000-000000000001/assets/commit/'),
 ]
 
 

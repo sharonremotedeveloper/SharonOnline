@@ -144,6 +144,206 @@ paths:
                 items:
                   $ref: '#/components/schemas/PayoutBatchItem'
           description: ''
+  /api/v1/admin/payouts/batch-lines/{line_id}/return/:
+    post:
+      operationId: v1_admin_payouts_batch_lines_return_create
+      parameters:
+      - in: path
+        name: line_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReasonRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReasonRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutLine'
+          description: ''
+  /api/v1/admin/payouts/batches/:
+    get:
+      operationId: v1_admin_payouts_batches_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PayoutBatch'
+          description: ''
+    post:
+      operationId: v1_admin_payouts_batches_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutBatch'
+          description: ''
+  /api/v1/admin/payouts/batches/{batch_id}/:
+    get:
+      operationId: v1_admin_payouts_batches_retrieve
+      parameters:
+      - in: path
+        name: batch_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutBatch'
+          description: ''
+  /api/v1/admin/payouts/batches/{batch_id}/approve/:
+    post:
+      operationId: v1_admin_payouts_batches_approve_create
+      description: POST /payouts/batches/<id>/<action>/ -> the batch after the action,
+        or {code, message}.
+      parameters:
+      - in: path
+        name: batch_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutBatch'
+          description: ''
+  /api/v1/admin/payouts/batches/{batch_id}/cancel/:
+    post:
+      operationId: v1_admin_payouts_batches_cancel_create
+      description: POST /payouts/batches/<id>/<action>/ -> the batch after the action,
+        or {code, message}.
+      parameters:
+      - in: path
+        name: batch_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReasonRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReasonRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReasonRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutBatch'
+          description: ''
+  /api/v1/admin/payouts/batches/{batch_id}/export/:
+    post:
+      operationId: v1_admin_payouts_batches_export_create
+      description: The bank CSV. Needs the admin's password again (fresh re-auth)
+        and is never cached.
+      parameters:
+      - in: path
+        name: batch_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExportRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ExportRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ExportRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+          description: ''
+  /api/v1/admin/payouts/batches/{batch_id}/mark-processed/:
+    post:
+      operationId: v1_admin_payouts_batches_mark_processed_create
+      description: POST /payouts/batches/<id>/<action>/ -> the batch after the action,
+        or {code, message}.
+      parameters:
+      - in: path
+        name: batch_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutBatch'
+          description: ''
   /api/v1/admin/payouts/execute-batch/:
     post:
       operationId: v1_admin_payouts_execute_batch_create
@@ -4103,6 +4303,15 @@ components:
       - retrieved_at
       - stage
       - stale
+    ExportRequestRequest:
+      type: object
+      properties:
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - password
     FailureKindEnum:
       enum:
       - rejected
@@ -5059,6 +5268,63 @@ components:
       - bank_name
       - branch_code
       - current_password
+    PayoutBatch:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        batch_reference:
+          type: string
+        status:
+          type: string
+        total_payout_zar:
+          type: string
+        recipients_count:
+          type: integer
+        created_by:
+          type: string
+          nullable: true
+        approved_by:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        approved_at:
+          type: string
+          format: date-time
+          nullable: true
+        exported_at:
+          type: string
+          format: date-time
+          nullable: true
+        executed_at:
+          type: string
+          format: date-time
+          nullable: true
+        cancel_reason:
+          type: string
+        carried_over_count:
+          type: integer
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/PayoutLine'
+      required:
+      - approved_at
+      - approved_by
+      - batch_reference
+      - cancel_reason
+      - created_at
+      - created_by
+      - executed_at
+      - exported_at
+      - id
+      - lines
+      - recipients_count
+      - status
+      - total_payout_zar
     PayoutBatchItem:
       type: object
       properties:
@@ -5091,6 +5357,43 @@ components:
       - status
       - teacher_id
       - teacher_name
+    PayoutLine:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        teacher_id:
+          type: string
+          format: uuid
+        teacher_name:
+          type: string
+        amount_zar:
+          type: string
+        status:
+          type: string
+        skip_reason:
+          type: string
+        account_last_four:
+          type: string
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+        returned_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - account_last_four
+      - amount_zar
+      - id
+      - paid_at
+      - returned_at
+      - skip_reason
+      - status
+      - teacher_id
+      - teacher_name
     PowerBackup:
       type: object
       properties:
@@ -5106,6 +5409,15 @@ components:
           minimum: 0
       required:
       - updated
+    ReasonRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 255
+      required:
+      - reason
     Receipt:
       type: object
       properties:
