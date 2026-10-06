@@ -53,19 +53,19 @@ function ResetForm() {
   };
 
   const fieldError = (name: string) =>
-    fieldErrors[name]?.length ? <p className="text-[11px] text-primary font-medium">{fieldErrors[name].join(" ")}</p> : null;
+    fieldErrors[name]?.length ? <p className="text-sm text-primary font-medium">{fieldErrors[name].join(" ")}</p> : null;
 
-  if (!checked) return <div className="text-xs text-ink-muted">Loading...</div>;
+  if (!checked) return <div className="text-sm text-ink-muted">Loading...</div>;
 
   if (!link || linkDead) {
     return (
       <div role="alert" className="bg-white rounded-3xl p-8 max-w-md w-full border border-divider shadow-card text-center space-y-3">
         <AlertTriangle className="w-10 h-10 text-primary mx-auto" aria-hidden="true" />
         <h1 className="text-lg font-extrabold text-ink font-serif">This reset link doesn&apos;t work</h1>
-        <p className="text-xs text-ink-muted leading-relaxed">
+        <p className="text-sm text-ink-muted leading-relaxed">
           Reset links work once and expire after an hour. Request a fresh one and use the newest e-mail.
         </p>
-        <Link href="/forgot-password" className="inline-block px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold">
+        <Link href="/forgot-password" className="inline-block px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-bold">
           Request a new link
         </Link>
       </div>
@@ -76,10 +76,10 @@ function ResetForm() {
     <form onSubmit={submit} className="bg-white rounded-3xl p-8 max-w-md w-full border border-divider shadow-card space-y-5">
       <div className="text-center space-y-1">
         <h1 className="text-2xl font-extrabold text-ink font-serif">Choose a new password</h1>
-        <p className="text-xs text-ink-muted">You&apos;ll be signed out everywhere else.</p>
+        <p className="text-sm text-ink-muted">You&apos;ll be signed out everywhere else.</p>
       </div>
       {error && (
-        <div role="alert" className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-xs text-primary font-medium">
+        <div role="alert" className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-sm text-primary font-medium">
           {error}
         </div>
       )}
@@ -90,7 +90,7 @@ function ResetForm() {
         ] as const
       ).map(([name, label, value, set]) => (
         <div key={name} className="space-y-1">
-          <label htmlFor={name} className="text-xs font-bold text-ink">{label}</label>
+          <label htmlFor={name} className="text-sm font-bold text-ink">{label}</label>
           <div className="relative">
             <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
             <input
@@ -101,7 +101,7 @@ function ResetForm() {
               autoComplete="new-password"
               value={value}
               onChange={(e) => set(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
           </div>
           {fieldError(name)}
@@ -110,7 +110,7 @@ function ResetForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="w-full py-3 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold shadow-sm disabled:opacity-50"
+        className="w-full py-3 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-bold shadow-sm disabled:opacity-50"
       >
         {submitting ? "Saving..." : "Update password"}
       </button>
@@ -121,7 +121,7 @@ function ResetForm() {
 export default function ResetPasswordPage() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-      <Suspense fallback={<div className="text-xs text-ink-muted">Loading...</div>}>
+      <Suspense fallback={<div className="text-sm text-ink-muted">Loading...</div>}>
         <ResetForm />
       </Suspense>
     </div>

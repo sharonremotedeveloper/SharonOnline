@@ -18,7 +18,7 @@ export default function TeacherTrainingPage() {
     <main className="min-h-screen bg-cream px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl space-y-8">
         <header className="rounded-3xl bg-cocoa p-7 text-white shadow-card sm:p-10">
-          <p className="text-xs font-bold uppercase tracking-[.18em] text-accent">Teacher training centre</p>
+          <p className="text-xs font-bold uppercase tracking-[.18em] text-gold-bright">Teacher training centre</p>
           <h1 className="mt-3 font-serif text-4xl font-black sm:text-5xl">Teach with confidence.</h1>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-white/80">Complete the required learning modules before opening your calendar to students.</p>
           {!training.loading && data && (

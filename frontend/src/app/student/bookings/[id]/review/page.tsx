@@ -100,7 +100,7 @@ export default function BookingReviewPage() {
     return (
       <div className="max-w-2xl mx-auto py-20 text-center space-y-3">
         <div className="w-8 h-8 border-2 border-cocoa-600 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-xs text-ink-500">Loading lesson details...</p>
+        <p className="text-sm text-ink-500">Loading lesson details...</p>
       </div>
     );
   }
@@ -114,7 +114,7 @@ export default function BookingReviewPage() {
           onRetry={() => setReloadTick((t) => t + 1)}
         />
         <div className="text-center">
-          <Link href="/student/history" className="text-xs font-semibold text-cocoa-700 hover:underline">
+          <Link href="/student/history" className="text-sm font-semibold text-cocoa-700 hover:underline">
             Back to Lesson History
           </Link>
         </div>
@@ -128,7 +128,7 @@ export default function BookingReviewPage() {
       <div>
         <Link
           href="/student/history"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-500 hover:text-ink-900 transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink-500 hover:text-ink-900 transition-colors"
         >
           <ChevronLeft className="w-4 h-4" /> Back to Lesson History
         </Link>
@@ -144,13 +144,13 @@ export default function BookingReviewPage() {
             Thank you for rating your lesson with{" "}
             <strong>{lesson?.teacher.name || "your tutor"}</strong>. Your feedback helps our teachers grow and maintains high marketplace standards.
           </p>
-          <p className="text-xs text-ink-400">Redirecting to lesson history...</p>
+          <p className="text-sm text-ink-400">Redirecting to lesson history...</p>
         </div>
       ) : (
         <div className="bg-white rounded-3xl border border-cream-200 shadow-sm overflow-hidden">
           {/* Header */}
           <div className="bg-cream-50 border-b border-cream-200 p-6 sm:p-8 space-y-4">
-            <span className="text-xs font-bold text-cocoa-700 uppercase tracking-wider">Lesson Feedback</span>
+            <span className="text-sm font-bold text-cocoa-700 uppercase tracking-wider">Lesson Feedback</span>
             <div className="flex items-center gap-4">
               {lesson?.teacher.avatar && (
                 <img
@@ -163,7 +163,7 @@ export default function BookingReviewPage() {
                 <h1 className="text-xl font-extrabold text-ink-900">
                   Review Lesson with {lesson?.teacher.name || "Tutor"}
                 </h1>
-                <p className="text-xs text-ink-500 mt-0.5">
+                <p className="text-sm text-ink-500 mt-0.5">
                   {lesson?.material_title} • {lesson?.local_date}
                 </p>
               </div>
@@ -174,7 +174,7 @@ export default function BookingReviewPage() {
           <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-8">
             {/* 5-Star Rubric */}
             <div className="text-center space-y-3">
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block">
+              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
                 Overall Lesson Rating
               </label>
               <div className="flex items-center justify-center gap-2">
@@ -200,7 +200,7 @@ export default function BookingReviewPage() {
                   );
                 })}
               </div>
-              <p className="text-xs font-medium text-ink-600">
+              <p className="text-sm font-medium text-ink-600">
                 {rating === 5 && "⭐ Excellent - Flawless session, highly engaging"}
                 {rating === 4 && "⭐ Very Good - Clear instruction & great atmosphere"}
                 {rating === 3 && "⭐ Good - Standard lesson, met expectations"}
@@ -211,7 +211,7 @@ export default function BookingReviewPage() {
 
             {/* Rubric Category Tags */}
             <div className="space-y-3">
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block">
+              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
                 What did {lesson?.teacher.name || "the tutor"} do especially well?
               </label>
               <div className="flex flex-wrap gap-2">
@@ -222,7 +222,7 @@ export default function BookingReviewPage() {
                       key={tag}
                       type="button"
                       onClick={() => toggleTag(tag)}
-                      className={`text-xs px-3.5 py-2 rounded-full border transition-all ${
+                      className={`text-sm px-3.5 py-2 rounded-full border transition-all ${
                         isSelected
                           ? "bg-cocoa-600 border-cocoa-600 text-white font-semibold shadow-xs"
                           : "bg-cream-50 border-cream-200 text-ink-700 hover:border-cream-300"
@@ -238,7 +238,7 @@ export default function BookingReviewPage() {
 
             {/* Qualitative Constructive Feedback */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block">
+              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
                 Private Constructive Note for {lesson?.teacher.name || "Tutor"}
               </label>
               <textarea
@@ -251,7 +251,7 @@ export default function BookingReviewPage() {
             </div>
 
             {/* Asymmetric Notice */}
-            <div className="bg-cocoa-50/70 border border-cocoa-200/80 rounded-2xl p-4 flex items-start gap-3 text-xs text-cocoa-900">
+            <div className="bg-cocoa-50/70 border border-cocoa-200/80 rounded-2xl p-4 flex items-start gap-3 text-sm text-cocoa-900">
               <ShieldCheck className="w-5 h-5 text-cocoa-700 shrink-0 mt-0.5" />
               <div>
                 <strong className="font-semibold block mb-0.5">Asymmetric Privacy Protection</strong>
@@ -267,14 +267,14 @@ export default function BookingReviewPage() {
             <div className="flex items-center justify-end gap-3 pt-2">
               <Link
                 href="/student/history"
-                className="px-5 py-2.5 text-xs font-semibold text-ink-600 hover:text-ink-900 rounded-xl"
+                className="px-5 py-2.5 text-sm font-semibold text-ink-600 hover:text-ink-900 rounded-xl"
               >
                 Skip for now
               </Link>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="inline-flex items-center gap-2 px-7 py-3 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+                className="inline-flex items-center gap-2 px-7 py-3 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
               >
                 {isSubmitting ? (
                   <>Submitting...</>

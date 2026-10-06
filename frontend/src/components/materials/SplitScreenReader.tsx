@@ -15,7 +15,7 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
   const [fontSize, setFontSize] = useState<"sm" | "base" | "lg">("base");
 
   const fontClass = {
-    sm: "text-xs leading-relaxed",
+    sm: "text-sm leading-relaxed",
     base: "text-sm leading-relaxed",
     lg: "text-base leading-relaxed",
   }[fontSize];
@@ -26,7 +26,7 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
       <div className="p-4 bg-cream-surface border-b border-divider flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 truncate">
           <CefrLevelBadge level={material.cefr_level} size="sm" />
-          <h3 className="text-xs font-bold text-ink truncate font-serif">{material.title}</h3>
+          <h3 className="text-sm font-bold text-ink truncate font-serif">{material.title}</h3>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -34,14 +34,14 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
             <button
               onClick={() => setFontSize(fontSize === "lg" ? "base" : "sm")}
               title="Decrease font"
-              className="px-2 py-0.5 text-[10px] font-bold text-ink-muted hover:text-ink"
+              className="px-2 py-0.5 text-sm font-bold text-ink-muted hover:text-ink"
             >
               A-
             </button>
             <button
               onClick={() => setFontSize(fontSize === "sm" ? "base" : "lg")}
               title="Increase font"
-              className="px-2 py-0.5 text-xs font-bold text-ink hover:text-cocoa"
+              className="px-2 py-0.5 text-sm font-bold text-ink hover:text-cocoa"
             >
               A+
             </button>
@@ -50,7 +50,7 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
       </div>
 
       {/* Tabs bar */}
-      <div className="flex border-b border-divider bg-white text-xs font-bold">
+      <div className="flex border-b border-divider bg-white text-sm font-bold">
         <button
           onClick={() => setActiveTab("article")}
           className={`flex-1 py-2.5 text-center transition-colors flex items-center justify-center gap-1.5 ${
@@ -92,7 +92,7 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {activeTab === "article" && (
           <div className="space-y-4 font-serif text-ink">
-            <p className="text-xs text-ink-muted font-sans italic border-l-2 border-cocoa pl-3">
+            <p className="text-sm text-ink-muted font-sans italic border-l-2 border-cocoa pl-3">
               {material.summary}
             </p>
 
@@ -109,12 +109,12 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
               <div key={v.id} className="p-3 rounded-xl bg-cream-surface border border-cream-deep space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-ink font-serif">{v.word}</span>
-                  <span className="text-[10px] text-cocoa font-semibold">
+                  <span className="text-sm text-cocoa font-semibold">
                     {v.phonetic} · {v.part_of_speech}
                   </span>
                 </div>
-                <p className="text-xs text-ink leading-relaxed">{v.definition}</p>
-                <p className="text-[11px] text-ink-muted italic">"{v.example_sentence}"</p>
+                <p className="text-sm text-ink leading-relaxed">{v.definition}</p>
+                <p className="text-sm text-ink-muted italic">"{v.example_sentence}"</p>
               </div>
             ))}
           </div>
@@ -124,10 +124,10 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
           <div className="space-y-3">
             {material.discussion_questions?.map((q, idx) => (
               <div key={idx} className="p-3.5 rounded-xl bg-cream-surface border border-cream-deep flex gap-2.5">
-                <span className="w-5 h-5 rounded-full bg-cocoa text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                <span className="w-5 h-5 rounded-full bg-cocoa text-white flex items-center justify-center text-sm font-bold shrink-0 mt-0.5">
                   {idx + 1}
                 </span>
-                <p className="text-xs font-bold text-ink leading-relaxed">{q}</p>
+                <p className="text-sm font-bold text-ink leading-relaxed">{q}</p>
               </div>
             ))}
           </div>

@@ -17,7 +17,7 @@ export function DiscussionSection({ questions }: DiscussionSectionProps) {
           <h3 className="text-xl font-extrabold text-ink font-serif">
             Discussion & Debate Questions
           </h3>
-          <p className="text-xs text-ink-muted">
+          <p className="text-sm text-ink-muted">
             Practice sharing your opinion, clarifying nuances, and debating with your tutor
           </p>
         </div>
@@ -30,7 +30,7 @@ export function DiscussionSection({ questions }: DiscussionSectionProps) {
             className="p-5 rounded-2xl bg-cream-surface border border-cream-deep space-y-2 hover:border-cocoa transition-colors"
           >
             <div className="flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-cocoa text-white flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+              <span className="w-6 h-6 rounded-full bg-cocoa text-white flex items-center justify-center text-sm font-bold shrink-0 mt-0.5">
                 {idx + 1}
               </span>
               <p className="text-sm font-bold text-ink leading-relaxed">{q}</p>
@@ -39,8 +39,8 @@ export function DiscussionSection({ questions }: DiscussionSectionProps) {
         ))}
       </div>
 
-      <div className="p-4 rounded-2xl bg-cream-surface/60 border border-divider flex items-center gap-2.5 text-xs text-ink-muted">
-        <Lightbulb className="w-4 h-4 text-accent shrink-0" />
+      <div className="p-4 rounded-2xl bg-cream-surface/60 border border-divider flex items-center gap-2.5 text-sm text-ink-muted">
+        <Lightbulb className="w-4 h-4 text-gold-bright shrink-0" />
         <span>
           <strong>Tutor Tip:</strong> Aim to speak in full sentences using target vocabulary from the lesson rather than one-word responses.
         </span>

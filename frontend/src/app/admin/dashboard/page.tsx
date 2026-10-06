@@ -94,7 +94,7 @@ export default function AdminDashboardPage() {
           <div className="text-2xl sm:text-3xl font-black text-ink font-serif">
             ${groupMoney(telemetry.gmv_today_usd)}
           </div>
-          <p className="text-[11px] text-ink-muted">
+          <p className="text-xs text-ink-muted">
             MTD: ${groupMoney(telemetry.gmv_month_usd)} USD
           </p>
         </div>
@@ -103,14 +103,14 @@ export default function AdminDashboardPage() {
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
             <span>Escrow Holding Balance</span>
-            <span className="text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-full text-[10px] font-bold">
+            <span className="text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-full text-xs font-bold">
               24h Release Buffer
             </span>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-cocoa font-serif">
             R{groupMoney(telemetry.escrow_liability_zar)}
           </div>
-          <p className="text-[11px] text-ink-muted">
+          <p className="text-xs text-ink-muted">
             Equivalent to ${telemetry.escrow_liability_usd} USD in escrow
           </p>
         </div>
@@ -119,14 +119,14 @@ export default function AdminDashboardPage() {
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
             <span>Tutor Auditions Queue</span>
-            <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full text-[10px] font-bold">
+            <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full text-xs font-bold">
               Action Required
             </span>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-amber-700 font-serif">
             {telemetry.pending_vetting_count} Applications
           </div>
-          <p className="text-[11px] text-ink-muted">
+          <p className="text-xs text-ink-muted">
             Video reels &amp; TEFL certificates awaiting review
           </p>
         </div>
@@ -135,14 +135,14 @@ export default function AdminDashboardPage() {
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
             <span>Dispute Tribunal</span>
-            <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full text-[10px] font-bold">
+            <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full text-xs font-bold">
               Escrow Frozen
             </span>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-rose-600 font-serif">
             {telemetry.open_disputes_count} Open Cases
           </div>
-          <p className="text-[11px] text-ink-muted">
+          <p className="text-xs text-ink-muted">
             Awaiting admin arbitration against Zoom logs
           </p>
         </div>

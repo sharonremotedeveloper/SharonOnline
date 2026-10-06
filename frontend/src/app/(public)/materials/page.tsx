@@ -65,7 +65,7 @@ export default function MaterialsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         {/* Header Hero */}
         <div className="space-y-4 max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cocoa/10 text-cocoa text-xs font-bold border border-cocoa/20">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cocoa/10 text-cocoa text-sm font-bold border border-cocoa/20">
             <Sparkles className="w-3.5 h-3.5" />
             <span>CEFR-Aligned ESL Curriculum</span>
           </div>
@@ -89,7 +89,7 @@ export default function MaterialsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search lessons by topic, title, or keywords (e.g. remote work, interview, negotiation)..."
-                className="w-full pl-11 pr-10 py-3 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa transition-all"
+                className="w-full pl-11 pr-10 py-3 bg-cream-surface rounded-2xl border border-divider text-sm sm:text-sm text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa transition-all"
               />
               {search && (
                 <button
@@ -104,7 +104,7 @@ export default function MaterialsPage() {
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="text-xs font-bold text-ink-muted hover:text-cocoa underline underline-offset-4 shrink-0 transition-colors"
+                className="text-sm font-bold text-ink-muted hover:text-cocoa underline underline-offset-4 shrink-0 transition-colors"
               >
                 Reset All Filters
               </button>
@@ -113,13 +113,13 @@ export default function MaterialsPage() {
 
           {/* Category Tabs */}
           <div className="space-y-2">
-            <span className="text-xs font-bold text-ink-muted uppercase tracking-wider block">Category</span>
+            <span className="text-sm font-bold text-ink-muted uppercase tracking-wider block">Category</span>
             <MaterialCategoryTabs selectedCategory={category} onSelectCategory={setCategory} />
           </div>
 
           {/* CEFR Level Selector */}
           <div className="space-y-2 pt-2 border-t border-divider">
-            <span className="text-xs font-bold text-ink-muted uppercase tracking-wider block">CEFR Proficiency Level</span>
+            <span className="text-sm font-bold text-ink-muted uppercase tracking-wider block">CEFR Proficiency Level</span>
             <div className="flex flex-wrap items-center gap-2">
               {CEFR_LEVELS.map((lvl) => {
                 const isActive = cefr === lvl;
@@ -127,7 +127,7 @@ export default function MaterialsPage() {
                   <button
                     key={lvl}
                     onClick={() => setCefr(lvl)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    className={`px-3.5 py-1.5 rounded-xl text-sm font-bold transition-all ${
                       isActive
                         ? "bg-ink text-white shadow-sm"
                         : "bg-cream-surface text-ink-muted hover:bg-cream-deep hover:text-ink border border-divider"
@@ -157,12 +157,12 @@ export default function MaterialsPage() {
           <div className="text-center py-20 bg-white rounded-3xl border border-divider p-8 space-y-4">
             <BookOpen className="w-12 h-12 text-ink-muted/50 mx-auto" />
             <h3 className="text-lg font-bold text-ink">No lesson materials found</h3>
-            <p className="text-xs text-ink-muted max-w-sm mx-auto">
+            <p className="text-sm text-ink-muted max-w-sm mx-auto">
               We couldn&apos;t find any curriculum matching your criteria. Try adjusting your search keywords or CEFR level.
             </p>
             <button
               onClick={clearFilters}
-              className="px-4 py-2 bg-cocoa text-white rounded-xl text-xs font-bold hover:bg-cocoa-hover transition-colors"
+              className="px-4 py-2 bg-cocoa text-white rounded-xl text-sm font-bold hover:bg-cocoa-hover transition-colors"
             >
               Reset Filters
             </button>
@@ -178,7 +178,7 @@ export default function MaterialsPage() {
                   {/* Badges Bar */}
                   <div className="flex items-center justify-between gap-2">
                     <CefrLevelBadge level={mat.cefr_level} size="sm" />
-                    <span className="text-[11px] font-bold text-ink-muted bg-cream-surface px-2.5 py-1 rounded-full border border-divider">
+                    <span className="text-sm font-bold text-ink-muted bg-cream-surface px-2.5 py-1 rounded-full border border-divider">
                       {mat.category_display}
                     </span>
                   </div>
@@ -188,17 +188,17 @@ export default function MaterialsPage() {
                     <h3 className="text-xl font-extrabold text-ink font-serif leading-snug group-hover:text-cocoa transition-colors">
                       <Link href={`/materials/${mat.slug}`}>{mat.title}</Link>
                     </h3>
-                    <p className="text-xs text-ink-muted line-clamp-3 leading-relaxed font-sans">{mat.summary}</p>
+                    <p className="text-sm text-ink-muted line-clamp-3 leading-relaxed font-sans">{mat.summary}</p>
                   </div>
 
                   {/* Meta Details */}
-                  <div className="flex items-center gap-4 text-[11px] font-medium text-ink-muted pt-1">
+                  <div className="flex items-center gap-4 text-sm font-medium text-ink-muted pt-1">
                     <span className="flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-cocoa" />
                       {mat.estimated_minutes || 25} mins
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <BookOpen className="w-3.5 h-3.5 text-accent" />
+                      <BookOpen className="w-3.5 h-3.5 text-gold-bright" />
                       {mat.vocabulary?.length || 0} Vocab Target
                     </span>
                     {mat.discussion_questions?.length ? (
@@ -215,7 +215,7 @@ export default function MaterialsPage() {
                   <div className="flex items-center justify-between gap-2">
                     <Link
                       href={`/materials/${mat.slug}`}
-                      className="px-4 py-2.5 rounded-xl bg-cream-surface hover:bg-cocoa hover:text-white text-xs font-bold text-ink border border-divider flex items-center gap-1.5 transition-all"
+                      className="px-4 py-2.5 rounded-xl bg-cream-surface hover:bg-cocoa hover:text-white text-sm font-bold text-ink border border-divider flex items-center gap-1.5 transition-all"
                     >
                       <BookOpen className="w-3.5 h-3.5" />
                       <span>Study Lesson</span>
@@ -239,7 +239,7 @@ export default function MaterialsPage() {
                   <div className="pt-1 text-center">
                     <Link
                       href="/tutors"
-                      className="text-xs font-bold text-accent hover:text-amber-800 transition-colors inline-flex items-center gap-1"
+                      className="text-sm font-bold text-gold-bright hover:text-amber-800 transition-colors inline-flex items-center gap-1"
                     >
                       Practice with a Verified Native Tutor <ArrowRight className="w-3 h-3" />
                     </Link>

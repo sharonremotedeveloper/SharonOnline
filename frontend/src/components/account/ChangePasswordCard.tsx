@@ -48,19 +48,19 @@ export function ChangePasswordCard() {
         <h2 className="text-sm font-extrabold text-ink">Change password</h2>
       </div>
       {done ? (
-        <p role="status" className="text-xs text-success font-medium">
+        <p role="status" className="text-sm text-success font-medium">
           Password changed. For your safety you&apos;re being signed out everywhere - please sign in again.
         </p>
       ) : (
         <>
           {error && (
-            <div role="alert" className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-xs text-primary font-medium">
+            <div role="alert" className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-sm text-primary font-medium">
               {error}
             </div>
           )}
           {FIELDS.map(([name, label, autoComplete]) => (
             <div key={name} className="space-y-1">
-              <label htmlFor={`cp-${name}`} className="text-xs font-bold text-ink">{label}</label>
+              <label htmlFor={`cp-${name}`} className="text-sm font-bold text-ink">{label}</label>
               <input
                 id={`cp-${name}`}
                 type="password"
@@ -68,15 +68,15 @@ export function ChangePasswordCard() {
                 autoComplete={autoComplete}
                 value={values[name]}
                 onChange={(e) => setValues({ ...values, [name]: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+                className="w-full p-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
               />
-              {fieldErrors[name]?.length ? <p className="text-[11px] text-primary font-medium">{fieldErrors[name].join(" ")}</p> : null}
+              {fieldErrors[name]?.length ? <p className="text-sm text-primary font-medium">{fieldErrors[name].join(" ")}</p> : null}
             </div>
           ))}
           <button
             type="submit"
             disabled={submitting}
-            className="px-5 py-2.5 bg-cocoa text-white text-xs font-bold rounded-xl shadow-sm disabled:opacity-50"
+            className="px-5 py-2.5 bg-cocoa text-white text-sm font-bold rounded-xl shadow-sm disabled:opacity-50"
           >
             {submitting ? "Updating..." : "Update password"}
           </button>

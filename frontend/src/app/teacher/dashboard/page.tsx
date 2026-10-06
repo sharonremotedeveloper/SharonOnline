@@ -76,12 +76,12 @@ export default function TeacherDashboardPage() {
         {/* Top Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/20 text-accent-surface text-xs font-bold border border-accent/30">
-              <Award className="w-3.5 h-3.5 text-accent" />
-              <span>Verified Educator Operations Portal</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sun-soft text-ink text-sm font-bold border border-sun">
+              <Award className="w-3.5 h-3.5 text-gold-bright" />
+              <span>Tutor workspace</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-black text-ink font-serif tracking-tight">
-              Tutor Operations Cockpit
+              Your tutor dashboard
             </h1>
             <p className="text-xs sm:text-sm text-ink-muted">
               Manage your upcoming synchronous classes, submit lesson memos, and monitor Eskom Power Guard.
@@ -142,13 +142,13 @@ export default function TeacherDashboardPage() {
                 <div className="text-sm font-black text-ink">
                   {pendingMemo.student.full_name} — {pendingMemo.material_title || "Lesson"}
                 </div>
-                <div className="text-[11px] text-ink-muted">Lesson on {fmtWhen(pendingMemo)}</div>
+                <div className="text-xs text-ink-muted">Lesson on {fmtWhen(pendingMemo)}</div>
               </div>
             </div>
 
             <Link
               href={`/teacher/bookings/${pendingMemo.id}/memo`}
-              className="px-5 py-2.5 bg-plum hover:bg-purple-900 text-white text-xs font-black rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all shrink-0"
+              className="px-5 py-2.5 bg-plum hover:bg-cocoa-hover text-white text-xs font-black rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all shrink-0"
             >
               <span>Compose Memo</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -167,7 +167,7 @@ export default function TeacherDashboardPage() {
         ) : (
           <div className="bg-gradient-to-br from-[#0B3530] via-cocoa to-[#082622] text-white rounded-3xl p-6 sm:p-10 shadow-card space-y-6 relative overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-2 text-xs font-extrabold bg-white/10 border border-white/20 px-3.5 py-1 rounded-full text-accent-surface">
+              <span className="inline-flex items-center gap-2 text-xs font-extrabold bg-white/10 border border-white/20 px-3.5 py-1 rounded-full text-sun-soft">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 Next Class to Host
               </span>
@@ -187,7 +187,7 @@ export default function TeacherDashboardPage() {
                   )}
 
                   <span className="text-xs text-white/90 flex items-center gap-1.5 font-medium">
-                    <Clock className="w-3.5 h-3.5 text-accent" />
+                    <Clock className="w-3.5 h-3.5 text-gold-bright" />
                     {fmtWhen(upcomingLesson)}
                   </span>
                 </div>
@@ -218,10 +218,10 @@ export default function TeacherDashboardPage() {
           <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
             <div className="text-xs font-bold text-ink-muted">Tutor Rating</div>
             <div className="text-2xl font-black text-ink flex items-center gap-1.5 font-serif">
-              <Star className="w-5 h-5 text-accent fill-accent" />
+              <Star className="w-5 h-5 text-gold-bright fill-gold-bright" />
               <span>&mdash;</span>
             </div>
-            <p className="text-[11px] text-ink-muted">Rating summary isn&apos;t available yet.</p>
+            <p className="text-xs text-ink-muted">Rating summary isn&apos;t available yet.</p>
           </div>
 
           <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
@@ -229,7 +229,7 @@ export default function TeacherDashboardPage() {
             <div className="text-2xl font-black text-cocoa font-serif">
               {bookingsQ.data ? `${completedThisMonth} ${completedThisMonth === 1 ? "Class" : "Classes"}` : "—"}
             </div>
-            <p className="text-[11px] text-ink-muted">
+            <p className="text-xs text-ink-muted">
               {bookingsQ.error != null ? "Couldn't load your lessons." : "Based on your bookings."}
             </p>
           </div>
@@ -243,12 +243,12 @@ export default function TeacherDashboardPage() {
                 <div className="text-2xl font-black text-emerald-800 font-serif">
                   R{wallet.cleared_balance_zar.toFixed(2)} ZAR
                 </div>
-                <p className="text-[11px] text-ink-muted">Ledger-cleared and awaiting an approved payout workflow.</p>
+                <p className="text-xs text-ink-muted">Ledger-cleared and awaiting an approved payout workflow.</p>
               </>
             ) : (
               <>
                 <div className="text-2xl font-black text-ink-muted font-serif">&mdash;</div>
-                <p className="text-[11px] text-error">
+                <p className="text-xs text-error">
                   Wallet isn&apos;t available yet.{" "}
                   <button type="button" onClick={walletQ.reload} className="underline font-bold">
                     Retry

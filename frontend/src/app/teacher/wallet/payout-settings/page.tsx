@@ -154,7 +154,7 @@ export default function TeacherPayoutSettingsPage() {
           <Lock className="w-4 h-4 text-cocoa shrink-0 mt-0.5" />
           <div className="space-y-0.5">
             <span className="font-bold text-ink">Encrypted payout details</span>
-            <p className="text-[11px] text-ink-muted leading-relaxed">
+            <p className="text-xs text-ink-muted leading-relaxed">
               Your banking details are encrypted at rest with a versioned application key. Payout execution remains
               disabled until an approved banking rail and maker-checker process are in place.
             </p>
@@ -216,7 +216,7 @@ export default function TeacherPayoutSettingsPage() {
               className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
               required
             />
-            <p className="text-[11px] text-ink-muted">Required every time banking details are created or changed.</p>
+            <p className="text-xs text-ink-muted">Required every time banking details are created or changed.</p>
           </div>
 
           <div className="space-y-1.5">
@@ -246,7 +246,7 @@ export default function TeacherPayoutSettingsPage() {
                 {codeSending ? "Sending..." : codeSent ? "Send a new code" : "E-mail me a code"}
               </button>
             </div>
-            <p className="text-[11px] text-ink-muted" role="status">
+            <p className="text-xs text-ink-muted" role="status">
               {codeSent
                 ? "We sent a 6-digit code to your account e-mail. It expires in 10 minutes."
                 : "We e-mail you a code so nobody with only your password can redirect your payouts."}

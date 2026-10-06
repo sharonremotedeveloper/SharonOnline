@@ -211,7 +211,7 @@ export function WeeklyScheduleGrid() {
             disabled={saving}
             className="px-5 py-2 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black flex items-center gap-2 shadow-sm transition-all ml-auto lg:ml-2"
           >
-            {saved ? <Check className="w-4 h-4 text-accent" /> : <Save className="w-4 h-4" />}
+            {saved ? <Check className="w-4 h-4 text-gold-bright" /> : <Save className="w-4 h-4" />}
             <span>{saving ? "Saving..." : saved ? "Schedule Saved!" : "Save Availability"}</span>
           </button>
         </div>
@@ -219,12 +219,12 @@ export function WeeklyScheduleGrid() {
 
       <InlineError error={saveError} />
       {availability?.truncated && (
-        <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
           Only part of your saved availability could be loaded, so this grid may be incomplete. Do not save from here.
         </p>
       )}
       {availability && wouldChangeSavedWindows(availability.rows) && (
-        <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
           Some saved windows do not line up with this hourly grid (or overlap each other). Saving here replaces them with
           the blocks shown.
         </p>
@@ -264,7 +264,7 @@ export function WeeklyScheduleGrid() {
         </div>
       )}
       {leftConflicts.length > 0 && (
-        <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
           Saved. {leftConflicts.length} confirmed lesson{leftConflicts.length === 1 ? " is" : "s are"} outside your new hours but
           still booked: teach {leftConflicts.length === 1 ? "it" : "them"} or cancel from your lessons.
         </p>
@@ -278,14 +278,14 @@ export function WeeklyScheduleGrid() {
           <span className="text-ink-muted font-normal ml-1">({activeHours * 2} discrete 25-min slots)</span>
         </span>
 
-        <span className="text-[11px] text-ink-muted italic">
-          Click any block to toggle open/closed. Green blocks are live on the booking grid.
+        <span className="text-xs text-ink-muted italic">
+          Select a block to open or close it. Dark blocks are open for students to book.
         </span>
       </div>
 
       {/* 7-Day Matrix Table */}
       <div className="overflow-x-auto rounded-2xl border border-divider">
-        <table className="w-full min-w-[700px] border-collapse text-xs">
+        <table className="w-full min-w-[700px] border-collapse text-sm">
           <thead>
             <tr className="bg-cream-surface border-b border-divider">
               <th className="py-3 px-4 font-bold text-ink-muted uppercase tracking-wider text-left w-36">
@@ -294,7 +294,7 @@ export function WeeklyScheduleGrid() {
               {DAYS.map((d) => (
                 <th key={d.id} className="py-3 px-2 font-black text-ink text-center">
                   <div>{d.label}</div>
-                  <span className="text-[10px] font-normal text-ink-muted hidden sm:inline">{d.full}</span>
+                  <span className="text-xs font-normal text-ink-muted hidden sm:inline">{d.full}</span>
                 </th>
               ))}
             </tr>
@@ -312,7 +312,7 @@ export function WeeklyScheduleGrid() {
                       <button
                         type="button"
                         onClick={() => toggleSlot(d.id, blockIdx)}
-                        className={`w-full py-2 px-1 rounded-xl text-[11px] font-bold transition-all ${
+                        className={`w-full min-h-[44px] py-2 px-1 rounded-xl text-sm font-bold transition-all ${
                           isOpen
                             ? "bg-cocoa text-white shadow-xs hover:bg-cocoa-hover"
                             : "bg-cream-surface text-ink-muted/60 hover:bg-cream-deep hover:text-ink border border-divider/60"

@@ -46,7 +46,7 @@ export function EskomReportButton({
         <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
         <div className="space-y-1 text-xs">
           <p className="font-extrabold text-amber-900">Eskom Power Outage Recorded</p>
-          <p className="text-[11px] text-amber-800 leading-relaxed">
+          <p className="text-xs text-amber-800 leading-relaxed">
             Lesson marked as interrupted. 1 full lesson credit has been automatically credited back to the student, and tutor ratings are shielded under Eskom Power Guard.
           </p>
         </div>
@@ -93,7 +93,7 @@ export function EskomReportButton({
               <span className="font-bold text-ink flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-cocoa" /> Eskom Power Guard Protection:
               </span>
-              <ul className="text-[11px] text-ink-muted list-disc list-inside space-y-0.5">
+              <ul className="text-xs text-ink-muted list-disc list-inside space-y-0.5">
                 <li>Immediate 1-credit refund credited to student wallet</li>
                 <li>Zero penalty rating or cancellation strike on tutor profile</li>
                 <li>Session logs flagged as &apos;INTERRUPTED_POWER&apos;</li>
@@ -101,7 +101,7 @@ export function EskomReportButton({
             </div>
 
             <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-ink-muted block">
+              <label className="text-xs font-bold uppercase tracking-wider text-ink-muted block">
                 Outage Context / Details
               </label>
               <input

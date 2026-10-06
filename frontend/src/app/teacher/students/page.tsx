@@ -231,11 +231,11 @@ export default function TeacherStudentsCRMPage() {
 
               <div className="flex items-center gap-3 self-start sm:self-auto text-xs">
                 <div className="bg-cream-50 border border-cream-200 px-3.5 py-1.5 rounded-xl text-center">
-                  <span className="text-ink-400 block text-[10px] uppercase font-bold">Lessons Taken</span>
+                  <span className="text-ink-400 block text-xs uppercase font-bold">Lessons Taken</span>
                   <strong className="text-ink-900 text-sm font-extrabold">{student.lessons_completed_count}</strong>
                 </div>
                 <div className="bg-cream-50 border border-cream-200 px-3.5 py-1.5 rounded-xl text-center">
-                  <span className="text-ink-400 block text-[10px] uppercase font-bold">Last Lesson</span>
+                  <span className="text-ink-400 block text-xs uppercase font-bold">Last Lesson</span>
                   <strong className="text-ink-900 text-xs font-semibold">{student.last_lesson_date}</strong>
                 </div>
               </div>

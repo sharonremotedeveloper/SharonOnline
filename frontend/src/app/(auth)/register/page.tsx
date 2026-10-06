@@ -34,7 +34,7 @@ function RegisterForm() {
 
   const fieldError = (name: string) =>
     fieldErrors[name]?.length ? (
-      <p className="text-[11px] text-primary font-medium">{fieldErrors[name].join(" ")}</p>
+      <p className="text-sm text-primary font-medium">{fieldErrors[name].join(" ")}</p>
     ) : null;
 
   useEffect(() => {
@@ -104,7 +104,7 @@ function RegisterForm() {
           S
         </div>
         <h1 className="text-2xl font-extrabold text-ink font-serif">Create Your Account</h1>
-        <p className="text-xs text-ink-muted">Join Sharon Online for high-focus 25-minute synchronous lessons</p>
+        <p className="text-sm text-ink-muted">Join Sharon Online for high-focus 25-minute synchronous lessons</p>
       </div>
 
       {/* Role Switcher Tabs */}
@@ -112,7 +112,7 @@ function RegisterForm() {
         <button
           type="button"
           onClick={() => setRole("student")}
-          className={`py-2.5 rounded-xl text-xs font-bold transition-all ${
+          className={`py-2.5 rounded-xl text-sm font-bold transition-all ${
             role === "student"
               ? "bg-cocoa text-white shadow-sm"
               : "text-ink-muted hover:text-ink"
@@ -123,7 +123,7 @@ function RegisterForm() {
         <button
           type="button"
           onClick={() => setRole("teacher")}
-          className={`py-2.5 rounded-xl text-xs font-bold transition-all ${
+          className={`py-2.5 rounded-xl text-sm font-bold transition-all ${
             role === "teacher"
               ? "bg-cocoa text-white shadow-sm"
               : "text-ink-muted hover:text-ink"
@@ -134,7 +134,7 @@ function RegisterForm() {
       </div>
 
       {error && (
-        <div className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-xs text-primary font-medium">
+        <div className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-sm text-primary font-medium">
           {error}
         </div>
       )}
@@ -142,24 +142,24 @@ function RegisterForm() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-xs font-bold text-ink">First Name</label>
+            <label className="text-sm font-bold text-ink">First Name</label>
             <input
               type="text"
               required
               value={formData.first_name}
               onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="w-full px-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("first_name")}
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-bold text-ink">Last Name</label>
+            <label className="text-sm font-bold text-ink">Last Name</label>
             <input
               type="text"
               required
               value={formData.last_name}
               onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="w-full px-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("last_name")}
           </div>
@@ -167,26 +167,26 @@ function RegisterForm() {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-xs font-bold text-ink">Username</label>
+            <label className="text-sm font-bold text-ink">Username</label>
             <input
               type="text"
               required
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
               placeholder="e.g. aiko_tanaka"
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="w-full px-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("username")}
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-bold text-ink">Email Address</label>
+            <label className="text-sm font-bold text-ink">Email Address</label>
             <input
               type="email"
               required
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="name@example.com"
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="w-full px-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("email")}
           </div>
@@ -194,23 +194,23 @@ function RegisterForm() {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-xs font-bold text-ink">Timezone</label>
+            <label className="text-sm font-bold text-ink">Timezone</label>
             <input
               type="text"
               readOnly
               value={formData.timezone}
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-deep/50 cursor-not-allowed"
+              className="w-full px-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-deep/50 cursor-not-allowed"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-bold text-ink">Country Code</label>
+            <label className="text-sm font-bold text-ink">Country Code</label>
             <input
               type="text"
               required
               value={formData.country}
               onChange={(e) => setFormData({ ...formData, country: e.target.value.toUpperCase() })}
               placeholder="e.g. JP, ZA, KR, DE"
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="w-full px-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("country")}
           </div>
@@ -218,26 +218,26 @@ function RegisterForm() {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-xs font-bold text-ink">Password</label>
+            <label className="text-sm font-bold text-ink">Password</label>
             <input
               type="password"
               required
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               placeholder="••••••••"
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="w-full px-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("password")}
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-bold text-ink">Confirm Password</label>
+            <label className="text-sm font-bold text-ink">Confirm Password</label>
             <input
               type="password"
               required
               value={formData.password_confirm}
               onChange={(e) => setFormData({ ...formData, password_confirm: e.target.value })}
               placeholder="••••••••"
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="w-full px-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("password_confirm")}
           </div>
@@ -246,11 +246,11 @@ function RegisterForm() {
         {/* Tutor specific declarations */}
         {role === "teacher" && (
           <div className="p-4 bg-cream-surface rounded-2xl border border-cream-deep space-y-3">
-            <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+            <div className="text-sm font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
               <Zap className="w-3.5 h-3.5" /> South African Tutor Onboarding Protocol
             </div>
 
-            <label className="flex items-start gap-2.5 text-xs font-semibold text-ink cursor-pointer">
+            <label className="flex items-start gap-2.5 text-sm font-semibold text-ink cursor-pointer">
               <input
                 type="checkbox"
                 checked={formData.has_power_backup}
@@ -260,7 +260,7 @@ function RegisterForm() {
               <span>I confirm I possess a verified Solar / Inverter / UPS power backup for loadshedding stages.</span>
             </label>
 
-            <label className="flex items-start gap-2.5 text-xs font-semibold text-ink cursor-pointer">
+            <label className="flex items-start gap-2.5 text-sm font-semibold text-ink cursor-pointer">
               <input
                 type="checkbox"
                 checked={formData.tefl_certified}
@@ -276,14 +276,14 @@ function RegisterForm() {
           <button
             type="submit"
             disabled={submitting || isLoading}
-            className="w-full py-3.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {submitting ? "Creating Account..." : role === "teacher" ? "Submit Tutor Application" : "Create Student Account"} <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </form>
 
-      <div className="pt-2 text-center text-xs text-ink-muted">
+      <div className="pt-2 text-center text-sm text-ink-muted">
         Already have an account?{" "}
         <Link href="/login" className="text-cocoa font-bold hover:underline">
           Sign In
@@ -296,7 +296,7 @@ function RegisterForm() {
 export default function RegisterPage() {
   return (
     <div className="min-h-[85vh] flex items-center justify-center px-4 py-12">
-      <Suspense fallback={<div className="text-xs text-ink-muted">Loading registration...</div>}>
+      <Suspense fallback={<div className="text-sm text-ink-muted">Loading registration...</div>}>
         <RegisterForm />
       </Suspense>
     </div>

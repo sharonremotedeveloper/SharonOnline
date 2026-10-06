@@ -72,11 +72,11 @@ ${memo.homework}
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-lg text-white">{lesson.teacher.name}</h3>
-                  <span className="text-xs bg-cocoa-700/60 text-cocoa-200 px-2 py-0.5 rounded-full border border-cocoa-600/40">
+                  <span className="text-sm bg-cocoa-700/60 text-cocoa-200 px-2 py-0.5 rounded-full border border-cocoa-600/40">
                     Tutor Memo
                   </span>
                 </div>
-                <p className="text-xs text-cocoa-200">
+                <p className="text-sm text-cocoa-200">
                   {lesson.local_date} • {lesson.local_start_time} - {lesson.local_end_time} ({lesson.viewer_timezone})
                 </p>
               </div>
@@ -92,10 +92,10 @@ ${memo.homework}
 
           <div className="mt-5 pt-4 border-t border-cocoa-700/60 flex items-center justify-between flex-wrap gap-2">
             <div>
-              <span className="text-xs font-semibold text-cocoa-300 uppercase tracking-wider">Lesson Material</span>
+              <span className="text-sm font-semibold text-cocoa-300 uppercase tracking-wider">Lesson Material</span>
               <h2 className="text-xl font-bold text-white mt-0.5">{lesson.material_title}</h2>
             </div>
-            <span className="px-3 py-1 bg-accent-500/20 text-accent-300 border border-accent-400/30 text-xs font-bold rounded-lg">
+            <span className="px-3 py-1 bg-accent-500/20 text-accent-300 border border-accent-400/30 text-sm font-bold rounded-lg">
               CEFR {lesson.material_cefr}
             </span>
           </div>
@@ -122,7 +122,7 @@ ${memo.homework}
                   <BookOpen className="w-4 h-4 text-accent-600" />
                   <span>Vocabulary Acquired ({memo.vocabulary_words.length})</span>
                 </div>
-                <span className="text-xs text-ink-500 flex items-center gap-1 font-medium">
+                <span className="text-sm text-ink-500 flex items-center gap-1 font-medium">
                   <BookmarkCheck className="w-3.5 h-3.5 text-cocoa-600" /> Synced to Flashcards
                 </span>
               </div>
@@ -134,7 +134,7 @@ ${memo.homework}
                     className="p-3.5 rounded-xl border border-cream-200 bg-cream-50/50 hover:bg-cream-50 transition-colors flex flex-col sm:flex-row sm:items-baseline justify-between gap-1"
                   >
                     <span className="font-bold text-cocoa-900 font-mono text-sm capitalize">{item.word}</span>
-                    <span className="text-xs text-ink-700 sm:text-right">{item.definition}</span>
+                    <span className="text-sm text-ink-700 sm:text-right">{item.definition}</span>
                   </div>
                 ))}
               </div>
@@ -145,10 +145,10 @@ ${memo.homework}
           {memo.pronunciation_notes && (
             <div>
               <div className="flex items-center gap-2 mb-2 text-ink-900 font-bold text-sm uppercase tracking-wider">
-                <Volume2 className="w-4 h-4 text-purple-600" />
+                <Volume2 className="w-4 h-4 text-ink-muted" />
                 <span>Pronunciation & Phonetics</span>
               </div>
-              <div className="bg-purple-50/50 border border-purple-100 p-4 rounded-2xl text-ink-800 text-sm leading-relaxed">
+              <div className="bg-sky-soft border border-sky p-4 rounded-2xl text-ink-800 text-sm leading-relaxed">
                 {memo.pronunciation_notes}
               </div>
             </div>
@@ -186,7 +186,7 @@ ${memo.homework}
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopyNotes}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-ink-700 hover:text-ink-900 bg-white border border-cream-200 rounded-xl transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-ink-700 hover:text-ink-900 bg-white border border-cream-200 rounded-xl transition-colors shadow-xs"
             >
               {copied ? (
                 <>
@@ -200,7 +200,7 @@ ${memo.homework}
             </button>
             <button
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-ink-700 hover:text-ink-900 bg-white border border-cream-200 rounded-xl transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-ink-700 hover:text-ink-900 bg-white border border-cream-200 rounded-xl transition-colors shadow-xs"
             >
               <Printer className="w-3.5 h-3.5" /> Print
             </button>
@@ -208,7 +208,7 @@ ${memo.homework}
 
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-ink-900 hover:bg-ink-800 text-white text-xs font-semibold rounded-xl transition-colors shadow-sm"
+            className="px-5 py-2 bg-ink-900 hover:bg-ink-800 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
           >
             Close Memo
           </button>

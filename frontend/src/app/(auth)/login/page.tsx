@@ -58,30 +58,30 @@ function LoginForm() {
           S
         </div>
         <h1 className="text-2xl font-extrabold text-ink font-serif">Sign In to Sharon Online</h1>
-        <p className="text-xs text-ink-muted">Access your 25-minute lessons, notes, and schedule</p>
+        <p className="text-sm text-ink-muted">Access your 25-minute lessons, notes, and schedule</p>
       </div>
 
       {isRegistered && (
-        <div className="p-3 bg-success/15 border border-success/30 rounded-xl text-xs text-success font-medium text-center">
+        <div className="p-3 bg-success/15 border border-success/30 rounded-xl text-sm text-success font-medium text-center">
           Account created successfully! Please sign in.
         </div>
       )}
 
       {isReset && (
-        <div role="status" className="p-3 bg-success/15 border border-success/30 rounded-xl text-xs text-success font-medium text-center">
+        <div role="status" className="p-3 bg-success/15 border border-success/30 rounded-xl text-sm text-success font-medium text-center">
           Password updated. Please sign in with your new password.
         </div>
       )}
 
       {error && (
-        <div className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-xs text-primary font-medium">
+        <div className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-sm text-primary font-medium">
           {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1">
-          <label className="text-xs font-bold text-ink">Username or Email</label>
+          <label className="text-sm font-bold text-ink">Username or Email</label>
           <div className="relative">
             <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
             <input
@@ -90,15 +90,15 @@ function LoginForm() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="you@example.com or username"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
           </div>
         </div>
 
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-ink">Password</label>
-            <Link href="/forgot-password" className="text-[11px] text-primary hover:underline">
+            <label className="text-sm font-bold text-ink">Password</label>
+            <Link href="/forgot-password" className="text-sm text-primary hover:underline">
               Forgot?
             </Link>
           </div>
@@ -110,7 +110,7 @@ function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
           </div>
         </div>
@@ -119,14 +119,14 @@ function LoginForm() {
           <button
             type="submit"
             disabled={submitting || isLoading}
-            className="w-full py-3 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {submitting ? "Signing in..." : "Sign In"} <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </form>
 
-      <div className="pt-2 text-center text-xs text-ink-muted">
+      <div className="pt-2 text-center text-sm text-ink-muted">
         Don't have an account?{" "}
         <Link href="/register" className="text-cocoa font-bold hover:underline">
           Create Account
@@ -139,7 +139,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-      <Suspense fallback={<div className="text-xs text-ink-muted">Loading authentication...</div>}>
+      <Suspense fallback={<div className="text-sm text-ink-muted">Loading authentication...</div>}>
         <LoginForm />
       </Suspense>
     </div>

@@ -80,7 +80,7 @@ export default function TeacherMemoPage() {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-black text-ink">{booking.student.full_name}</span>
                 {booking.student.target_level && (
-                  <span className="text-[10px] font-bold text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-bold text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-full">
                     Target: {booking.student.target_level}
                   </span>
                 )}

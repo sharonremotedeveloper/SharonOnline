@@ -106,7 +106,7 @@ ${initialScratchpad}` : ""
 
         <div className="p-4 rounded-2xl bg-cream-surface border border-divider max-w-sm mx-auto text-xs space-y-1">
           <span className="font-bold text-ink">Smart Flashcards Activated</span>
-          <p className="text-[11px] text-ink-muted">
+          <p className="text-xs text-ink-muted">
             The {vocabList.length} vocabulary words were automatically ingested into the student&apos;s spaced repetition deck.
           </p>
         </div>
@@ -137,10 +137,10 @@ ${initialScratchpad}` : ""
       {/* 1. Overall Feedback */}
       <div className="space-y-2">
         <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-          <Award className="w-4 h-4 text-accent" />
+          <Award className="w-4 h-4 text-gold-bright" />
           <span>Overall Feedback &amp; Speaking Fluency</span>
         </label>
-        <p className="text-[11px] text-ink-muted">
+        <p className="text-xs text-ink-muted">
           Praise strengths, evaluate conversational confidence, and summarize key conversational highlights.
         </p>
         <textarea
@@ -159,7 +159,7 @@ ${initialScratchpad}` : ""
           <BookOpen className="w-4 h-4 text-cocoa" />
           <span>Target Vocabulary Words ({vocabList.length})</span>
         </label>
-        <p className="text-[11px] text-ink-muted">
+        <p className="text-xs text-ink-muted">
           Add newly introduced or practiced vocabulary. These will convert into spaced-repetition student flashcards.
         </p>
 
@@ -255,7 +255,7 @@ ${initialScratchpad}` : ""
       {/* 5. Homework & Follow-up */}
       <div className="space-y-2">
         <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-accent" />
+          <Sparkles className="w-4 h-4 text-gold-bright" />
           <span>Homework Assignment &amp; Next Session Objectives</span>
         </label>
         <textarea

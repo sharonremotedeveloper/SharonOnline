@@ -122,7 +122,7 @@ export function CookieBanner() {
                   <h2 className="text-base font-bold font-serif text-ink">
                     Customize Cookie Preferences
                   </h2>
-                  <p className="text-xs text-ink-muted">
+                  <p className="text-sm text-ink-muted">
                     Choose which categories of cookies you permit us to use.
                   </p>
                 </div>
@@ -143,7 +143,7 @@ export function CookieBanner() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-ink text-sm">Strictly Necessary Cookies</span>
-                    <span className="px-2 py-0.5 rounded-full bg-cocoa/10 text-cocoa text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded-full bg-cocoa/10 text-cocoa text-sm font-bold">
                       Always Active
                     </span>
                   </div>
@@ -201,7 +201,7 @@ export function CookieBanner() {
               <button
                 type="button"
                 onClick={() => setShowCustomize(false)}
-                className="text-xs text-ink-muted hover:text-ink font-semibold"
+                className="text-sm text-ink-muted hover:text-ink font-semibold"
               >
                 Cancel
               </button>
@@ -209,14 +209,14 @@ export function CookieBanner() {
                 <button
                   type="button"
                   onClick={handleRejectNonEssential}
-                  className="px-4 py-2 rounded-xl border border-divider bg-white hover:bg-cream-surface text-xs font-bold text-ink transition-colors"
+                  className="px-4 py-2 rounded-xl border border-divider bg-white hover:bg-cream-surface text-sm font-bold text-ink transition-colors"
                 >
                   Reject All Optional
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveCustom}
-                  className="px-6 py-2 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold transition-all shadow-sm"
+                  className="px-6 py-2 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-sm font-bold transition-all shadow-sm"
                 >
                   Save My Preferences
                 </button>

@@ -67,7 +67,7 @@ export function AudioSnippetButton({ audioUrl, tutorName, size = "md" }: AudioSn
   return (
     <button
       onClick={togglePlay}
-      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm ${
+      className={`px-3 py-1.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 shadow-sm ${
         isPlaying
           ? "bg-accent text-ink ring-2 ring-accent/40"
           : "bg-cream-surface hover:bg-cream-deep text-ink border border-divider"

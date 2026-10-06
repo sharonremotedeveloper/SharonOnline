@@ -17,21 +17,21 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
         <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
             <span>Cleared for Payout</span>
-            <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-[10px]">
+            <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-xs">
               Ready for EFT
             </span>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-emerald-800 font-serif">
             R{wallet.cleared_balance_zar.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
           </div>
-          <p className="text-[11px] text-ink-muted">Derived from ledger account 2020.</p>
+          <p className="text-xs text-ink-muted">Derived from ledger account 2020.</p>
         </div>
 
         {/* Card 2: Pending Escrow */}
         <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
             <span>In 24h Escrow</span>
-            <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full text-[10px]">
+            <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full text-xs">
               Holding Buffer
             </span>
           </div>
@@ -39,7 +39,7 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
             R{wallet.pending_escrow_zar.toFixed(2)}{" "}
             <span className="text-xs font-normal text-ink-muted">ZAR value</span>
           </div>
-          <p className="text-[11px] text-ink-muted">
+          <p className="text-xs text-ink-muted">
             Captured funding valued at each lesson&apos;s stored FX snapshot.
           </p>
         </div>
@@ -48,14 +48,14 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
         <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
             <span>Capture FX Context</span>
-            <span className="text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-full text-[10px] font-bold">
+            <span className="text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-full text-xs font-bold">
               Immutable snapshots
             </span>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-cocoa font-serif">
             {wallet.fx_context.length}
           </div>
-          <p className="text-[11px] text-ink-muted">
+          <p className="text-xs text-ink-muted">
             {wallet.fx_context.length ? wallet.fx_context.map((fx) => `${fx.currency} @ ${fx.fx_rate_to_zar}`).join(" · ") : "No funded lessons yet"}
           </p>
         </div>
@@ -67,7 +67,7 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
           <Info className="w-4 h-4 shrink-0" />
           <span>Fair Payout Structure &amp; Escrow Guarantee</span>
         </div>
-        <p className="text-[11px] text-ink-muted">
+        <p className="text-xs text-ink-muted">
           Tutors receive an <strong>80% share of the amount actually captured</strong>, including the discount when a
           student used a lesson pack. Every row retains its transaction currency and capture-time ZAR valuation;
           escrow releases only after the verified settlement workflow completes.

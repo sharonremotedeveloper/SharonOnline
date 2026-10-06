@@ -262,7 +262,7 @@ export function LessonScheduler({ tutorId, tutorName, days = 14, returnTo }: Les
                   >
                     <span className={`text-sm font-semibold ${isSelected ? "text-white/90" : "text-ink-muted"}`}>{label.weekday}</span>
                     <span className="font-serif text-2xl font-bold leading-tight">{label.day}</span>
-                    <span className={`text-xs ${isSelected ? "text-gold-bright" : hasTimes ? "text-success" : ""}`}>
+                    <span className={`text-sm ${isSelected ? "text-gold-bright" : hasTimes ? "text-success" : ""}`}>
                       {hasTimes ? `${count} free` : "No times"}
                     </span>
                   </button>

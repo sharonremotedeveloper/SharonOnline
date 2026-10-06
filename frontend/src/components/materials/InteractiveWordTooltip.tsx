@@ -47,7 +47,7 @@ export function InteractiveWordTooltip({ vocab, children }: InteractiveWordToolt
           <span className="flex items-start justify-between gap-2 border-b border-divider pb-2 block">
             <span>
               <span className="text-sm font-extrabold text-ink font-serif block">{vocab.word}</span>
-              <span className="text-[11px] text-ink-muted block">
+              <span className="text-sm text-ink-muted block">
                 {vocab.phonetic} · <em className="text-cocoa">{vocab.part_of_speech}</em>
               </span>
             </span>
@@ -77,16 +77,16 @@ export function InteractiveWordTooltip({ vocab, children }: InteractiveWordToolt
             </span>
           </span>
 
-          <span className="text-xs text-ink leading-relaxed block">{vocab.definition}</span>
+          <span className="text-sm text-ink leading-relaxed block">{vocab.definition}</span>
 
           {vocab.example_sentence && (
-            <span className="p-2 rounded-xl bg-cream-surface border border-cream-deep text-[11px] text-ink-muted italic leading-snug block">
+            <span className="p-2 rounded-xl bg-cream-surface border border-cream-deep text-sm text-ink-muted italic leading-snug block">
               "{vocab.example_sentence}"
             </span>
           )}
 
           {saved && (
-            <span className="text-[10px] font-bold text-success flex items-center gap-1 block">
+            <span className="text-sm font-bold text-success flex items-center gap-1 block">
               <Sparkles className="w-3 h-3" /> Saved to Student Study Bank
             </span>
           )}

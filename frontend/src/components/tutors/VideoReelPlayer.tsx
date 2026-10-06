@@ -59,21 +59,21 @@ export function VideoReelPlayer({ videoUrl, posterUrl, tutorName, headline }: Vi
             <Play className="w-7 h-7 fill-ink ml-1 text-ink" />
           </div>
           <div className="text-white font-serif font-bold text-lg">{tutorName}'s 60-Second Video Reel</div>
-          {headline && <div className="text-white/80 text-xs mt-1 max-w-md line-clamp-1">{headline}</div>}
+          {headline && <div className="text-white/80 text-sm mt-1 max-w-md line-clamp-1">{headline}</div>}
         </div>
       )}
 
       {/* Floating control bar when playing */}
       {isPlaying && (
-        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={handlePlayToggle} className="flex items-center gap-1.5 hover:text-accent font-bold">
+        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={handlePlayToggle} className="flex items-center gap-1.5 hover:text-gold-bright font-bold">
             <Pause className="w-4 h-4 fill-white" /> Pause
           </button>
 
-          <div className="text-[11px] text-white/70">60-Sec Audition Reel</div>
+          <div className="text-sm text-white/70">60-Sec Audition Reel</div>
 
           <div className="flex items-center gap-2">
-            <button onClick={handleMuteToggle} className="p-1 hover:text-accent">
+            <button onClick={handleMuteToggle} className="p-1 hover:text-gold-bright">
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
           </div>

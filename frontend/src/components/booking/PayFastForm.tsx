@@ -37,12 +37,12 @@ export function PayFastForm({
     <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-cocoa/10 text-cocoa flex items-center justify-center font-bold text-xs">
+          <div className="w-8 h-8 rounded-xl bg-cocoa/10 text-cocoa flex items-center justify-center font-bold text-sm">
             🇿🇦
           </div>
           <div>
-            <div className="text-xs font-bold text-ink">PayFast Instant EFT / Card</div>
-            <div className="text-[10px] text-ink-muted">South African ZAR Gateway</div>
+            <div className="text-sm font-bold text-ink">PayFast Instant EFT / Card</div>
+            <div className="text-sm text-ink-muted">South African ZAR Gateway</div>
           </div>
         </div>
 
@@ -51,7 +51,7 @@ export function PayFastForm({
         </span>
       </div>
 
-      <div className="p-3 bg-cream-surface rounded-xl border border-divider text-xs space-y-1.5">
+      <div className="p-3 bg-cream-surface rounded-xl border border-divider text-sm space-y-1.5">
         <div className="flex justify-between text-ink-muted">
           <span>Booking Reference:</span>
           <span className="font-bold text-ink">{bookingReference}</span>
@@ -62,7 +62,7 @@ export function PayFastForm({
         </div>
       </div>
 
-      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900">
+      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-900">
         You will be redirected to PayFast. This page waits for the verified ITN before showing success.
       </div>
 
@@ -70,7 +70,7 @@ export function PayFastForm({
         <button
           type="submit"
           disabled={disabled || processing}
-          className="w-full py-3.5 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+          className="w-full py-3.5 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {processing ? (
             "Starting PayFast..."
@@ -83,7 +83,7 @@ export function PayFastForm({
           )}
         </button>
 
-        <div className="text-[10px] text-center text-ink-muted flex items-center justify-center gap-1">
+        <div className="text-sm text-center text-ink-muted flex items-center justify-center gap-1">
           <ShieldCheck className="w-3 h-3 text-success" />
           <span>PCI-DSS Level 1 256-Bit Encrypted Payment Guarantee</span>
         </div>

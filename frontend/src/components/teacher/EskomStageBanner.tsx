@@ -43,7 +43,7 @@ export function EskomStageBanner({ status, className = "" }: EskomStageBannerPro
               <span className="text-xs font-black uppercase tracking-wider">
                 Eskom Grid Status: {status.stage === 0 ? "Normal (No Outages)" : `Stage ${status.stage} Active`}
               </span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/5">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-black/5">
                 {status.area_name.split("-")[0].trim()}
               </span>
             </div>
@@ -69,14 +69,14 @@ export function EskomStageBanner({ status, className = "" }: EskomStageBannerPro
         {/* Right: Certified Badges & Console Link */}
         <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
           {status.has_inverter_backup && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-bold">
               <BatteryCharging className="w-3.5 h-3.5 text-emerald-700" />
               <span>Inverter Verified</span>
             </span>
           )}
 
           {status.has_lte_failover && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cocoa/15 text-cocoa text-[11px] font-bold hidden sm:inline-flex">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cocoa/15 text-cocoa text-xs font-bold hidden sm:inline-flex">
               <Radio className="w-3.5 h-3.5" />
               <span>LTE Failover</span>
             </span>

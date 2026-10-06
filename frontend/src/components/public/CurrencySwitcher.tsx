@@ -37,7 +37,7 @@ export function CurrencySwitcher({ onCurrencyChange, variant = "select" }: Curre
     if (onCurrencyChange) onCurrencyChange(code);
   };
 
-  const shell = "flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cream-surface border border-divider text-xs text-ink-muted";
+  const shell = "flex items-center gap-1.5 px-3 py-1 rounded-lg bg-cream-surface border border-divider text-sm text-ink-muted";
 
   if (!mounted || loading) {
     // Fixed size, so the header and pricing bar do not jump when the real control arrives.

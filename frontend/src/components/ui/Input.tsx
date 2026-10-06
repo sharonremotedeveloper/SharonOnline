@@ -17,7 +17,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-xs font-semibold text-ink uppercase tracking-wider mb-1.5"
+            className="mb-1.5 block text-sm font-semibold text-ink"
           >
             {label}
           </label>
@@ -31,7 +31,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <input
             ref={ref}
             id={inputId}
-            className={`w-full rounded-md border bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-[#A8988F] transition-colors focus:bg-white focus:outline-none focus:ring-1 ${
+            className={`min-h-[48px] w-full rounded-xl border bg-white px-4 py-3 text-base text-ink placeholder:text-ink-faint transition-colors focus:bg-white focus:outline-none focus:ring-2 ${
               icon ? "pl-10" : ""
             } ${
               error
@@ -42,9 +42,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           />
         </div>
         {error ? (
-          <p className="mt-1 text-xs text-error font-medium">{error}</p>
+          <p className="mt-1 text-sm text-error font-medium">{error}</p>
         ) : helperText ? (
-          <p className="mt-1 text-xs text-ink-muted">{helperText}</p>
+          <p className="mt-1 text-sm text-ink-muted">{helperText}</p>
         ) : null}
       </div>
     );

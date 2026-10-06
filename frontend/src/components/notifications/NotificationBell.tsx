@@ -51,7 +51,7 @@ export function NotificationBell({ className = "" }: NotificationBellProps) {
         {badgeText && (
           <span
             aria-hidden="true"
-            className="absolute top-1 right-1 flex items-center justify-center min-w-4.5 h-4.5 px-1 text-[10px] font-black leading-none text-cocoa bg-gold rounded-full ring-2 ring-cocoa shadow-xs animate-in zoom-in-75 duration-150"
+            className="absolute top-1 right-1 flex items-center justify-center min-w-4.5 h-4.5 px-1 text-xs font-black leading-none text-cocoa bg-gold rounded-full ring-2 ring-cocoa shadow-xs animate-in zoom-in-75 duration-150"
           >
             {badgeText}
           </span>

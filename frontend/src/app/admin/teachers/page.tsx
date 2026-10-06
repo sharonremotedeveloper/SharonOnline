@@ -116,7 +116,7 @@ export default function AdminTeachersPage() {
                       />
                       <div>
                         <span className="font-extrabold text-sm text-ink block">{nameOf(tutor)}</span>
-                        <span className="text-[11px] text-ink-muted">{(tutor.bio ?? tutor.headline ?? "")}</span>
+                        <span className="text-xs text-ink-muted">{(tutor.bio ?? tutor.headline ?? "")}</span>
                       </div>
                     </div>
                   </td>
@@ -125,23 +125,23 @@ export default function AdminTeachersPage() {
 
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-1 font-bold text-ink">
-                      <Star className="w-3.5 h-3.5 text-accent fill-accent" />
+                      <Star className="w-3.5 h-3.5 text-gold-bright fill-gold-bright" />
                       <span>{tutor.rating ?? tutor.rating_avg ?? "—"}</span>
-                      <span className="text-[10px] text-ink-muted">({tutor.review_count ?? tutor.rating_count ?? 0})</span>
+                      <span className="text-xs text-ink-muted">({tutor.review_count ?? tutor.rating_count ?? 0})</span>
                     </div>
                   </td>
 
                   <td className="py-4 px-4 font-extrabold text-cocoa font-serif text-sm">
-                    <LessonPriceLabel /> <span className="text-[10px] text-ink-muted font-sans">platform price</span>
+                    <LessonPriceLabel /> <span className="text-xs text-ink-muted font-sans">platform price</span>
                   </td>
 
                   <td className="py-4 px-4">
                     {tutor.is_verified === false ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-xs font-bold border border-amber-200">
                         Not Verified
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
                         <ShieldCheck className="w-3 h-3 text-emerald-600" /> Active Verified
                       </span>
                     )}

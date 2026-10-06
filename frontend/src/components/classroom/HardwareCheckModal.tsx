@@ -251,7 +251,7 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
                 <Mic className="w-4 h-4 text-cocoa" />
                 <span>Microphone Input Level</span>
               </span>
-              <span className="text-[11px] text-ink-muted">Speak to test bar</span>
+              <span className="text-xs text-ink-muted">Speak to test bar</span>
             </div>
 
             <div className="flex items-center gap-1.5 h-4 bg-white p-1 rounded-lg border border-divider">
@@ -300,13 +300,13 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
               <div className="flex items-center justify-between text-xs bg-white p-2 rounded-xl border border-divider font-bold">
                 <span className="text-ink">Network Latency</span>
                 {isMeasuringPing ? (
-                  <span className="text-ink-muted text-[11px] animate-pulse">Measuring...</span>
+                  <span className="text-ink-muted text-xs animate-pulse">Measuring...</span>
                 ) : pingMs !== null ? (
                   <span className={pingMs < 100 ? "text-success" : pingMs < 250 ? "text-amber-600" : "text-rose-500"}>
                     {pingMs} ms ({pingMs < 100 ? "Excellent" : pingMs < 250 ? "Good" : "High Latency"})
                   </span>
                 ) : (
-                  <span className="text-ink-muted text-[11px]">Unavailable</span>
+                  <span className="text-ink-muted text-xs">Unavailable</span>
                 )}
               </div>
             </div>

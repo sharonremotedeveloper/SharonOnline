@@ -169,7 +169,7 @@ export function ZoomLauncherButton({
       <div className="p-4 rounded-2xl bg-cream-surface border border-divider flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-4">
           <div>
-            <span className="text-[10px] uppercase tracking-wider text-ink-muted block font-bold">Meeting ID</span>
+            <span className="text-xs uppercase tracking-wider text-ink-muted block font-bold">Meeting ID</span>
             <span className="font-mono font-bold text-ink">{cleanConfNo || "987 654 3210"}</span>
           </div>
 
@@ -185,7 +185,7 @@ export function ZoomLauncherButton({
           {password && (
             <>
               <div className="border-l border-divider pl-4">
-                <span className="text-[10px] uppercase tracking-wider text-ink-muted block font-bold">Passcode</span>
+                <span className="text-xs uppercase tracking-wider text-ink-muted block font-bold">Passcode</span>
                 <span className="font-mono font-bold text-ink">{password}</span>
               </div>
 

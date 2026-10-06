@@ -19,13 +19,13 @@ function StatusBadge({ row }: { row: FxRateRow }) {
   const status = fxStatus(row);
   if (status === "ok") {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+      <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
         <CheckCircle2 className="w-3 h-3" aria-hidden="true" /> FRESH
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-black text-white bg-rose-600 px-2 py-0.5 rounded-full">
+    <span className="inline-flex items-center gap-1 text-xs font-black text-white bg-rose-600 px-2 py-0.5 rounded-full">
       <AlertTriangle className="w-3 h-3" aria-hidden="true" /> {status === "missing" ? "MISSING" : "STALE"}
     </span>
   );
@@ -133,7 +133,7 @@ export default function AdminFxRatesPage() {
               {r.rate_to_zar === null ? "No rate set" : `R${r.rate_to_zar}`}
             </div>
             {r.rate_to_zar !== null && (
-              <p className="text-[11px] text-ink-muted">
+              <p className="text-xs text-ink-muted">
                 Source: {r.source ?? "-"} &middot; set by {r.set_by ?? "unknown"} &middot; {r.age_hours ?? "?"}h old
               </p>
             )}

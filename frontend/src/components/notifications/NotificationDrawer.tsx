@@ -113,7 +113,7 @@ export function NotificationDrawer({
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-ink-muted">Stay updated on lessons and alerts</p>
+                <p className="text-xs text-ink-muted">Stay updated on lessons and alerts</p>
               </div>
             </div>
 
@@ -198,11 +198,11 @@ export function NotificationDrawer({
                     <div className="flex-1 min-w-0 pr-4">
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <span
-                          className={`text-[11px] font-bold uppercase tracking-wider ${cat.colorClass}`}
+                          className={`text-xs font-bold uppercase tracking-wider ${cat.colorClass}`}
                         >
                           {cat.label}
                         </span>
-                        <span className="text-[11px] text-ink-muted shrink-0">
+                        <span className="text-xs text-ink-muted shrink-0">
                           {formatRelativeTime(item.created_at)}
                         </span>
                       </div>

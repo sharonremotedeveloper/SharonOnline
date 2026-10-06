@@ -169,7 +169,7 @@ export default function AdminDisputesPage() {
 
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <span className="text-[10px] uppercase font-bold text-ink-muted block">Frozen Amount</span>
+                    <span className="text-xs uppercase font-bold text-ink-muted block">Frozen Amount</span>
                     <span className="text-base font-black text-ink">
                       ${c.amount_usd} USD (R{c.amount_zar})
                     </span>
@@ -192,7 +192,7 @@ export default function AdminDisputesPage() {
                 {/* 1. Student Complaint */}
                 <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-2">
                   <div className="flex items-center gap-2 text-ink font-bold">
-                    <User className="w-4 h-4 text-accent" />
+                    <User className="w-4 h-4 text-gold-bright" />
                     <span>Student Complaint Statement</span>
                   </div>
                   <p className="text-ink-muted leading-relaxed font-sans italic bg-white p-3 rounded-xl border border-divider">
@@ -212,12 +212,12 @@ export default function AdminDisputesPage() {
                 </div>
 
                 {/* 3. Authoritative Zoom Webhook Telemetry */}
-                <div className="p-4 rounded-2xl bg-[#1B1123] text-cream border border-white/10 space-y-2">
-                  <div className="flex items-center gap-2 font-bold text-accent">
+                <div className="p-4 rounded-2xl bg-[#201A17] text-cream border border-white/10 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-gold-bright">
                     <Radio className="w-4 h-4" />
                     <span>Zoom Server Dwell Logs</span>
                   </div>
-                  <div className="space-y-1.5 text-[11px] font-mono">
+                  <div className="space-y-1.5 text-xs font-mono">
                     <div className="flex justify-between">
                       <span className="text-cream/60">Student Dwell:</span>
                       <strong className="text-white">{c.zoom_telemetry.student_dwell_minutes} mins</strong>
@@ -233,7 +233,7 @@ export default function AdminDisputesPage() {
                       </strong>
                     </div>
                     {c.zoom_telemetry.interrupted_reason && (
-                      <p className="text-[10px] text-accent-surface pt-1 border-t border-white/10">
+                      <p className="text-xs text-sun-soft pt-1 border-t border-white/10">
                         {c.zoom_telemetry.interrupted_reason}
                       </p>
                     )}

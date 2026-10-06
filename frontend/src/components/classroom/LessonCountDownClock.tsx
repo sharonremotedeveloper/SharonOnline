@@ -55,7 +55,7 @@ export function LessonCountDownClock({
           </div>
           <div>
             <span className="text-xs font-bold text-ink block">Scheduled Session</span>
-            <span className="text-[11px] text-ink-muted">Lesson staging room opens 5 minutes before start</span>
+            <span className="text-xs text-ink-muted">Lesson staging room opens 5 minutes before start</span>
           </div>
         </div>
         <div className="text-right">
@@ -78,11 +78,11 @@ export function LessonCountDownClock({
           </div>
           <div>
             <span className="text-xs font-black text-emerald-950 block">Staging Window Active</span>
-            <span className="text-[11px] text-emerald-800">Complete your AV hardware check and join early</span>
+            <span className="text-xs text-emerald-800">Complete your AV hardware check and join early</span>
           </div>
         </div>
         <div className="text-right font-mono">
-          <span className="text-[10px] uppercase tracking-wider text-emerald-700 block font-bold">Starts in</span>
+          <span className="text-xs uppercase tracking-wider text-emerald-700 block font-bold">Starts in</span>
           <span className="text-lg font-black text-emerald-900">{formatTime(diffMs / 1000)}</span>
         </div>
       </div>
@@ -118,15 +118,15 @@ export function LessonCountDownClock({
             <span className="text-xs font-black block">
               {isWrapUp ? "Session Wrap-Up Period" : "Lesson Currently In Progress"}
             </span>
-            <span className="text-[11px] opacity-80">
+            <span className="text-xs opacity-80">
               {isWrapUp ? "Tutor summarizing key notes & feedback" : "Live 25-minute synchronous classroom"}
             </span>
           </div>
         </div>
 
         <div className="text-right font-mono">
-          <span className="text-[10px] uppercase tracking-wider opacity-75 block font-bold">Time Left</span>
-          <span className={`text-lg font-black ${isWrapUp ? "text-accent" : "text-cocoa"}`}>
+          <span className="text-xs uppercase tracking-wider opacity-75 block font-bold">Time Left</span>
+          <span className={`text-lg font-black ${isWrapUp ? "text-gold-bright" : "text-cocoa"}`}>
             {formatTime(inProgressMs / 1000)}
           </span>
         </div>
@@ -141,7 +141,7 @@ export function LessonCountDownClock({
         <CheckCircle2 className="w-5 h-5 text-success" />
         <div>
           <span className="text-xs font-black text-ink block">Lesson Concluded</span>
-          <span className="text-[11px] text-ink-muted">25-minute synchronous session has finished</span>
+          <span className="text-xs text-ink-muted">25-minute synchronous session has finished</span>
         </div>
       </div>
       <span className="text-xs font-extrabold text-ink-muted">00:00</span>

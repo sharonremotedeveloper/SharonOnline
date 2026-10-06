@@ -148,7 +148,7 @@ export default function TeacherClassroomPage() {
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-accent bg-accent/15 px-2 py-0.5 rounded-md">
+                <span className="text-xs font-mono font-bold text-gold-bright bg-accent/15 px-2 py-0.5 rounded-md">
                   TUTOR COCKPIT
                 </span>
                 <span className="text-xs font-bold text-ink-muted">Ref: {booking.booking_reference}</span>
@@ -209,7 +209,7 @@ export default function TeacherClassroomPage() {
                   </div>
                   <div>
                     <h3 className="text-sm font-black text-ink">{booking.student.full_name}</h3>
-                    <p className="text-[11px] text-ink-muted">{booking.student.email}</p>
+                    <p className="text-xs text-ink-muted">{booking.student.email}</p>
                   </div>
                 </div>
 
@@ -222,7 +222,7 @@ export default function TeacherClassroomPage() {
 
               <div className="text-xs text-ink-muted bg-white p-3 rounded-xl border border-divider">
                 <span className="font-bold text-ink block mb-0.5">Student Focus &amp; Goals:</span>
-                <p className="text-[11px] leading-relaxed">
+                <p className="text-xs leading-relaxed">
                   {booking.student.learning_goals || "The student has not shared any learning goals yet."}
                 </p>
               </div>
@@ -241,7 +241,7 @@ export default function TeacherClassroomPage() {
                 }
               />
               {materialError != null && (
-                <p className="text-[11px] text-error">Lesson material could not be loaded.</p>
+                <p className="text-xs text-error">Lesson material could not be loaded.</p>
               )}
             </div>
 
@@ -252,7 +252,7 @@ export default function TeacherClassroomPage() {
                   <FileEdit className="w-3.5 h-3.5 text-cocoa" />
                   <span>Lesson Notes &amp; Mispronunciation Scratchpad</span>
                 </label>
-                <span className="text-[11px] text-ink-muted flex items-center gap-1">
+                <span className="text-xs text-ink-muted flex items-center gap-1">
                   <Save className="w-3 h-3" />
                   <span>Kept in this browser only</span>
                 </span>

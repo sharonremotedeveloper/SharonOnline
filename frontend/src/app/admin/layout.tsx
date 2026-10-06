@@ -35,8 +35,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-[#F8F6F2] flex flex-col md:flex-row">
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-[#1B1123] text-white flex flex-col justify-between shrink-0 border-r border-white/10 md:min-h-screen">
-        <div className="p-6 space-y-8">
+      <aside className="w-full md:w-64 bg-[#201A17] text-white flex flex-col justify-between shrink-0 border-r border-white/10 md:min-h-screen">
+        <div className="p-4 md:p-6 space-y-4 md:space-y-8">
           {/* Logo & Platform Badge */}
           <div className="space-y-2">
             <Link href="/admin/dashboard" className="flex items-center gap-2.5">
@@ -47,20 +47,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <span className="font-serif font-black text-lg text-cream tracking-tight block">
                   Sharon Online
                 </span>
-                <span className="text-[10px] font-mono tracking-widest uppercase text-accent font-bold">
+                <span className="text-xs font-mono tracking-widest uppercase text-gold-bright font-bold">
                   Command Center
                 </span>
               </div>
             </Link>
 
-            <div className="flex items-center gap-2 pt-1 text-[11px] text-cream/60">
+            <div className="hidden md:flex items-center gap-2 pt-1 text-sm text-cream/70">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
               <span>Platform Core Online</span>
             </div>
           </div>
 
           {/* Navigation Links */}
-          <nav className="space-y-1.5">
+          <nav aria-label="Admin" className="flex gap-2 overflow-x-auto pb-1 md:block md:space-y-1.5 md:overflow-visible md:pb-0">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href || (item.href !== "/admin/dashboard" && pathname.startsWith(item.href));
@@ -69,7 +69,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`flex min-h-[44px] shrink-0 items-center justify-between gap-3 whitespace-nowrap px-4 py-2.5 rounded-full md:rounded-xl text-sm font-bold transition-all ${
                     isActive
                       ? "bg-cocoa text-white shadow-sm"
                       : "text-cream/70 hover:bg-white/5 hover:text-white"
@@ -82,7 +82,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                   {item.badge && (
                     <span
-                      className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-black text-white ${
+                      className={`text-xs font-mono px-2 py-0.5 rounded-full font-black text-white ${
                         item.badgeColor || "bg-accent text-ink"
                       }`}
                     >
@@ -103,9 +103,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Footer Navigation / Quick Switch */}
-        <div className="p-6 border-t border-white/10 space-y-3">
-          <div className="text-[11px] font-bold text-cream/40 uppercase tracking-wider">Quick Portals</div>
-          <div className="flex flex-col gap-1.5 text-xs text-cream/70">
+        <div className="hidden md:block p-6 border-t border-white/10 space-y-3">
+          <div className="text-xs font-bold text-cream/40 uppercase tracking-wider">Quick Portals</div>
+          <div className="flex flex-col gap-1.5 text-sm text-cream/80">
             <Link
               href="/teacher/dashboard"
               className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
@@ -129,7 +129,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Top Header Bar */}
         <header className="bg-white border-b border-divider px-6 py-4 flex items-center justify-between gap-4 sticky top-0 z-30 shadow-2xs">
           <div className="flex items-center gap-3">
-            <span className="px-2.5 py-1 rounded-md bg-[#1B1123] text-cream text-[10px] font-mono font-bold tracking-wider uppercase">
+            <span className="px-2.5 py-1 rounded-md bg-[#201A17] text-cream text-xs font-mono font-bold tracking-wider uppercase">
               Admin Mode
             </span>
             <span className="text-xs text-ink-muted hidden sm:inline">

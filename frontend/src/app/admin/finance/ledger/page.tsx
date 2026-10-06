@@ -87,13 +87,13 @@ export default function AdminLedgerPage() {
           <div className="text-2xl sm:text-3xl font-black text-ink font-serif">
             ${groupMoney(totalHoldingUsd)} USD
           </div>
-          <p className="text-[11px] text-ink-muted">R{groupMoney(totalHoldingZar)} ZAR in active holding buffer</p>
+          <p className="text-xs text-ink-muted">R{groupMoney(totalHoldingZar)} ZAR in active holding buffer</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-2">
           <span className="text-xs font-bold text-ink-muted">Entries Holding in Escrow</span>
           <div className="text-2xl sm:text-3xl font-black text-cocoa font-serif">{holdingCount}</div>
-          <p className="text-[11px] text-ink-muted">Awaiting the 24-hour clearance window</p>
+          <p className="text-xs text-ink-muted">Awaiting the 24-hour clearance window</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-2">
@@ -102,7 +102,7 @@ export default function AdminLedgerPage() {
             <ShieldCheck className="w-7 h-7 text-emerald-600" />
             <span>{clearedCount}</span>
           </div>
-          <p className="text-[11px] text-ink-muted">Counted from the entries listed below</p>
+          <p className="text-xs text-ink-muted">Counted from the entries listed below</p>
         </div>
       </div>
 
@@ -145,11 +145,11 @@ export default function AdminLedgerPage() {
                   <td className="py-4 px-4 text-ink-muted font-mono">{entry.release_date}</td>
                   <td className="py-4 px-6">
                     {entry.escrow_status === "holding" ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-xs font-bold border border-amber-200">
                         <Clock className="w-3 h-3 text-amber-600" /> In 24h Buffer
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
                         <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Cleared for Payout
                       </span>
                     )}

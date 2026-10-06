@@ -1,6 +1,6 @@
 "use client";
 
-import { PublicTutor } from "@/types/tutor";
+import type { PublicTutor } from "@/types/tutor";
 import { TutorCard } from "./TutorCard";
 import { SearchX } from "lucide-react";
 
@@ -13,24 +13,15 @@ interface TutorGridProps {
 export function TutorGrid({ tutors, loading, onResetFilters }: TutorGridProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div
-            key={i}
-            className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-4 animate-pulse"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-cream-deep" />
-              <div className="space-y-2 flex-1">
-                <div className="h-4 bg-cream-deep rounded w-3/4" />
-                <div className="h-3 bg-cream-surface rounded w-1/2" />
-              </div>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Loading tutors">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="animate-pulse overflow-hidden rounded-3xl border border-divider bg-white">
+            <div className="aspect-[4/5] bg-cream-deep/60" />
+            <div className="space-y-3 p-5">
+              <div className="h-5 w-3/4 rounded bg-cream-deep/60" />
+              <div className="h-4 w-1/2 rounded bg-cream-deep/40" />
+              <div className="h-11 w-full rounded-full bg-cream-deep/40" />
             </div>
-            <div className="space-y-2">
-              <div className="h-3 bg-cream-surface rounded w-full" />
-              <div className="h-3 bg-cream-surface rounded w-5/6" />
-            </div>
-            <div className="h-8 bg-cream-surface rounded-xl w-full" />
           </div>
         ))}
       </div>
@@ -39,20 +30,21 @@ export function TutorGrid({ tutors, loading, onResetFilters }: TutorGridProps) {
 
   if (tutors.length === 0) {
     return (
-      <div className="bg-white rounded-3xl p-12 text-center border border-divider shadow-card space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-cream-surface text-ink-muted flex items-center justify-center mx-auto">
-          <SearchX className="w-8 h-8 text-ink-muted" />
-        </div>
-        <h3 className="text-xl font-bold text-ink font-serif">No tutors found matching your criteria.</h3>
-        <p className="text-xs text-ink-muted max-w-md mx-auto">
-          Try loosening your search terms, selecting "All Accents", or clearing the Power Guard filter.
+      <div className="space-y-4 rounded-3xl border border-divider bg-white p-12 text-center shadow-card">
+        <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sun">
+          <SearchX className="h-8 w-8 text-ink" aria-hidden="true" />
+        </span>
+        <h3 className="font-serif text-2xl font-bold text-ink">No tutors match your search</h3>
+        <p className="mx-auto max-w-md text-base text-ink-muted">
+          Try a shorter search, or remove a filter to see more tutors.
         </p>
         {onResetFilters && (
           <button
+            type="button"
             onClick={onResetFilters}
-            className="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+            className="inline-flex min-h-[48px] items-center rounded-full bg-primary px-7 text-base font-bold text-white transition-colors hover:bg-primary-hover"
           >
-            Clear All Filters
+            Clear all filters
           </button>
         )}
       </div>
@@ -60,7 +52,7 @@ export function TutorGrid({ tutors, loading, onResetFilters }: TutorGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {tutors.map((tutor) => (
         <TutorCard key={tutor.id} tutor={tutor} />
       ))}

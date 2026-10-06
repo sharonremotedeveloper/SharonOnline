@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ShieldCheck, Lock, Award, Radio, RefreshCw, CheckCircle } from "lucide-react";
 import { PowerGuardCallout } from "@/components/public/PowerGuardCallout";
+
+export const metadata: Metadata = {
+  title: "Trust and Safety | Sharon Online",
+  description: "How we check tutors, protect lessons and keep students safe.",
+  alternates: { canonical: "/trust-safety" },
+};
 
 export default function TrustSafetyPage() {
   return (
@@ -8,8 +15,8 @@ export default function TrustSafetyPage() {
       {/* Header */}
       <section className="bg-cocoa text-white py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-accent-surface">
-            <ShieldCheck className="w-3.5 h-3.5 text-accent" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-sm font-bold text-sun-soft">
+            <ShieldCheck className="w-3.5 h-3.5 text-gold-bright" />
             <span>Uncompromising Trust & Quality Protocol</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-extrabold font-serif">Trust, Safety & Escrow Protection</h1>
@@ -30,7 +37,7 @@ export default function TrustSafetyPage() {
               <Award className="w-5 h-5" />
             </div>
             <h3 className="text-lg font-bold text-ink font-serif">1. Rigorous 4-Stage Vetting</h3>
-            <p className="text-xs text-ink-muted leading-relaxed">
+            <p className="text-sm text-ink-muted leading-relaxed">
               Every tutor submits verified South African ID credentials, TEFL certification, speed tests, and a 60-second video audition manually audited by Sharon's team.
             </p>
           </div>
@@ -40,7 +47,7 @@ export default function TrustSafetyPage() {
               <Lock className="w-5 h-5" />
             </div>
             <h3 className="text-lg font-bold text-ink font-serif">2. 24-Hour Escrow Protection</h3>
-            <p className="text-xs text-ink-muted leading-relaxed">
+            <p className="text-sm text-ink-muted leading-relaxed">
               Student payments remain safely locked in escrow until the lesson completes and attendance telemetry verifies tutor presence for &gt;= 20 minutes.
             </p>
           </div>
@@ -50,7 +57,7 @@ export default function TrustSafetyPage() {
               <RefreshCw className="w-5 h-5" />
             </div>
             <h3 className="text-lg font-bold text-ink font-serif">3. Automated 100% Refunds</h3>
-            <p className="text-xs text-ink-muted leading-relaxed">
+            <p className="text-sm text-ink-muted leading-relaxed">
               If a tutor is late by &gt;5 minutes or experiences an emergency, your lesson credit is instantly re-credited to your account along with a bonus credit.
             </p>
           </div>

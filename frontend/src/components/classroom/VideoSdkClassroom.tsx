@@ -491,7 +491,7 @@ export function VideoSdkClassroom({
               In-Browser Classroom
             </span>
           </div>
-          <span className="text-[11px] text-slate-400 flex items-center gap-1">
+          <span className="text-xs text-slate-400 flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-cocoa" /> WebRTC HD
           </span>
         </div>
@@ -576,7 +576,7 @@ export function VideoSdkClassroom({
           <span className="text-xs font-bold text-white">Live · {remoteUserName}</span>
         </div>
 
-        <div className="bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/60 shadow-md flex items-center gap-1.5 text-[11px] text-slate-300 pointer-events-auto">
+        <div className="bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/60 shadow-md flex items-center gap-1.5 text-xs text-slate-300 pointer-events-auto">
           <ShieldCheck className="w-3.5 h-3.5 text-cocoa" />
           <span>Encrypted Session</span>
         </div>
@@ -618,12 +618,12 @@ export function VideoSdkClassroom({
             className={`w-full h-full object-cover ${isVideoOff ? "hidden" : "block"}`}
           />
           {isVideoOff && (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 text-slate-500 text-[10px] font-bold">
+            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 text-slate-500 text-xs font-bold">
               <VideoOff className="w-5 h-5 mb-1 text-slate-600" />
               <span>Camera Off</span>
             </div>
           )}
-          <span className="absolute bottom-1.5 left-2 text-[10px] font-bold bg-slate-900/80 px-1.5 py-0.5 rounded text-white backdrop-blur-xs">
+          <span className="absolute bottom-1.5 left-2 text-xs font-bold bg-slate-900/80 px-1.5 py-0.5 rounded text-white backdrop-blur-xs">
             You
           </span>
         </div>

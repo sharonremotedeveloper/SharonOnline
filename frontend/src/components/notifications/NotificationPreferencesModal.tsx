@@ -138,7 +138,7 @@ export function NotificationPreferencesModal({
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-ink">{cat.title}</span>
                     {cat.isMandatory && (
-                      <span className="inline-flex items-center gap-0.5 px-2 py-0.5 text-[10px] font-bold rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                      <span className="inline-flex items-center gap-0.5 px-2 py-0.5 text-xs font-bold rounded-md bg-slate-100 text-slate-700 border border-slate-200">
                         <Lock className="w-2.5 h-2.5" /> Mandatory
                       </span>
                     )}

@@ -79,7 +79,7 @@ function renderMarkdownBody(markdown: string) {
     return text
       .replace(/\*\*(.*?)\*\*/g, "<strong class='font-bold text-ink'>$1</strong>")
       .replace(/\*(.*?)\*/g, "<em class='italic'>$1</em>")
-      .replace(/`([^`]+)`/g, "<code class='bg-cream-deep px-1.5 py-0.5 rounded text-xs font-mono text-ink'>$1</code>");
+      .replace(/`([^`]+)`/g, "<code class='bg-cream-deep px-1.5 py-0.5 rounded text-sm font-mono text-ink'>$1</code>");
   };
 
   for (let i = 0; i < lines.length; i++) {
@@ -162,7 +162,7 @@ export default async function LegalPolicyPage({ params }: LegalPageProps) {
       {/* Top Header / Breadcrumb Bar */}
       <div className="border-b border-divider bg-white print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-ink-muted">
+          <div className="flex items-center gap-2 text-sm text-ink-muted">
             <Link href="/" className="hover:text-ink transition-colors">
               Home
             </Link>
@@ -174,7 +174,7 @@ export default async function LegalPolicyPage({ params }: LegalPageProps) {
 
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-ink-muted hover:text-ink transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-ink-muted hover:text-ink transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Return to Sharon Online</span>
@@ -187,7 +187,7 @@ export default async function LegalPolicyPage({ params }: LegalPageProps) {
           {/* Policy Navigation Sidebar */}
           <aside className="lg:col-span-1 space-y-6 print:hidden">
             <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-4">
-              <div className="flex items-center gap-2 pb-3 border-b border-divider text-xs font-extrabold uppercase tracking-wider text-ink-muted">
+              <div className="flex items-center gap-2 pb-3 border-b border-divider text-sm font-extrabold uppercase tracking-wider text-ink-muted">
                 <ShieldCheck className="w-4 h-4 text-cocoa" />
                 <span>Legal & Governance</span>
               </div>
@@ -199,7 +199,7 @@ export default async function LegalPolicyPage({ params }: LegalPageProps) {
                     <Link
                       key={item.slug}
                       href={`/legal/${item.slug}`}
-                      className={`block px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      className={`block px-3.5 py-2.5 rounded-xl text-sm font-bold transition-all ${
                         isActive
                           ? "bg-cocoa text-white shadow-sm"
                           : "text-ink hover:bg-cream-surface hover:text-cocoa"
@@ -215,16 +215,16 @@ export default async function LegalPolicyPage({ params }: LegalPageProps) {
             {/* Table of Contents */}
             {toc.length > 0 && (
               <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-3 sticky top-6">
-                <div className="text-xs font-extrabold uppercase tracking-wider text-ink-muted">
+                <div className="text-sm font-extrabold uppercase tracking-wider text-ink-muted">
                   On This Page
                 </div>
-                <nav className="space-y-1.5 text-xs">
+                <nav className="space-y-1.5 text-sm">
                   {toc.map((item) => (
                     <a
                       key={item.id}
                       href={`#${item.id}`}
                       className={`block text-ink-muted hover:text-cocoa transition-colors leading-snug ${
-                        item.level === 3 ? "pl-3 text-[11px]" : "font-semibold"
+                        item.level === 3 ? "pl-3 text-sm" : "font-semibold"
                       }`}
                     >
                       {item.title}
@@ -240,7 +240,7 @@ export default async function LegalPolicyPage({ params }: LegalPageProps) {
             <article className="bg-white rounded-3xl p-8 sm:p-12 border border-divider shadow-card print:border-none print:shadow-none print:p-0">
               {/* Document Header */}
               <div className="space-y-4 pb-8 border-b border-divider">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cream-surface border border-divider text-xs font-bold text-cocoa">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cream-surface border border-divider text-sm font-bold text-cocoa">
                   <FileText className="w-3.5 h-3.5" />
                   <span>Official Policy Document</span>
                 </div>
@@ -253,7 +253,7 @@ export default async function LegalPolicyPage({ params }: LegalPageProps) {
                   {policy.summary}
                 </p>
 
-                <div className="flex flex-wrap items-center justify-between gap-4 pt-2 text-xs text-ink-muted">
+                <div className="flex flex-wrap items-center justify-between gap-4 pt-2 text-sm text-ink-muted">
                   <div className="flex items-center gap-4">
                     <span className="flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 text-cocoa" />
@@ -277,7 +277,7 @@ export default async function LegalPolicyPage({ params }: LegalPageProps) {
               </div>
 
               {/* Document Footer */}
-              <div className="mt-12 pt-8 border-t border-divider text-xs text-ink-muted flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="mt-12 pt-8 border-t border-divider text-sm text-ink-muted flex flex-col sm:flex-row items-center justify-between gap-4">
                 <span>Sharon Online (Pty) Ltd. &bull; Registered in South Africa</span>
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-cocoa" />

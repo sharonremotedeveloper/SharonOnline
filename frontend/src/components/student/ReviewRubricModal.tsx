@@ -78,7 +78,7 @@ export function ReviewRubricModal({
         {/* Header */}
         <div className="bg-cream-50 border-b border-cream-200 p-6 flex items-start justify-between">
           <div>
-            <span className="text-xs font-bold text-cocoa-700 uppercase tracking-wider">Lesson Feedback</span>
+            <span className="text-sm font-bold text-cocoa-700 uppercase tracking-wider">Lesson Feedback</span>
             <h3 className="text-xl font-extrabold text-ink-900 mt-1">Review Lesson with {teacherName}</h3>
           </div>
           <button
@@ -103,7 +103,7 @@ export function ReviewRubricModal({
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             {/* Star Rating */}
             <div className="text-center space-y-2">
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block">
+              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
                 Overall Lesson Experience
               </label>
               <div className="flex items-center justify-center gap-2">
@@ -129,7 +129,7 @@ export function ReviewRubricModal({
                   );
                 })}
               </div>
-              <p className="text-xs font-medium text-ink-600">
+              <p className="text-sm font-medium text-ink-600">
                 {rating === 5 && "⭐ Excellent - Flawless session"}
                 {rating === 4 && "⭐ Very Good - Highly effective"}
                 {rating === 3 && "⭐ Good - Standard session"}
@@ -140,7 +140,7 @@ export function ReviewRubricModal({
 
             {/* Rubric Category Tags */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block">
+              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
                 What did the tutor do especially well?
               </label>
               <div className="flex flex-wrap gap-2">
@@ -151,7 +151,7 @@ export function ReviewRubricModal({
                       key={tag}
                       type="button"
                       onClick={() => toggleTag(tag)}
-                      className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
+                      className={`text-sm px-3 py-1.5 rounded-full border transition-all ${
                         isSelected
                           ? "bg-cocoa-600 border-cocoa-600 text-white font-semibold shadow-xs"
                           : "bg-cream-50 border-cream-200 text-ink-700 hover:border-cream-300"
@@ -167,7 +167,7 @@ export function ReviewRubricModal({
 
             {/* Private Qualitative Feedback */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block">
+              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
                 Private Note for {teacherName} (Optional)
               </label>
               <textarea
@@ -180,7 +180,7 @@ export function ReviewRubricModal({
             </div>
 
             {/* Asymmetric Confidentiality Notice */}
-            <div className="bg-cocoa-50/70 border border-cocoa-200/80 rounded-2xl p-3.5 flex items-start gap-3 text-xs text-cocoa-900">
+            <div className="bg-cocoa-50/70 border border-cocoa-200/80 rounded-2xl p-3.5 flex items-start gap-3 text-sm text-cocoa-900">
               <ShieldCheck className="w-5 h-5 text-cocoa-700 shrink-0 mt-0.5" />
               <div>
                 <strong className="font-semibold block mb-0.5">Asymmetric Privacy Protection</strong>
@@ -197,14 +197,14 @@ export function ReviewRubricModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-semibold text-ink-600 hover:text-ink-900 rounded-xl"
+                className="px-4 py-2 text-sm font-semibold text-ink-600 hover:text-ink-900 rounded-xl"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
               >
                 {isSubmitting ? (
                   <>Submitting...</>

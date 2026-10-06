@@ -142,7 +142,7 @@ export default function AdminLiveSessionsPage() {
                 </span>
 
                 <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
                     isWrapUp
                       ? "bg-amber-100 text-amber-900 animate-pulse"
                       : isStaging
@@ -173,10 +173,10 @@ export default function AdminLiveSessionsPage() {
                     <User className="w-4 h-4 text-cocoa" />
                     <div>
                       <span className="font-bold text-ink block">{sess.teacher_name}</span>
-                      <span className="text-[10px] text-ink-muted">Native Educator (Host)</span>
+                      <span className="text-xs text-ink-muted">Native Educator (Host)</span>
                     </div>
                   </div>
-                  <span className="text-emerald-700 font-bold flex items-center gap-1 text-[11px]">
+                  <span className="text-emerald-700 font-bold flex items-center gap-1 text-xs">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     {sess.teacher_joined_at ? "In Call" : "Awaiting Host"}
                   </span>
@@ -185,13 +185,13 @@ export default function AdminLiveSessionsPage() {
                 {/* Student */}
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-cream-surface border border-divider">
                   <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-accent" />
+                    <User className="w-4 h-4 text-gold-bright" />
                     <div>
                       <span className="font-bold text-ink block">{sess.student_name}</span>
-                      <span className="text-[10px] text-ink-muted">Enrolled Student</span>
+                      <span className="text-xs text-ink-muted">Enrolled Student</span>
                     </div>
                   </div>
-                  <span className="text-emerald-700 font-bold flex items-center gap-1 text-[11px]">
+                  <span className="text-emerald-700 font-bold flex items-center gap-1 text-xs">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     {sess.student_joined_at ? "In Call" : "Connecting..."}
                   </span>
@@ -200,7 +200,7 @@ export default function AdminLiveSessionsPage() {
 
               {/* Curriculum in Use */}
               <div className="p-3 rounded-2xl bg-cream-surface/60 border border-divider space-y-1 text-xs">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1">
                   <BookOpen className="w-3 h-3 text-cocoa" /> Synchronized Material
                 </span>
                 <p className="font-bold text-ink truncate">{sess.material_title}</p>
@@ -208,7 +208,7 @@ export default function AdminLiveSessionsPage() {
 
               {/* Dwell Progress Bar */}
               <div className="space-y-1.5 pt-1">
-                <div className="flex justify-between text-[11px] font-bold text-ink-muted">
+                <div className="flex justify-between text-xs font-bold text-ink-muted">
                   <span>Lesson Dwell Time</span>
                   <span className="text-ink font-mono">{sess.elapsed_minutes} / 25 mins</span>
                 </div>
@@ -223,7 +223,7 @@ export default function AdminLiveSessionsPage() {
               </div>
 
               {/* Meeting ID & Telemetry Action */}
-              <div className="flex items-center justify-between text-[11px] pt-2 border-t border-divider">
+              <div className="flex items-center justify-between text-xs pt-2 border-t border-divider">
                 <span className="text-ink-muted font-mono">Zoom ID: {sess.zoom_meeting_id}</span>
                 <span className="text-cocoa font-bold flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5" /> S2S Webhook Monitored

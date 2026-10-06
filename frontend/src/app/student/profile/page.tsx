@@ -109,7 +109,7 @@ export default function StudentProfilePage() {
     return (
       <div className="max-w-2xl mx-auto py-20 text-center space-y-3">
         <div className="w-8 h-8 border-2 border-cocoa-600 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-xs text-ink-500">Loading student profile...</p>
+        <p className="text-sm text-ink-500">Loading student profile...</p>
       </div>
     );
   }
@@ -142,14 +142,14 @@ export default function StudentProfilePage() {
               Learning Profile & Timezone
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-ink-600 mt-1 pl-8">
+          <p className="text-sm sm:text-sm text-ink-600 mt-1 pl-8">
             Manage your local timezone for seamless scheduling and customize your target CEFR language goals.
           </p>
         </div>
       </div>
 
       {savedSuccess && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl flex items-center gap-3 text-xs font-semibold animate-scale-up">
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl flex items-center gap-3 text-sm font-semibold animate-scale-up">
           <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
           <span>Profile updated! Your scheduled lessons and memos will reflect your new preferences.</span>
         </div>
@@ -167,7 +167,7 @@ export default function StudentProfilePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Full Name
               </label>
               <input
@@ -180,7 +180,7 @@ export default function StudentProfilePage() {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Email Address
               </label>
               <input
@@ -193,7 +193,7 @@ export default function StudentProfilePage() {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Country of Residence
               </label>
               <input
@@ -206,7 +206,7 @@ export default function StudentProfilePage() {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Local Timezone (IANA)
               </label>
               <select
@@ -230,7 +230,7 @@ export default function StudentProfilePage() {
 
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Target CEFR Proficiency
               </label>
               <select
@@ -247,7 +247,7 @@ export default function StudentProfilePage() {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Primary Learning Objectives & Pedagogical Notes
               </label>
               <textarea
@@ -257,7 +257,7 @@ export default function StudentProfilePage() {
                 placeholder="Describe your current English challenges, professional speaking requirements, or specific areas you want tutors to emphasize..."
                 className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
               />
-              <p className="text-xs text-ink-400 mt-1">
+              <p className="text-sm text-ink-400 mt-1">
                 Your booked tutors can view your target CEFR and learning objectives before each lesson to tailor material selection.
               </p>
             </div>
@@ -266,14 +266,14 @@ export default function StudentProfilePage() {
 
         {/* Footer */}
         <div className="p-6 bg-cream-50 border-t border-cream-200 flex items-center justify-between">
-          <span className="text-xs text-ink-500">
+          <span className="text-sm text-ink-500">
             Account ID: <strong className="font-mono text-ink-700">{profile.id}</strong>
           </span>
 
           <button
             type="submit"
             disabled={isSaving}
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
           >
             {isSaving ? (
               <>Saving...</>

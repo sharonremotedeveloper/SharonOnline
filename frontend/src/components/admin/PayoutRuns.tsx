@@ -34,7 +34,7 @@ function LineRow({ line, canReturn, onReturn }: { line: PayoutRunLine; canReturn
       </td>
       <td className="py-2.5 px-4 text-right">
         {canReturn && line.status === "paid" && (
-          <button type="button" onClick={() => onReturn(line)} className="text-[11px] font-bold text-red-700 hover:underline">
+          <button type="button" onClick={() => onReturn(line)} className="text-xs font-bold text-red-700 hover:underline">
             Mark returned by bank
           </button>
         )}
@@ -113,7 +113,7 @@ export function PayoutRuns({ onChanged }: { onChanged?: () => void }) {
             <header className="p-4 bg-cream-surface flex flex-col lg:flex-row lg:items-center justify-between gap-3">
               <div className="space-y-0.5">
                 <div className="font-mono font-bold text-sm text-ink">{run.batch_reference}</div>
-                <div className="text-[11px] text-ink-muted flex items-center gap-1.5">
+                <div className="text-xs text-ink-muted flex items-center gap-1.5">
                   {run.status === "processed" ? (
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                   ) : run.status === "cancelled" ? (

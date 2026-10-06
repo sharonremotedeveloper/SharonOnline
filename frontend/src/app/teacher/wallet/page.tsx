@@ -165,15 +165,15 @@ export default function TeacherWalletPage() {
                     </td>
                     <td className="py-3 px-4">
                       {tx.status === "cleared" ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
                           <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Cleared
                         </span>
                       ) : tx.status === "pending" ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-xs font-bold border border-amber-200">
                           <Clock className="w-3 h-3 text-amber-600" /> In 24h Escrow
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-cocoa/10 text-cocoa text-[10px] font-bold border border-cocoa/20">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-cocoa/10 text-cocoa text-xs font-bold border border-cocoa/20">
                           <CheckCircle2 className="w-3 h-3 text-cocoa" /> Paid to Bank
                         </span>
                       )}

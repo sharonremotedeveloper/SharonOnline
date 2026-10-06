@@ -132,7 +132,7 @@ export default function MaterialReaderPage() {
           </p>
           <Link
             href="/materials"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-cocoa text-white text-xs font-bold hover:bg-cocoa-hover transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-cocoa text-white text-sm font-bold hover:bg-cocoa-hover transition-colors"
           >
             <ArrowLeft className="w-4 h-4" /> Return to Catalog
           </Link>
@@ -146,7 +146,7 @@ export default function MaterialReaderPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Navigation Breadcrumb Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <nav className="flex items-center gap-2 text-xs font-semibold text-ink-muted">
+          <nav className="flex items-center gap-2 text-sm font-semibold text-ink-muted">
             <Link href="/materials" className="hover:text-cocoa flex items-center gap-1 transition-colors">
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Materials Library</span>
@@ -160,7 +160,7 @@ export default function MaterialReaderPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleShare}
-              className="px-3 py-1.5 rounded-xl bg-white border border-divider text-xs font-bold text-ink hover:bg-cream-surface transition-colors flex items-center gap-1.5 shadow-sm"
+              className="px-3 py-1.5 rounded-xl bg-white border border-divider text-sm font-bold text-ink hover:bg-cream-surface transition-colors flex items-center gap-1.5 shadow-sm"
               title="Copy lesson link"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Share2 className="w-3.5 h-3.5" />}
@@ -173,7 +173,7 @@ export default function MaterialReaderPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 download
-                className="px-3.5 py-1.5 rounded-xl bg-white border border-divider text-xs font-bold text-cocoa hover:bg-cocoa hover:text-white transition-all flex items-center gap-1.5 shadow-sm"
+                className="px-3.5 py-1.5 rounded-xl bg-white border border-divider text-sm font-bold text-cocoa hover:bg-cocoa hover:text-white transition-all flex items-center gap-1.5 shadow-sm"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Worksheet PDF</span>
@@ -186,10 +186,10 @@ export default function MaterialReaderPage() {
         <div className="bg-white rounded-3xl p-6 sm:p-10 border border-divider shadow-card space-y-6">
           <div className="flex flex-wrap items-center gap-3">
             <CefrLevelBadge level={material.cefr_level} size="md" />
-            <span className="text-xs font-bold text-ink-muted bg-cream-surface px-3 py-1 rounded-full border border-divider">
+            <span className="text-sm font-bold text-ink-muted bg-cream-surface px-3 py-1 rounded-full border border-divider">
               {material.category_display}
             </span>
-            <span className="text-xs font-medium text-ink-muted flex items-center gap-1 ml-auto">
+            <span className="text-sm font-medium text-ink-muted flex items-center gap-1 ml-auto">
               <Clock className="w-3.5 h-3.5 text-cocoa" />
               Estimated {material.estimated_minutes || 25} minutes
             </span>
@@ -213,17 +213,17 @@ export default function MaterialReaderPage() {
               {/* Reader Controls Toolbar */}
               <div className="flex items-center justify-between border-b border-divider pb-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-ink uppercase tracking-wider">Lesson Reading</span>
-                  <span className="text-[11px] text-cocoa font-semibold hidden sm:inline">
+                  <span className="text-sm font-bold text-ink uppercase tracking-wider">Lesson Reading</span>
+                  <span className="text-sm text-cocoa font-semibold hidden sm:inline">
                     (Click highlighted words for definitions & audio)
                   </span>
                 </div>
 
                 <div className="flex items-center gap-1.5 bg-cream-surface rounded-xl border border-divider p-1">
-                  <span className="text-[10px] font-bold text-ink-muted px-1.5">Text Size:</span>
+                  <span className="text-sm font-bold text-ink-muted px-1.5">Text Size:</span>
                   <button
                     onClick={() => setFontSize("sm")}
-                    className={`px-2 py-0.5 text-xs font-bold rounded-lg transition-colors ${
+                    className={`px-2 py-0.5 text-sm font-bold rounded-lg transition-colors ${
                       fontSize === "sm" ? "bg-white text-cocoa shadow-xs" : "text-ink-muted hover:text-ink"
                     }`}
                   >
@@ -231,7 +231,7 @@ export default function MaterialReaderPage() {
                   </button>
                   <button
                     onClick={() => setFontSize("base")}
-                    className={`px-2 py-0.5 text-xs font-bold rounded-lg transition-colors ${
+                    className={`px-2 py-0.5 text-sm font-bold rounded-lg transition-colors ${
                       fontSize === "base" ? "bg-white text-cocoa shadow-xs" : "text-ink-muted hover:text-ink"
                     }`}
                   >
@@ -239,7 +239,7 @@ export default function MaterialReaderPage() {
                   </button>
                   <button
                     onClick={() => setFontSize("lg")}
-                    className={`px-2 py-0.5 text-xs font-bold rounded-lg transition-colors ${
+                    className={`px-2 py-0.5 text-sm font-bold rounded-lg transition-colors ${
                       fontSize === "lg" ? "bg-white text-cocoa shadow-xs" : "text-ink-muted hover:text-ink"
                     }`}
                   >
@@ -257,16 +257,16 @@ export default function MaterialReaderPage() {
               {/* Interactive Vocabulary Inline Pills */}
               {material.vocabulary && material.vocabulary.length > 0 && (
                 <div className="pt-6 border-t border-divider space-y-3">
-                  <span className="text-xs font-bold text-ink-muted uppercase tracking-wider block">
+                  <span className="text-sm font-bold text-ink-muted uppercase tracking-wider block">
                     Key Vocabulary In This Article
                   </span>
                   <div className="flex flex-wrap gap-2">
                     {material.vocabulary.map((item) => (
                       <InteractiveWordTooltip key={item.id} vocab={item}>
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cocoa/10 hover:bg-cocoa/20 text-cocoa text-xs font-bold border border-cocoa/20 transition-colors">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cocoa/10 hover:bg-cocoa/20 text-cocoa text-sm font-bold border border-cocoa/20 transition-colors">
                           <BookOpen className="w-3 h-3" />
                           <span>{item.word}</span>
-                          <span className="text-[10px] text-cocoa/70 font-normal">({item.part_of_speech})</span>
+                          <span className="text-sm text-cocoa/70 font-normal">({item.part_of_speech})</span>
                         </span>
                       </InteractiveWordTooltip>
                     ))}
@@ -283,7 +283,7 @@ export default function MaterialReaderPage() {
           <div className="lg:col-span-4 space-y-6">
             {/* Live Lesson Booking Callout */}
             <div className="bg-gradient-to-br from-ink to-ink-muted text-white rounded-3xl p-6 sm:p-7 shadow-card space-y-5">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/20 text-accent text-xs font-bold border border-accent/30">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/20 text-gold-bright text-sm font-bold border border-accent/30">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>1-on-1 Practice</span>
               </div>
@@ -292,7 +292,7 @@ export default function MaterialReaderPage() {
                 <h3 className="text-xl font-bold font-serif leading-snug">
                   Practice this material live with Sharon
                 </h3>
-                <p className="text-xs text-cream/80 leading-relaxed font-sans">
+                <p className="text-sm text-cream/80 leading-relaxed font-sans">
                   Book a 25-minute synchronous Zoom lesson. Get real-time pronunciation corrections and natural
                   conversation feedback.
                 </p>
@@ -301,7 +301,7 @@ export default function MaterialReaderPage() {
               <div className="pt-2">
                 <Link
                   href="/tutors"
-                  className="w-full py-3 px-4 rounded-2xl bg-accent hover:bg-amber-600 text-ink font-extrabold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
+                  className="w-full py-3 px-4 rounded-2xl bg-accent hover:bg-amber-600 text-ink font-extrabold text-sm flex items-center justify-center gap-2 transition-all shadow-md"
                 >
                   <Calendar className="w-4 h-4" />
                   <span>Choose Date & Book Session</span>
@@ -316,7 +316,7 @@ export default function MaterialReaderPage() {
                   <BookOpen className="w-4 h-4 text-cocoa" />
                   <span>Target Vocabulary ({material.vocabulary?.length || 0})</span>
                 </h3>
-                <span className="text-[11px] text-ink-muted">Audio guides</span>
+                <span className="text-sm text-ink-muted">Audio guides</span>
               </div>
 
               <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
@@ -332,7 +332,7 @@ export default function MaterialReaderPage() {
                           <span className="text-sm font-extrabold text-ink font-serif block">
                             {vocab.word}
                           </span>
-                          <span className="text-[10px] text-ink-muted">
+                          <span className="text-sm text-ink-muted">
                             {vocab.phonetic} · <em className="text-cocoa font-medium">{vocab.part_of_speech}</em>
                           </span>
                         </div>
@@ -362,10 +362,10 @@ export default function MaterialReaderPage() {
                         </div>
                       </div>
 
-                      <p className="text-xs text-ink leading-relaxed">{vocab.definition}</p>
+                      <p className="text-sm text-ink leading-relaxed">{vocab.definition}</p>
 
                       {vocab.example_sentence && (
-                        <p className="p-2.5 rounded-xl bg-white border border-divider text-[11px] text-ink-muted italic leading-snug">
+                        <p className="p-2.5 rounded-xl bg-white border border-divider text-sm text-ink-muted italic leading-snug">
                           &ldquo;{vocab.example_sentence}&rdquo;
                         </p>
                       )}
@@ -383,8 +383,8 @@ export default function MaterialReaderPage() {
                     <Download className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-ink">Printable PDF Worksheet</h4>
-                    <p className="text-[11px] text-ink-muted">High-res offline study handout</p>
+                    <h4 className="text-sm font-bold text-ink">Printable PDF Worksheet</h4>
+                    <p className="text-sm text-ink-muted">High-res offline study handout</p>
                   </div>
                 </div>
 
@@ -393,7 +393,7 @@ export default function MaterialReaderPage() {
                   target="_blank"
                   rel="noopener noreferrer"
                   download
-                  className="w-full py-2.5 px-4 rounded-xl bg-cream-surface hover:bg-cream-deep border border-divider text-ink text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                  className="w-full py-2.5 px-4 rounded-xl bg-cream-surface hover:bg-cream-deep border border-divider text-ink text-sm font-bold flex items-center justify-center gap-2 transition-colors"
                 >
                   <ExternalLink className="w-3.5 h-3.5 text-cocoa" />
                   <span>Download R2 Worksheet</span>

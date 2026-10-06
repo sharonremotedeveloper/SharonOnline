@@ -33,17 +33,17 @@ export function ReceiptsList() {
         </h2>
       </div>
       <InlineError error={error || downloadError} />
-      {loading && <p className="text-xs text-ink-muted">Loading your receipts...</p>}
+      {loading && <p className="text-sm text-ink-muted">Loading your receipts...</p>}
       {!loading && !error && receipts && receipts.length === 0 && (
-        <p className="text-xs text-ink-muted">Receipts for your payments appear here as soon as a payment is confirmed.</p>
+        <p className="text-sm text-ink-muted">Receipts for your payments appear here as soon as a payment is confirmed.</p>
       )}
       {receipts && receipts.length > 0 && (
-        <ul className="divide-y divide-divider text-xs">
+        <ul className="divide-y divide-divider text-sm">
           {receipts.map((receipt) => (
             <li key={receipt.id} className="py-3.5 flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <div className="font-bold text-ink font-mono">{receipt.receipt_number}</div>
-                <div className="text-[11px] text-ink-muted truncate">
+                <div className="text-sm text-ink-muted truncate">
                   {receipt.description} · {new Date(receipt.issued_at).toLocaleDateString()}
                 </div>
               </div>

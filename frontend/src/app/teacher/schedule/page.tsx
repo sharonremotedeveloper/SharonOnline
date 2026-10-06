@@ -44,16 +44,15 @@ export default function TeacherSchedulePage() {
         </div>
 
         {/* Global Synchronization Info Box */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-divider shadow-xs flex items-start gap-3.5 text-xs text-ink">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-divider shadow-xs flex items-start gap-3.5 text-sm text-ink">
           <div className="w-9 h-9 rounded-xl bg-cocoa/10 text-cocoa flex items-center justify-center shrink-0 mt-0.5">
             <Info className="w-4 h-4" />
           </div>
           <div className="space-y-1 leading-relaxed">
-            <strong className="text-ink font-black">Zero-Drift Global Timezone Engine:</strong>
-            <p className="text-ink-muted text-[11px]">
-              When you activate an hour in your own timezone, our Redlock availability engine automatically projects
-              25-minute bookable slots into student viewer timezones across Tokyo (+7h), Seoul (+7h), London (-1h),
-              and New York (-6h) with automatic 5-minute breather buffers.
+            <strong className="text-ink font-black">You set your hours once, in your own time zone.</strong>
+            <p className="text-ink-muted text-sm">
+              We turn each open hour into 25-minute lessons and show them to students in their own time zone, for example
+              Tokyo (7 hours ahead of you) or London. A short break is kept between lessons.
             </p>
           </div>
         </div>

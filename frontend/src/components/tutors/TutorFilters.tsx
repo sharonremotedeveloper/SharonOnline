@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Filter, RotateCcw, Zap, Calendar, DollarSign } from "lucide-react";
-import { TutorFilterState } from "@/types/tutor";
+import { Search, RotateCcw, Zap, Calendar } from "lucide-react";
+import type { TutorFilterState } from "@/types/tutor";
 
 interface TutorFiltersProps {
   filters: TutorFilterState;
@@ -10,16 +10,17 @@ interface TutorFiltersProps {
   totalCount: number;
 }
 
+// Plain labels: flag emoji render as bare letters ("ZA", "GB") on Windows, so they are not used.
 const ACCENT_OPTIONS = [
-  { value: "", label: "All Accents" },
-  { value: "ZA", label: "🇿🇦 South African (Native)" },
-  { value: "UK", label: "🇬🇧 British (RP / London)" },
-  { value: "US", label: "🇺🇸 American (General)" },
-  { value: "OTHER", label: "🌐 International Native" },
+  { value: "", label: "Any accent" },
+  { value: "ZA", label: "South African" },
+  { value: "UK", label: "British" },
+  { value: "US", label: "American" },
+  { value: "OTHER", label: "Other" },
 ];
 
 const SPECIALTY_OPTIONS = [
-  "All Focus Areas",
+  "All topics",
   "Business English",
   "Interview Prep",
   "FreeTalk",
@@ -28,6 +29,11 @@ const SPECIALTY_OPTIONS = [
   "Grammar Mastery",
   "Pronunciation & Accent",
 ];
+
+const chip = (active: boolean) =>
+  `inline-flex min-h-[44px] items-center rounded-full px-4 text-base font-semibold transition-colors ${
+    active ? "bg-cocoa text-white" : "border border-divider bg-white text-ink hover:border-cocoa hover:bg-cream-surface"
+  }`;
 
 export function TutorFilters({ filters, onFilterChange, totalCount }: TutorFiltersProps) {
   const [searchTerm, setSearchTerm] = useState(filters.search);
@@ -44,147 +50,113 @@ export function TutorFilters({ filters, onFilterChange, totalCount }: TutorFilte
 
   const handleReset = () => {
     setSearchTerm("");
-    onFilterChange({
-      search: "",
-      accent: "",
-      specialty: "",
-      learning_goal: "",
-      only_power_guard: false,
-      only_today: false,
-    });
+    onFilterChange({ search: "", accent: "", specialty: "", learning_goal: "", only_power_guard: false, only_today: false });
   };
 
   const hasActiveFilters =
-    filters.search ||
-    filters.accent ||
-    filters.specialty ||
-    filters.learning_goal ||
-    filters.only_power_guard ||
-    filters.only_today;
+    filters.search || filters.accent || filters.specialty || filters.learning_goal || filters.only_power_guard || filters.only_today;
 
   return (
-    <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-6">
-      {/* Search Bar & Reset Header */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div className="space-y-6 rounded-3xl border border-divider bg-white p-5 shadow-card sm:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative w-full">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
+          <label htmlFor="tutor-search" className="sr-only">
+            Search tutors
+          </label>
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
           <input
-            type="text"
+            id="tutor-search"
+            type="search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search tutors by name, keyword, accent, or specialty..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
+            placeholder="Search by name or topic"
+            className="min-h-[52px] w-full rounded-full border border-divider bg-cream-surface pl-12 pr-4 text-base text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-cocoa"
           />
         </div>
-
         {hasActiveFilters && (
           <button
+            type="button"
             onClick={handleReset}
-            className="text-xs font-bold text-primary hover:text-primary-hover flex items-center gap-1 shrink-0"
+            className="inline-flex min-h-[44px] shrink-0 items-center gap-2 px-2 text-base font-bold text-primary hover:text-primary-hover"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Filters</span>
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            Reset
           </button>
         )}
       </div>
 
-      {/* Accent Filters */}
-      <div className="space-y-2">
-        <label className="text-[11px] font-bold text-ink-muted uppercase tracking-wider flex items-center gap-1.5">
-          <Filter className="w-3.5 h-3.5 text-cocoa" /> Accent & Origin
-        </label>
+      <fieldset>
+        <legend className="mb-2 text-sm font-bold uppercase tracking-wider text-ink-muted">Accent</legend>
         <div className="flex flex-wrap gap-2">
-          {ACCENT_OPTIONS.map((opt) => {
-            const isActive = filters.accent === opt.value;
-            return (
-              <button
-                key={opt.value}
-                onClick={() => onFilterChange({ ...filters, accent: opt.value })}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  isActive
-                    ? "bg-cocoa text-white shadow-sm"
-                    : "bg-cream-surface text-ink-muted hover:bg-cream-deep hover:text-ink border border-divider"
-                }`}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
+          {ACCENT_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              aria-pressed={filters.accent === opt.value}
+              onClick={() => onFilterChange({ ...filters, accent: opt.value })}
+              className={chip(filters.accent === opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
-      </div>
+      </fieldset>
 
-      {/* Specialty Filter */}
-      <div className="space-y-2">
-        <label className="text-[11px] font-bold text-ink-muted uppercase tracking-wider">
-          Teaching Specialty
-        </label>
+      <fieldset>
+        <legend className="mb-2 text-sm font-bold uppercase tracking-wider text-ink-muted">Topic</legend>
         <div className="flex flex-wrap gap-2">
           {SPECIALTY_OPTIONS.map((spec) => {
-            const value = spec === "All Focus Areas" ? "" : spec;
-            const isActive = filters.specialty === value;
+            const value = spec === "All topics" ? "" : spec;
             return (
               <button
                 key={spec}
+                type="button"
+                aria-pressed={filters.specialty === value}
                 onClick={() => onFilterChange({ ...filters, specialty: value })}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                  isActive
-                    ? "bg-primary text-white shadow-sm font-bold"
-                    : "bg-cream-surface text-ink-muted hover:bg-cream-deep hover:text-ink border border-divider"
-                }`}
+                className={chip(filters.specialty === value)}
               >
                 {spec}
               </button>
             );
           })}
         </div>
-      </div>
+      </fieldset>
 
-      {/* Fast Toggles: Power Guard & Today's Availability */}
-      <div className="pt-2 border-t border-divider grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 border-t border-divider pt-5 sm:grid-cols-2">
         <label
-          className={`flex items-center gap-2.5 p-3 rounded-2xl border cursor-pointer transition-all ${
-            filters.only_power_guard
-              ? "bg-amber-50/70 border-accent text-ink"
-              : "bg-cream-surface border-divider text-ink-muted hover:bg-cream-deep"
+          className={`flex min-h-[52px] cursor-pointer items-center gap-3 rounded-2xl border px-4 text-base font-semibold transition-colors ${
+            filters.only_power_guard ? "border-cocoa bg-sun-soft text-ink" : "border-divider bg-cream-surface text-ink hover:bg-cream-deep"
           }`}
         >
           <input
             type="checkbox"
             checked={filters.only_power_guard}
             onChange={(e) => onFilterChange({ ...filters, only_power_guard: e.target.checked })}
-            className="accent-cocoa rounded"
+            className="h-5 w-5 accent-cocoa"
           />
-          <div className="text-xs font-bold flex items-center gap-1.5">
-            <Zap className="w-3.5 h-3.5 text-accent" />
-            <span>Power Guard Immune (UPS/Solar)</span>
-          </div>
+          <Zap className="h-5 w-5" aria-hidden="true" />
+          <span>Tutors with backup power</span>
         </label>
 
         <label
-          className={`flex items-center gap-2.5 p-3 rounded-2xl border cursor-pointer transition-all ${
-            filters.only_today
-              ? "bg-cocoa-surface border-cocoa text-cocoa"
-              : "bg-cream-surface border-divider text-ink-muted hover:bg-cream-deep"
+          className={`flex min-h-[52px] cursor-pointer items-center gap-3 rounded-2xl border px-4 text-base font-semibold transition-colors ${
+            filters.only_today ? "border-cocoa bg-sun-soft text-ink" : "border-divider bg-cream-surface text-ink hover:bg-cream-deep"
           }`}
         >
           <input
             type="checkbox"
             checked={filters.only_today}
             onChange={(e) => onFilterChange({ ...filters, only_today: e.target.checked })}
-            className="accent-cocoa rounded"
+            className="h-5 w-5 accent-cocoa"
           />
-          <div className="text-xs font-bold flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5" />
-            <span>Available Next 24 Hours</span>
-          </div>
+          <Calendar className="h-5 w-5" aria-hidden="true" />
+          <span>Free in the next 24 hours</span>
         </label>
       </div>
 
-      {/* Result Count Status */}
-      <div className="pt-2 text-xs text-ink-muted font-medium flex items-center justify-between">
-        <span>Showing <strong className="text-ink">{totalCount}</strong> verified tutors</span>
-        <span className="text-[11px] text-ink-faint">25-min discrete slots</span>
-      </div>
+      <p className="text-base text-ink-muted" aria-live="polite">
+        Showing <strong className="text-ink">{totalCount}</strong> {totalCount === 1 ? "tutor" : "tutors"}
+      </p>
     </div>
   );
 }

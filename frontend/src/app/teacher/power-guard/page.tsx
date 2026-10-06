@@ -120,7 +120,7 @@ export default function TeacherPowerGuardPage() {
             disabled={saving}
             className="px-6 py-2.5 bg-ink hover:bg-black text-white text-xs font-black rounded-xl shadow-sm flex items-center gap-2 transition-all self-start sm:self-auto"
           >
-            {saved ? <Check className="w-4 h-4 text-accent" /> : <ShieldCheck className="w-4 h-4" />}
+            {saved ? <Check className="w-4 h-4 text-gold-bright" /> : <ShieldCheck className="w-4 h-4" />}
             <span>{saving ? "Saving..." : saved ? "Certification Saved!" : "Save Hardware Settings"}</span>
           </button>
         </div>
@@ -176,7 +176,7 @@ export default function TeacherPowerGuardPage() {
               <div className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink font-semibold">
                 {status.area_name}
               </div>
-              <p className="text-[11px] text-ink-muted">Area mapping is managed by support and provider identifiers are not guessed in this form.</p>
+              <p className="text-xs text-ink-muted">Area mapping is managed by support and provider identifiers are not guessed in this form.</p>
             </div>
 
             <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-1">
@@ -189,7 +189,7 @@ export default function TeacherPowerGuardPage() {
                   ? `${new Date(status.next_outage_start).toLocaleString()} - ${new Date(status.next_outage_end).toLocaleString()}`
                   : "No outage window reported"}
               </p>
-              <p className="text-[11px] text-ink-muted">
+              <p className="text-xs text-ink-muted">
                 Uncertified tutors have unbooked slots hidden during this block.
               </p>
             </div>
@@ -284,9 +284,9 @@ export default function TeacherPowerGuardPage() {
           {/* Benefits Callout */}
           <div className="p-4 rounded-2xl bg-cream-surface border border-divider text-xs space-y-2">
             <span className="font-bold text-ink flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-accent" /> Tutor Guarantee &amp; Penalty Shield:
+              <Sparkles className="w-4 h-4 text-gold-bright" /> Tutor Guarantee &amp; Penalty Shield:
             </span>
-            <ul className="text-[11px] text-ink-muted list-disc list-inside space-y-1">
+            <ul className="text-xs text-ink-muted list-disc list-inside space-y-1">
               <li>
                 <strong>Risk assessment:</strong> Power and connectivity backup are considered together for proactive alerts.
               </li>

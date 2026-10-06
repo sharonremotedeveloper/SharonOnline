@@ -21,11 +21,11 @@ export function Button({
   ...props
 }: ButtonProps) {
   const base =
-    "inline-flex items-center justify-center gap-2 font-medium rounded-md transition-all tracking-[0.01em] focus-visible:outline-2 focus-visible:outline-offset-2 active:translate-y-px disabled:opacity-60 disabled:cursor-not-allowed disabled:active:translate-y-0";
+    "inline-flex items-center justify-center gap-2 font-bold rounded-full transition-all tracking-[0.01em] focus-visible:outline-2 focus-visible:outline-offset-2 active:translate-y-px disabled:opacity-60 disabled:cursor-not-allowed disabled:active:translate-y-0";
 
   const sizes = {
-    sm: "px-3.5 py-1.5 text-xs min-h-[36px]",
-    md: "px-5 py-2.5 text-sm min-h-[44px]",
+    sm: "px-4 py-1.5 text-sm min-h-[40px]",
+    md: "px-6 py-2.5 text-base min-h-[48px]",
     lg: "px-7 py-3.5 text-base min-h-[52px]",
   };
 

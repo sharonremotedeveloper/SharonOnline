@@ -28,12 +28,12 @@ export function Badge({
     success: "bg-success-surface text-success border-[#C3D7C8]",
     error: "bg-error-surface text-error border-[#F2C2BA]",
     teal: "bg-cocoa-surface text-cocoa border-cocoa-border",
-    plum: "bg-plum-surface text-plum border-[#E6D4E5]",
+    plum: "bg-plum-surface text-plum border-[#F0CDB8]",
     neutral: "bg-[#F3EBE4] text-ink-muted border-[#E4D3C6]",
   }[variant];
 
   const sizeStyles = {
-    sm: "px-2 py-0.5 text-[10px]",
+    sm: "px-2 py-0.5 text-xs",
     md: "px-2.5 py-0.5 text-xs",
     lg: "px-3 py-1 text-xs font-bold",
   }[size];

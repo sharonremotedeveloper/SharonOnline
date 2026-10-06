@@ -20,8 +20,8 @@ export function CefrLevelBadge({ level, size = "md", className = "" }: CefrLevel
   }[norm] || "bg-cream-surface text-ink-muted border-divider";
 
   const sizeStyles = {
-    sm: "px-2 py-0.5 text-[10px]",
-    md: "px-2.5 py-1 text-xs",
+    sm: "px-2 py-0.5 text-sm",
+    md: "px-2.5 py-1 text-sm",
     lg: "px-3.5 py-1.5 text-sm font-black",
   }[size];
 
