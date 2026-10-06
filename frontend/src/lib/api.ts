@@ -24,6 +24,13 @@ import {
   StudentProfileData,
   TeacherStudentDossierItem,
 } from "@/types/student";
+import * as notif from "./notifications";
+export type {
+  NotificationItem,
+  NotificationPreference,
+  PaginatedNotificationList,
+  PatchedNotificationPreferenceRequest,
+} from "./notifications";
 
 export interface FeaturedTeacher {
   id: string;
@@ -396,6 +403,13 @@ export const FALLBACK_MATERIALS: MaterialDetail[] = [
 ];
 
 export const api = {
+  getNotifications: notif.fetchNotifications,
+  getUnreadNotificationCount: notif.fetchUnreadCount,
+  markNotificationRead: notif.markNotificationRead,
+  markAllNotificationsRead: notif.markAllNotificationsRead,
+  getNotificationPreferences: notif.fetchNotificationPreferences,
+  updateNotificationPreferences: notif.updateNotificationPreferences,
+
   async getTutors(params?: any) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : "";
     const live = await liveRequest(`${API_BASE}/teachers/${query}`, {});
@@ -1394,3 +1408,9 @@ export const getStudentProfile = studentApi.getStudentProfile;
 export const updateStudentProfile = studentApi.updateStudentProfile;
 export const getTeacherStudentsDossier = teacherCrmApi.getTeacherStudentsDossier;
 export const updateTeacherStudentDossier = teacherCrmApi.updateTeacherStudentDossier;
+export const getNotifications = api.getNotifications;
+export const getUnreadNotificationCount = api.getUnreadNotificationCount;
+export const markNotificationRead = api.markNotificationRead;
+export const markAllNotificationsRead = api.markAllNotificationsRead;
+export const getNotificationPreferences = api.getNotificationPreferences;
+export const updateNotificationPreferences = api.updateNotificationPreferences;
