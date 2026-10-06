@@ -1,5 +1,22 @@
 import type { Config } from "tailwindcss";
 
+/*
+ * CONTRAST LEDGER (WCAG 2.x, computed with a script, relative luminance)
+ * Text pairs (need >= 4.5):
+ *   ink #2D2521 on sun #FFDE3D 11.28 | cocoa #4A2C1A on sun 9.46 | white on cocoa 12.60 | cream #FFF8F2 on cocoa 11.98
+ *   sun #FFDE3D on cocoa 9.46 | on cocoa-deep #361F12 11.58 | ink-300 #B8A89F on cocoa 5.48 | #CDBBB0 on cocoa 6.80
+ *   primary #C2410C on white 5.18 | on cream 4.92 | on sun-soft #FFF3A8 4.60 (never on sun/sky/peach solid)
+ *   ink-faint/400 #6F5E55 on cream 5.86 | cream-deep 5.07 | white 6.16 | sun 4.63 | sky-soft 5.31 | peach 4.69
+ *   ink-muted #6B5B53 on cream 6.15 | cream-deep 5.33   (old faint #8A746A was 4.17 on cream: failed)
+ *   success #0B5C85 on white 7.28 | cream 6.92 | success-surface #E8F4FB 6.51 | white on success 7.28
+ *   warning #7A4B00 on white 7.41 | warning-surface #FFF6C2 6.78 | on sun 5.56 | white on warning 7.41
+ *   info #1F5675 on info-surface #DDF1FF 6.84 | white 7.94
+ *   error #B83232 on white 5.93 | error-surface 5.33 | cream 5.64 | white on error 5.93 | white on error-hover #8F2A1F 8.34
+ * Non-text (need >= 3:1):
+ *   border-strong #85705F on white 4.69 | cream 4.46 | cream-deep 3.86
+ *   star #B07400 on white 3.93 | cream 3.74 | (3.24 on cream-deep)
+ * Decorative only (no ratio required): divider #E4D3C6 (1.38 on cream).
+ */
 const config: Config = {
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
@@ -25,10 +42,10 @@ const config: Config = {
         ink: {
           DEFAULT: "#2D2521",
           muted: "#6B5B53",
-          faint: "#8A746A",
-          light: "#8A746A",
+          faint: "#6F5E55",
+          light: "#6F5E55",
           300: "#B8A89F",
-          400: "#8A746A",
+          400: "#6F5E55",
           500: "#6B5B53",
           600: "#55463F",
           700: "#43362F",
@@ -93,14 +110,40 @@ const config: Config = {
           surface: "#FFF1E6",
         },
         divider: "#E4D3C6",
+        // Opaque base for floating panels (drawers, modals, popovers). Was used as `bg-surface` but never defined.
+        surface: { DEFAULT: "#FFFFFF" },
+        // Status colours. Deliberately not green/teal/amber: success is a deep cerulean, warning a dark gold-brown on a
+        // sun-yellow tint, info a muted ocean on sky. Always pair with an icon or a word, never colour alone.
         success: {
-          DEFAULT: "#52705A",
-          surface: "#EEF3EC",
+          DEFAULT: "#0B5C85",
+          hover: "#08455F",
+          surface: "#E8F4FB",
+          border: "#8CC4E4",
+        },
+        warning: {
+          DEFAULT: "#7A4B00",
+          hover: "#5C3700",
+          surface: "#FFF6C2",
+          border: "#E0C200",
+        },
+        info: {
+          DEFAULT: "#1F5675",
+          hover: "#163F57",
+          surface: "#DDF1FF",
+          border: "#9ED8FF",
         },
         error: {
           DEFAULT: "#B83232",
+          hover: "#8F2A1F",
           surface: "#FDF0EE",
+          border: "#F0B4AC",
         },
+        // Star ratings: a darker gold that holds 3:1 as a graphic on white and cream (never use `gold` for text or icons on light).
+        star: "#B07400",
+      },
+      // Form-control and interactive borders. 3:1 or better against white, cream and cream-deep. `divider` stays light (decorative).
+      borderColor: {
+        strong: "#85705F",
       },
       boxShadow: {
         card: "0 1px 3px rgba(45, 37, 33, 0.07), 0 8px 24px rgba(45, 37, 33, 0.05)",
