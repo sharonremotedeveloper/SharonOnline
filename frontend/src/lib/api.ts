@@ -25,12 +25,22 @@ import {
   TeacherStudentDossierItem,
 } from "@/types/student";
 import * as notif from "./notifications";
+import * as vet from "./vetting";
 export type {
   NotificationItem,
   NotificationPreference,
   PaginatedNotificationList,
   PatchedNotificationPreferenceRequest,
 } from "./notifications";
+export type {
+  ReviewPacket,
+  PacketAsset,
+  PacketHistory,
+  PacketApplication,
+  RubricScores,
+  ReviewedAssetsMap,
+  RubricValidationResult,
+} from "./vetting";
 
 export interface FeaturedTeacher {
   id: string;
@@ -409,6 +419,12 @@ export const api = {
   markAllNotificationsRead: notif.markAllNotificationsRead,
   getNotificationPreferences: notif.fetchNotificationPreferences,
   updateNotificationPreferences: notif.updateNotificationPreferences,
+
+  getTeacherReviewPacket: vet.fetchTeacherReviewPacket,
+  startTeacherReview: vet.startTeacherReview,
+  approveTeacherApplication: vet.approveTeacherApplication,
+  requestTeacherApplicationChanges: vet.requestTeacherApplicationChanges,
+  rejectTeacherApplication: vet.rejectTeacherApplication,
 
   async getTutors(params?: any) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : "";
@@ -1414,3 +1430,8 @@ export const markNotificationRead = api.markNotificationRead;
 export const markAllNotificationsRead = api.markAllNotificationsRead;
 export const getNotificationPreferences = api.getNotificationPreferences;
 export const updateNotificationPreferences = api.updateNotificationPreferences;
+export const getTeacherReviewPacket = api.getTeacherReviewPacket;
+export const startTeacherReview = api.startTeacherReview;
+export const approveTeacherApplication = api.approveTeacherApplication;
+export const requestTeacherApplicationChanges = api.requestTeacherApplicationChanges;
+export const rejectTeacherApplication = api.rejectTeacherApplication;
