@@ -66,7 +66,7 @@ export default function SupportPage() {
   return (
     <div className="space-y-16 pb-16">
       {/* Header */}
-      <section className="bg-teal text-white py-16 px-4 sm:px-6 lg:px-8">
+      <section className="bg-cocoa text-white py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-accent-surface">
             <HelpCircle className="w-3.5 h-3.5 text-accent" />
@@ -120,7 +120,7 @@ export default function SupportPage() {
               <p className="text-xs text-ink-muted leading-relaxed">{responseMsg}</p>
               <button
                 onClick={() => setSubmitted(false)}
-                className="px-4 py-2 bg-teal text-white rounded-xl text-xs font-bold"
+                className="px-4 py-2 bg-cocoa text-white rounded-xl text-xs font-bold"
               >
                 Send Another Message
               </button>
@@ -136,7 +136,7 @@ export default function SupportPage() {
                       name="user_type"
                       checked={formData.user_type === "student"}
                       onChange={() => setFormData({ ...formData, user_type: "student" })}
-                      className="accent-teal"
+                      className="accent-cocoa"
                     />
                     Student
                   </label>
@@ -146,7 +146,7 @@ export default function SupportPage() {
                       name="user_type"
                       checked={formData.user_type === "teacher"}
                       onChange={() => setFormData({ ...formData, user_type: "teacher" })}
-                      className="accent-teal"
+                      className="accent-cocoa"
                     />
                     Tutor / Applicant
                   </label>
@@ -161,7 +161,7 @@ export default function SupportPage() {
                   placeholder="e.g. Aiko Tanaka"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-teal"
+                  className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
               </div>
 
@@ -173,7 +173,7 @@ export default function SupportPage() {
                   placeholder="aiko@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-teal"
+                  className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
               </div>
 
@@ -185,7 +185,7 @@ export default function SupportPage() {
                   placeholder="e.g. Question about PayPal checkout or slot booking"
                   value={formData.subject}
                   onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-teal"
+                  className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
               </div>
 
@@ -197,7 +197,7 @@ export default function SupportPage() {
                   placeholder="How can we assist you today?"
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-teal"
+                  className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
               </div>
 

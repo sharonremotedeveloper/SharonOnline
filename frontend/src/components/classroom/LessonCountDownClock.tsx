@@ -50,7 +50,7 @@ export function LessonCountDownClock({
     return (
       <div className={`p-4 rounded-2xl bg-cream-surface border border-divider flex items-center justify-between gap-3 ${className}`}>
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-teal/10 text-teal flex items-center justify-center">
+          <div className="w-8 h-8 rounded-xl bg-cocoa/10 text-cocoa flex items-center justify-center">
             <Clock className="w-4 h-4" />
           </div>
           <div>
@@ -60,7 +60,7 @@ export function LessonCountDownClock({
         </div>
         <div className="text-right">
           <span className="text-xs uppercase tracking-wider text-ink-muted block font-semibold">Starts in</span>
-          <span className="text-sm font-extrabold text-teal">
+          <span className="text-sm font-extrabold text-cocoa">
             {hours > 0 ? `${hours}h ${mins}m` : `${mins} mins`}
           </span>
         </div>
@@ -98,19 +98,19 @@ export function LessonCountDownClock({
         className={`p-4 rounded-2xl border flex items-center justify-between gap-3 ${
           isWrapUp
             ? "bg-amber-50 border-amber-200 text-amber-950"
-            : "bg-teal/10 border-teal/30 text-ink"
+            : "bg-cocoa/10 border-cocoa/30 text-ink"
         } ${className}`}
       >
         <div className="flex items-center gap-2.5">
           <span className="relative flex h-3 w-3">
             <span
               className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                isWrapUp ? "bg-accent" : "bg-teal"
+                isWrapUp ? "bg-accent" : "bg-cocoa"
               }`}
             />
             <span
               className={`relative inline-flex rounded-full h-3 w-3 ${
-                isWrapUp ? "bg-accent" : "bg-teal"
+                isWrapUp ? "bg-accent" : "bg-cocoa"
               }`}
             />
           </span>
@@ -126,7 +126,7 @@ export function LessonCountDownClock({
 
         <div className="text-right font-mono">
           <span className="text-[10px] uppercase tracking-wider opacity-75 block font-bold">Time Left</span>
-          <span className={`text-lg font-black ${isWrapUp ? "text-accent" : "text-teal"}`}>
+          <span className={`text-lg font-black ${isWrapUp ? "text-accent" : "text-cocoa"}`}>
             {formatTime(inProgressMs / 1000)}
           </span>
         </div>

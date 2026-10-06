@@ -83,7 +83,7 @@ export default function StudentClassroomPage() {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center py-20">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-12 h-12 border-4 border-cocoa border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm font-bold text-ink-muted">Initializing student classroom staging...</p>
         </div>
       </div>
@@ -101,7 +101,7 @@ export default function StudentClassroomPage() {
           />
           <Link
             href="/student/dashboard"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-teal text-white text-xs font-bold"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-cocoa text-white text-xs font-bold"
           >
             <ArrowLeft className="w-4 h-4" /> Return to Student Dashboard
           </Link>
@@ -127,7 +127,7 @@ export default function StudentClassroomPage() {
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-teal bg-teal/10 px-2 py-0.5 rounded-md">
+                <span className="text-xs font-mono font-bold text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-md">
                   {booking.booking_reference}
                 </span>
                 <span className="text-xs font-bold text-ink-muted">Synchronous Lesson Pad</span>
@@ -156,7 +156,7 @@ export default function StudentClassroomPage() {
                 </>
               ) : (
                 <>
-                  <Camera className="w-4 h-4 text-teal" />
+                  <Camera className="w-4 h-4 text-cocoa" />
                   <span>Test Camera &amp; Mic</span>
                 </>
               )}
@@ -190,7 +190,7 @@ export default function StudentClassroomPage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center font-bold text-teal text-xl">
+                  <div className="w-full h-full flex items-center justify-center font-bold text-cocoa text-xl">
                     {booking.teacher.first_name[0]}
                   </div>
                 )}
@@ -199,7 +199,7 @@ export default function StudentClassroomPage() {
               <div className="space-y-1 flex-1">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-black text-ink font-serif">{booking.teacher.full_name}</h3>
-                  <span className="text-[11px] font-bold text-teal bg-teal/10 px-2 py-0.5 rounded-full">
+                  <span className="text-[11px] font-bold text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-full">
                     Native Tutor
                   </span>
                 </div>
@@ -229,19 +229,19 @@ export default function StudentClassroomPage() {
             {/* Student Staging Checklist */}
             <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-3 text-xs">
               <span className="font-bold text-ink flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-teal" /> Pre-Session Classroom Checklist
+                <Sparkles className="w-4 h-4 text-cocoa" /> Pre-Session Classroom Checklist
               </span>
               <div className="space-y-2 text-ink-muted text-[11px]">
                 <div className="flex items-center gap-2">
-                  <Headphones className="w-3.5 h-3.5 text-teal shrink-0" />
+                  <Headphones className="w-3.5 h-3.5 text-cocoa shrink-0" />
                   <span>Use headphones or a headset to eliminate audio echo during speaking practice.</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Camera className="w-3.5 h-3.5 text-teal shrink-0" />
+                  <Camera className="w-3.5 h-3.5 text-cocoa shrink-0" />
                   <span>Position your camera at eye level with adequate front-facing lighting.</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-teal shrink-0" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-cocoa shrink-0" />
                   <span>The interactive curriculum on the right is synchronized with your tutor&apos;s pad.</span>
                 </div>
               </div>

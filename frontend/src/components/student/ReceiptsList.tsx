@@ -27,7 +27,7 @@ export function ReceiptsList() {
   return (
     <section aria-labelledby="receipts-heading" className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-4">
       <div className="flex items-center gap-2.5">
-        <FileText className="w-5 h-5 text-teal" />
+        <FileText className="w-5 h-5 text-cocoa" />
         <h2 id="receipts-heading" className="text-lg font-black text-ink font-serif">
           Receipts
         </h2>
@@ -56,7 +56,7 @@ export function ReceiptsList() {
                   onClick={() => download(receipt)}
                   disabled={busyId === receipt.id}
                   aria-label={`Download receipt ${receipt.receipt_number}`}
-                  className="p-2 rounded-xl bg-cream-surface hover:bg-cream-deep border border-divider text-teal disabled:opacity-60"
+                  className="p-2 rounded-xl bg-cream-surface hover:bg-cream-deep border border-divider text-cocoa disabled:opacity-60"
                 >
                   <Download className="w-4 h-4" />
                 </button>

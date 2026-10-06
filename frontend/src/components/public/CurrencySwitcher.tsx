@@ -88,7 +88,7 @@ export function CurrencySwitcher({ onCurrencyChange, variant = "select" }: Curre
               aria-pressed={isActive}
               className={`min-h-[44px] min-w-[44px] px-3.5 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-1.5 ${
                 isActive
-                  ? "bg-teal text-white shadow-sm"
+                  ? "bg-cocoa text-white shadow-sm"
                   : "text-ink-muted hover:text-ink hover:bg-cream-deep"
               }`}
             >

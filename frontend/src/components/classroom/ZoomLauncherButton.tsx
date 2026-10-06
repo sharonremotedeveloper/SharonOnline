@@ -107,7 +107,7 @@ export function ZoomLauncherButton({
               ? "bg-cream-surface text-ink-muted/50 cursor-not-allowed border border-divider"
               : isHost
               ? "bg-accent hover:bg-amber-600 text-ink shadow-accent/20 hover:scale-[1.01]"
-              : "bg-teal hover:bg-teal-hover text-white shadow-teal/20 hover:scale-[1.01]"
+              : "bg-cocoa hover:bg-cocoa-hover text-white shadow-cocoa/20 hover:scale-[1.01]"
           }`}
         >
           <Video className="w-5 h-5" />
@@ -131,7 +131,7 @@ export function ZoomLauncherButton({
         {isHost && openedLink && !hostProblem && (
           <p className="text-xs text-ink-muted text-center">
             Zoom should open in a new tab.{" "}
-            <a href={openedLink} target="_blank" rel="noopener noreferrer" className="font-bold text-teal hover:underline">
+            <a href={openedLink} target="_blank" rel="noopener noreferrer" className="font-bold text-cocoa hover:underline">
               Nothing opened? Start the lesson here
             </a>
           </p>
@@ -144,7 +144,7 @@ export function ZoomLauncherButton({
             type="button"
             onClick={() => setPreferWeb(false)}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors ${
-              !preferWeb ? "bg-cream-surface text-teal font-bold border border-divider" : "hover:text-ink"
+              !preferWeb ? "bg-cream-surface text-cocoa font-bold border border-divider" : "hover:text-ink"
             }`}
           >
             <Monitor className="w-3.5 h-3.5" />
@@ -155,7 +155,7 @@ export function ZoomLauncherButton({
             type="button"
             onClick={() => setPreferWeb(true)}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-lg transition-colors ${
-              preferWeb ? "bg-cream-surface text-teal font-bold border border-divider" : "hover:text-ink"
+              preferWeb ? "bg-cream-surface text-cocoa font-bold border border-divider" : "hover:text-ink"
             }`}
           >
             <Globe className="w-3.5 h-3.5" />
@@ -206,7 +206,7 @@ export function ZoomLauncherButton({
             href={joinUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs font-bold text-teal hover:underline flex items-center gap-1"
+            className="text-xs font-bold text-cocoa hover:underline flex items-center gap-1"
           >
             Direct Web Link <ExternalLink className="w-3 h-3" />
           </a>

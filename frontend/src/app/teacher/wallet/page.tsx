@@ -26,7 +26,7 @@ export default function TeacherWalletPage() {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center py-20">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-12 h-12 border-4 border-cocoa border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm font-bold text-ink-muted">Loading earnings and payout ledger...</p>
         </div>
       </div>
@@ -39,7 +39,7 @@ export default function TeacherWalletPage() {
         <div className="max-w-xl mx-auto px-4 space-y-4">
           <ErrorState error={error ?? "No wallet data returned."} title="We couldn't load your earnings wallet" onRetry={reload} />
           <div className="text-center">
-            <Link href="/teacher/dashboard" className="text-xs font-bold text-teal hover:underline">
+            <Link href="/teacher/dashboard" className="text-xs font-bold text-cocoa hover:underline">
               Return to dashboard
             </Link>
           </div>
@@ -79,7 +79,7 @@ export default function TeacherWalletPage() {
               href="/teacher/wallet/payout-settings"
               className="px-5 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-2 transition-all"
             >
-              <Building2 className="w-4 h-4 text-teal" />
+              <Building2 className="w-4 h-4 text-cocoa" />
               <span>Manage EFT Payout Bank</span>
               <ArrowRight className="w-3.5 h-3.5 text-ink-muted" />
             </Link>
@@ -92,7 +92,7 @@ export default function TeacherWalletPage() {
         {/* Registered Payout Bank Summary */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-teal/10 text-teal flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-cocoa/10 text-cocoa flex items-center justify-center shrink-0">
               <Building2 className="w-6 h-6" />
             </div>
             <div className="space-y-1">
@@ -157,7 +157,7 @@ export default function TeacherWalletPage() {
                 {wallet.transactions.map((tx) => (
                   <tr key={tx.id} className="hover:bg-cream-surface/40 transition-colors">
                     <td className="py-3 px-4 font-medium text-ink-muted">{tx.date}</td>
-                    <td className="py-3 px-4 font-mono font-bold text-teal">{tx.booking_ref}</td>
+                    <td className="py-3 px-4 font-mono font-bold text-cocoa">{tx.booking_ref}</td>
                     <td className="py-3 px-4 font-bold text-ink">{tx.student_name}</td>
                     <td className="py-3 px-4 font-medium text-ink-muted">{tx.gross_amount.toFixed(2)} {tx.currency}</td>
                     <td className="py-3 px-4 font-extrabold text-ink font-serif text-sm">
@@ -173,8 +173,8 @@ export default function TeacherWalletPage() {
                           <Clock className="w-3 h-3 text-amber-600" /> In 24h Escrow
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal/10 text-teal text-[10px] font-bold border border-teal/20">
-                          <CheckCircle2 className="w-3 h-3 text-teal" /> Paid to Bank
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-cocoa/10 text-cocoa text-[10px] font-bold border border-cocoa/20">
+                          <CheckCircle2 className="w-3 h-3 text-cocoa" /> Paid to Bank
                         </span>
                       )}
                     </td>

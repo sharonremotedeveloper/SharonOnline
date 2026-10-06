@@ -11,7 +11,7 @@ export function FeaturedTutorCard({ tutor }: { tutor: FeaturedTeacher }) {
   const hasReviews = tutor.review_count > 0 && tutor.rating > 0;
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-divider bg-white shadow-card transition-shadow hover:shadow-card-hover">
+    <article className="group flex flex-col overflow-hidden rounded-3xl border border-divider bg-white shadow-card transition-shadow hover:shadow-card-hover">
       <Link href={href} className="relative block" aria-label={`View ${tutor.name}'s profile`} tabIndex={-1}>
         <TutorPortrait
           src={tutor.avatar}
@@ -44,7 +44,7 @@ export function FeaturedTutorCard({ tutor }: { tutor: FeaturedTeacher }) {
         {tutor.specialties.length > 0 && (
           <ul className="flex flex-wrap gap-2" aria-label="Lesson topics">
             {tutor.specialties.slice(0, 3).map((spec) => (
-              <li key={spec} className="rounded-full bg-cream-surface px-3 py-1 text-sm font-medium text-ink">
+              <li key={spec} className="rounded-full bg-peach-soft px-3 py-1 text-sm font-medium text-ink">
                 {spec}
               </li>
             ))}
@@ -58,7 +58,7 @@ export function FeaturedTutorCard({ tutor }: { tutor: FeaturedTeacher }) {
           </div>
           <Link
             href={href}
-            className="inline-flex min-h-[44px] items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-teal px-5 text-sm font-bold text-white transition-colors hover:bg-teal-hover"
+            className="inline-flex min-h-[44px] items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-cocoa px-5 text-base font-bold text-white transition-colors hover:bg-cocoa-hover"
           >
             View profile <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>

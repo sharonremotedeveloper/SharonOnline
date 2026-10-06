@@ -60,7 +60,7 @@ export function ReservationTimer({
       >
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <Clock className={`w-4 h-4 ${isUrgent ? "text-primary animate-pulse" : "text-teal"}`} />
+            <Clock className={`w-4 h-4 ${isUrgent ? "text-primary animate-pulse" : "text-cocoa"}`} />
             <span className="text-xs font-bold uppercase tracking-wider">
               {isUrgent ? "Slot Reservation Expiring Soon" : "10-Minute Slot Hold Active"}
             </span>
@@ -75,7 +75,7 @@ export function ReservationTimer({
         <div className="w-full bg-cream-deep h-1.5 rounded-full overflow-hidden">
           <div
             className={`h-full transition-all duration-1000 ${
-              isUrgent ? "bg-primary" : "bg-teal"
+              isUrgent ? "bg-primary" : "bg-cocoa"
             }`}
             style={{ width: `${percentage}%` }}
           />
@@ -112,7 +112,7 @@ export function ReservationTimer({
               setShowExpiredModal(false);
               if (onRestart) onRestart();
             }}
-            className="w-full py-3 bg-teal hover:bg-teal-hover text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm"
+            className="w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm"
           >
             <RotateCcw className="w-4 h-4" /> Pick a New Slot
           </button>

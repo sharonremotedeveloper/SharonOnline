@@ -50,7 +50,7 @@ export function FaqSection() {
       </div>
       <p className="text-center text-base text-ink-muted">
         More questions?{" "}
-        <Link href="/support" className="inline-flex min-h-[44px] items-center font-bold text-teal underline underline-offset-4 hover:text-teal-hover">
+        <Link href="/support" className="inline-flex min-h-[44px] items-center font-bold text-cocoa underline underline-offset-4 hover:text-cocoa-hover">
           Visit our help centre
         </Link>
       </p>

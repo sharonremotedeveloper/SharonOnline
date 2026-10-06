@@ -96,7 +96,7 @@ export function PayoutRuns({ onChanged }: { onChanged?: () => void }) {
           type="button"
           disabled={busy === "create"}
           onClick={() => act("create", () => api.createPayoutRun())}
-          className="px-4 py-2.5 bg-teal hover:bg-teal-hover text-white text-xs font-black rounded-xl flex items-center gap-2 self-start disabled:opacity-60"
+          className="px-4 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-xl flex items-center gap-2 self-start disabled:opacity-60"
         >
           <Plus className="w-4 h-4" />
           <span>{busy === "create" ? "Creating..." : "Create payout run"}</span>
@@ -131,13 +131,13 @@ export function PayoutRuns({ onChanged }: { onChanged?: () => void }) {
                 {run.status === "pending" && (
                   <button type="button" disabled={busy === `approve:${run.id}`} onClick={() => act(`approve:${run.id}`, () => api.approvePayoutRun(run.id))}
                     className="px-3.5 py-2 bg-white border border-divider rounded-xl text-xs font-bold text-ink flex items-center gap-1.5 disabled:opacity-60">
-                    <ShieldCheck className="w-3.5 h-3.5 text-teal" /> Approve
+                    <ShieldCheck className="w-3.5 h-3.5 text-cocoa" /> Approve
                   </button>
                 )}
                 {(run.status === "approved" || run.status === "exported") && (
                   <button type="button" onClick={() => setExporting(exporting === run.id ? null : run.id)}
                     className="px-3.5 py-2 bg-white border border-divider rounded-xl text-xs font-bold text-ink flex items-center gap-1.5">
-                    <Download className="w-3.5 h-3.5 text-teal" /> {run.status === "exported" ? "Download bank CSV again" : "Download bank CSV"}
+                    <Download className="w-3.5 h-3.5 text-cocoa" /> {run.status === "exported" ? "Download bank CSV again" : "Download bank CSV"}
                   </button>
                 )}
                 {run.status === "exported" && (
@@ -173,7 +173,7 @@ export function PayoutRuns({ onChanged }: { onChanged?: () => void }) {
                     className="mt-1 w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs"
                   />
                 </label>
-                <button type="submit" className="px-4 py-3 bg-teal text-white text-xs font-black rounded-xl">Download</button>
+                <button type="submit" className="px-4 py-3 bg-cocoa text-white text-xs font-black rounded-xl">Download</button>
               </form>
             )}
 

@@ -177,7 +177,7 @@ export function WeeklyScheduleGrid() {
             onClick={copyMondayToWeekdays}
             className="px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold border border-divider flex items-center gap-1.5 transition-colors"
           >
-            <Copy className="w-3.5 h-3.5 text-teal" />
+            <Copy className="w-3.5 h-3.5 text-cocoa" />
             <span>Copy Mon &rarr; Weekdays</span>
           </button>
 
@@ -209,7 +209,7 @@ export function WeeklyScheduleGrid() {
             type="button"
             onClick={() => handleSave(false)}
             disabled={saving}
-            className="px-5 py-2 rounded-xl bg-teal hover:bg-teal-hover text-white text-xs font-black flex items-center gap-2 shadow-sm transition-all ml-auto lg:ml-2"
+            className="px-5 py-2 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black flex items-center gap-2 shadow-sm transition-all ml-auto lg:ml-2"
           >
             {saved ? <Check className="w-4 h-4 text-accent" /> : <Save className="w-4 h-4" />}
             <span>{saving ? "Saving..." : saved ? "Schedule Saved!" : "Save Availability"}</span>
@@ -273,8 +273,8 @@ export function WeeklyScheduleGrid() {
       {/* Summary Indicator */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-cream-surface border border-divider text-xs">
         <span className="font-bold text-ink flex items-center gap-1.5">
-          <Clock className="w-4 h-4 text-teal" /> Total Open Hours:
-          <span className="text-teal font-extrabold ml-1">{activeHours} hours/week</span>
+          <Clock className="w-4 h-4 text-cocoa" /> Total Open Hours:
+          <span className="text-cocoa font-extrabold ml-1">{activeHours} hours/week</span>
           <span className="text-ink-muted font-normal ml-1">({activeHours * 2} discrete 25-min slots)</span>
         </span>
 
@@ -314,7 +314,7 @@ export function WeeklyScheduleGrid() {
                         onClick={() => toggleSlot(d.id, blockIdx)}
                         className={`w-full py-2 px-1 rounded-xl text-[11px] font-bold transition-all ${
                           isOpen
-                            ? "bg-teal text-white shadow-xs hover:bg-teal-hover"
+                            ? "bg-cocoa text-white shadow-xs hover:bg-cocoa-hover"
                             : "bg-cream-surface text-ink-muted/60 hover:bg-cream-deep hover:text-ink border border-divider/60"
                         }`}
                       >

@@ -34,7 +34,7 @@ export default function AdminTeachersPage() {
   if (loading) {
     return (
       <div className="py-20 text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-12 h-12 border-4 border-cocoa border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm font-bold text-ink-muted">Loading tutor roster...</p>
       </div>
     );
@@ -54,7 +54,7 @@ export default function AdminTeachersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono font-bold text-teal bg-teal/10 px-2 py-0.5 rounded-md">
+            <span className="text-xs font-mono font-bold text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-md">
               ACTIVE EDUCATORS
             </span>
             <span className="text-xs font-bold text-ink-muted">{data.count ?? tutors.length} Tutors</span>
@@ -131,7 +131,7 @@ export default function AdminTeachersPage() {
                     </div>
                   </td>
 
-                  <td className="py-4 px-4 font-extrabold text-teal font-serif text-sm">
+                  <td className="py-4 px-4 font-extrabold text-cocoa font-serif text-sm">
                     <LessonPriceLabel /> <span className="text-[10px] text-ink-muted font-sans">platform price</span>
                   </td>
 
@@ -160,7 +160,7 @@ export default function AdminTeachersPage() {
 
                       <Link
                         href={`/admin/sessions/live`}
-                        className="p-2 rounded-xl bg-teal/10 hover:bg-teal/20 text-teal transition-colors"
+                        className="p-2 rounded-xl bg-cocoa/10 hover:bg-cocoa/20 text-cocoa transition-colors"
                         title="Live Activity Radar"
                       >
                         <Video className="w-3.5 h-3.5" />

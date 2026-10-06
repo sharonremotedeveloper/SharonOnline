@@ -31,7 +31,7 @@ export default function ForgotPasswordPage() {
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
       <div className="bg-white rounded-3xl p-8 max-w-md w-full border border-divider shadow-card space-y-6">
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-teal text-gold-bright font-black text-2xl flex items-center justify-center mx-auto shadow-sm font-serif">
+          <div className="w-12 h-12 rounded-2xl bg-cocoa text-gold-bright font-black text-2xl flex items-center justify-center mx-auto shadow-sm font-serif">
             S
           </div>
           <h1 className="text-2xl font-extrabold text-ink font-serif">Reset Password</h1>
@@ -66,7 +66,7 @@ export default function ForgotPasswordPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
               </div>
             </div>
@@ -81,7 +81,7 @@ export default function ForgotPasswordPage() {
         )}
 
         <div className="text-center">
-          <Link href="/login" className="inline-flex items-center gap-1.5 text-xs font-bold text-teal hover:underline">
+          <Link href="/login" className="inline-flex items-center gap-1.5 text-xs font-bold text-cocoa hover:underline">
             <ArrowLeft className="w-3.5 h-3.5" /> Return to Login
           </Link>
         </div>

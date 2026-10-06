@@ -32,7 +32,7 @@ export function EskomStageBanner({ status, className = "" }: EskomStageBannerPro
                 ? "bg-emerald-600 text-white"
                 : isOutageRisk
                 ? "bg-amber-600 text-white animate-pulse"
-                : "bg-teal/10 text-teal"
+                : "bg-cocoa/10 text-cocoa"
             }`}
           >
             <Zap className="w-5 h-5 fill-current" />
@@ -76,7 +76,7 @@ export function EskomStageBanner({ status, className = "" }: EskomStageBannerPro
           )}
 
           {status.has_lte_failover && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-teal/15 text-teal text-[11px] font-bold hidden sm:inline-flex">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cocoa/15 text-cocoa text-[11px] font-bold hidden sm:inline-flex">
               <Radio className="w-3.5 h-3.5" />
               <span>LTE Failover</span>
             </span>

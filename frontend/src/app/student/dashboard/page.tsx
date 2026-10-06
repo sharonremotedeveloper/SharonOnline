@@ -61,12 +61,12 @@ export default function StudentDashboardPage() {
 
         <div className="flex items-center gap-3">
           <div className="bg-white border border-cream-200 px-4 py-2.5 rounded-2xl text-xs shadow-xs flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700">
+            <div className="w-8 h-8 rounded-xl bg-cocoa-50 border border-cocoa-200 flex items-center justify-center text-cocoa-700">
               <CreditCard className="w-4 h-4" />
             </div>
             <div>
               <span className="text-ink-500 block text-[11px]">Available Credits</span>
-              <strong className="text-teal-900 text-sm font-black">
+              <strong className="text-cocoa-900 text-sm font-black">
                 {walletQ.loading
                   ? "Loading..."
                   : walletQ.error || !walletQ.data
@@ -77,7 +77,7 @@ export default function StudentDashboardPage() {
           </div>
           <Link
             href="/tutors"
-            className="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+            className="px-4 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
           >
             <Calendar className="w-3.5 h-3.5" /> Book Lesson
           </Link>
@@ -88,7 +88,7 @@ export default function StudentDashboardPage() {
       <div className="flex flex-wrap items-center gap-2 border-b border-cream-200 pb-3">
         <Link
           href="/student/dashboard"
-          className="px-3.5 py-1.5 bg-teal-50 text-teal-800 font-bold rounded-xl text-xs border border-teal-200"
+          className="px-3.5 py-1.5 bg-cocoa-50 text-cocoa-800 font-bold rounded-xl text-xs border border-cocoa-200"
         >
           Overview
         </Link>
@@ -121,12 +121,12 @@ export default function StudentDashboardPage() {
         <div className="bg-white rounded-3xl border border-cream-200 p-8 text-center space-y-3">
           <h2 className="text-base font-bold text-ink-900">No upcoming lessons</h2>
           <p className="text-xs text-ink-500">You do not have a confirmed lesson scheduled yet.</p>
-          <Link href="/tutors" className="inline-flex px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl">
+          <Link href="/tutors" className="inline-flex px-4 py-2 bg-cocoa-600 hover:bg-cocoa-700 text-white font-bold text-xs rounded-xl">
             Find a tutor
           </Link>
         </div>
       ) : (
-        <div className="bg-gradient-to-r from-teal-950 via-teal-900 to-ink-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-cocoa-950 via-cocoa-900 to-ink-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl space-y-6 relative overflow-hidden">
           <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial-pattern opacity-10 pointer-events-none" />
 
           <div className="flex items-center justify-between">
@@ -144,12 +144,12 @@ export default function StudentDashboardPage() {
               <img
                 src={upcomingLesson.teacher.avatar}
                 alt={upcomingLesson.teacher.name}
-                className="w-16 h-16 rounded-2xl object-cover border-2 border-teal-400/50 shadow-md"
+                className="w-16 h-16 rounded-2xl object-cover border-2 border-cocoa-400/50 shadow-md"
               />
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <h2 className="text-xl sm:text-2xl font-black text-white">{upcomingLesson.teacher.name}</h2>
-                  <span className="text-xs bg-teal-800/80 text-teal-200 px-2 py-0.5 rounded-md border border-teal-700">
+                  <span className="text-xs bg-cocoa-800/80 text-cocoa-200 px-2 py-0.5 rounded-md border border-cocoa-700">
                     {upcomingLesson.teacher.accent}
                   </span>
                 </div>
@@ -162,7 +162,7 @@ export default function StudentDashboardPage() {
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl px-5 py-3 border border-white/15 text-xs space-y-0.5 text-center sm:text-left">
-                <div className="text-teal-200 font-medium">Scheduled Local Time</div>
+                <div className="text-cocoa-200 font-medium">Scheduled Local Time</div>
                 <div className="font-extrabold text-white text-sm">{upcomingLesson.local_date}</div>
                 <div className="text-accent-300 font-bold">
                   {upcomingLesson.local_start_time} - {upcomingLesson.local_end_time} ({upcomingLesson.viewer_timezone})
@@ -196,7 +196,7 @@ export default function StudentDashboardPage() {
             </div>
             <Link
               href="/student/vocabulary"
-              className="text-xs font-semibold text-teal-700 hover:text-teal-900 flex items-center gap-1"
+              className="text-xs font-semibold text-cocoa-700 hover:text-cocoa-900 flex items-center gap-1"
             >
               Open Full Study Deck <ChevronRight className="w-3.5 h-3.5" />
             </Link>
@@ -236,9 +236,9 @@ export default function StudentDashboardPage() {
                 <Link
                   key={card.id}
                   href="/student/vocabulary"
-                  className="px-3 py-1.5 bg-cream-50 hover:bg-teal-50 border border-cream-200 hover:border-teal-200 rounded-xl text-xs font-semibold text-ink-800 flex items-center gap-2 transition-colors"
+                  className="px-3 py-1.5 bg-cream-50 hover:bg-cocoa-50 border border-cream-200 hover:border-cocoa-200 rounded-xl text-xs font-semibold text-ink-800 flex items-center gap-2 transition-colors"
                 >
-                  <span className="font-mono text-teal-800">{card.word}</span>
+                  <span className="font-mono text-cocoa-800">{card.word}</span>
                   <span className="text-[10px] text-ink-400 italic">({card.part_of_speech})</span>
                 </Link>
               ))}
@@ -252,12 +252,12 @@ export default function StudentDashboardPage() {
         <div className="bg-white rounded-3xl border border-cream-200 p-6 shadow-sm space-y-4 flex flex-col justify-between">
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-cocoa-50 border border-cocoa-200 text-cocoa-700 flex items-center justify-center">
                 <User className="w-4 h-4" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-ink-900">Learning Target</h3>
-                <p className="text-xs text-teal-700 font-semibold">
+                <p className="text-xs text-cocoa-700 font-semibold">
                   {profile?.target_level ? `CEFR ${profile.target_level}` : profileQ.loading ? "Loading..." : "No target level set"}
                 </p>
               </div>
@@ -294,7 +294,7 @@ export default function StudentDashboardPage() {
           </div>
           <Link
             href="/student/history"
-            className="text-xs font-semibold text-teal-700 hover:text-teal-900 flex items-center gap-1"
+            className="text-xs font-semibold text-cocoa-700 hover:text-cocoa-900 flex items-center gap-1"
           >
             Full Lesson Archive{lessonsQ.data ? ` (${completedLessons.length})` : ""} <ChevronRight className="w-3.5 h-3.5" />
           </Link>
@@ -335,7 +335,7 @@ export default function StudentDashboardPage() {
                 {item.memo && (
                   <button
                     onClick={() => setSelectedMemoLesson(item)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 hover:bg-teal-100 border border-teal-200 text-teal-800 text-xs font-semibold rounded-xl transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cocoa-50 hover:bg-cocoa-100 border border-cocoa-200 text-cocoa-800 text-xs font-semibold rounded-xl transition-colors"
                   >
                     <FileText className="w-3.5 h-3.5" /> View Tutor Memo
                   </button>

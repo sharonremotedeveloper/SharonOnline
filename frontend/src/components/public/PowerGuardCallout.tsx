@@ -7,20 +7,20 @@ import { BatteryCharging, ArrowRight } from "lucide-react";
  */
 export function PowerGuardCallout() {
   return (
-    <aside className="flex flex-col gap-4 rounded-2xl border border-teal-border bg-teal-surface p-5 sm:flex-row sm:items-center sm:p-6">
-      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal text-gold-bright">
+    <aside className="flex flex-col gap-4 rounded-3xl bg-sky p-5 sm:flex-row sm:items-center sm:p-6">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cocoa text-sun">
         <BatteryCharging className="h-6 w-6" aria-hidden="true" />
       </span>
       <div className="flex-1">
         <h3 className="font-serif text-lg font-bold text-ink">Your lesson is protected if the power goes out</h3>
-        <p className="mt-1 text-base leading-relaxed text-ink-muted">
+        <p className="mt-1 text-base leading-relaxed text-ink/80">
           Our tutors use backup power for their internet. If a lesson is still cut off, you get a new lesson or your
           money back.
         </p>
       </div>
       <Link
         href="/trust-safety"
-        className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 text-base font-bold text-teal underline-offset-4 hover:underline"
+        className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 text-base font-bold text-cocoa underline-offset-4 hover:underline"
       >
         How we protect lessons <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </Link>

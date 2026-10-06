@@ -73,7 +73,7 @@ export default function TeacherPowerGuardPage() {
             onRetry={reload}
           />
           <div className="text-center">
-            <Link href="/teacher/dashboard" className="text-xs font-bold text-teal hover:underline">
+            <Link href="/teacher/dashboard" className="text-xs font-bold text-cocoa hover:underline">
               Return to dashboard
             </Link>
           </div>
@@ -170,7 +170,7 @@ export default function TeacherPowerGuardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-teal" />
+                <MapPin className="w-3.5 h-3.5 text-cocoa" />
                 <span>Municipal Suburb &amp; Load Shedding Block</span>
               </label>
               <div className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink font-semibold">
@@ -248,14 +248,14 @@ export default function TeacherPowerGuardPage() {
               onClick={() => setHasLte(!hasLte)}
               className={`p-5 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-4 ${
                 hasLte
-                  ? "bg-teal/10 border-teal/30"
+                  ? "bg-cocoa/10 border-cocoa/30"
                   : "bg-cream-surface border-divider hover:border-gray-300"
               }`}
             >
               <div className="flex items-start gap-3.5">
                 <div
                   className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                    hasLte ? "bg-teal text-white" : "bg-cream-deep text-ink-muted"
+                    hasLte ? "bg-cocoa text-white" : "bg-cream-deep text-ink-muted"
                   }`}
                 >
                   <Radio className="w-5 h-5" />
@@ -273,7 +273,7 @@ export default function TeacherPowerGuardPage() {
 
               <div
                 className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors border ${
-                  hasLte ? "bg-teal border-teal text-white" : "border-divider bg-white"
+                  hasLte ? "bg-cocoa border-cocoa text-white" : "border-divider bg-white"
                 }`}
               >
                 {hasLte && <Check className="w-4 h-4 stroke-[3]" />}

@@ -110,7 +110,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
   if (filteredCards.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-cream-200 p-12 text-center shadow-sm">
-        <div className="w-16 h-16 rounded-full bg-teal-50 border border-teal-200 text-teal-600 flex items-center justify-center mx-auto mb-4">
+        <div className="w-16 h-16 rounded-full bg-cocoa-50 border border-cocoa-200 text-cocoa-600 flex items-center justify-center mx-auto mb-4">
           <Award className="w-8 h-8" />
         </div>
         <h3 className="text-xl font-bold text-ink-900 mb-2">Deck Fully Reviewed!</h3>
@@ -122,7 +122,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
             setFilter("all");
             setCurrentIndex(0);
           }}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-xl text-sm transition-colors shadow-sm"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 text-white font-medium rounded-xl text-sm transition-colors shadow-sm"
         >
           <Layers className="w-4 h-4" /> Reset Filter to All Words
         </button>
@@ -208,8 +208,8 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
         className="relative min-h-[360px] cursor-pointer group focus:outline-none"
       >
         <div
-          className={`w-full min-h-[360px] bg-white rounded-3xl border-2 border-cream-200 p-8 shadow-sm transition-all duration-300 flex flex-col justify-between hover:border-teal-400 hover:shadow-md ${
-            isFlipped ? "bg-gradient-to-br from-white to-teal-50/30" : ""
+          className={`w-full min-h-[360px] bg-white rounded-3xl border-2 border-cream-200 p-8 shadow-sm transition-all duration-300 flex flex-col justify-between hover:border-cocoa-400 hover:shadow-md ${
+            isFlipped ? "bg-gradient-to-br from-white to-cocoa-50/30" : ""
           }`}
         >
           {/* Card Header */}
@@ -239,8 +239,8 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
                 <button
                   type="button"
                   onClick={handleSpeak}
-                  className={`p-2.5 rounded-full border border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors shadow-xs ${
-                    isSpeaking ? "animate-pulse ring-2 ring-teal-400" : ""
+                  className={`p-2.5 rounded-full border border-cocoa-200 bg-cocoa-50 text-cocoa-700 hover:bg-cocoa-100 transition-colors shadow-xs ${
+                    isSpeaking ? "animate-pulse ring-2 ring-cocoa-400" : ""
                   }`}
                   title="Listen to American / Neutral Audio Pronunciation"
                 >
@@ -261,7 +261,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
               </p>
 
               <div className="pt-4">
-                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-600 bg-teal-50 px-3 py-1.5 rounded-xl border border-teal-100">
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-cocoa-600 bg-cocoa-50 px-3 py-1.5 rounded-xl border border-cocoa-100">
                   <RotateCw className="w-3.5 h-3.5 animate-spin-reverse" />
                   Click or press Space to reveal definition & example
                 </span>
@@ -271,7 +271,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
             /* BACK: Definition & Sentence */
             <div className="my-auto space-y-5 py-4">
               <div>
-                <span className="text-xs font-bold text-teal-600 uppercase tracking-wider">Definition</span>
+                <span className="text-xs font-bold text-cocoa-600 uppercase tracking-wider">Definition</span>
                 <p className="text-lg font-semibold text-ink-900 mt-1 leading-snug">{activeCard.definition}</p>
               </div>
 
@@ -285,7 +285,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
                 <button
                   type="button"
                   onClick={handleSpeak}
-                  className="flex items-center gap-1 text-teal-700 hover:text-teal-900 font-medium"
+                  className="flex items-center gap-1 text-cocoa-700 hover:text-cocoa-900 font-medium"
                 >
                   <Volume2 className="w-3.5 h-3.5" /> Replay audio
                 </button>

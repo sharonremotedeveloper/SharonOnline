@@ -144,7 +144,7 @@ export default function StudentWalletPage() {
             onClick={() => setReceiptDrawerOpen(true)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-divider bg-white hover:bg-cream-surface text-xs font-bold text-ink transition-colors shadow-sm"
           >
-            <FileText className="w-3.5 h-3.5 text-teal" />
+            <FileText className="w-3.5 h-3.5 text-cocoa" />
             <span>Invoices & Receipts</span>
           </button>
           <CurrencySwitcher variant="inline" onCurrencyChange={(c) => setCurrency(c)} />
@@ -161,7 +161,7 @@ export default function StudentWalletPage() {
 
       {/* Balance Summary Card */}
       {wallet && (
-      <div className="bg-gradient-to-r from-teal to-teal-mid text-white rounded-3xl p-8 shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+      <div className="bg-gradient-to-r from-cocoa to-cocoa-mid text-white rounded-3xl p-8 shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-bold text-accent-surface border border-white/20">
             <Coins className="w-3.5 h-3.5 text-accent" />
@@ -304,7 +304,7 @@ export default function StudentWalletPage() {
                       Purchased {new Date(b.purchased_at).toLocaleDateString()}
                     </div>
                   </div>
-                  <div className="font-black text-sm font-serif text-teal">
+                  <div className="font-black text-sm font-serif text-cocoa">
                     {b.remaining} of {b.total} Credits left
                   </div>
                 </div>
@@ -319,7 +319,7 @@ export default function StudentWalletPage() {
             <button
               type="button"
               onClick={() => setReceiptDrawerOpen(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-teal hover:text-teal-deep transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-cocoa hover:text-cocoa-deep transition-colors"
             >
               <FileText className="w-3.5 h-3.5" />
               <span>View Invoices & Receipts</span>

@@ -100,7 +100,7 @@ function RegisterForm() {
   return (
     <div className="bg-white rounded-3xl p-8 max-w-xl w-full border border-divider shadow-card space-y-6">
       <div className="text-center space-y-2">
-        <div className="w-12 h-12 rounded-2xl bg-teal text-gold-bright font-black text-2xl flex items-center justify-center mx-auto shadow-sm font-serif">
+        <div className="w-12 h-12 rounded-2xl bg-cocoa text-gold-bright font-black text-2xl flex items-center justify-center mx-auto shadow-sm font-serif">
           S
         </div>
         <h1 className="text-2xl font-extrabold text-ink font-serif">Create Your Account</h1>
@@ -114,7 +114,7 @@ function RegisterForm() {
           onClick={() => setRole("student")}
           className={`py-2.5 rounded-xl text-xs font-bold transition-all ${
             role === "student"
-              ? "bg-teal text-white shadow-sm"
+              ? "bg-cocoa text-white shadow-sm"
               : "text-ink-muted hover:text-ink"
           }`}
         >
@@ -125,7 +125,7 @@ function RegisterForm() {
           onClick={() => setRole("teacher")}
           className={`py-2.5 rounded-xl text-xs font-bold transition-all ${
             role === "teacher"
-              ? "bg-teal text-white shadow-sm"
+              ? "bg-cocoa text-white shadow-sm"
               : "text-ink-muted hover:text-ink"
           }`}
         >
@@ -148,7 +148,7 @@ function RegisterForm() {
               required
               value={formData.first_name}
               onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
+              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("first_name")}
           </div>
@@ -159,7 +159,7 @@ function RegisterForm() {
               required
               value={formData.last_name}
               onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
+              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("last_name")}
           </div>
@@ -174,7 +174,7 @@ function RegisterForm() {
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
               placeholder="e.g. aiko_tanaka"
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
+              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("username")}
           </div>
@@ -186,7 +186,7 @@ function RegisterForm() {
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="name@example.com"
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
+              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("email")}
           </div>
@@ -210,7 +210,7 @@ function RegisterForm() {
               value={formData.country}
               onChange={(e) => setFormData({ ...formData, country: e.target.value.toUpperCase() })}
               placeholder="e.g. JP, ZA, KR, DE"
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
+              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("country")}
           </div>
@@ -225,7 +225,7 @@ function RegisterForm() {
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               placeholder="••••••••"
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
+              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("password")}
           </div>
@@ -237,7 +237,7 @@ function RegisterForm() {
               value={formData.password_confirm}
               onChange={(e) => setFormData({ ...formData, password_confirm: e.target.value })}
               placeholder="••••••••"
-              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
+              className="w-full px-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
             {fieldError("password_confirm")}
           </div>
@@ -255,7 +255,7 @@ function RegisterForm() {
                 type="checkbox"
                 checked={formData.has_power_backup}
                 onChange={(e) => setFormData({ ...formData, has_power_backup: e.target.checked })}
-                className="mt-0.5 accent-teal"
+                className="mt-0.5 accent-cocoa"
               />
               <span>I confirm I possess a verified Solar / Inverter / UPS power backup for loadshedding stages.</span>
             </label>
@@ -265,7 +265,7 @@ function RegisterForm() {
                 type="checkbox"
                 checked={formData.tefl_certified}
                 onChange={(e) => setFormData({ ...formData, tefl_certified: e.target.checked })}
-                className="mt-0.5 accent-teal"
+                className="mt-0.5 accent-cocoa"
               />
               <span>I hold a recognized TEFL / TESOL / CELTA certification (or equivalent education degree).</span>
             </label>
@@ -285,7 +285,7 @@ function RegisterForm() {
 
       <div className="pt-2 text-center text-xs text-ink-muted">
         Already have an account?{" "}
-        <Link href="/login" className="text-teal font-bold hover:underline">
+        <Link href="/login" className="text-cocoa font-bold hover:underline">
           Sign In
         </Link>
       </div>

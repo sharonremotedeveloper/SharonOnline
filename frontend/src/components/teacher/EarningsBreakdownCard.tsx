@@ -48,11 +48,11 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
         <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
             <span>Capture FX Context</span>
-            <span className="text-teal bg-teal/10 px-2 py-0.5 rounded-full text-[10px] font-bold">
+            <span className="text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-full text-[10px] font-bold">
               Immutable snapshots
             </span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-teal font-serif">
+          <div className="text-2xl sm:text-3xl font-black text-cocoa font-serif">
             {wallet.fx_context.length}
           </div>
           <p className="text-[11px] text-ink-muted">
@@ -63,7 +63,7 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
 
       {/* Revenue Transparency Callout */}
       <div className="p-5 rounded-2xl bg-cream-surface border border-divider space-y-2 text-xs text-ink leading-relaxed">
-        <div className="flex items-center gap-2 font-bold text-teal">
+        <div className="flex items-center gap-2 font-bold text-cocoa">
           <Info className="w-4 h-4 shrink-0" />
           <span>Fair Payout Structure &amp; Escrow Guarantee</span>
         </div>

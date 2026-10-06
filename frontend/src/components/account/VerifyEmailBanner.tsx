@@ -28,14 +28,14 @@ export function VerifyEmailBanner() {
 
   return (
     <div role="status" className="bg-gold-bright/20 border-b border-gold-bright/40 px-4 py-2 text-xs text-ink flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-      <MailWarning className="w-4 h-4 text-teal shrink-0" aria-hidden="true" />
+      <MailWarning className="w-4 h-4 text-cocoa shrink-0" aria-hidden="true" />
       <span>
         Please confirm <strong>{user.email}</strong> so we can reach you about your lessons.
       </span>
       {state === "sent" ? (
         <span className="font-bold text-success">Link sent - check your inbox.</span>
       ) : (
-        <button type="button" onClick={resend} disabled={state === "sending"} className="font-bold text-teal hover:underline disabled:opacity-50">
+        <button type="button" onClick={resend} disabled={state === "sending"} className="font-bold text-cocoa hover:underline disabled:opacity-50">
           {state === "sending" ? "Sending..." : "Resend link"}
         </button>
       )}

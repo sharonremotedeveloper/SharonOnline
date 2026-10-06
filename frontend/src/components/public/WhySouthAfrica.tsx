@@ -3,16 +3,19 @@ import { SectionHeading } from "./SectionHeading";
 
 const REASONS = [
   {
+    tone: "bg-sky-soft",
     icon: Clock,
     title: "Time zones that work for you",
     text: "South Africa is 0 to 1 hour from Europe. It is 7 hours behind Japan and Korea, so a tutor's afternoon is your evening.",
   },
   {
+    tone: "bg-peach-soft",
     icon: HeartHandshake,
     title: "Friendly and patient",
     text: "Our tutors are used to teaching learners from other countries. They speak clearly and give you time to answer.",
   },
   {
+    tone: "bg-sun-soft",
     icon: Globe2,
     title: "Certified teachers",
     text: "Tutors hold a TEFL or similar teaching certificate, and we check it before they can take lessons.",
@@ -28,13 +31,13 @@ export function WhySouthAfrica() {
         description="English is spoken here every day, and the time difference suits learners in Asia and Europe."
       />
       <ul className="grid gap-5 md:grid-cols-3">
-        {REASONS.map(({ icon: Icon, title, text }) => (
-          <li key={title} className="rounded-2xl border border-divider bg-white p-6 shadow-card">
-            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-gold-surface text-primary">
+        {REASONS.map(({ icon: Icon, title, text, tone }) => (
+          <li key={title} className={`rounded-3xl p-6 ${tone}`}>
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-cocoa text-sun">
               <Icon className="h-6 w-6" aria-hidden="true" />
             </span>
             <h3 className="mt-4 font-serif text-xl font-bold text-ink">{title}</h3>
-            <p className="mt-2 text-base leading-relaxed text-ink-muted">{text}</p>
+            <p className="mt-2 text-base leading-relaxed text-ink/80">{text}</p>
           </li>
         ))}
       </ul>

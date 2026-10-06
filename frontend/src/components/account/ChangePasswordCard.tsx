@@ -44,7 +44,7 @@ export function ChangePasswordCard() {
   return (
     <form onSubmit={submit} className="bg-white rounded-2xl border border-divider shadow-card p-6 space-y-4">
       <div className="flex items-center gap-2">
-        <KeyRound className="w-4 h-4 text-teal" aria-hidden="true" />
+        <KeyRound className="w-4 h-4 text-cocoa" aria-hidden="true" />
         <h2 className="text-sm font-extrabold text-ink">Change password</h2>
       </div>
       {done ? (
@@ -68,7 +68,7 @@ export function ChangePasswordCard() {
                 autoComplete={autoComplete}
                 value={values[name]}
                 onChange={(e) => setValues({ ...values, [name]: e.target.value })}
-                className="w-full p-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
+                className="w-full p-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
               />
               {fieldErrors[name]?.length ? <p className="text-[11px] text-primary font-medium">{fieldErrors[name].join(" ")}</p> : null}
             </div>
@@ -76,7 +76,7 @@ export function ChangePasswordCard() {
           <button
             type="submit"
             disabled={submitting}
-            className="px-5 py-2.5 bg-teal text-white text-xs font-bold rounded-xl shadow-sm disabled:opacity-50"
+            className="px-5 py-2.5 bg-cocoa text-white text-xs font-bold rounded-xl shadow-sm disabled:opacity-50"
           >
             {submitting ? "Updating..." : "Update password"}
           </button>

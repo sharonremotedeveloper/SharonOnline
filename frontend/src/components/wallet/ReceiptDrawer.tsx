@@ -102,7 +102,7 @@ export function ReceiptDrawer({ isOpen, onClose }: ReceiptDrawerProps) {
           <div className="p-6 border-b border-divider flex items-start justify-between bg-cream-surface/60">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-teal/10 text-teal">
+                <div className="p-1.5 rounded-lg bg-cocoa/10 text-cocoa">
                   <FileText className="w-5 h-5" />
                 </div>
                 <h2 id="receipt-drawer-title" className="text-xl font-bold font-serif text-ink">
@@ -127,7 +127,7 @@ export function ReceiptDrawer({ isOpen, onClose }: ReceiptDrawerProps) {
           {actionNotice && (
             <div className="px-6 py-2.5 bg-accent-surface/40 border-b border-divider text-xs flex items-center justify-between text-ink">
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-teal" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-cocoa" />
                 {actionNotice}
               </span>
               <button
@@ -203,7 +203,7 @@ export function ReceiptDrawer({ isOpen, onClose }: ReceiptDrawerProps) {
                             Issued on {dateStr}
                           </div>
                         </div>
-                        <span className="text-sm font-black font-serif text-teal">
+                        <span className="text-sm font-black font-serif text-cocoa">
                           {rcpt.currency} {rcpt.total_amount}
                         </span>
                       </div>

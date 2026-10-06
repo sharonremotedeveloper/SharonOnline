@@ -85,7 +85,7 @@ export default function AdminFxRatesPage() {
   if (loading || !data) {
     return (
       <div className="py-20 text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-12 h-12 border-4 border-cocoa border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm font-bold text-ink-muted">Loading FX rates...</p>
       </div>
     );
@@ -105,7 +105,7 @@ export default function AdminFxRatesPage() {
         </Link>
         <div>
           <div className="flex items-center gap-2">
-            <Coins className="w-4 h-4 text-teal" aria-hidden="true" />
+            <Coins className="w-4 h-4 text-cocoa" aria-hidden="true" />
             <span className="text-xs font-bold text-ink-muted">EUR / JPY to ZAR, maintained by hand</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-ink font-serif">FX Rates</h1>
@@ -186,7 +186,7 @@ export default function AdminFxRatesPage() {
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2.5 rounded-xl bg-teal text-white text-xs font-bold disabled:opacity-50"
+            className="px-5 py-2.5 rounded-xl bg-cocoa text-white text-xs font-bold disabled:opacity-50"
           >
             {saving && !needsConfirm ? "Saving..." : "Save rate"}
           </button>

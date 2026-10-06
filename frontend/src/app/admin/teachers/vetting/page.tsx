@@ -231,7 +231,7 @@ export default function AdminVettingPage() {
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-teal bg-teal/10 px-2 py-0.5 rounded-md">
+              <span className="text-xs font-mono font-bold text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-md">
                 TUTOR VETTING &amp; RUBRIC STUDIO (T4b)
               </span>
               <span className="text-xs font-bold text-ink-muted">{applications.length} In Queue</span>
@@ -271,7 +271,7 @@ export default function AdminVettingPage() {
           </p>
           <Link
             href="/admin/teachers"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal text-white text-xs font-bold"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cocoa text-white text-xs font-bold"
           >
             <span>View Active Tutor Roster</span>
           </Link>
@@ -299,7 +299,7 @@ export default function AdminVettingPage() {
                     }}
                     className={`w-full text-left p-3.5 rounded-2xl border transition-all space-y-1.5 ${
                       isSelected
-                        ? "bg-teal/10 border-teal text-ink shadow-xs"
+                        ? "bg-cocoa/10 border-cocoa text-ink shadow-xs"
                         : "bg-cream-surface border-divider hover:bg-cream-deep text-ink-muted"
                     }`}
                   >
@@ -319,7 +319,7 @@ export default function AdminVettingPage() {
                     </div>
                     <p className="text-[11px] text-ink-muted">{app.accent}</p>
                     <div className="flex items-center gap-2 text-[10px] text-ink-muted pt-1">
-                      <MapPin className="w-3 h-3 text-teal" />
+                      <MapPin className="w-3 h-3 text-cocoa" />
                       <span className="truncate">{app.country}</span>
                     </div>
                   </button>
@@ -364,7 +364,7 @@ export default function AdminVettingPage() {
                       <PlayCircle className="w-4 h-4" /> Start Review
                     </Button>
                   )}
-                  <span className="px-3 py-1 rounded-xl bg-teal/10 text-teal text-xs font-bold border border-teal/20">
+                  <span className="px-3 py-1 rounded-xl bg-cocoa/10 text-cocoa text-xs font-bold border border-cocoa/20">
                     {selectedApp.accent}
                   </span>
                 </div>
@@ -374,7 +374,7 @@ export default function AdminVettingPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs font-bold text-ink">
                   <span className="flex items-center gap-2">
-                    <Video className="w-4 h-4 text-teal" />
+                    <Video className="w-4 h-4 text-cocoa" />
                     <span>60-Second Pronunciation &amp; Natural Accent Reel</span>
                   </span>
                   <span className="text-[11px] text-ink-muted font-mono">
@@ -397,7 +397,7 @@ export default function AdminVettingPage() {
                 {/* Speed Test */}
                 <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-2">
                   <span className="font-bold text-ink flex items-center gap-1.5">
-                    <Wifi className="w-4 h-4 text-teal" /> WebRTC Network Readiness
+                    <Wifi className="w-4 h-4 text-cocoa" /> WebRTC Network Readiness
                   </span>
                   <div className="grid grid-cols-2 gap-2 pt-1 text-[11px]">
                     <div>
@@ -465,7 +465,7 @@ export default function AdminVettingPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-divider pb-4">
                   <div>
                     <div className="flex items-center gap-2">
-                      <Award className="w-5 h-5 text-teal" />
+                      <Award className="w-5 h-5 text-cocoa" />
                       <h4 className="text-base font-bold text-ink">4-Criterion Vetting Rubric</h4>
                     </div>
                     <p className="text-xs text-ink-muted">
@@ -530,7 +530,7 @@ export default function AdminVettingPage() {
                                   onClick={() => handleScoreChange(criterion, score)}
                                   className={`w-8 h-8 rounded-xl font-bold text-xs transition-all flex items-center justify-center ${
                                     isSelected
-                                      ? "bg-teal text-white shadow-xs scale-105"
+                                      ? "bg-cocoa text-white shadow-xs scale-105"
                                       : "bg-cream-surface border border-divider text-ink-muted hover:bg-cream-deep hover:text-ink"
                                   }`}
                                   aria-label={`Score ${score} for ${meta.label}`}
@@ -588,7 +588,7 @@ export default function AdminVettingPage() {
                     setActiveModal("approve");
                     setActionReason("");
                   }}
-                  className="bg-teal hover:bg-teal/90 text-white"
+                  className="bg-cocoa hover:bg-cocoa/90 text-white"
                   title={
                     packet?.status !== "in_review"
                       ? "Must start review before approving"
@@ -642,7 +642,7 @@ export default function AdminVettingPage() {
                           setSelectedChanges((prev) => prev.filter((k) => k !== item.kind));
                         }
                       }}
-                      className="rounded border-divider text-teal focus:ring-teal"
+                      className="rounded border-divider text-cocoa focus:ring-cocoa"
                     />
                     <span>{item.label}</span>
                   </label>
@@ -666,7 +666,7 @@ export default function AdminVettingPage() {
                     ? "Explain what needs improvement (e.g. video audio had background echo; please re-record in quiet space)..."
                     : "Formal reason for rejection..."
                 }
-                className="w-full p-3 bg-cream-surface rounded-2xl border border-divider text-xs text-ink focus:outline-hidden focus:ring-2 focus:ring-teal/30"
+                className="w-full p-3 bg-cream-surface rounded-2xl border border-divider text-xs text-ink focus:outline-hidden focus:ring-2 focus:ring-cocoa/30"
               />
             </div>
 
@@ -689,7 +689,7 @@ export default function AdminVettingPage() {
                   (activeModal === "request_changes" && selectedChanges.length === 0)
                 }
                 onClick={handleConfirmAction}
-                className={activeModal === "approve" ? "bg-teal hover:bg-teal/90 text-white" : ""}
+                className={activeModal === "approve" ? "bg-cocoa hover:bg-cocoa/90 text-white" : ""}
               >
                 {processingAction ? "Processing..." : "Confirm & Send"}
               </Button>

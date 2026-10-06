@@ -13,8 +13,8 @@ export function CefrLevelBadge({ level, size = "md", className = "" }: CefrLevel
   const colorStyles = {
     A1: "bg-emerald-50 text-emerald-800 border-emerald-200",
     A2: "bg-emerald-50 text-emerald-800 border-emerald-200",
-    B1: "bg-teal/10 text-teal border-teal/20",
-    B2: "bg-teal/15 text-teal border-teal/30",
+    B1: "bg-cocoa/10 text-cocoa border-cocoa/20",
+    B2: "bg-cocoa/15 text-cocoa border-cocoa/30",
     C1: "bg-plum/10 text-plum border-plum/20",
     C2: "bg-amber-50 text-amber-900 border-amber-300",
   }[norm] || "bg-cream-surface text-ink-muted border-divider";

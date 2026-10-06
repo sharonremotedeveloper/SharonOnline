@@ -61,22 +61,22 @@ ${memo.homework}
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-950/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
       <div className="relative w-full max-w-2xl bg-white rounded-3xl border border-cream-200 shadow-2xl overflow-hidden my-8 animate-scale-up">
         {/* Header */}
-        <div className="bg-gradient-to-r from-teal-900 via-teal-800 to-ink-900 text-white p-6 sm:p-8">
+        <div className="bg-gradient-to-r from-cocoa-900 via-cocoa-800 to-ink-900 text-white p-6 sm:p-8">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <img
                 src={lesson.teacher.avatar}
                 alt={lesson.teacher.name}
-                className="w-12 h-12 rounded-full border-2 border-teal-400 object-cover"
+                className="w-12 h-12 rounded-full border-2 border-cocoa-400 object-cover"
               />
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-lg text-white">{lesson.teacher.name}</h3>
-                  <span className="text-xs bg-teal-700/60 text-teal-200 px-2 py-0.5 rounded-full border border-teal-600/40">
+                  <span className="text-xs bg-cocoa-700/60 text-cocoa-200 px-2 py-0.5 rounded-full border border-cocoa-600/40">
                     Tutor Memo
                   </span>
                 </div>
-                <p className="text-xs text-teal-200">
+                <p className="text-xs text-cocoa-200">
                   {lesson.local_date} • {lesson.local_start_time} - {lesson.local_end_time} ({lesson.viewer_timezone})
                 </p>
               </div>
@@ -84,15 +84,15 @@ ${memo.homework}
 
             <button
               onClick={onClose}
-              className="p-2 text-teal-200 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+              className="p-2 text-cocoa-200 hover:text-white hover:bg-white/10 rounded-full transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <div className="mt-5 pt-4 border-t border-teal-700/60 flex items-center justify-between flex-wrap gap-2">
+          <div className="mt-5 pt-4 border-t border-cocoa-700/60 flex items-center justify-between flex-wrap gap-2">
             <div>
-              <span className="text-xs font-semibold text-teal-300 uppercase tracking-wider">Lesson Material</span>
+              <span className="text-xs font-semibold text-cocoa-300 uppercase tracking-wider">Lesson Material</span>
               <h2 className="text-xl font-bold text-white mt-0.5">{lesson.material_title}</h2>
             </div>
             <span className="px-3 py-1 bg-accent-500/20 text-accent-300 border border-accent-400/30 text-xs font-bold rounded-lg">
@@ -106,10 +106,10 @@ ${memo.homework}
           {/* Feedback */}
           <div>
             <div className="flex items-center gap-2 mb-2 text-ink-900 font-bold text-sm uppercase tracking-wider">
-              <Sparkles className="w-4 h-4 text-teal-600" />
+              <Sparkles className="w-4 h-4 text-cocoa-600" />
               <span>Tutor Feedback</span>
             </div>
-            <div className="bg-teal-50/50 border border-teal-100 p-4 rounded-2xl text-ink-800 text-sm leading-relaxed">
+            <div className="bg-cocoa-50/50 border border-cocoa-100 p-4 rounded-2xl text-ink-800 text-sm leading-relaxed">
               {memo.feedback_text}
             </div>
           </div>
@@ -123,7 +123,7 @@ ${memo.homework}
                   <span>Vocabulary Acquired ({memo.vocabulary_words.length})</span>
                 </div>
                 <span className="text-xs text-ink-500 flex items-center gap-1 font-medium">
-                  <BookmarkCheck className="w-3.5 h-3.5 text-teal-600" /> Synced to Flashcards
+                  <BookmarkCheck className="w-3.5 h-3.5 text-cocoa-600" /> Synced to Flashcards
                 </span>
               </div>
 
@@ -133,7 +133,7 @@ ${memo.homework}
                     key={idx}
                     className="p-3.5 rounded-xl border border-cream-200 bg-cream-50/50 hover:bg-cream-50 transition-colors flex flex-col sm:flex-row sm:items-baseline justify-between gap-1"
                   >
-                    <span className="font-bold text-teal-900 font-mono text-sm capitalize">{item.word}</span>
+                    <span className="font-bold text-cocoa-900 font-mono text-sm capitalize">{item.word}</span>
                     <span className="text-xs text-ink-700 sm:text-right">{item.definition}</span>
                   </div>
                 ))}

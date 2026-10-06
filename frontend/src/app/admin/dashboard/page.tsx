@@ -37,7 +37,7 @@ export default function AdminDashboardPage() {
   if (loading || !telemetry) {
     return (
       <div className="py-20 text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-12 h-12 border-4 border-cocoa border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm font-bold text-ink-muted">Loading executive command telemetry...</p>
       </div>
     );
@@ -103,11 +103,11 @@ export default function AdminDashboardPage() {
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
             <span>Escrow Holding Balance</span>
-            <span className="text-teal bg-teal/10 px-2 py-0.5 rounded-full text-[10px] font-bold">
+            <span className="text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-full text-[10px] font-bold">
               24h Release Buffer
             </span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-teal font-serif">
+          <div className="text-2xl sm:text-3xl font-black text-cocoa font-serif">
             R{groupMoney(telemetry.escrow_liability_zar)}
           </div>
           <p className="text-[11px] text-ink-muted">
@@ -195,7 +195,7 @@ export default function AdminDashboardPage() {
         {/* Card 3: Batch Payout Orchestrator */}
         <div className="bg-white rounded-3xl p-6 sm:p-7 border border-divider shadow-card flex flex-col justify-between space-y-6">
           <div className="space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-teal/10 text-teal flex items-center justify-center font-bold">
+            <div className="w-12 h-12 rounded-2xl bg-cocoa/10 text-cocoa flex items-center justify-center font-bold">
               <CreditCard className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-black text-ink font-serif">South African EFT Payouts</h3>
@@ -206,7 +206,7 @@ export default function AdminDashboardPage() {
 
           <Link
             href="/admin/finance/payouts"
-            className="w-full py-3 px-4 rounded-xl bg-teal hover:bg-teal-hover text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
+            className="w-full py-3 px-4 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
           >
             <span>Open Payout Orchestrator</span>
             <ArrowRight className="w-3.5 h-3.5" />

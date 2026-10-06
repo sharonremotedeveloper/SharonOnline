@@ -108,7 +108,7 @@ export default function StudentProfilePage() {
   if (isLoading) {
     return (
       <div className="max-w-2xl mx-auto py-20 text-center space-y-3">
-        <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-8 h-8 border-2 border-cocoa-600 border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-xs text-ink-500">Loading student profile...</p>
       </div>
     );
@@ -161,7 +161,7 @@ export default function StudentProfilePage() {
       <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-cream-200 shadow-sm overflow-hidden">
         <div className="p-6 sm:p-8 space-y-6">
           <h2 className="text-base font-bold text-ink-900 border-b border-cream-100 pb-3 flex items-center gap-2">
-            <User className="w-4 h-4 text-teal-600" />
+            <User className="w-4 h-4 text-cocoa-600" />
             <span>Personal Information</span>
           </h2>
 
@@ -174,7 +174,7 @@ export default function StudentProfilePage() {
                 type="text"
                 value={formData.full_name}
                 onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
                 required
               />
             </div>
@@ -187,7 +187,7 @@ export default function StudentProfilePage() {
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
                 required
               />
             </div>
@@ -200,7 +200,7 @@ export default function StudentProfilePage() {
                 type="text"
                 value={formData.country}
                 onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
                 required
               />
             </div>
@@ -212,7 +212,7 @@ export default function StudentProfilePage() {
               <select
                 value={formData.timezone}
                 onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
               >
                 {TIMEZONES.map((tz) => (
                   <option key={tz.value} value={tz.value}>
@@ -236,7 +236,7 @@ export default function StudentProfilePage() {
               <select
                 value={formData.target_level}
                 onChange={(e) => setFormData({ ...formData, target_level: e.target.value })}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
               >
                 {CEFR_LEVELS.map((lvl) => (
                   <option key={lvl.value} value={lvl.value}>
@@ -255,7 +255,7 @@ export default function StudentProfilePage() {
                 onChange={(e) => setFormData({ ...formData, learning_goals: e.target.value })}
                 rows={4}
                 placeholder="Describe your current English challenges, professional speaking requirements, or specific areas you want tutors to emphasize..."
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
               />
               <p className="text-xs text-ink-400 mt-1">
                 Your booked tutors can view your target CEFR and learning objectives before each lesson to tailor material selection.
@@ -273,7 +273,7 @@ export default function StudentProfilePage() {
           <button
             type="submit"
             disabled={isSaving}
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
           >
             {isSaving ? (
               <>Saving...</>

@@ -119,7 +119,7 @@ ${initialScratchpad}` : ""
       {/* Header */}
       <div className="border-b border-divider pb-6 space-y-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono font-bold text-teal bg-teal/10 px-2.5 py-0.5 rounded-full">
+          <span className="text-xs font-mono font-bold text-cocoa bg-cocoa/10 px-2.5 py-0.5 rounded-full">
             BOOKING: {bookingId}
           </span>
           <span className="text-xs font-bold text-ink-muted">Post-Lesson Memo Studio</span>
@@ -147,7 +147,7 @@ ${initialScratchpad}` : ""
           rows={4}
           value={feedbackText}
           onChange={(e) => setFeedbackText(e.target.value)}
-          className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal leading-relaxed font-sans"
+          className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa leading-relaxed font-sans"
           placeholder="Write thorough feedback for the student..."
           required
         />
@@ -156,7 +156,7 @@ ${initialScratchpad}` : ""
       {/* 2. Interactive Vocabulary Tag Builder */}
       <div className="space-y-4">
         <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-teal" />
+          <BookOpen className="w-4 h-4 text-cocoa" />
           <span>Target Vocabulary Words ({vocabList.length})</span>
         </label>
         <p className="text-[11px] text-ink-muted">
@@ -168,7 +168,7 @@ ${initialScratchpad}` : ""
           {vocabList.map((item) => (
             <div
               key={item.id}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-teal/10 border border-teal/20 text-xs font-bold text-teal shadow-2xs"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-cocoa/10 border border-cocoa/20 text-xs font-bold text-cocoa shadow-2xs"
             >
               <span>{item.word}</span>
               <button
@@ -196,7 +196,7 @@ ${initialScratchpad}` : ""
               }
             }}
             placeholder="New word (e.g. Asynchronous)..."
-            className="w-full sm:w-1/3 p-2.5 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+            className="w-full sm:w-1/3 p-2.5 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
           />
           <input
             type="text"
@@ -209,12 +209,12 @@ ${initialScratchpad}` : ""
               }
             }}
             placeholder="Definition or example sentence..."
-            className="w-full sm:flex-1 p-2.5 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+            className="w-full sm:flex-1 p-2.5 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
           />
           <button
             type="button"
             onClick={addVocabWord}
-            className="w-full sm:w-auto px-4 py-2.5 bg-teal hover:bg-teal-hover text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors shrink-0"
+            className="w-full sm:w-auto px-4 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Word</span>
@@ -225,14 +225,14 @@ ${initialScratchpad}` : ""
       {/* 3. Pronunciation & Phonetics */}
       <div className="space-y-2">
         <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-          <Volume2 className="w-4 h-4 text-teal" />
+          <Volume2 className="w-4 h-4 text-cocoa" />
           <span>Pronunciation &amp; Accent Notes</span>
         </label>
         <textarea
           rows={3}
           value={pronunciationNotes}
           onChange={(e) => setPronunciationNotes(e.target.value)}
-          className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal leading-relaxed font-sans"
+          className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa leading-relaxed font-sans"
           placeholder="Phonetic symbols, syllable stress, or tongue placement tips..."
         />
       </div>
@@ -247,7 +247,7 @@ ${initialScratchpad}` : ""
           rows={3}
           value={grammarNotes}
           onChange={(e) => setGrammarNotes(e.target.value)}
-          className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal leading-relaxed font-sans"
+          className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa leading-relaxed font-sans"
           placeholder="Write 'Student said' vs 'More natural native phrasing'..."
         />
       </div>
@@ -262,7 +262,7 @@ ${initialScratchpad}` : ""
           rows={2}
           value={homework}
           onChange={(e) => setHomework(e.target.value)}
-          className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal leading-relaxed font-sans"
+          className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa leading-relaxed font-sans"
           placeholder="Recommended reading or speaking drills for next class..."
         />
       </div>
@@ -272,7 +272,7 @@ ${initialScratchpad}` : ""
         <button
           type="submit"
           disabled={submitting}
-          className="px-8 py-3.5 bg-teal hover:bg-teal-hover text-white text-xs font-black rounded-2xl flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
+          className="px-8 py-3.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-2xl flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
         >
           <Send className="w-4 h-4" />
           <span>{submitting ? "Publishing Memo..." : "Submit Memo & Send to Student"}</span>

@@ -52,7 +52,7 @@ export default function AdminPayoutsPage() {
   if (loading) {
     return (
       <div className="py-20 text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-12 h-12 border-4 border-cocoa border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm font-bold text-ink-muted">Loading South African EFT batch orchestrator...</p>
       </div>
     );
@@ -108,7 +108,7 @@ export default function AdminPayoutsPage() {
 
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
           <span className="text-xs font-bold text-ink-muted">Banking Rail</span>
-          <div className="text-2xl sm:text-3xl font-black text-teal font-serif flex items-center gap-2">
+          <div className="text-2xl sm:text-3xl font-black text-cocoa font-serif flex items-center gap-2">
             <Building2 className="w-6 h-6" />
             <span>SARB ACB</span>
           </div>
@@ -155,7 +155,7 @@ export default function AdminPayoutsPage() {
                 <tr key={b.id} className="hover:bg-cream-surface/40 transition-colors">
                   <td className="py-4 px-6 font-extrabold text-ink">{b.teacher_name}</td>
                   <td className="py-4 px-4 font-semibold text-ink-muted">{b.bank_name}</td>
-                  <td className="py-4 px-4 font-mono font-bold text-teal">{b.branch_code}</td>
+                  <td className="py-4 px-4 font-mono font-bold text-cocoa">{b.branch_code}</td>
                   <td className="py-4 px-4 font-mono text-ink-muted">{b.account_number_masked}</td>
                   <td className="py-4 px-4 font-bold text-ink">{b.cleared_lessons_count} Lessons</td>
                   <td className="py-4 px-4 font-black text-emerald-800 font-serif text-sm">

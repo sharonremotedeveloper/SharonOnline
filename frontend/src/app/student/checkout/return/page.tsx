@@ -122,7 +122,7 @@ function PayFastReturn() {
       {ref && <p className="text-[11px] text-ink-muted">Payment reference: {ref}</p>}
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
-        <Link href="/student/dashboard" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-teal text-white rounded-xl text-xs font-bold">
+        <Link href="/student/dashboard" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-cocoa text-white rounded-xl text-xs font-bold">
           My bookings <ArrowRight className="w-3.5 h-3.5" />
         </Link>
         <Link href="/student/wallet" className="inline-flex items-center justify-center gap-2 px-5 py-2.5 border border-divider rounded-xl text-xs font-bold text-ink">

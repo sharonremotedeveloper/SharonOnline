@@ -6,7 +6,7 @@ export default function TrustSafetyPage() {
   return (
     <div className="space-y-16 pb-16">
       {/* Header */}
-      <section className="bg-teal text-white py-16 px-4 sm:px-6 lg:px-8">
+      <section className="bg-cocoa text-white py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-accent-surface">
             <ShieldCheck className="w-3.5 h-3.5 text-accent" />
@@ -26,7 +26,7 @@ export default function TrustSafetyPage() {
         {/* 4 Pillars of Safety */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-2xl border border-divider shadow-card space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-teal/10 text-teal flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-cocoa/10 text-cocoa flex items-center justify-center font-bold">
               <Award className="w-5 h-5" />
             </div>
             <h3 className="text-lg font-bold text-ink font-serif">1. Rigorous 4-Stage Vetting</h3>
@@ -36,7 +36,7 @@ export default function TrustSafetyPage() {
           </div>
 
           <div className="bg-white p-6 rounded-2xl border border-divider shadow-card space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-teal/10 text-teal flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-cocoa/10 text-cocoa flex items-center justify-center font-bold">
               <Lock className="w-5 h-5" />
             </div>
             <h3 className="text-lg font-bold text-ink font-serif">2. 24-Hour Escrow Protection</h3>
@@ -46,7 +46,7 @@ export default function TrustSafetyPage() {
           </div>
 
           <div className="bg-white p-6 rounded-2xl border border-divider shadow-card space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-teal/10 text-teal flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-cocoa/10 text-cocoa flex items-center justify-center font-bold">
               <RefreshCw className="w-5 h-5" />
             </div>
             <h3 className="text-lg font-bold text-ink font-serif">3. Automated 100% Refunds</h3>

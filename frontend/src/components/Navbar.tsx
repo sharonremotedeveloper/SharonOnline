@@ -58,11 +58,11 @@ export function Navbar() {
     "flex min-h-[48px] items-center rounded-xl px-3 text-base font-semibold text-white/90 hover:bg-white/10 hover:text-gold-bright";
 
   return (
-    <header className="on-dark sticky top-0 z-50 border-b border-white/10 bg-teal text-white shadow-md">
+    <header className="on-dark sticky top-0 z-50 border-b border-white/10 bg-cocoa text-white shadow-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {/* Brand */}
         <Link href="/" className="flex min-h-[44px] shrink-0 items-center gap-2" aria-label="Sharon Online, home">
-          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gold font-serif text-lg font-bold text-teal shadow-sm">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gold font-serif text-lg font-bold text-cocoa shadow-sm">
             S
           </span>
           <span className="whitespace-nowrap font-serif text-xl font-extrabold tracking-tight text-white">
@@ -162,7 +162,7 @@ export function Navbar() {
       {mobileMenuOpen && (
         <div
           id="mobile-menu"
-          className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-white/10 bg-teal-hover px-4 pb-6 pt-3 xl:hidden"
+          className="max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-white/10 bg-cocoa-hover px-4 pb-6 pt-3 xl:hidden"
         >
           {isAuthenticated && user && (
             <div className="mb-3 flex items-center justify-between rounded-2xl bg-white/10 p-3">

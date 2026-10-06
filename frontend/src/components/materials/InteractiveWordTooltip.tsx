@@ -34,7 +34,7 @@ export function InteractiveWordTooltip({ vocab, children }: InteractiveWordToolt
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="font-bold text-teal underline decoration-teal/40 decoration-2 underline-offset-4 hover:decoration-teal hover:bg-teal/10 px-1 rounded transition-colors cursor-pointer"
+        className="font-bold text-cocoa underline decoration-cocoa/40 decoration-2 underline-offset-4 hover:decoration-cocoa hover:bg-cocoa/10 px-1 rounded transition-colors cursor-pointer"
       >
         {children || vocab.word}
       </button>
@@ -48,7 +48,7 @@ export function InteractiveWordTooltip({ vocab, children }: InteractiveWordToolt
             <span>
               <span className="text-sm font-extrabold text-ink font-serif block">{vocab.word}</span>
               <span className="text-[11px] text-ink-muted block">
-                {vocab.phonetic} · <em className="text-teal">{vocab.part_of_speech}</em>
+                {vocab.phonetic} · <em className="text-cocoa">{vocab.part_of_speech}</em>
               </span>
             </span>
 

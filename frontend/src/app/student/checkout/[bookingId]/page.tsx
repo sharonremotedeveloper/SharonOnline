@@ -239,7 +239,7 @@ export default function StudentCheckoutPage() {
         </p>
         <Link
           href={confirmed ? `/student/confirmed/${booking.id}` : `/student/book/${booking.teacher.id}`}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal text-white rounded-xl text-xs font-bold"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-cocoa text-white rounded-xl text-xs font-bold"
         >
           {confirmed ? "View confirmation" : "Choose a new slot"} <ArrowRight className="w-3.5 h-3.5" />
         </Link>
@@ -276,7 +276,7 @@ export default function StudentCheckoutPage() {
             This time slot is no longer available (the reservation expired or the slot was taken). If PayPal took a
             payment we will refund it automatically and e-mail you.
           </p>
-          <Link href={`/student/book/${booking.teacher.id}`} className="inline-flex items-center gap-1.5 font-bold text-teal">
+          <Link href={`/student/book/${booking.teacher.id}`} className="inline-flex items-center gap-1.5 font-bold text-cocoa">
             Choose a new time <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -302,7 +302,7 @@ export default function StudentCheckoutPage() {
                 onClick={() => setActiveGateway("credit")}
                 className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                   activeGateway === "credit"
-                    ? "bg-teal text-white shadow-sm"
+                    ? "bg-cocoa text-white shadow-sm"
                     : "text-ink-muted hover:text-ink"
                 }`}
               >
@@ -316,7 +316,7 @@ export default function StudentCheckoutPage() {
                 onClick={() => setActiveGateway("paypal")}
                 className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                   activeGateway === "paypal"
-                    ? "bg-teal text-white shadow-sm"
+                    ? "bg-cocoa text-white shadow-sm"
                     : "text-ink-muted hover:text-ink"
                 }`}
               >
@@ -329,7 +329,7 @@ export default function StudentCheckoutPage() {
                 onClick={() => setActiveGateway("payfast")}
                 className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                   activeGateway === "payfast"
-                    ? "bg-teal text-white shadow-sm"
+                    ? "bg-cocoa text-white shadow-sm"
                     : "text-ink-muted hover:text-ink"
                 }`}
               >
@@ -345,7 +345,7 @@ export default function StudentCheckoutPage() {
                     <Coins className="w-5 h-5 text-accent" />
                     <span className="text-sm font-bold text-ink">Lesson Credit Wallet</span>
                   </div>
-                  <span className="text-xs font-bold text-teal bg-white px-3 py-1 rounded-full border border-divider">
+                  <span className="text-xs font-bold text-cocoa bg-white px-3 py-1 rounded-full border border-divider">
                     Balance: {userCredits} Credits
                   </span>
                 </div>
@@ -379,7 +379,7 @@ export default function StudentCheckoutPage() {
                     </p>
                     <Link
                       href="/pricing"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-teal text-white rounded-xl text-xs font-bold"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-cocoa text-white rounded-xl text-xs font-bold"
                     >
                       Top Up Lesson Pack <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
@@ -444,14 +444,14 @@ export default function StudentCheckoutPage() {
           <div className="space-y-2 text-xs">
             <div className="flex items-center justify-between text-ink-muted">
               <span className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-teal" /> Date:
+                <Calendar className="w-3.5 h-3.5 text-cocoa" /> Date:
               </span>
               <span className="font-bold text-ink">{booking.local_date}</span>
             </div>
 
             <div className="flex items-center justify-between text-ink-muted">
               <span className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-teal" /> Time:
+                <Clock className="w-3.5 h-3.5 text-cocoa" /> Time:
               </span>
               <span className="font-bold text-ink">
                 {booking.local_start_time} - {booking.local_end_time}
@@ -473,7 +473,7 @@ export default function StudentCheckoutPage() {
           <div className="pt-4 border-t border-divider space-y-2 text-xs">
             <div className="flex justify-between text-base font-extrabold text-ink font-serif">
               <span>Total Due:</span>
-              <span className="text-teal">
+              <span className="text-cocoa">
                 {amountLabel ? `${amountLabel} ${amountCurrency}` : "Shown at payment"}
               </span>
             </div>

@@ -55,7 +55,7 @@ export function TutorReviewList({ ratingAvg, ratingCount, reviews = DEFAULT_REVI
         </div>
 
         <div className="flex items-center gap-4 bg-cream-surface p-4 rounded-2xl border border-cream-deep">
-          <div className="text-3xl font-extrabold text-teal font-serif">{ratingAvg.toFixed(2)}</div>
+          <div className="text-3xl font-extrabold text-cocoa font-serif">{ratingAvg.toFixed(2)}</div>
           <div>
             <StarRating rating={ratingAvg} size="md" />
             <div className="text-xs text-ink-muted font-medium mt-0.5">Based on {ratingCount} ratings</div>

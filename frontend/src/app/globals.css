@@ -32,14 +32,14 @@ button {
 }
 
 :focus-visible {
-  outline: 2px solid #A94332;
+  outline: 2px solid #C2410C;
   outline-offset: 3px;
   border-radius: 5px;
 }
 
-/* On the dark green header, hero and footer the terracotta ring is too faint: use gold there. */
+/* On the dark header, hero and footer the orange ring is too faint: use yellow there. */
 .on-dark :focus-visible {
-  outline-color: #F3C995;
+  outline-color: #FFDE3D;
 }
 
 ::selection {

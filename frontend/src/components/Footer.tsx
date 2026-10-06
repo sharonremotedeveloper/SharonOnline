@@ -6,11 +6,11 @@ const linkClass =
 
 export function Footer() {
   return (
-    <footer className="on-dark border-t border-white/10 bg-teal-hover text-white/80">
+    <footer className="on-dark border-t border-white/10 bg-cocoa-hover text-white/80">
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-5 lg:px-8">
         <div className="space-y-4 lg:col-span-2">
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gold font-serif text-lg font-bold text-teal">S</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gold font-serif text-lg font-bold text-cocoa">S</span>
             <span className="font-serif text-xl font-extrabold tracking-tight text-white">
               Sharon<span className="text-gold-bright">Online</span>
             </span>

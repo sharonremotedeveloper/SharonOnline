@@ -78,7 +78,7 @@ export function ReviewRubricModal({
         {/* Header */}
         <div className="bg-cream-50 border-b border-cream-200 p-6 flex items-start justify-between">
           <div>
-            <span className="text-xs font-bold text-teal-700 uppercase tracking-wider">Lesson Feedback</span>
+            <span className="text-xs font-bold text-cocoa-700 uppercase tracking-wider">Lesson Feedback</span>
             <h3 className="text-xl font-extrabold text-ink-900 mt-1">Review Lesson with {teacherName}</h3>
           </div>
           <button
@@ -153,7 +153,7 @@ export function ReviewRubricModal({
                       onClick={() => toggleTag(tag)}
                       className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
                         isSelected
-                          ? "bg-teal-600 border-teal-600 text-white font-semibold shadow-xs"
+                          ? "bg-cocoa-600 border-cocoa-600 text-white font-semibold shadow-xs"
                           : "bg-cream-50 border-cream-200 text-ink-700 hover:border-cream-300"
                       }`}
                     >
@@ -175,13 +175,13 @@ export function ReviewRubricModal({
                 onChange={(e) => setPrivateNotes(e.target.value)}
                 placeholder="Share any specific pacing preferences, topics you'd like to dive into next time, or words of encouragement..."
                 rows={3}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-ink-900 bg-cream-50/30"
+                className="w-full text-sm rounded-xl border border-cream-200 p-3 focus:outline-none focus:ring-2 focus:ring-cocoa-500 focus:border-transparent text-ink-900 bg-cream-50/30"
               />
             </div>
 
             {/* Asymmetric Confidentiality Notice */}
-            <div className="bg-teal-50/70 border border-teal-200/80 rounded-2xl p-3.5 flex items-start gap-3 text-xs text-teal-900">
-              <ShieldCheck className="w-5 h-5 text-teal-700 shrink-0 mt-0.5" />
+            <div className="bg-cocoa-50/70 border border-cocoa-200/80 rounded-2xl p-3.5 flex items-start gap-3 text-xs text-cocoa-900">
+              <ShieldCheck className="w-5 h-5 text-cocoa-700 shrink-0 mt-0.5" />
               <div>
                 <strong className="font-semibold block mb-0.5">Asymmetric Privacy Protection</strong>
                 <span>
@@ -204,7 +204,7 @@ export function ReviewRubricModal({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
               >
                 {isSubmitting ? (
                   <>Submitting...</>

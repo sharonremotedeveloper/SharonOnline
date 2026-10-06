@@ -34,7 +34,7 @@ export function TutorCard({ tutor }: TutorCardProps) {
             <div>
               <div className="flex items-center gap-1.5">
                 <Link href={profileUrl}>
-                  <h3 className="text-lg font-bold text-ink font-serif hover:text-teal transition-colors">
+                  <h3 className="text-lg font-bold text-ink font-serif hover:text-cocoa transition-colors">
                     {tutor.full_name}
                   </h3>
                 </Link>
@@ -64,7 +64,7 @@ export function TutorCard({ tutor }: TutorCardProps) {
 
         {/* Headline & Bio */}
         <div>
-          <h4 className="text-xs font-bold text-teal line-clamp-1">{tutor.headline}</h4>
+          <h4 className="text-xs font-bold text-cocoa line-clamp-1">{tutor.headline}</h4>
           <p className="text-xs text-ink-muted line-clamp-2 mt-1 leading-relaxed">{tutor.bio}</p>
         </div>
 
@@ -86,7 +86,7 @@ export function TutorCard({ tutor }: TutorCardProps) {
         {tutor.next_available_slot && (
           <div className="bg-cream-surface rounded-xl px-3 py-2 border border-cream-deep flex items-center justify-between text-[11px]">
             <span className="text-ink-muted flex items-center gap-1 font-medium">
-              <Clock className="w-3.5 h-3.5 text-teal" /> Next Open:
+              <Clock className="w-3.5 h-3.5 text-cocoa" /> Next Open:
             </span>
             <span className="font-bold text-ink">{tutor.next_available_slot.local_display}</span>
           </div>

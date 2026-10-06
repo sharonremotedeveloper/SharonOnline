@@ -74,12 +74,12 @@ export function GoalSelector() {
   const Icon = activeGoal.icon;
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-divider bg-white shadow-card">
+    <div className="overflow-hidden rounded-[2rem] bg-coral p-3 sm:p-5">
       {/* Goal tabs: a 2/3/5 column grid, so no lone pill wraps onto its own line */}
       <div
         role="tablist"
         aria-label="Choose your learning goal"
-        className="grid grid-cols-2 gap-2 border-b border-divider bg-cream-surface p-3 sm:grid-cols-3 lg:grid-cols-5"
+        className="grid grid-cols-2 gap-2 pb-4 sm:grid-cols-3 lg:grid-cols-5"
       >
         {GOALS.map((goal) => {
           const GoalIcon = goal.icon;
@@ -106,8 +106,8 @@ export function GoalSelector() {
                   document.getElementById(`goal-tab-${next.id}`)?.focus();
                 }
               }}
-              className={`flex min-h-[56px] items-center justify-center gap-2 rounded-xl px-3 py-2 text-center text-base font-bold transition-colors ${
-                isActive ? "bg-teal text-white shadow-sm" : "bg-white text-ink hover:bg-cream-deep"
+              className={`flex min-h-[56px] items-center justify-center gap-2 rounded-full px-3 py-2 text-center text-base font-bold transition-colors ${
+                isActive ? "bg-cocoa text-white shadow-sm" : "bg-white/90 text-ink hover:bg-white"
               } ${goal.id === "travel" ? "col-span-2 sm:col-span-1" : ""}`}
             >
               <GoalIcon className="h-5 w-5 shrink-0" aria-hidden={true} />
@@ -122,11 +122,11 @@ export function GoalSelector() {
         role="tabpanel"
         id="goal-panel"
         aria-labelledby={`goal-tab-${activeGoal.id}`}
-        className="grid items-center gap-8 p-6 sm:p-8 lg:grid-cols-[1fr_auto]"
+        className="grid items-center gap-8 rounded-3xl bg-white p-6 sm:p-8 lg:grid-cols-[1fr_auto]"
       >
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal/10 text-teal">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sun text-cocoa">
               <Icon className="h-6 w-6" aria-hidden={true} />
             </span>
             <div>
@@ -147,7 +147,7 @@ export function GoalSelector() {
 
         <Link
           href={`/tutors?specialty=${encodeURIComponent(activeGoal.label)}`}
-          className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-primary px-6 text-base font-bold text-white shadow-sm transition-colors hover:bg-primary-hover"
+          className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full bg-primary px-7 text-base font-bold text-white shadow-sm transition-colors hover:bg-primary-hover"
         >
           Find tutors for this goal <ArrowRight className="h-5 w-5" aria-hidden={true} />
         </Link>

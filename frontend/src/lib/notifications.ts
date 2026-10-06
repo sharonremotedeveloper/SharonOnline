@@ -41,8 +41,8 @@ export function getNotificationCategoryInfo(kind: string): NotificationCategoryI
     return {
       label: "Booking",
       iconName: "calendar",
-      colorClass: "text-teal",
-      bgClass: "bg-teal-50 text-teal-800 border-teal-200",
+      colorClass: "text-cocoa",
+      bgClass: "bg-cocoa-50 text-cocoa-800 border-cocoa-200",
     };
   }
 

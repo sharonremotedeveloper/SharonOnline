@@ -65,7 +65,7 @@ export default function MaterialsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         {/* Header Hero */}
         <div className="space-y-4 max-w-3xl">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-teal/10 text-teal text-xs font-bold border border-teal/20">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cocoa/10 text-cocoa text-xs font-bold border border-cocoa/20">
             <Sparkles className="w-3.5 h-3.5" />
             <span>CEFR-Aligned ESL Curriculum</span>
           </div>
@@ -89,7 +89,7 @@ export default function MaterialsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search lessons by topic, title, or keywords (e.g. remote work, interview, negotiation)..."
-                className="w-full pl-11 pr-10 py-3 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal transition-all"
+                className="w-full pl-11 pr-10 py-3 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa transition-all"
               />
               {search && (
                 <button
@@ -104,7 +104,7 @@ export default function MaterialsPage() {
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="text-xs font-bold text-ink-muted hover:text-teal underline underline-offset-4 shrink-0 transition-colors"
+                className="text-xs font-bold text-ink-muted hover:text-cocoa underline underline-offset-4 shrink-0 transition-colors"
               >
                 Reset All Filters
               </button>
@@ -144,7 +144,7 @@ export default function MaterialsPage() {
         {/* Catalog Grid */}
         {loading ? (
           <div className="py-24 text-center space-y-4">
-            <div className="w-10 h-10 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="w-10 h-10 border-4 border-cocoa border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-sm font-bold text-ink-muted">Loading curriculum materials...</p>
           </div>
         ) : loadError ? (
@@ -162,7 +162,7 @@ export default function MaterialsPage() {
             </p>
             <button
               onClick={clearFilters}
-              className="px-4 py-2 bg-teal text-white rounded-xl text-xs font-bold hover:bg-teal-hover transition-colors"
+              className="px-4 py-2 bg-cocoa text-white rounded-xl text-xs font-bold hover:bg-cocoa-hover transition-colors"
             >
               Reset Filters
             </button>
@@ -185,7 +185,7 @@ export default function MaterialsPage() {
 
                   {/* Title & Summary */}
                   <div className="space-y-2">
-                    <h3 className="text-xl font-extrabold text-ink font-serif leading-snug group-hover:text-teal transition-colors">
+                    <h3 className="text-xl font-extrabold text-ink font-serif leading-snug group-hover:text-cocoa transition-colors">
                       <Link href={`/materials/${mat.slug}`}>{mat.title}</Link>
                     </h3>
                     <p className="text-xs text-ink-muted line-clamp-3 leading-relaxed font-sans">{mat.summary}</p>
@@ -194,7 +194,7 @@ export default function MaterialsPage() {
                   {/* Meta Details */}
                   <div className="flex items-center gap-4 text-[11px] font-medium text-ink-muted pt-1">
                     <span className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-teal" />
+                      <Clock className="w-3.5 h-3.5 text-cocoa" />
                       {mat.estimated_minutes || 25} mins
                     </span>
                     <span className="flex items-center gap-1.5">
@@ -215,7 +215,7 @@ export default function MaterialsPage() {
                   <div className="flex items-center justify-between gap-2">
                     <Link
                       href={`/materials/${mat.slug}`}
-                      className="px-4 py-2.5 rounded-xl bg-cream-surface hover:bg-teal hover:text-white text-xs font-bold text-ink border border-divider flex items-center gap-1.5 transition-all"
+                      className="px-4 py-2.5 rounded-xl bg-cream-surface hover:bg-cocoa hover:text-white text-xs font-bold text-ink border border-divider flex items-center gap-1.5 transition-all"
                     >
                       <BookOpen className="w-3.5 h-3.5" />
                       <span>Study Lesson</span>

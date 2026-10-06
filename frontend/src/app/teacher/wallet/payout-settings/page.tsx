@@ -137,7 +137,7 @@ export default function TeacherPayoutSettingsPage() {
         {/* Header Card */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-2">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-teal/10 text-teal flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-cocoa/10 text-cocoa flex items-center justify-center">
               <Building2 className="w-5 h-5" />
             </div>
             <div>
@@ -151,7 +151,7 @@ export default function TeacherPayoutSettingsPage() {
 
         {/* Security Alert Callout */}
         <div className="p-4 rounded-2xl bg-cream-surface border border-divider flex items-start gap-3 text-xs">
-          <Lock className="w-4 h-4 text-teal shrink-0 mt-0.5" />
+          <Lock className="w-4 h-4 text-cocoa shrink-0 mt-0.5" />
           <div className="space-y-0.5">
             <span className="font-bold text-ink">Encrypted payout details</span>
             <p className="text-[11px] text-ink-muted leading-relaxed">
@@ -179,7 +179,7 @@ export default function TeacherPayoutSettingsPage() {
               <select
                 value={bankName}
                 onChange={(e) => handleBankChange(e.target.value as BankName)}
-                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-bold text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
               >
                 {SA_BANKS.map((b) => (
                   <option key={b.name} value={b.name}>
@@ -200,7 +200,7 @@ export default function TeacherPayoutSettingsPage() {
                 value={branchCode}
                 onChange={(e) => setBranchCode(e.target.value)}
                 placeholder="470010"
-                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
                 required
               />
             </div>
@@ -213,7 +213,7 @@ export default function TeacherPayoutSettingsPage() {
               autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+              className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
               required
             />
             <p className="text-[11px] text-ink-muted">Required every time banking details are created or changed.</p>
@@ -233,7 +233,7 @@ export default function TeacherPayoutSettingsPage() {
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ""))}
                 placeholder="6-digit code"
-                className="flex-1 p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+                className="flex-1 p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
                 required
                 pattern="\d{6}"
               />
@@ -262,7 +262,7 @@ export default function TeacherPayoutSettingsPage() {
                 value={accountHolder}
                 onChange={(e) => setAccountHolder(e.target.value)}
                 placeholder="e.g. Sharon Mupesa"
-                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-bold text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
                 required
               />
             </div>
@@ -275,7 +275,7 @@ export default function TeacherPayoutSettingsPage() {
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)}
                 placeholder="e.g. 1234567890"
-                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
                 required
               />
             </div>
@@ -291,7 +291,7 @@ export default function TeacherPayoutSettingsPage() {
                   onClick={() => setAccountType("savings")}
                   className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-colors ${
                     accountType === "savings"
-                      ? "bg-teal text-white border-teal shadow-xs"
+                      ? "bg-cocoa text-white border-cocoa shadow-xs"
                       : "bg-cream-surface text-ink-muted border-divider hover:bg-cream-deep"
                   }`}
                 >
@@ -302,7 +302,7 @@ export default function TeacherPayoutSettingsPage() {
                   onClick={() => setAccountType("cheque")}
                   className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-colors ${
                     accountType === "cheque"
-                      ? "bg-teal text-white border-teal shadow-xs"
+                      ? "bg-cocoa text-white border-cocoa shadow-xs"
                       : "bg-cream-surface text-ink-muted border-divider hover:bg-cream-deep"
                   }`}
                 >
@@ -321,7 +321,7 @@ export default function TeacherPayoutSettingsPage() {
                 value={idNumber}
                 onChange={(e) => setIdNumber(e.target.value)}
                 placeholder="13-digit SA ID Number"
-                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
               />
             </div>
           </div>
@@ -331,7 +331,7 @@ export default function TeacherPayoutSettingsPage() {
             <button
               type="submit"
               disabled={saving}
-              className="px-8 py-3.5 bg-teal hover:bg-teal-hover text-white text-xs font-black rounded-2xl flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
+              className="px-8 py-3.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-2xl flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
             >
               <ShieldCheck className="w-4 h-4" />
               <span>{saving ? "Verifying & Encrypting..." : "Save Payout Bank Details"}</span>

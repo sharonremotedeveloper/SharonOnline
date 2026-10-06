@@ -82,7 +82,7 @@ export default function StudentVocabularyPage() {
             onClick={() => setActiveTab("flashcards")}
             className={`px-4 py-2 rounded-xl transition-all ${
               activeTab === "flashcards"
-                ? "bg-white text-teal-900 shadow-xs font-bold"
+                ? "bg-white text-cocoa-900 shadow-xs font-bold"
                 : "text-ink-600 hover:text-ink-900"
             }`}
           >
@@ -92,7 +92,7 @@ export default function StudentVocabularyPage() {
             onClick={() => setActiveTab("wordbank")}
             className={`px-4 py-2 rounded-xl transition-all ${
               activeTab === "wordbank"
-                ? "bg-white text-teal-900 shadow-xs font-bold"
+                ? "bg-white text-cocoa-900 shadow-xs font-bold"
                 : "text-ink-600 hover:text-ink-900"
             }`}
           >
@@ -107,7 +107,7 @@ export default function StudentVocabularyPage() {
         <ErrorState error={error} title="We could not load your vocabulary deck" onRetry={reload} />
       ) : isLoading ? (
         <div className="py-20 text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-8 h-8 border-2 border-cocoa-600 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-xs text-ink-500">Loading your vocabulary deck...</p>
         </div>
       ) : activeTab === "flashcards" ? (
@@ -116,12 +116,12 @@ export default function StudentVocabularyPage() {
           <FlashcardDeck initialCards={cards} onGradeCard={handleGradeCard} />
 
           {/* SRS Explanation Banner */}
-          <div className="max-w-2xl mx-auto bg-teal-50/50 border border-teal-200/60 rounded-3xl p-6 text-xs text-teal-900 space-y-2">
-            <div className="flex items-center gap-2 font-bold text-sm text-teal-950">
-              <Sparkles className="w-4 h-4 text-teal-600" />
+          <div className="max-w-2xl mx-auto bg-cocoa-50/50 border border-cocoa-200/60 rounded-3xl p-6 text-xs text-cocoa-900 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-sm text-cocoa-950">
+              <Sparkles className="w-4 h-4 text-cocoa-600" />
               <span>How Sharon Online Spaced Repetition Works</span>
             </div>
-            <p className="leading-relaxed text-teal-800">
+            <p className="leading-relaxed text-cocoa-800">
               Target words captured in tutor memos automatically populate your deck. When you rate a card as <strong>Again</strong>, it reappears within 24 hours. Rating <strong>Good</strong> schedules it for 3 days, and <strong>Easy</strong> schedules it for 7 days to solidify long-term neurological retention.
             </p>
           </div>
@@ -137,7 +137,7 @@ export default function StudentVocabularyPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search vocabulary words or definitions..."
-                className="w-full pl-10 pr-4 py-2 bg-cream-50/50 border border-cream-200 rounded-xl text-xs sm:text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full pl-10 pr-4 py-2 bg-cream-50/50 border border-cream-200 rounded-xl text-xs sm:text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
               />
             </div>
 
@@ -189,7 +189,7 @@ export default function StudentVocabularyPage() {
                     <td className="py-3.5 px-4 text-right">
                       <button
                         onClick={() => speakWord(card.word)}
-                        className="p-1.5 text-teal-700 hover:text-teal-900 hover:bg-teal-50 rounded-lg transition-colors"
+                        className="p-1.5 text-cocoa-700 hover:text-cocoa-900 hover:bg-cocoa-50 rounded-lg transition-colors"
                         title="Listen"
                       >
                         <Volume2 className="w-4 h-4" />

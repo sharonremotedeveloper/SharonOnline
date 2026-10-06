@@ -157,7 +157,7 @@ export default function AdminDisputesPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-divider pb-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-teal bg-teal/10 px-2.5 py-0.5 rounded-full">
+                    <span className="text-xs font-mono font-bold text-cocoa bg-cocoa/10 px-2.5 py-0.5 rounded-full">
                       CASE: {c.booking_ref}
                     </span>
                     <span className="text-xs text-ink-muted">{c.lesson_date}</span>
@@ -203,7 +203,7 @@ export default function AdminDisputesPage() {
                 {/* 2. Tutor Defense */}
                 <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-2">
                   <div className="flex items-center gap-2 text-ink font-bold">
-                    <User className="w-4 h-4 text-teal" />
+                    <User className="w-4 h-4 text-cocoa" />
                     <span>Tutor Defense Statement</span>
                   </div>
                   <p className="text-ink-muted leading-relaxed font-sans italic bg-white p-3 rounded-xl border border-divider">
@@ -277,7 +277,7 @@ export default function AdminDisputesPage() {
                       type="button"
                       disabled={resolvingId === c.id || pendingConfirm?.caseId === c.id}
                       onClick={() => setPendingConfirm({ caseId: c.id, action: "full_refund_student" })}
-                      className="px-4 py-2 rounded-xl bg-teal text-white text-xs font-bold hover:bg-teal-hover transition-colors shadow-xs"
+                      className="px-4 py-2 rounded-xl bg-cocoa text-white text-xs font-bold hover:bg-cocoa-hover transition-colors shadow-xs"
                     >
                       100% Refund to Student
                     </button>

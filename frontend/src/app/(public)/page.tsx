@@ -53,34 +53,32 @@ export default async function HomePage() {
 
       <HeroSection tutors={featuredTutors} />
 
-      {/* Facts about the lesson, not self-awarded numbers */}
-      <section aria-label="Lesson basics" className="relative z-20 -mt-10 px-4 sm:px-6 lg:px-8">
-        <ul className="mx-auto grid max-w-5xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-divider bg-divider shadow-card md:grid-cols-4">
-          <li className="flex flex-col items-center gap-1 bg-white p-5 text-center sm:p-6">
-            <Clock className="h-6 w-6 text-primary" aria-hidden="true" />
-            <span className="font-serif text-2xl font-bold text-ink">25 minutes</span>
-            <span className="text-sm text-ink-muted">A short lesson that fits your day</span>
+      {/* Facts about the lesson, in a yellow bar like the best tutoring sites. No self-awarded numbers. */}
+      <section aria-label="Lesson basics" className="bg-sun">
+        <ul className="mx-auto grid max-w-7xl grid-cols-1 gap-x-4 gap-y-3 px-4 py-5 sm:grid-cols-2 sm:px-6 md:grid-cols-4 lg:px-8">
+          <li className="flex items-center gap-3 text-ink">
+            <Clock className="h-6 w-6 shrink-0" aria-hidden="true" />
+            <span className="text-base font-bold leading-tight">25-minute lessons</span>
           </li>
-          <li className="flex flex-col items-center gap-1 bg-white p-5 text-center sm:p-6">
-            <UserRound className="h-6 w-6 text-primary" aria-hidden="true" />
-            <span className="font-serif text-2xl font-bold text-ink">1-on-1</span>
-            <span className="text-sm text-ink-muted">Just you and your tutor</span>
+          <li className="flex items-center gap-3 text-ink">
+            <UserRound className="h-6 w-6 shrink-0" aria-hidden="true" />
+            <span className="text-base font-bold leading-tight">Just you and your tutor</span>
           </li>
-          <li className="flex flex-col items-center gap-1 bg-white p-5 text-center sm:p-6">
-            <BadgeCheck className="h-6 w-6 text-primary" aria-hidden="true" />
-            <span className="font-serif text-2xl font-bold text-ink">Checked tutors</span>
-            <span className="text-sm text-ink-muted">Approved by our team first</span>
+          <li className="flex items-center gap-3 text-ink">
+            <BadgeCheck className="h-6 w-6 shrink-0" aria-hidden="true" />
+            <span className="text-base font-bold leading-tight">Tutors checked by our team</span>
           </li>
-          <li className="flex flex-col items-center gap-1 bg-white p-5 text-center sm:p-6">
-            <Wallet className="h-6 w-6 text-primary" aria-hidden="true" />
-            <LessonPriceLabel className="font-serif text-2xl font-bold text-ink" />
-            <span className="text-sm text-ink-muted">Per lesson. Packs cost less.</span>
+          <li className="flex items-center gap-3 text-ink">
+            <Wallet className="h-6 w-6 shrink-0" aria-hidden="true" />
+            <span className="text-base font-bold leading-tight">
+              From <LessonPriceLabel className="font-extrabold" /> a lesson
+            </span>
           </li>
         </ul>
       </section>
 
       {/* Tutors */}
-      <section aria-labelledby="tutors-heading" className="mt-20 border-y border-divider bg-cream-surface px-4 py-16 sm:px-6 lg:px-8">
+      <section aria-labelledby="tutors-heading" className="mt-20 bg-sky-soft px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[76rem] space-y-10">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row sm:items-end">
             <SectionHeading
@@ -92,7 +90,7 @@ export default async function HomePage() {
             />
             <Link
               href="/tutors"
-              className="inline-flex min-h-[44px] shrink-0 items-center gap-2 text-base font-bold text-teal underline-offset-4 hover:underline"
+              className="inline-flex min-h-[44px] shrink-0 items-center gap-2 text-base font-bold text-cocoa underline-offset-4 hover:underline"
             >
               See all tutors <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
@@ -101,7 +99,7 @@ export default async function HomePage() {
           {featuredTutors.length === 0 ? (
             <div className="rounded-2xl border border-divider bg-white p-8 text-center">
               <p className="text-base text-ink-muted">We cannot show our tutors right now. Please try again in a moment.</p>
-              <Link href="/tutors" className="mt-3 inline-flex min-h-[44px] items-center gap-2 text-base font-bold text-teal">
+              <Link href="/tutors" className="mt-3 inline-flex min-h-[44px] items-center gap-2 text-base font-bold text-cocoa">
                 Go to the tutor list <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
             </div>
@@ -145,6 +143,24 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Statement band */}
+      <section className="mt-20 bg-sun px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="font-serif text-4xl font-extrabold leading-tight tracking-tight text-ink sm:text-5xl lg:text-6xl">
+            Make mistakes. Learn faster.
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-lg font-medium text-ink/80">
+            Your tutor is kind and patient. Speaking is the best way to learn, so we help you speak from the first lesson.
+          </p>
+          <Link
+            href="/tutors"
+            className="mt-8 inline-flex min-h-[56px] items-center justify-center gap-2 rounded-full bg-cocoa px-9 text-lg font-bold text-white transition-colors hover:bg-cocoa-hover"
+          >
+            Start learning <ArrowRight className="h-5 w-5" aria-hidden="true" />
+          </Link>
+        </div>
+      </section>
+
       {/* Pricing */}
       <section aria-labelledby="pricing-heading" className="mx-auto mt-20 max-w-7xl space-y-10 px-4 sm:px-6 lg:px-8">
         <SectionHeading
@@ -157,7 +173,7 @@ export default async function HomePage() {
       </section>
 
       {/* Levels */}
-      <section aria-labelledby="levels-heading" className="mt-20 border-y border-divider bg-cream-surface px-4 py-16 sm:px-6 lg:px-8">
+      <section aria-labelledby="levels-heading" className="mt-20 bg-peach-soft px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[76rem] space-y-10">
           <SectionHeading
             id="levels-heading"
@@ -168,7 +184,7 @@ export default async function HomePage() {
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
             {CEFR_LEVELS.map((c) => (
               <li key={c.level} className="rounded-2xl border border-divider bg-white p-4 text-center shadow-card">
-                <div className="font-serif text-3xl font-bold text-teal">{c.level}</div>
+                <div className="font-serif text-3xl font-bold text-cocoa">{c.level}</div>
                 <div className="mt-1 text-base font-bold text-ink">{c.name}</div>
                 <div className="mt-1 text-sm leading-snug text-ink-muted">{c.desc}</div>
               </li>
@@ -177,7 +193,7 @@ export default async function HomePage() {
           <div className="text-center">
             <Link
               href="/materials"
-              className="inline-flex min-h-[44px] items-center gap-2 text-base font-bold text-teal underline-offset-4 hover:underline"
+              className="inline-flex min-h-[44px] items-center gap-2 text-base font-bold text-cocoa underline-offset-4 hover:underline"
             >
               See our lesson materials <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
@@ -191,15 +207,15 @@ export default async function HomePage() {
       </section>
 
       {/* Closing call to action */}
-      <section className="on-dark mx-auto mt-20 max-w-5xl px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl bg-gradient-to-br from-teal to-teal-hover px-6 py-12 text-center text-white shadow-card sm:px-12">
-          <h2 className="font-serif text-3xl font-bold sm:text-4xl">Ready to start speaking?</h2>
-          <p className="mx-auto mt-3 max-w-xl text-lg text-white/90">
+      <section className="mx-auto mt-20 max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="rounded-[2rem] bg-sun px-6 py-14 text-center shadow-card sm:px-12 sm:py-16">
+          <h2 className="font-serif text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">Ready to start speaking?</h2>
+          <p className="mx-auto mt-3 max-w-xl text-lg font-medium text-ink/80">
             Book your first lesson. If it is not right for you, we give your credit back or refund you.
           </p>
           <Link
             href="/tutors"
-            className="mt-7 inline-flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-primary px-8 text-base font-bold text-white shadow-lg transition-colors hover:bg-primary-hover"
+            className="mt-8 inline-flex min-h-[56px] items-center justify-center gap-2 rounded-full bg-cocoa px-9 text-lg font-bold text-white shadow-lg transition-colors hover:bg-cocoa-hover"
           >
             Find your tutor <ArrowRight className="h-5 w-5" aria-hidden="true" />
           </Link>

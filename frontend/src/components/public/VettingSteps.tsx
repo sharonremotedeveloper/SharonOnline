@@ -18,8 +18,8 @@ export function VettingSteps() {
       />
       <ol className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {STEPS.map(({ icon: Icon, title, text }, i) => (
-          <li key={title} className="flex gap-4 rounded-2xl border border-divider bg-white p-5 shadow-card lg:block">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-teal text-gold-bright">
+          <li key={title} className="flex gap-4 rounded-3xl border-2 border-cocoa/10 bg-white p-5 lg:block">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sun text-cocoa">
               <Icon className="h-6 w-6" aria-hidden="true" />
             </span>
             <div className="lg:mt-4">

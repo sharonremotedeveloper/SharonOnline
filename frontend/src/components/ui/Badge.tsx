@@ -27,7 +27,7 @@ export function Badge({
     gold: "bg-gold-surface text-[#8A5B14] border-[#F2DCA8]",
     success: "bg-success-surface text-success border-[#C3D7C8]",
     error: "bg-error-surface text-error border-[#F2C2BA]",
-    teal: "bg-teal-surface text-teal border-teal-border",
+    teal: "bg-cocoa-surface text-cocoa border-cocoa-border",
     plum: "bg-plum-surface text-plum border-[#E6D4E5]",
     neutral: "bg-[#F3EBE4] text-ink-muted border-[#E4D3C6]",
   }[variant];
@@ -43,7 +43,7 @@ export function Badge({
     gold: "bg-gold",
     success: "bg-success",
     error: "bg-error",
-    teal: "bg-teal",
+    teal: "bg-cocoa",
     plum: "bg-plum",
     neutral: "bg-ink-muted",
   }[variant];

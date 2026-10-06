@@ -102,7 +102,7 @@ export default function TeacherClassroomPage() {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center py-20">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-12 h-12 border-4 border-cocoa border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm font-bold text-ink-muted">Loading tutor cockpit &amp; classroom pad...</p>
         </div>
       </div>
@@ -121,7 +121,7 @@ export default function TeacherClassroomPage() {
           <div className="text-center">
             <Link
               href="/teacher/dashboard"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-teal text-white text-xs font-bold"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-cocoa text-white text-xs font-bold"
             >
               <ArrowLeft className="w-4 h-4" /> Return to Teacher Dashboard
             </Link>
@@ -176,7 +176,7 @@ export default function TeacherClassroomPage() {
                 </>
               ) : (
                 <>
-                  <Camera className="w-4 h-4 text-teal" />
+                  <Camera className="w-4 h-4 text-cocoa" />
                   <span>Test AV Setup</span>
                 </>
               )}
@@ -204,7 +204,7 @@ export default function TeacherClassroomPage() {
             <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-teal/10 text-teal flex items-center justify-center font-bold">
+                  <div className="w-9 h-9 rounded-xl bg-cocoa/10 text-cocoa flex items-center justify-center font-bold">
                     <User className="w-4 h-4" />
                   </div>
                   <div>
@@ -214,7 +214,7 @@ export default function TeacherClassroomPage() {
                 </div>
 
                 {booking.student.target_level && (
-                  <span className="text-xs font-extrabold text-teal bg-teal/10 px-2.5 py-1 rounded-full">
+                  <span className="text-xs font-extrabold text-cocoa bg-cocoa/10 px-2.5 py-1 rounded-full">
                     Target CEFR: {booking.student.target_level}
                   </span>
                 )}
@@ -249,7 +249,7 @@ export default function TeacherClassroomPage() {
             <div className="space-y-2 pt-2 border-t border-divider">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
-                  <FileEdit className="w-3.5 h-3.5 text-teal" />
+                  <FileEdit className="w-3.5 h-3.5 text-cocoa" />
                   <span>Lesson Notes &amp; Mispronunciation Scratchpad</span>
                 </label>
                 <span className="text-[11px] text-ink-muted flex items-center gap-1">
@@ -263,7 +263,7 @@ export default function TeacherClassroomPage() {
                 value={scratchNotes}
                 onChange={(e) => handleNotesChange(e.target.value)}
                 placeholder="Jot down mispronounced words, grammar slips, or praise phrases during the call. These will carry into the post-lesson memo..."
-                className="w-full p-3.5 bg-cream-surface rounded-2xl border border-divider text-xs text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal font-sans leading-relaxed"
+                className="w-full p-3.5 bg-cream-surface rounded-2xl border border-divider text-xs text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa font-sans leading-relaxed"
               />
             </div>
 

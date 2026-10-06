@@ -166,7 +166,7 @@ export function NotificationPreferencesModal({
                   >
                     <span
                       className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors ${
-                        inAppEnabled ? "bg-teal" : "bg-slate-300"
+                        inAppEnabled ? "bg-cocoa" : "bg-slate-300"
                       }`}
                     >
                       <span
@@ -193,7 +193,7 @@ export function NotificationPreferencesModal({
                   >
                     <span
                       className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors ${
-                        emailEnabled ? "bg-teal" : "bg-slate-300"
+                        emailEnabled ? "bg-cocoa" : "bg-slate-300"
                       }`}
                     >
                       <span
@@ -213,7 +213,7 @@ export function NotificationPreferencesModal({
         <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-ink/10">
           <span className="text-xs text-ink-muted">
             {savedSuccess ? (
-              <span className="text-teal font-bold flex items-center gap-1">
+              <span className="text-cocoa font-bold flex items-center gap-1">
                 <Check className="w-3.5 h-3.5" /> Saved successfully
               </span>
             ) : (
@@ -229,7 +229,7 @@ export function NotificationPreferencesModal({
               size="sm"
               onClick={handleSave}
               disabled={isSaving}
-              className="bg-teal hover:bg-teal/90 text-white"
+              className="bg-cocoa hover:bg-cocoa/90 text-white"
             >
               {isSaving ? "Saving..." : "Save Preferences"}
             </Button>

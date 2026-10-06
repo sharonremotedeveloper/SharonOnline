@@ -149,8 +149,8 @@ export default function TeacherStudentsCRMPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="bg-teal-50 border border-teal-200/80 px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 text-xs text-teal-900 font-medium">
-            <Lock className="w-3.5 h-3.5 text-teal-700" /> Private to Tutor
+          <div className="bg-cocoa-50 border border-cocoa-200/80 px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 text-xs text-cocoa-900 font-medium">
+            <Lock className="w-3.5 h-3.5 text-cocoa-700" /> Private to Tutor
           </div>
           <Link
             href="/teacher/dashboard"
@@ -179,7 +179,7 @@ export default function TeacherStudentsCRMPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search students by name, country, or CEFR level..."
-            className="w-full pl-10 pr-4 py-2 bg-cream-50/50 border border-cream-200 rounded-xl text-xs sm:text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="w-full pl-10 pr-4 py-2 bg-cream-50/50 border border-cream-200 rounded-xl text-xs sm:text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
           />
         </div>
 
@@ -211,13 +211,13 @@ export default function TeacherStudentsCRMPage() {
             {/* Header: Student Bio & Metas */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-cream-100 pb-5">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-teal-100/70 border border-teal-200 text-teal-800 flex items-center justify-center font-bold text-lg">
+                <div className="w-14 h-14 rounded-2xl bg-cocoa-100/70 border border-cocoa-200 text-cocoa-800 flex items-center justify-center font-bold text-lg">
                   {student.student_name.slice(0, 2).toUpperCase()}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-black text-ink-900">{student.student_name}</h3>
-                    <span className="text-xs bg-teal-50 text-teal-800 border border-teal-200 font-bold px-2.5 py-0.5 rounded-full">
+                    <span className="text-xs bg-cocoa-50 text-cocoa-800 border border-cocoa-200 font-bold px-2.5 py-0.5 rounded-full">
                       CEFR {student.target_level}
                     </span>
                   </div>
@@ -247,13 +247,13 @@ export default function TeacherStudentsCRMPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold text-ink-700 uppercase tracking-wider">
-                    <FileText className="w-4 h-4 text-teal-600" />
+                    <FileText className="w-4 h-4 text-cocoa-600" />
                     <span>Private Pedagogical Notes</span>
                   </div>
                   {editingStudentId !== student.student_id ? (
                     <button
                       onClick={() => handleStartEdit(student)}
-                      className="text-xs font-semibold text-teal-700 hover:text-teal-900 flex items-center gap-1"
+                      className="text-xs font-semibold text-cocoa-700 hover:text-cocoa-900 flex items-center gap-1"
                     >
                       <Edit3 className="w-3 h-3" /> Edit Notes
                     </button>
@@ -273,13 +273,13 @@ export default function TeacherStudentsCRMPage() {
                       value={draftNotes}
                       onChange={(e) => setDraftNotes(e.target.value)}
                       rows={4}
-                      className="w-full text-xs rounded-xl border border-cream-200 p-3 bg-cream-50/50 text-ink-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full text-xs rounded-xl border border-cream-200 p-3 bg-cream-50/50 text-ink-900 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
                     />
                     <div className="flex justify-end">
                       <button
                         onClick={() => handleSaveNotes(student.student_id)}
                         disabled={isSaving}
-                        className="inline-flex items-center gap-1 px-4 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs"
+                        className="inline-flex items-center gap-1 px-4 py-2 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs"
                       >
                         <Save className="w-3.5 h-3.5" /> Save
                       </button>
@@ -324,7 +324,7 @@ export default function TeacherStudentsCRMPage() {
                       value={draftMistake}
                       onChange={(e) => setDraftMistake(e.target.value)}
                       placeholder="Add recurring slip (e.g. 'Article omission')..."
-                      className="flex-1 text-xs rounded-lg border border-cream-200 px-3 py-1.5 bg-white text-ink-900 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                      className="flex-1 text-xs rounded-lg border border-cream-200 px-3 py-1.5 bg-white text-ink-900 focus:outline-none focus:ring-1 focus:ring-cocoa-500"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
@@ -335,7 +335,7 @@ export default function TeacherStudentsCRMPage() {
                     <button
                       type="button"
                       onClick={() => handleAddMistake(student.student_id)}
-                      className="p-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs"
+                      className="p-1.5 bg-cocoa-600 hover:bg-cocoa-700 text-white rounded-lg text-xs"
                       title="Add slip"
                     >
                       <Plus className="w-3.5 h-3.5" />

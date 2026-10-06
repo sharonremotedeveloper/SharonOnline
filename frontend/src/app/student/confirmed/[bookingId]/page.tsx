@@ -54,7 +54,7 @@ export default function BookingConfirmedPage() {
         </p>
         <Link
           href={booking.status === "pending_payment" ? `/student/checkout/${booking.id}` : "/student/dashboard"}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal text-white rounded-xl text-xs font-bold"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-cocoa text-white rounded-xl text-xs font-bold"
         >
           {booking.status === "pending_payment" ? "Back to checkout" : "Return to dashboard"} <ArrowRight className="w-3.5 h-3.5" />
         </Link>
@@ -104,7 +104,7 @@ export default function BookingConfirmedPage() {
         </div>
 
         <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cream-surface border border-cream-deep text-xs font-bold text-teal">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cream-surface border border-cream-deep text-xs font-bold text-cocoa">
             <span>Booking Reference: </span>
             <strong className="text-ink">{booking.booking_reference}</strong>
           </div>
@@ -130,21 +130,21 @@ export default function BookingConfirmedPage() {
           <div>
             <div className="text-base font-bold text-ink">{booking.teacher.full_name}</div>
             <div className="text-xs text-ink-muted">{booking.teacher.accent}</div>
-            <div className="text-[11px] text-teal font-semibold mt-0.5">Verified Native Educator</div>
+            <div className="text-[11px] text-cocoa font-semibold mt-0.5">Verified Native Educator</div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div className="p-4 rounded-2xl bg-cream-surface border border-cream-deep space-y-1">
             <span className="text-ink-muted flex items-center gap-1.5 font-medium">
-              <Calendar className="w-4 h-4 text-teal" /> Date
+              <Calendar className="w-4 h-4 text-cocoa" /> Date
             </span>
             <div className="text-sm font-bold text-ink">{booking.local_date}</div>
           </div>
 
           <div className="p-4 rounded-2xl bg-cream-surface border border-cream-deep space-y-1">
             <span className="text-ink-muted flex items-center gap-1.5 font-medium">
-              <Clock className="w-4 h-4 text-teal" /> Time (Your Local Clock)
+              <Clock className="w-4 h-4 text-cocoa" /> Time (Your Local Clock)
             </span>
             <div className="text-sm font-bold text-ink">
               {booking.local_start_time} - {booking.local_end_time} ({booking.viewer_timezone})
@@ -153,7 +153,7 @@ export default function BookingConfirmedPage() {
         </div>
 
         {/* 1-Click Zoom Link Preview */}
-        <div className="p-5 rounded-2xl bg-teal text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="p-5 rounded-2xl bg-cocoa text-white flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
               <Video className="w-5 h-5 text-accent" />
@@ -184,7 +184,7 @@ export default function BookingConfirmedPage() {
               rel="noopener noreferrer"
               className="py-3 px-4 rounded-xl border border-divider hover:bg-cream-surface text-xs font-bold text-ink flex items-center justify-center gap-2 transition-all"
             >
-              <ExternalLink className="w-3.5 h-3.5 text-teal" /> Add to Google Calendar
+              <ExternalLink className="w-3.5 h-3.5 text-cocoa" /> Add to Google Calendar
             </a>
 
             <button
@@ -212,7 +212,7 @@ export default function BookingConfirmedPage() {
         <div className="pt-2 text-center">
           <Link
             href="/student/dashboard"
-            className="inline-flex items-center gap-2 text-xs font-bold text-teal hover:underline"
+            className="inline-flex items-center gap-2 text-xs font-bold text-cocoa hover:underline"
           >
             <LayoutDashboard className="w-3.5 h-3.5" /> Return to Student Dashboard
           </Link>

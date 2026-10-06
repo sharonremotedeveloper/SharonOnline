@@ -6,7 +6,7 @@ export default function HowItWorksPage() {
   return (
     <div className="space-y-16 pb-16">
       {/* Header */}
-      <section className="bg-teal text-white py-16 px-4 sm:px-6 lg:px-8">
+      <section className="bg-cocoa text-white py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-accent-surface">
             <Sparkles className="w-3.5 h-3.5 text-accent" />
@@ -31,7 +31,7 @@ export default function HowItWorksPage() {
       {/* Deep-Dive Feature Breakdown */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="bg-white p-8 rounded-2xl border border-divider shadow-card space-y-4">
-          <div className="w-12 h-12 rounded-xl bg-teal/10 text-teal flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-cocoa/10 text-cocoa flex items-center justify-center">
             <Clock className="w-6 h-6" />
           </div>
           <h3 className="text-xl font-bold text-ink font-serif">Why 25-Minute Sessions?</h3>

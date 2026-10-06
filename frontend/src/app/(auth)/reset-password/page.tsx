@@ -101,7 +101,7 @@ function ResetForm() {
               autoComplete="new-password"
               value={value}
               onChange={(e) => set(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
           </div>
           {fieldError(name)}

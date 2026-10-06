@@ -78,9 +78,9 @@ export function CookieBanner() {
           /* Slim bar: a few lines on a phone so the menu and the page stay reachable */
           <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-6">
             <p className="flex-1 text-sm text-ink-muted leading-snug">
-              <Cookie className="mr-1.5 -mt-0.5 inline h-4 w-4 text-teal" aria-hidden="true" />
+              <Cookie className="mr-1.5 -mt-0.5 inline h-4 w-4 text-cocoa" aria-hidden="true" />
               We use essential cookies to keep you signed in and lessons running. Optional analytics cookies help us improve the site, and only run if you say yes.{" "}
-              <Link href="/legal/cookies" className="text-teal font-semibold underline underline-offset-2 hover:text-teal-hover">
+              <Link href="/legal/cookies" className="text-cocoa font-semibold underline underline-offset-2 hover:text-cocoa-hover">
                 Cookie policy
               </Link>
             </p>
@@ -89,21 +89,21 @@ export function CookieBanner() {
               <button
                 type="button"
                 onClick={handleRejectNonEssential}
-                className="col-span-1 min-h-[44px] px-4 rounded-xl border border-ink/20 bg-white hover:bg-cream-surface text-sm font-bold text-ink transition-colors focus-visible:ring-2 focus-visible:ring-teal focus:outline-none"
+                className="col-span-1 min-h-[44px] px-4 rounded-xl border border-ink/20 bg-white hover:bg-cream-surface text-sm font-bold text-ink transition-colors focus-visible:ring-2 focus-visible:ring-cocoa focus:outline-none"
               >
                 Reject optional
               </button>
               <button
                 type="button"
                 onClick={handleAcceptAll}
-                className="col-span-1 min-h-[44px] px-4 rounded-xl bg-teal hover:bg-teal-hover text-white text-sm font-bold transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-teal focus:outline-none"
+                className="col-span-1 min-h-[44px] px-4 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-sm font-bold transition-colors shadow-sm focus-visible:ring-2 focus-visible:ring-cocoa focus:outline-none"
               >
                 Accept all
               </button>
               <button
                 type="button"
                 onClick={() => setShowCustomize(true)}
-                className="col-span-2 sm:col-span-1 min-h-[44px] px-3 rounded-xl text-sm font-semibold text-teal underline underline-offset-2 hover:text-teal-hover flex items-center justify-center gap-1.5 focus-visible:ring-2 focus-visible:ring-teal focus:outline-none"
+                className="col-span-2 sm:col-span-1 min-h-[44px] px-3 rounded-xl text-sm font-semibold text-cocoa underline underline-offset-2 hover:text-cocoa-hover flex items-center justify-center gap-1.5 focus-visible:ring-2 focus-visible:ring-cocoa focus:outline-none"
               >
                 <Settings2 className="w-4 h-4" aria-hidden="true" />
                 <span>Choose</span>
@@ -115,7 +115,7 @@ export function CookieBanner() {
           <div className="space-y-6">
             <div className="flex items-center justify-between border-b border-divider pb-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-teal/10 text-teal">
+                <div className="p-2 rounded-xl bg-cocoa/10 text-cocoa">
                   <Shield className="w-5 h-5" />
                 </div>
                 <div>
@@ -143,7 +143,7 @@ export function CookieBanner() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-ink text-sm">Strictly Necessary Cookies</span>
-                    <span className="px-2 py-0.5 rounded-full bg-teal/10 text-teal text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded-full bg-cocoa/10 text-cocoa text-[10px] font-bold">
                       Always Active
                     </span>
                   </div>
@@ -156,7 +156,7 @@ export function CookieBanner() {
                   checked={true}
                   disabled={true}
                   aria-label="Strictly necessary cookies always active"
-                  className="mt-1 w-4 h-4 text-teal rounded border-divider cursor-not-allowed opacity-60"
+                  className="mt-1 w-4 h-4 text-cocoa rounded border-divider cursor-not-allowed opacity-60"
                 />
               </div>
 
@@ -174,7 +174,7 @@ export function CookieBanner() {
                   checked={analyticsConsent}
                   onChange={(e) => setAnalyticsConsent(e.target.checked)}
                   aria-label="Allow performance and analytics cookies"
-                  className="mt-1 w-4 h-4 text-teal rounded border-divider focus:ring-teal cursor-pointer"
+                  className="mt-1 w-4 h-4 text-cocoa rounded border-divider focus:ring-cocoa cursor-pointer"
                 />
               </div>
 
@@ -192,7 +192,7 @@ export function CookieBanner() {
                   checked={marketingConsent}
                   onChange={(e) => setMarketingConsent(e.target.checked)}
                   aria-label="Allow marketing and communication cookies"
-                  className="mt-1 w-4 h-4 text-teal rounded border-divider focus:ring-teal cursor-pointer"
+                  className="mt-1 w-4 h-4 text-cocoa rounded border-divider focus:ring-cocoa cursor-pointer"
                 />
               </div>
             </div>
@@ -216,7 +216,7 @@ export function CookieBanner() {
                 <button
                   type="button"
                   onClick={handleSaveCustom}
-                  className="px-6 py-2 rounded-xl bg-teal hover:bg-teal-hover text-white text-xs font-bold transition-all shadow-sm"
+                  className="px-6 py-2 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold transition-all shadow-sm"
                 >
                   Save My Preferences
                 </button>

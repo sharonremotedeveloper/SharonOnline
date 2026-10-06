@@ -41,7 +41,7 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
             <button
               onClick={() => setFontSize(fontSize === "sm" ? "base" : "lg")}
               title="Increase font"
-              className="px-2 py-0.5 text-xs font-bold text-ink hover:text-teal"
+              className="px-2 py-0.5 text-xs font-bold text-ink hover:text-cocoa"
             >
               A+
             </button>
@@ -55,7 +55,7 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
           onClick={() => setActiveTab("article")}
           className={`flex-1 py-2.5 text-center transition-colors flex items-center justify-center gap-1.5 ${
             activeTab === "article"
-              ? "text-teal border-b-2 border-teal bg-cream-surface/40"
+              ? "text-cocoa border-b-2 border-cocoa bg-cream-surface/40"
               : "text-ink-muted hover:text-ink"
           }`}
         >
@@ -67,7 +67,7 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
           onClick={() => setActiveTab("vocab")}
           className={`flex-1 py-2.5 text-center transition-colors flex items-center justify-center gap-1.5 ${
             activeTab === "vocab"
-              ? "text-teal border-b-2 border-teal bg-cream-surface/40"
+              ? "text-cocoa border-b-2 border-cocoa bg-cream-surface/40"
               : "text-ink-muted hover:text-ink"
           }`}
         >
@@ -79,7 +79,7 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
           onClick={() => setActiveTab("questions")}
           className={`flex-1 py-2.5 text-center transition-colors flex items-center justify-center gap-1.5 ${
             activeTab === "questions"
-              ? "text-teal border-b-2 border-teal bg-cream-surface/40"
+              ? "text-cocoa border-b-2 border-cocoa bg-cream-surface/40"
               : "text-ink-muted hover:text-ink"
           }`}
         >
@@ -92,7 +92,7 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {activeTab === "article" && (
           <div className="space-y-4 font-serif text-ink">
-            <p className="text-xs text-ink-muted font-sans italic border-l-2 border-teal pl-3">
+            <p className="text-xs text-ink-muted font-sans italic border-l-2 border-cocoa pl-3">
               {material.summary}
             </p>
 
@@ -109,7 +109,7 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
               <div key={v.id} className="p-3 rounded-xl bg-cream-surface border border-cream-deep space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-ink font-serif">{v.word}</span>
-                  <span className="text-[10px] text-teal font-semibold">
+                  <span className="text-[10px] text-cocoa font-semibold">
                     {v.phonetic} · {v.part_of_speech}
                   </span>
                 </div>
@@ -124,7 +124,7 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
           <div className="space-y-3">
             {material.discussion_questions?.map((q, idx) => (
               <div key={idx} className="p-3.5 rounded-xl bg-cream-surface border border-cream-deep flex gap-2.5">
-                <span className="w-5 h-5 rounded-full bg-teal text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                <span className="w-5 h-5 rounded-full bg-cocoa text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
                   {idx + 1}
                 </span>
                 <p className="text-xs font-bold text-ink leading-relaxed">{q}</p>

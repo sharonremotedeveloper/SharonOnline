@@ -99,7 +99,7 @@ export default function BookingReviewPage() {
   if (isLoading) {
     return (
       <div className="max-w-2xl mx-auto py-20 text-center space-y-3">
-        <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-8 h-8 border-2 border-cocoa-600 border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-xs text-ink-500">Loading lesson details...</p>
       </div>
     );
@@ -114,7 +114,7 @@ export default function BookingReviewPage() {
           onRetry={() => setReloadTick((t) => t + 1)}
         />
         <div className="text-center">
-          <Link href="/student/history" className="text-xs font-semibold text-teal-700 hover:underline">
+          <Link href="/student/history" className="text-xs font-semibold text-cocoa-700 hover:underline">
             Back to Lesson History
           </Link>
         </div>
@@ -150,7 +150,7 @@ export default function BookingReviewPage() {
         <div className="bg-white rounded-3xl border border-cream-200 shadow-sm overflow-hidden">
           {/* Header */}
           <div className="bg-cream-50 border-b border-cream-200 p-6 sm:p-8 space-y-4">
-            <span className="text-xs font-bold text-teal-700 uppercase tracking-wider">Lesson Feedback</span>
+            <span className="text-xs font-bold text-cocoa-700 uppercase tracking-wider">Lesson Feedback</span>
             <div className="flex items-center gap-4">
               {lesson?.teacher.avatar && (
                 <img
@@ -224,7 +224,7 @@ export default function BookingReviewPage() {
                       onClick={() => toggleTag(tag)}
                       className={`text-xs px-3.5 py-2 rounded-full border transition-all ${
                         isSelected
-                          ? "bg-teal-600 border-teal-600 text-white font-semibold shadow-xs"
+                          ? "bg-cocoa-600 border-cocoa-600 text-white font-semibold shadow-xs"
                           : "bg-cream-50 border-cream-200 text-ink-700 hover:border-cream-300"
                       }`}
                     >
@@ -246,13 +246,13 @@ export default function BookingReviewPage() {
                 onChange={(e) => setPrivateNotes(e.target.value)}
                 placeholder="Share any pacing notes, topics you'd like to dive into for your next session, or specific grammar focus..."
                 rows={4}
-                className="w-full text-sm rounded-2xl border border-cream-200 p-4 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-ink-900 bg-cream-50/30"
+                className="w-full text-sm rounded-2xl border border-cream-200 p-4 focus:outline-none focus:ring-2 focus:ring-cocoa-500 focus:border-transparent text-ink-900 bg-cream-50/30"
               />
             </div>
 
             {/* Asymmetric Notice */}
-            <div className="bg-teal-50/70 border border-teal-200/80 rounded-2xl p-4 flex items-start gap-3 text-xs text-teal-900">
-              <ShieldCheck className="w-5 h-5 text-teal-700 shrink-0 mt-0.5" />
+            <div className="bg-cocoa-50/70 border border-cocoa-200/80 rounded-2xl p-4 flex items-start gap-3 text-xs text-cocoa-900">
+              <ShieldCheck className="w-5 h-5 text-cocoa-700 shrink-0 mt-0.5" />
               <div>
                 <strong className="font-semibold block mb-0.5">Asymmetric Privacy Protection</strong>
                 <span>
@@ -274,7 +274,7 @@ export default function BookingReviewPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="inline-flex items-center gap-2 px-7 py-3 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+                className="inline-flex items-center gap-2 px-7 py-3 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
               >
                 {isSubmitting ? (
                   <>Submitting...</>

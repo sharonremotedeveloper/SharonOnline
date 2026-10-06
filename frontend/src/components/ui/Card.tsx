@@ -17,7 +17,7 @@ export function Card({
 }: CardProps) {
   const accentBorder = {
     none: "",
-    teal: "border-t-[3px] border-t-teal",
+    teal: "border-t-[3px] border-t-cocoa",
     gold: "border-t-[3px] border-t-gold",
     primary: "border-t-[3px] border-t-primary",
     plum: "border-t-[3px] border-t-plum",

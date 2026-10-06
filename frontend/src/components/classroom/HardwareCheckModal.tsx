@@ -209,7 +209,7 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-bold text-ink">
               <span className="flex items-center gap-2">
-                <Camera className="w-4 h-4 text-teal" />
+                <Camera className="w-4 h-4 text-cocoa" />
                 <span>Webcam Video Feed</span>
               </span>
               {hasCamera === true ? (
@@ -248,7 +248,7 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
           <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-3">
             <div className="flex items-center justify-between text-xs font-bold text-ink">
               <span className="flex items-center gap-2">
-                <Mic className="w-4 h-4 text-teal" />
+                <Mic className="w-4 h-4 text-cocoa" />
                 <span>Microphone Input Level</span>
               </span>
               <span className="text-[11px] text-ink-muted">Speak to test bar</span>
@@ -279,7 +279,7 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="p-4 rounded-2xl bg-cream-surface border border-divider flex flex-col justify-between space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-ink">
-                <Volume2 className="w-4 h-4 text-teal" />
+                <Volume2 className="w-4 h-4 text-cocoa" />
                 <span>Speaker Output</span>
               </div>
               <button
@@ -287,14 +287,14 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
                 onClick={playTestChime}
                 className="w-full py-2 px-3 rounded-xl bg-white hover:bg-cream-deep border border-divider text-xs font-bold text-ink flex items-center justify-center gap-2 transition-colors shadow-xs"
               >
-                <Play className="w-3.5 h-3.5 text-teal" />
+                <Play className="w-3.5 h-3.5 text-cocoa" />
                 <span>{speakerTested ? "Play Sound Again" : "Play Test Chime"}</span>
               </button>
             </div>
 
             <div className="p-4 rounded-2xl bg-cream-surface border border-divider flex flex-col justify-between space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-ink">
-                <Wifi className="w-4 h-4 text-teal" />
+                <Wifi className="w-4 h-4 text-cocoa" />
                 <span>Network Stability</span>
               </div>
               <div className="flex items-center justify-between text-xs bg-white p-2 rounded-xl border border-divider font-bold">
@@ -326,7 +326,7 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
           <button
             type="button"
             onClick={handleFinish}
-            className="px-6 py-2.5 rounded-2xl bg-teal hover:bg-teal-hover text-white text-xs font-extrabold flex items-center gap-2 transition-all shadow-md"
+            className="px-6 py-2.5 rounded-2xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-extrabold flex items-center gap-2 transition-all shadow-md"
           >
             <CheckCircle2 className="w-4 h-4" />
             <span>Ready for Lesson</span>

@@ -41,7 +41,7 @@ export function Button({
     gold:
       "bg-gold text-ink font-semibold border border-gold hover:bg-gold-hover focus-visible:outline-[#8A5B14]",
     teal:
-      "bg-teal text-white border border-teal hover:bg-teal-hover focus-visible:outline-teal",
+      "bg-cocoa text-white border border-cocoa hover:bg-cocoa-hover focus-visible:outline-cocoa",
   };
 
   const widthClass = full ? "w-full" : "";

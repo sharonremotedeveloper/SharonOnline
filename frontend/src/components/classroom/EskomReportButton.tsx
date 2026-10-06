@@ -91,7 +91,7 @@ export function EskomReportButton({
 
             <div className="p-3.5 rounded-2xl bg-cream-surface border border-divider text-xs space-y-1.5">
               <span className="font-bold text-ink flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-teal" /> Eskom Power Guard Protection:
+                <ShieldCheck className="w-4 h-4 text-cocoa" /> Eskom Power Guard Protection:
               </span>
               <ul className="text-[11px] text-ink-muted list-disc list-inside space-y-0.5">
                 <li>Immediate 1-credit refund credited to student wallet</li>

@@ -93,7 +93,7 @@ export default function TeacherDashboardPage() {
               href="/teacher/schedule"
               className="px-4 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-1.5 transition-colors"
             >
-              <Calendar className="w-3.5 h-3.5 text-teal" />
+              <Calendar className="w-3.5 h-3.5 text-cocoa" />
               <span>Availability</span>
             </Link>
 
@@ -107,7 +107,7 @@ export default function TeacherDashboardPage() {
 
             <Link
               href="/teacher/wallet"
-              className="px-4 py-2.5 bg-teal hover:bg-teal-hover text-white text-xs font-black rounded-xl shadow-sm flex items-center gap-1.5 transition-colors"
+              className="px-4 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-xl shadow-sm flex items-center gap-1.5 transition-colors"
             >
               <DollarSign className="w-3.5 h-3.5" />
               <span>{wallet ? `Wallet: R${wallet.cleared_balance_zar.toFixed(0)} ZAR` : "Wallet"}</span>
@@ -165,7 +165,7 @@ export default function TeacherDashboardPage() {
             <p className="text-xs text-ink-muted">Confirmed bookings will appear here once students book your slots.</p>
           </div>
         ) : (
-          <div className="bg-gradient-to-br from-[#0B3530] via-teal to-[#082622] text-white rounded-3xl p-6 sm:p-10 shadow-card space-y-6 relative overflow-hidden">
+          <div className="bg-gradient-to-br from-[#0B3530] via-cocoa to-[#082622] text-white rounded-3xl p-6 sm:p-10 shadow-card space-y-6 relative overflow-hidden">
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-2 text-xs font-extrabold bg-white/10 border border-white/20 px-3.5 py-1 rounded-full text-accent-surface">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -226,7 +226,7 @@ export default function TeacherDashboardPage() {
 
           <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
             <div className="text-xs font-bold text-ink-muted">Completed Lessons This Month</div>
-            <div className="text-2xl font-black text-teal font-serif">
+            <div className="text-2xl font-black text-cocoa font-serif">
               {bookingsQ.data ? `${completedThisMonth} ${completedThisMonth === 1 ? "Class" : "Classes"}` : "—"}
             </div>
             <p className="text-[11px] text-ink-muted">
@@ -267,7 +267,7 @@ export default function TeacherDashboardPage() {
               <p className="text-xs text-ink-muted">All sessions synchronized across timezones</p>
             </div>
             {bookingsQ.data && (
-              <span className="text-xs font-bold text-teal bg-teal/10 px-3 py-1 rounded-full">
+              <span className="text-xs font-bold text-cocoa bg-cocoa/10 px-3 py-1 rounded-full">
                 {todayCount} Scheduled {todayCount === 1 ? "Lesson" : "Lessons"}
               </span>
             )}
@@ -284,7 +284,7 @@ export default function TeacherDashboardPage() {
               {todayLessons.map((b, i) => (
                 <div key={b.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-2xl bg-teal/10 text-teal font-black flex items-center justify-center text-xs">
+                    <div className="w-10 h-10 rounded-2xl bg-cocoa/10 text-cocoa font-black flex items-center justify-center text-xs">
                       {b.student.full_name
                         .split(" ")
                         .map((w) => w[0])
@@ -306,7 +306,7 @@ export default function TeacherDashboardPage() {
                       href={`/teacher/classroom/${b.id}`}
                       className={
                         i === 0
-                          ? "px-3.5 py-1.5 bg-teal hover:bg-teal-hover text-white text-xs font-bold rounded-xl transition-colors"
+                          ? "px-3.5 py-1.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold rounded-xl transition-colors"
                           : "px-3.5 py-1.5 bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold rounded-xl border border-divider transition-colors"
                       }
                     >

@@ -54,7 +54,7 @@ function LoginForm() {
   return (
     <div className="bg-white rounded-3xl p-8 max-w-md w-full border border-divider shadow-card space-y-6">
       <div className="text-center space-y-2">
-        <div className="w-12 h-12 rounded-2xl bg-teal text-gold-bright font-black text-2xl flex items-center justify-center mx-auto shadow-sm font-serif">
+        <div className="w-12 h-12 rounded-2xl bg-cocoa text-gold-bright font-black text-2xl flex items-center justify-center mx-auto shadow-sm font-serif">
           S
         </div>
         <h1 className="text-2xl font-extrabold text-ink font-serif">Sign In to Sharon Online</h1>
@@ -90,7 +90,7 @@ function LoginForm() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="you@example.com or username"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
           </div>
         </div>
@@ -110,7 +110,7 @@ function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
           </div>
         </div>
@@ -128,7 +128,7 @@ function LoginForm() {
 
       <div className="pt-2 text-center text-xs text-ink-muted">
         Don't have an account?{" "}
-        <Link href="/register" className="text-teal font-bold hover:underline">
+        <Link href="/register" className="text-cocoa font-bold hover:underline">
           Create Account
         </Link>
       </div>

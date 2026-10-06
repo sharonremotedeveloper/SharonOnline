@@ -37,7 +37,7 @@ export function PayFastForm({
     <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-teal/10 text-teal flex items-center justify-center font-bold text-xs">
+          <div className="w-8 h-8 rounded-xl bg-cocoa/10 text-cocoa flex items-center justify-center font-bold text-xs">
             🇿🇦
           </div>
           <div>
@@ -46,7 +46,7 @@ export function PayFastForm({
           </div>
         </div>
 
-        <span className="text-sm font-extrabold text-teal font-serif">
+        <span className="text-sm font-extrabold text-cocoa font-serif">
           {amountLabel ?? "Price unavailable"}
         </span>
       </div>
@@ -70,7 +70,7 @@ export function PayFastForm({
         <button
           type="submit"
           disabled={disabled || processing}
-          className="w-full py-3.5 bg-teal hover:bg-teal-hover text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+          className="w-full py-3.5 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {processing ? (
             "Starting PayFast..."

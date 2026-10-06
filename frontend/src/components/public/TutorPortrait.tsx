@@ -22,7 +22,7 @@ export function TutorPortrait({ src, name, className = "aspect-[4/5] w-full", si
       <div
         role="img"
         aria-label={name}
-        className={`${className} flex items-center justify-center bg-gradient-to-br from-teal to-teal-hover font-serif text-4xl font-bold text-gold-bright`}
+        className={`${className} flex items-center justify-center bg-gradient-to-br from-cocoa to-cocoa-hover font-serif text-4xl font-bold text-gold-bright`}
       >
         {initials}
       </div>

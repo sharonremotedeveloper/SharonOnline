@@ -24,8 +24,8 @@ const config: Config = {
           faint: "#8A746A",
         },
         primary: {
-          DEFAULT: "#A94332",
-          hover: "#873426",
+          DEFAULT: "#C2410C",
+          hover: "#9A3412",
           surface: "#FFF4EA",
         },
         terracotta: {
@@ -39,12 +39,21 @@ const config: Config = {
           surface: "#FAF0DC",
           bright: "#D4A84B",
         },
-        teal: {
-          DEFAULT: "#0D4440",
-          hover: "#092E2B",
-          surface: "#E6F2F0",
-          border: "#A8D0C8",
+        // Brand dark: warm near-black (the old cold green, then a plum, were both dropped). Same token as before so
+        // every "cocoa" class follows. Surface and border are soft yellow tints.
+        cocoa: {
+          DEFAULT: "#201A17",
+          hover: "#120F0D",
+          deep: "#120F0D",
+          mid: "#3A302B",
+          surface: "#FFF6CC",
+          border: "#EFE0A0",
         },
+        // Cambly-style accents: sunny yellow, coral and sky blue for colour-blocked sections and highlights
+        sun: { DEFAULT: "#FFDE3D", soft: "#FFF3A8" },
+        coral: { DEFAULT: "#FF6B4A", soft: "#FFD6CB" },
+        sky: { DEFAULT: "#9ED8FF", soft: "#DDF1FF" },
+        peach: { DEFAULT: "#FFD9C4", soft: "#FFEDE2" },
         plum: {
           DEFAULT: "#4A2948",
           surface: "#FFF1E6",
