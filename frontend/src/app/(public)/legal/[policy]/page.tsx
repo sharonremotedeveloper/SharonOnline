@@ -223,7 +223,7 @@ export default async function LegalPolicyPage({ params }: LegalPageProps) {
                     <a
                       key={item.id}
                       href={`#${item.id}`}
-                      className={`block py-3 text-ink-muted hover:text-cocoa transition-colors leading-snug ${
+                      className={`flex min-h-11 items-center text-ink-muted hover:text-cocoa transition-colors leading-snug ${
                         item.level === 3 ? "pl-3 text-sm" : "font-semibold"
                       }`}
                     >

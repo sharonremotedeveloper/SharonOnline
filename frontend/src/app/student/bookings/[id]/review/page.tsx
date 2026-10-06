@@ -244,7 +244,7 @@ export default function BookingReviewPage() {
               <label htmlFor="f-private-constructive-not" className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
                 Private Constructive Note for {lesson?.teacher.name || "Tutor"}
               </label>
-              <textarea id="f-private-constructive-not"
+              <textarea id="f-private-constructive-not" aria-invalid={submitError ? true : undefined} aria-describedby={submitError ? "review-error" : undefined}
                 value={privateNotes}
                 onChange={(e) => setPrivateNotes(e.target.value)}
                 placeholder="Share any pacing notes, topics you'd like to dive into for your next session, or specific grammar focus..."
@@ -264,7 +264,7 @@ export default function BookingReviewPage() {
               </div>
             </div>
 
-            <InlineError error={submitError} />
+            <InlineError id="review-error" error={submitError} />
 
             {/* Actions */}
             <div className="flex items-center justify-end gap-3 pt-2">

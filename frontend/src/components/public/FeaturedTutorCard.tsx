@@ -28,7 +28,7 @@ export function FeaturedTutorCard({ tutor }: { tutor: FeaturedTeacher }) {
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div>
           <h3 className="font-serif text-lg font-bold leading-tight text-ink">
-            <Link href={href} className="inline-block py-2 hover:text-primary">
+            <Link href={href} className="inline-flex min-h-11 items-center hover:text-primary">
               {tutor.name}
             </Link>
           </h3>

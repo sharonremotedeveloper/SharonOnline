@@ -92,7 +92,7 @@ export default function StudentHistoryPage() {
           />
         </div>
 
-        <div className="flex items-center gap-1.5 bg-cream-50 p-1 rounded-xl border border-cream-200 text-sm font-medium">
+        <div className="flex flex-wrap items-center gap-1.5 bg-cream-50 p-1 rounded-xl border border-cream-200 text-sm font-medium">
           <button
             onClick={() => setStatusFilter("all")}
             className={`min-h-11 inline-flex items-center px-3 py-1.5 rounded-lg transition-colors ${

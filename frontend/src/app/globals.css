@@ -4,6 +4,14 @@
 
 /* Fonts are self-hosted through next/font (see app/layout.tsx), which sets --font-dm-sans and --font-lora. */
 
+html.cookie-bar-open {
+  scroll-padding-bottom: 9rem;
+}
+
+html.cookie-bar-open body {
+  padding-bottom: 9rem;
+}
+
 html {
   font-family: var(--font-dm-sans), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: #FFF8F2;

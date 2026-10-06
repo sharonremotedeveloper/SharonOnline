@@ -94,7 +94,7 @@ export default function SupportPage() {
                 key={i}
                 className="bg-white rounded-2xl p-6 border border-divider shadow-card group cursor-pointer"
               >
-                <summary className="text-base font-bold text-ink flex items-center justify-between list-none">
+                <summary className="min-h-11 cursor-pointer py-2 text-base font-bold text-ink flex items-center justify-between list-none">
                   <span>{faq.q}</span>
                   <span className="text-primary font-serif group-open:rotate-180 transition-transform">▼</span>
                 </summary>
@@ -155,7 +155,7 @@ export default function SupportPage() {
 
               <div>
                 <label htmlFor="f-your-full-name" className="block text-sm font-bold text-ink mb-1">Your Full Name</label>
-                <input id="f-your-full-name"
+                <input id="f-your-full-name" aria-invalid={submitError ? true : undefined} aria-describedby={submitError ? "support-error" : undefined}
                   type="text"
                   required
                   placeholder="e.g. Aiko Tanaka"
@@ -167,7 +167,7 @@ export default function SupportPage() {
 
               <div>
                 <label htmlFor="f-your-email-address" className="block text-sm font-bold text-ink mb-1">Your Email Address</label>
-                <input id="f-your-email-address"
+                <input id="f-your-email-address" aria-invalid={submitError ? true : undefined} aria-describedby={submitError ? "support-error" : undefined}
                   type="email"
                   required
                   placeholder="aiko@example.com"
@@ -179,7 +179,7 @@ export default function SupportPage() {
 
               <div>
                 <label htmlFor="f-subject" className="block text-sm font-bold text-ink mb-1">Subject</label>
-                <input id="f-subject"
+                <input id="f-subject" aria-invalid={submitError ? true : undefined} aria-describedby={submitError ? "support-error" : undefined}
                   type="text"
                   required
                   placeholder="e.g. Question about PayPal checkout or slot booking"
@@ -191,7 +191,7 @@ export default function SupportPage() {
 
               <div>
                 <label htmlFor="f-message" className="block text-sm font-bold text-ink mb-1">Message</label>
-                <textarea id="f-message"
+                <textarea id="f-message" aria-invalid={submitError ? true : undefined} aria-describedby={submitError ? "support-error" : undefined}
                   required
                   rows={4}
                   placeholder="How can we assist you today?"
@@ -201,7 +201,7 @@ export default function SupportPage() {
                 />
               </div>
 
-              <InlineError error={submitError} />
+              <InlineError id="support-error" error={submitError} />
 
               <button
                 type="submit"

@@ -63,6 +63,13 @@ export function CookieBanner() {
     saveConsent(analyticsConsent, marketingConsent);
   };
 
+  // While the fixed bar is showing, keep focused controls clear of it (scroll-padding in globals.css) and reserve space at the page end.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("cookie-bar-open", mounted && showBanner);
+    return () => root.classList.remove("cookie-bar-open");
+  }, [mounted, showBanner]);
+
   if (!mounted || !showBanner) {
     return null;
   }

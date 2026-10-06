@@ -294,7 +294,7 @@ export default function StudentDashboardPage() {
           </div>
           <Link
             href="/student/history"
-            className="text-sm font-semibold text-cocoa-700 hover:text-cocoa-900 flex items-center gap-1"
+            className="min-h-11 text-sm font-semibold text-cocoa-700 hover:text-cocoa-900 flex items-center gap-1"
           >
             Full Lesson Archive{lessonsQ.data ? ` (${completedLessons.length})` : ""} <ChevronRight className="w-3.5 h-3.5" />
           </Link>

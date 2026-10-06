@@ -312,7 +312,7 @@ export function WeeklyScheduleGrid() {
                       <button
                         type="button"
                         onClick={() => toggleSlot(d.id, blockIdx)}
-                        className={`w-full min-h-[44px] py-2 px-1 rounded-xl text-sm font-bold transition-all ${
+                        className={`w-full min-h-11 min-w-11 py-2 px-1 rounded-xl text-sm font-bold transition-all ${
                           isOpen
                             ? "bg-cocoa text-white shadow-xs hover:bg-cocoa-hover"
                             : "bg-cream-surface text-ink-muted hover:bg-cream-deep hover:text-ink border border-divider/60"
