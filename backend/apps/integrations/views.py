@@ -404,6 +404,48 @@ class VideoSdkWebhookReceiverView(APIView):
 
         return True, "Valid"
 
+    def _handle_url_validation(self, payload_data: dict) -> Response:
+        plain_token = payload_data.get('payload', {}).get('plainToken', '')
+        if not plain_token:
+            return Response({"error": "Missing plainToken in URL validation challenge"}, status=status.HTTP_400_BAD_REQUEST)
+        secret = self.get_webhook_secret()
+        encrypted_token = hmac.new(secret.encode('utf-8'), plain_token.encode('utf-8'), hashlib.sha256).hexdigest()
+        logger.info("[VIDEO_SDK_WEBHOOK] Handshake challenge responded successfully.")
+        return Response({"plainToken": plain_token, "encryptedToken": encrypted_token}, status=status.HTTP_200_OK)
+
+    def _parse_session_booking(self, payload_data: dict):
+        payload = payload_data.get('payload') or {}
+        session_obj = payload.get('object') if isinstance(payload, dict) else {}
+        if not isinstance(session_obj, dict):
+            return None, None, Response({"status": "skipped", "reason": "No usable session object"}, status=status.HTTP_200_OK)
+
+        topic = str(
+            session_obj.get('session_name')
+            or session_obj.get('topic')
+            or session_obj.get('session_topic')
+            or ''
+        ).strip()
+        if not topic.startswith('lesson-'):
+            return None, None, Response({"status": "skipped", "reason": "Not a lesson topic"}, status=status.HTTP_200_OK)
+
+        booking_id_str = topic[len('lesson-'):]
+        try:
+            booking_uuid = uuid.UUID(booking_id_str)
+        except (ValueError, TypeError):
+            return None, None, Response({"status": "skipped", "reason": "Invalid booking ID in topic"}, status=status.HTTP_200_OK)
+
+        return booking_uuid, session_obj, None
+
+    def _dispatch_telemetry(self, event: str, booking: Booking, session_obj: dict, event_id: str, now) -> None:
+        if event in ('session.user_joined', 'session.participant_joined', 'postsession.user_joined'):
+            video_attendance.on_video_user_joined(booking, session_obj, now, event_id=event_id)
+        elif event in ('session.user_left', 'session.participant_left', 'postsession.user_left'):
+            video_attendance.on_video_user_left(booking, session_obj, now, event_id=event_id)
+        elif event == 'session.started':
+            video_attendance.on_video_session_started(booking, session_obj, now, event_id=event_id)
+        elif event == 'session.ended':
+            video_attendance.on_video_session_ended(booking, session_obj, now, event_id=event_id)
+
     def post(self, request, *args, **kwargs):
         # 1. Parse JSON payload
         try:
@@ -417,13 +459,7 @@ class VideoSdkWebhookReceiverView(APIView):
 
         # 2. URL Validation Challenge Handshake
         if event == 'endpoint.url_validation':
-            plain_token = payload_data.get('payload', {}).get('plainToken', '')
-            if not plain_token:
-                return Response({"error": "Missing plainToken in URL validation challenge"}, status=status.HTTP_400_BAD_REQUEST)
-            secret = self.get_webhook_secret()
-            encrypted_token = hmac.new(secret.encode('utf-8'), plain_token.encode('utf-8'), hashlib.sha256).hexdigest()
-            logger.info("[VIDEO_SDK_WEBHOOK] Handshake challenge responded successfully.")
-            return Response({"plainToken": plain_token, "encryptedToken": encrypted_token}, status=status.HTTP_200_OK)
+            return self._handle_url_validation(payload_data)
 
         # 3. Signature verification
         headers_dict = {
@@ -436,30 +472,14 @@ class VideoSdkWebhookReceiverView(APIView):
             return Response({"error": reason}, status=status.HTTP_401_UNAUTHORIZED)
 
         # 4. Extract session topic/booking
-        payload = payload_data.get('payload') or {}
-        session_obj = payload.get('object') if isinstance(payload, dict) else {}
-        if not isinstance(session_obj, dict):
-            return Response({"status": "skipped", "reason": "No usable session object"}, status=status.HTTP_200_OK)
-
-        topic = str(
-            session_obj.get('session_name')
-            or session_obj.get('topic')
-            or session_obj.get('session_topic')
-            or ''
-        ).strip()
-        if not topic.startswith('lesson-'):
-            return Response({"status": "skipped", "reason": "Not a lesson topic"}, status=status.HTTP_200_OK)
-
-        booking_id_str = topic[len('lesson-'):]
-        try:
-            booking_uuid = uuid.UUID(booking_id_str)
-        except (ValueError, TypeError):
-            return Response({"status": "skipped", "reason": "Invalid booking ID in topic"}, status=status.HTTP_200_OK)
+        booking_uuid, session_obj, skip_response = self._parse_session_booking(payload_data)
+        if skip_response:
+            return skip_response
 
         # 5. Row-locked atomic processing
         with transaction.atomic():
             booking = (
-                Booking.objects.select_for_update()
+                Booking.objects.select_for_update(of=('self',))
                 .filter(id=booking_uuid)
                 .select_related('teacher__user', 'student')
                 .first()
@@ -469,19 +489,13 @@ class VideoSdkWebhookReceiverView(APIView):
                 return Response({"status": "ignored", "reason": "Booking not found"}, status=status.HTTP_200_OK)
 
             now = timezone.now()
-            if event in ('session.user_joined', 'session.participant_joined', 'postsession.user_joined'):
-                video_attendance.on_video_user_joined(booking, session_obj, now, event_id=event_id)
-            elif event in ('session.user_left', 'session.participant_left', 'postsession.user_left'):
-                video_attendance.on_video_user_left(booking, session_obj, now, event_id=event_id)
-            elif event == 'session.started':
-                video_attendance.on_video_session_started(booking, session_obj, now, event_id=event_id)
-            elif event == 'session.ended':
-                video_attendance.on_video_session_ended(booking, session_obj, now, event_id=event_id)
+            self._dispatch_telemetry(event, booking, session_obj, event_id, now)
 
         return Response({
             "status": "success",
             "event": event,
             "booking_id": str(booking_uuid),
         }, status=status.HTTP_200_OK)
+
 
 

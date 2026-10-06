@@ -177,11 +177,11 @@ def _quarantine_if_contradicted(
 
     verdict = booking.status
     logger.warning(
-        "[LATE VIDEO TELEMETRY HAZARD] Booking %s is %s but %s telemetry for %s arrived; quarantining to DISPUTED.",
+        "[LATE VIDEO TELEMETRY HAZARD] Booking %s is %s but %s telemetry for role %s arrived; quarantining to DISPUTED.",
         booking.id,
         verdict,
         what,
-        evidence_email,
+        role,
     )
     transition_booking(
         booking,
@@ -276,8 +276,8 @@ def on_video_user_left(
     )
 
     logger.info(
-        "[VIDEO SDK ATTENDANCE] %s left booking %s after %sm",
-        email or 'unmatched participant',
+        "[VIDEO SDK ATTENDANCE] Participant (%s) left booking %s after %sm",
+        role,
         booking.id,
         row.total_minutes,
     )
