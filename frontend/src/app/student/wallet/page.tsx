@@ -181,7 +181,7 @@ export default function StudentWalletPage() {
         <div className="flex flex-col sm:items-end gap-2 border-t sm:border-t-0 pt-4 sm:pt-0 border-white/10">
           <Link
             href="/tutors"
-            className="px-6 py-3 bg-accent hover:bg-gold-bright text-ink rounded-xl text-sm font-extrabold transition-all shadow-sm flex items-center justify-center gap-2"
+            className="px-6 py-3 bg-accent hover:bg-accent-500 text-ink rounded-xl text-sm font-extrabold transition-all shadow-sm flex items-center justify-center gap-2"
           >
             <span>Book a Lesson</span>
             <ArrowRight className="w-4 h-4" />
@@ -271,7 +271,7 @@ export default function StudentWalletPage() {
                   onClick={() => startPackPurchase(bundle)}
                   className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 ${
                     bundle.credits === 10
-                      ? "bg-primary hover:bg-primary-hover text-white shadow-sm"
+                      ? "bg-cocoa hover:bg-cocoa-hover text-white shadow-sm"
                       : "bg-cream-surface hover:bg-cream-deep text-ink border border-divider"
                   }`}
                 >

@@ -63,6 +63,8 @@ export function ChangePasswordCard() {
               <label htmlFor={`cp-${name}`} className="text-sm font-bold text-ink">{label}</label>
               <input
                 id={`cp-${name}`}
+                aria-invalid={fieldErrors[name]?.length ? true : undefined}
+                aria-describedby={fieldErrors[name]?.length ? `cp-${name}-error` : undefined}
                 type="password"
                 required
                 autoComplete={autoComplete}
@@ -70,7 +72,7 @@ export function ChangePasswordCard() {
                 onChange={(e) => setValues({ ...values, [name]: e.target.value })}
                 className="min-h-11 w-full p-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
               />
-              {fieldErrors[name]?.length ? <p className="text-sm text-primary font-medium">{fieldErrors[name].join(" ")}</p> : null}
+              {fieldErrors[name]?.length ? <p id={`cp-${name}-error`} role="alert" className="text-sm text-error font-medium">{fieldErrors[name].join(" ")}</p> : null}
             </div>
           ))}
           <button

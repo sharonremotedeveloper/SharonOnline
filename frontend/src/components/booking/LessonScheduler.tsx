@@ -346,14 +346,14 @@ export function LessonScheduler({ tutorId, tutorName, days = 14, returnTo }: Les
                     type="button"
                     onClick={() => void reserve()}
                     disabled={reserving}
-                    className="flex min-h-[52px] w-full items-center justify-center rounded-xl bg-primary px-6 text-base font-bold text-white shadow-sm transition-colors hover:bg-primary-hover disabled:opacity-60"
+                    className="flex min-h-[52px] w-full items-center justify-center rounded-xl bg-cocoa px-6 text-base font-bold text-white shadow-sm transition-colors hover:bg-cocoa-hover disabled:opacity-60"
                   >
                     {reserving ? "Holding your time…" : "Reserve this time"}
                   </button>
                 ) : (
                   <Link
                     href={loginHref}
-                    className="flex min-h-[52px] w-full items-center justify-center rounded-xl bg-primary px-6 text-base font-bold text-white shadow-sm transition-colors hover:bg-primary-hover"
+                    className="flex min-h-[52px] w-full items-center justify-center rounded-xl bg-cocoa px-6 text-base font-bold text-white shadow-sm transition-colors hover:bg-cocoa-hover"
                   >
                     Sign in to reserve this time
                   </Link>

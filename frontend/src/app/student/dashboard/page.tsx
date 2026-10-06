@@ -171,7 +171,7 @@ export default function StudentDashboardPage() {
 
               <Link
                 href={`/student/classroom/${upcomingLesson.id}`}
-                className="px-6 py-3.5 bg-accent-500 hover:bg-accent-600 text-ink-950 font-black rounded-2xl text-sm transition-all shadow-lg flex items-center justify-center gap-2 text-center"
+                className="px-6 py-3.5 bg-accent hover:bg-accent-500 text-ink font-black rounded-2xl text-sm transition-all shadow-lg flex items-center justify-center gap-2 text-center"
               >
                 <Video className="w-4 h-4 text-ink-950" /> Enter Classroom Staging
               </Link>

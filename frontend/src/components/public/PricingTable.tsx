@@ -118,7 +118,7 @@ export function PricingTable() {
                     href={`/register?bundle=${encodeURIComponent(pack.code)}&currency=${currency}`}
                     className={`w-full min-h-[48px] rounded-full font-bold text-base flex items-center justify-center gap-2 transition-colors ${
                       popular
-                        ? "bg-primary hover:bg-primary-hover text-white shadow-sm"
+                        ? "bg-cocoa hover:bg-cocoa-hover text-white shadow-sm"
                         : "bg-cream-surface hover:bg-cream-deep text-ink border border-divider"
                     }`}
                   >

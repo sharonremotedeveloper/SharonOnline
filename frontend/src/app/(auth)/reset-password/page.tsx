@@ -53,7 +53,7 @@ function ResetForm() {
   };
 
   const fieldError = (name: string) =>
-    fieldErrors[name]?.length ? <p className="text-sm text-primary font-medium">{fieldErrors[name].join(" ")}</p> : null;
+    fieldErrors[name]?.length ? <p id={`rp-${name}-error`} role="alert" className="text-sm text-error font-medium">{fieldErrors[name].join(" ")}</p> : null;
 
   if (!checked) return <div className="text-sm text-ink-muted">Loading...</div>;
 
@@ -65,7 +65,7 @@ function ResetForm() {
         <p className="text-sm text-ink-muted leading-relaxed">
           Reset links work once and expire after an hour. Request a fresh one and use the newest e-mail.
         </p>
-        <Link href="/forgot-password" className="inline-block px-4 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-bold">
+        <Link href="/forgot-password" className="inline-block px-4 py-2 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold">
           Request a new link
         </Link>
       </div>
@@ -96,6 +96,8 @@ function ResetForm() {
             <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
             <input
               id={name}
+              aria-invalid={fieldErrors[name]?.length ? true : undefined}
+              aria-describedby={fieldErrors[name]?.length ? `rp-${name}-error` : undefined}
               type="password"
               required
               minLength={8}
@@ -111,7 +113,7 @@ function ResetForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="w-full py-3 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-bold shadow-sm disabled:opacity-50"
+        className="w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold shadow-sm disabled:opacity-50"
       >
         {submitting ? "Saving..." : "Update password"}
       </button>

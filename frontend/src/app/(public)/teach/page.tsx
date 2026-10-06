@@ -121,7 +121,7 @@ export default function TeachPage() {
           <p className="text-sm text-white/80">Submit your application in 5 minutes with your SA ID and TEFL certificate.</p>
           <Link
             href="/register?role=teacher"
-            className="inline-flex items-center gap-2 px-8 py-3.5 bg-accent hover:bg-gold-bright text-ink font-extrabold rounded-xl text-sm shadow-sm transition-all"
+            className="inline-flex items-center gap-2 px-8 py-3.5 bg-accent hover:bg-accent-500 text-ink font-extrabold rounded-xl text-sm shadow-sm transition-all"
           >
             Apply to Teach <ArrowRight className="w-4 h-4" />
           </Link>

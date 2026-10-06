@@ -148,7 +148,7 @@ export default function TeacherDashboardPage() {
 
             <Link
               href={`/teacher/bookings/${pendingMemo.id}/memo`}
-              className="px-5 py-2.5 bg-plum hover:bg-cocoa-hover text-white text-xs font-black rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all shrink-0"
+              className="px-5 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all shrink-0"
             >
               <span>Compose Memo</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -202,7 +202,7 @@ export default function TeacherDashboardPage() {
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
                 <Link
                   href={`/teacher/classroom/${upcomingLesson.id}`}
-                  className="px-6 py-4 bg-accent hover:bg-warning text-ink font-black rounded-2xl text-xs sm:text-sm transition-all shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01]"
+                  className="px-6 py-4 bg-accent hover:bg-accent-500 text-ink font-black rounded-2xl text-xs sm:text-sm transition-all shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01]"
                 >
                   <Video className="w-4 h-4" />
                   <span>Enter Classroom Staging Pad</span>

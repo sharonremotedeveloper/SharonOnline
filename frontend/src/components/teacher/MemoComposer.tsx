@@ -137,7 +137,7 @@ ${initialScratchpad}` : ""
       {/* 1. Overall Feedback */}
       <div className="space-y-2">
         <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-          <Award className="w-4 h-4 text-gold-bright" />
+          <Award className="w-4 h-4 text-cocoa" aria-hidden="true" />
           <span>Overall Feedback &amp; Speaking Fluency</span>
         </label>
         <p className="text-xs text-ink-muted">
@@ -255,7 +255,7 @@ ${initialScratchpad}` : ""
       {/* 5. Homework & Follow-up */}
       <div className="space-y-2">
         <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-gold-bright" />
+          <Sparkles className="w-4 h-4 text-cocoa" aria-hidden="true" />
           <span>Homework Assignment &amp; Next Session Objectives</span>
         </label>
         <textarea

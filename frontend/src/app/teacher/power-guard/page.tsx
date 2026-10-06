@@ -284,7 +284,7 @@ export default function TeacherPowerGuardPage() {
           {/* Benefits Callout */}
           <div className="p-4 rounded-2xl bg-cream-surface border border-divider text-xs space-y-2">
             <span className="font-bold text-ink flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-gold-bright" /> Tutor Guarantee &amp; Penalty Shield:
+              <Sparkles className="w-4 h-4 text-cocoa" aria-hidden="true" /> Tutor Guarantee &amp; Penalty Shield:
             </span>
             <ul className="text-xs text-ink-muted list-disc list-inside space-y-1">
               <li>

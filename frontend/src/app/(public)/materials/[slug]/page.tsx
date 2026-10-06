@@ -301,7 +301,7 @@ export default function MaterialReaderPage() {
               <div className="pt-2">
                 <Link
                   href="/tutors"
-                  className="w-full py-3 px-4 rounded-2xl bg-accent hover:bg-warning text-ink font-extrabold text-sm flex items-center justify-center gap-2 transition-all shadow-md"
+                  className="w-full py-3 px-4 rounded-2xl bg-accent hover:bg-accent-500 text-ink font-extrabold text-sm flex items-center justify-center gap-2 transition-all shadow-md"
                 >
                   <Calendar className="w-4 h-4" />
                   <span>Choose Date & Book Session</span>

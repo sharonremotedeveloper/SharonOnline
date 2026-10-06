@@ -191,7 +191,7 @@ export default function AdminFxRatesPage() {
             {saving && !needsConfirm ? "Saving..." : "Save rate"}
           </button>
         </div>
-        {fieldError && <p className="text-xs font-medium text-error">{fieldError}</p>}
+        {fieldError && <p role="alert" className="text-xs font-medium text-error">{fieldError}</p>}
         <InlineError error={saveError} />
         {savedNote && <p className="text-xs font-bold text-success-hover">{savedNote}</p>}
 
@@ -202,7 +202,7 @@ export default function AdminFxRatesPage() {
               type="button"
               disabled={saving}
               onClick={() => void submit(true)}
-              className="px-4 py-2 rounded-xl bg-warning text-white text-xs font-bold disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold disabled:opacity-50"
             >
               {saving ? "Saving..." : "Confirm and save"}
             </button>

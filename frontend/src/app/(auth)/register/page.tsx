@@ -277,7 +277,7 @@ function RegisterForm() {
           <button
             type="submit"
             disabled={submitting || isLoading}
-            className="w-full py-3.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3.5 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {submitting ? "Creating Account..." : role === "teacher" ? "Submit Tutor Application" : "Create Student Account"} <ArrowRight className="w-4 h-4" />
           </button>

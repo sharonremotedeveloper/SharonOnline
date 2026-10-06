@@ -40,7 +40,7 @@ export function DiscussionSection({ questions }: DiscussionSectionProps) {
       </div>
 
       <div className="p-4 rounded-2xl bg-cream-surface/60 border border-divider flex items-center gap-2.5 text-sm text-ink-muted">
-        <Lightbulb className="w-4 h-4 text-gold-bright shrink-0" />
+        <Lightbulb className="w-4 h-4 text-cocoa shrink-0" aria-hidden="true" />
         <span>
           <strong>Tutor Tip:</strong> Aim to speak in full sentences using target vocabulary from the lesson rather than one-word responses.
         </span>

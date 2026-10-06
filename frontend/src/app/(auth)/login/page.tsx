@@ -120,7 +120,7 @@ function LoginForm() {
           <button
             type="submit"
             disabled={submitting || isLoading}
-            className="w-full py-3 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {submitting ? "Signing in..." : "Sign In"} <ArrowRight className="w-4 h-4" />
           </button>

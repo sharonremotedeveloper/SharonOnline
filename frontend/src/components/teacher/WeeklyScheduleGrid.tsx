@@ -249,7 +249,7 @@ export function WeeklyScheduleGrid() {
               type="button"
               disabled={saving}
               onClick={() => handleSave(true)}
-              className="px-3 py-1.5 rounded-xl bg-warning text-white font-black"
+              className="px-3 py-1.5 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white font-black"
             >
               Save anyway
             </button>

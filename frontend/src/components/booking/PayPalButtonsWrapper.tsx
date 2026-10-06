@@ -46,7 +46,7 @@ export function PayPalButtonsWrapper(props: PayPalButtonsWrapperProps) {
     <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-gold/15 text-gold-bright flex items-center justify-center font-bold text-sm">
+          <div className="w-8 h-8 rounded-xl bg-gold/15 text-cocoa flex items-center justify-center font-bold text-sm">
             PP
           </div>
           <div>

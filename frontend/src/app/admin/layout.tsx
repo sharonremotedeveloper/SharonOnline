@@ -33,9 +33,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-[#F8F6F2] flex flex-col md:flex-row">
+    <div className="min-h-screen bg-cream flex flex-col md:flex-row">
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-[#4A2C1A] text-white flex flex-col justify-between shrink-0 border-r border-white/10 md:min-h-screen">
+      <aside className="w-full md:w-64 bg-cocoa text-white flex flex-col justify-between shrink-0 border-r border-white/10 md:min-h-screen">
         <div className="p-4 md:p-6 space-y-4 md:space-y-8">
           {/* Logo & Platform Badge */}
           <div className="space-y-2">
@@ -129,7 +129,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Top Header Bar */}
         <header className="bg-white border-b border-divider px-6 py-4 flex items-center justify-between gap-4 sticky top-0 z-30 shadow-2xs">
           <div className="flex items-center gap-3">
-            <span className="px-2.5 py-1 rounded-md bg-[#4A2C1A] text-cream text-xs font-mono font-bold tracking-wider uppercase">
+            <span className="px-2.5 py-1 rounded-md bg-cocoa text-cream text-xs font-mono font-bold tracking-wider uppercase">
               Admin Mode
             </span>
             <span className="text-xs text-ink-muted hidden sm:inline">

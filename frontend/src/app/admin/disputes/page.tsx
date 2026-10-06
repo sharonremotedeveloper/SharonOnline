@@ -212,7 +212,7 @@ export default function AdminDisputesPage() {
                 </div>
 
                 {/* 3. Authoritative Zoom Webhook Telemetry */}
-                <div className="p-4 rounded-2xl bg-[#4A2C1A] text-cream border border-white/10 space-y-2">
+                <div className="p-4 rounded-2xl bg-cocoa text-cream border border-white/10 space-y-2">
                   <div className="flex items-center gap-2 font-bold text-gold-bright">
                     <Radio className="w-4 h-4" />
                     <span>Zoom Server Dwell Logs</span>
@@ -286,7 +286,7 @@ export default function AdminDisputesPage() {
                       type="button"
                       disabled={resolvingId === c.id || pendingConfirm?.caseId === c.id}
                       onClick={() => setPendingConfirm({ caseId: c.id, action: "split_50_50" })}
-                      className="px-4 py-2 rounded-xl bg-warning text-white text-xs font-bold hover:bg-warning-hover transition-colors shadow-xs"
+                      className="px-4 py-2 rounded-xl bg-cocoa text-white text-xs font-bold hover:bg-cocoa-hover transition-colors shadow-xs"
                     >
                       Split 50/50 Goodwill
                     </button>

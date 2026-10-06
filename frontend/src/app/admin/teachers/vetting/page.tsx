@@ -557,7 +557,7 @@ export default function AdminVettingPage() {
               {/* Action Buttons */}
               <div className="pt-4 border-t border-divider flex flex-wrap items-center justify-end gap-3">
                 <Button
-                  variant="quiet"
+                  variant="secondary"
                   size="md"
                   onClick={() => {
                     setActiveModal("reject");
@@ -673,7 +673,7 @@ export default function AdminVettingPage() {
             {/* Modal Actions */}
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-divider">
               <Button
-                variant="quiet"
+                variant="secondary"
                 size="sm"
                 disabled={processingAction}
                 onClick={() => setActiveModal(null)}
@@ -681,7 +681,7 @@ export default function AdminVettingPage() {
                 Cancel
               </Button>
               <Button
-                variant={activeModal === "reject" ? "destructive" : "primary"}
+                variant={activeModal === "reject" ? "danger" : "primary"}
                 size="sm"
                 disabled={
                   processingAction ||

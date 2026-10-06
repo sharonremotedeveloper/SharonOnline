@@ -127,7 +127,7 @@ export function EskomReportButton({
                 type="button"
                 disabled={submitting}
                 onClick={handleConfirmReport}
-                className="px-5 py-2.5 rounded-xl bg-warning hover:bg-warning-hover text-white text-xs font-black flex items-center gap-2 transition-colors shadow-sm"
+                className="px-5 py-2.5 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black flex items-center gap-2 transition-colors shadow-sm"
               >
                 <Zap className="w-4 h-4 fill-white" />
                 <span>{submitting ? "Reporting..." : "Confirm & Report Outage"}</span>

@@ -221,7 +221,7 @@ export function NotificationPreferencesModal({
             )}
           </span>
           <div className="flex items-center space-x-2">
-            <Button variant="quiet" size="sm" onClick={onClose} disabled={isSaving}>
+            <Button variant="secondary" size="sm" onClick={onClose} disabled={isSaving}>
               Cancel
             </Button>
             <Button

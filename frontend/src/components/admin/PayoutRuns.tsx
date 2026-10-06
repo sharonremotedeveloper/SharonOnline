@@ -142,7 +142,7 @@ export function PayoutRuns({ onChanged }: { onChanged?: () => void }) {
                 )}
                 {run.status === "exported" && (
                   <button type="button" disabled={busy === `process:${run.id}`} onClick={() => act(`process:${run.id}`, () => api.processPayoutRun(run.id))}
-                    className="px-3.5 py-2 bg-success-hover text-white rounded-xl text-xs font-black disabled:opacity-60">
+                    className="px-3.5 py-2 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-xs font-black disabled:opacity-60">
                     Mark as paid (bank run done)
                   </button>
                 )}

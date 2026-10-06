@@ -66,7 +66,7 @@ export default function AdminTeachersPage() {
 
         <Link
           href="/admin/teachers/vetting"
-          className="px-5 py-2.5 bg-warning hover:bg-warning-hover text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 transition-colors self-start sm:self-auto"
+          className="px-5 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 transition-colors self-start sm:self-auto"
         >
           <span>Review Pending Auditions</span>
           <ArrowRight className="w-3.5 h-3.5" />

@@ -307,7 +307,7 @@ export default function StudentCheckoutPage() {
                     : "text-ink-muted hover:text-ink"
                 }`}
               >
-                <Coins className="w-3.5 h-3.5 text-gold-bright" />
+                <Coins className="w-3.5 h-3.5" />
                 <span>1 Credit ({userCredits} left)</span>
               </button>
               )}
@@ -343,7 +343,7 @@ export default function StudentCheckoutPage() {
               <div className="p-6 rounded-2xl bg-cream-surface border border-cream-deep space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Coins className="w-5 h-5 text-gold-bright" />
+                    <Coins className="w-5 h-5 text-cocoa" />
                     <span className="text-sm font-bold text-ink">Lesson Credit Wallet</span>
                   </div>
                   <span className="text-sm font-bold text-cocoa bg-white px-3 py-1 rounded-full border border-divider">
@@ -360,7 +360,7 @@ export default function StudentCheckoutPage() {
                     <button
                       onClick={handleRedeemCredit}
                       disabled={submitting}
-                      className="w-full py-4 bg-primary hover:bg-primary-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="w-full py-4 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {submitting ? (
                         "Redeeming Credit..."

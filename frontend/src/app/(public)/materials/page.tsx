@@ -199,7 +199,7 @@ export default function MaterialsPage() {
                       {mat.estimated_minutes || 25} mins
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <BookOpen className="w-3.5 h-3.5 text-gold-bright" />
+                      <BookOpen className="w-3.5 h-3.5 text-cocoa" aria-hidden="true" />
                       {mat.vocabulary?.length || 0} Vocab Target
                     </span>
                     {mat.discussion_questions?.length ? (

@@ -111,7 +111,7 @@ export default function TutorProfilePage() {
             <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-base text-ink">
               {hasReviews && (
                 <li className="flex items-center gap-1.5">
-                  <Star className="h-5 w-5 fill-gold text-gold" aria-hidden="true" />
+                  <Star className="h-5 w-5 fill-star text-star" aria-hidden="true" />
                   <span className="font-bold">{tutor.rating_avg.toFixed(1)}</span>
                   <span className="text-ink-muted">({tutor.rating_count} reviews)</span>
                 </li>

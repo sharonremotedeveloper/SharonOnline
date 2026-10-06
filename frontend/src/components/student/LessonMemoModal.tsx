@@ -119,7 +119,7 @@ ${memo.homework}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2 text-ink-900 font-bold text-sm uppercase tracking-wider">
-                  <BookOpen className="w-4 h-4 text-accent-600" />
+                  <BookOpen className="w-4 h-4 text-cocoa" aria-hidden="true" />
                   <span>Vocabulary Acquired ({memo.vocabulary_words.length})</span>
                 </div>
                 <span className="text-sm text-ink-500 flex items-center gap-1 font-medium">

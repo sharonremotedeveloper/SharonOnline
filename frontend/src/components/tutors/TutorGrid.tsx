@@ -42,7 +42,7 @@ export function TutorGrid({ tutors, loading, onResetFilters }: TutorGridProps) {
           <button
             type="button"
             onClick={onResetFilters}
-            className="inline-flex min-h-[48px] items-center rounded-full bg-primary px-7 text-base font-bold text-white transition-colors hover:bg-primary-hover"
+            className="inline-flex min-h-[48px] items-center rounded-full bg-cocoa px-7 text-base font-bold text-white transition-colors hover:bg-cocoa-hover"
           >
             Clear all filters
           </button>

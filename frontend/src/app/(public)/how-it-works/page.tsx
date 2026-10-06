@@ -52,7 +52,7 @@ export default function HowItWorksPage() {
         </div>
 
         <div className="bg-white p-8 rounded-2xl border border-divider shadow-card space-y-4">
-          <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-cocoa/10 text-primary flex items-center justify-center">
             <FileText className="w-6 h-6" />
           </div>
           <h3 className="text-xl font-bold text-ink font-serif">Post-Lesson Memos & Vocab Bank</h3>
@@ -80,7 +80,7 @@ export default function HowItWorksPage() {
           <p className="text-base text-ink-muted">Choose a tutor and book a time. It takes about a minute.</p>
           <Link
             href="/tutors"
-            className="inline-flex items-center gap-2 px-8 py-3.5 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl text-sm shadow-sm transition-all"
+            className="inline-flex items-center gap-2 px-8 py-3.5 bg-cocoa hover:bg-cocoa-hover text-white font-bold rounded-xl text-sm shadow-sm transition-all"
           >
             Find a Tutor Now <ArrowRight className="w-4 h-4" />
           </Link>

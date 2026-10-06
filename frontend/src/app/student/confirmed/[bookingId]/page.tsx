@@ -166,7 +166,7 @@ export default function BookingConfirmedPage() {
 
           <Link
             href={`/student/classroom/${booking.id}`}
-            className="w-full sm:w-auto px-5 py-2.5 bg-accent hover:bg-gold-bright text-ink rounded-xl text-sm font-extrabold transition-all shadow-sm text-center"
+            className="w-full sm:w-auto px-5 py-2.5 bg-accent hover:bg-accent-500 text-ink rounded-xl text-sm font-extrabold transition-all shadow-sm text-center"
           >
             Open Live Classroom Pad
           </Link>

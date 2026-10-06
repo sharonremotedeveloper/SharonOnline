@@ -147,7 +147,7 @@ export function GoalSelector() {
 
         <Link
           href={`/tutors?specialty=${encodeURIComponent(activeGoal.label)}`}
-          className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full bg-primary px-7 text-base font-bold text-white shadow-sm transition-colors hover:bg-primary-hover"
+          className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full bg-cocoa px-7 text-base font-bold text-white shadow-sm transition-colors hover:bg-cocoa-hover"
         >
           Find tutors for this goal <ArrowRight className="h-5 w-5" aria-hidden={true} />
         </Link>

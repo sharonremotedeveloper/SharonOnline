@@ -164,7 +164,7 @@ export default function AdminDashboardPage() {
 
           <Link
             href="/admin/teachers/vetting"
-            className="w-full py-3 px-4 rounded-xl bg-warning hover:bg-warning-hover text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
+            className="w-full py-3 px-4 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
           >
             <span>Review {telemetry.pending_vetting_count} Pending Application{telemetry.pending_vetting_count === 1 ? "" : "s"}</span>
             <ArrowRight className="w-3.5 h-3.5" />

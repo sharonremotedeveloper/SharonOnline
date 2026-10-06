@@ -94,7 +94,7 @@ export function TutorCard({ tutor }: TutorCardProps) {
           </div>
           <Link
             href={profileUrl}
-            className="inline-flex min-h-[44px] items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-5 text-base font-bold text-white transition-colors hover:bg-primary-hover"
+            className="inline-flex min-h-[44px] items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-cocoa px-5 text-base font-bold text-white transition-colors hover:bg-cocoa-hover"
           >
             See times <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
