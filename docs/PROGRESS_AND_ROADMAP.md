@@ -254,6 +254,12 @@ A four-way audit (backend, frontend, spec-vs-roadmap, infra) found that Phases 1
 
 ## 6. Technical-debt remediation batches (started 2026-10-02)
 
+### 5b / 15.1 delivery update (2026-10-06)
+
+- [x] T5b tutor application funnel UI and status-aware proxy routing implemented on `feature/t5b-funnel-and-tutors-live` (ERR-430).
+- [x] Task 15.1 live tutor directory, detail availability, and reservation confirmation implemented on `feature/t5b-funnel-and-tutors-live` (ERR-490).
+- [x] Frontend verification: 191/191 tests passed, ESLint zero-warning gate passed, and production build passed.
+
 | Batch | Scope | Status |
 | :--- | :--- | :--- |
 | **1** | Honest admin financial data, disabled payout mutation, ownership-safe booking and Celery locks | `CODE COMPLETE - backend 679/679, focused 74/74, frontend 88/88, Django/migration checks and production build passed; real Redis CI execution pending Batch 8 infrastructure` |

@@ -426,6 +426,34 @@ export const api = {
   requestTeacherApplicationChanges: vet.requestTeacherApplicationChanges,
   rejectTeacherApplication: vet.rejectTeacherApplication,
 
+  async getMyTeacherProfile() {
+    return request(`${API_BASE}/teachers/me/`, {});
+  },
+
+  async updateMyTeacherProfile(data: { headline?: string; bio?: string; specialties?: string[] }) {
+    return request(`${API_BASE}/teachers/me/`, { method: "PATCH", body: JSON.stringify(data) });
+  },
+
+  async getTeacherApplication() {
+    return request(`${API_BASE}/teachers/me/application/`, {});
+  },
+
+  async updateTeacherApplication(data: { speed_test?: { download_mbps: string; upload_mbps: string }; confirm_power_backup?: boolean; accept_declaration?: boolean }) {
+    return request(`${API_BASE}/teachers/me/application/`, { method: "PATCH", body: JSON.stringify(data) });
+  },
+
+  async submitTeacherApplication() {
+    return request(`${API_BASE}/teachers/me/application/submit/`, { method: "POST", body: JSON.stringify({}) });
+  },
+
+  async presignTeacherAsset(data: { action: "upload"; key: string; content_type: string; size: number }) {
+    return request(`${API_BASE}/integrations/storage/presigned-url/`, { method: "POST", body: JSON.stringify(data) });
+  },
+
+  async commitTeacherAsset(data: { kind: string; key: string; etag: string }) {
+    return request(`${API_BASE}/teachers/me/assets/commit/`, { method: "POST", body: JSON.stringify(data) });
+  },
+
   async getTutors(params?: any) {
     const query = params ? `?${new URLSearchParams(params).toString()}` : "";
     const live = await liveRequest(`${API_BASE}/teachers/${query}`, {});

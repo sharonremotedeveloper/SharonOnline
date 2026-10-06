@@ -10,7 +10,7 @@ export function applyCookies(res: NextResponse, cookies: CookieSpec[]): NextResp
 }
 
 export async function setSession(res: NextResponse, tokens: Tokens, user: SessionUser): Promise<NextResponse> {
-  const session = await signSession(newSessionClaims(user.id, user.role));
+  const session = await signSession(newSessionClaims(user.id, user.role, Date.now() / 1000, typeof user.tutor_status === "string" ? user.tutor_status : null));
   return applyCookies(res, buildCookies({ access: tokens.access, refresh: tokens.refresh, session }));
 }
 

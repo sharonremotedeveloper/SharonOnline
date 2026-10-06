@@ -43,7 +43,7 @@ export function TutorGrid({ tutors, loading, onResetFilters }: TutorGridProps) {
         <div className="w-16 h-16 rounded-2xl bg-cream-surface text-ink-muted flex items-center justify-center mx-auto">
           <SearchX className="w-8 h-8 text-ink-muted" />
         </div>
-        <h3 className="text-xl font-bold text-ink font-serif">No Tutors Matched Your Filters</h3>
+        <h3 className="text-xl font-bold text-ink font-serif">No tutors found matching your criteria.</h3>
         <p className="text-xs text-ink-muted max-w-md mx-auto">
           Try loosening your search terms, selecting "All Accents", or clearing the Power Guard filter.
         </p>

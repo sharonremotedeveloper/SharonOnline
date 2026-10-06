@@ -9,7 +9,7 @@
     "isolatedModules": false,
     "allowJs": false,
     "outDir": ".test-build",
-    "rootDir": "src",
+    "rootDir": ".",
     "types": [
       "node"
     ],
@@ -32,6 +32,7 @@
     "src/lib/server/config.ts",
     "src/lib/*.test.ts",
     "src/lib/server/*.test.ts"
+    ,"test/**/*.ts"
   ],
   "exclude": [
     "node_modules"

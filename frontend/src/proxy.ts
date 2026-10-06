@@ -31,6 +31,18 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(home);
   }
 
+  if (
+    claims.role === "teacher" &&
+    (claims.tutor_status === "applied" || claims.tutor_status === "changes_requested") &&
+    pathname !== "/teacher/apply" &&
+    !pathname.startsWith("/teacher/apply/")
+  ) {
+    const apply = request.nextUrl.clone();
+    apply.pathname = "/teacher/apply";
+    apply.search = "";
+    return NextResponse.redirect(apply);
+  }
+
   return NextResponse.next();
 }
 
