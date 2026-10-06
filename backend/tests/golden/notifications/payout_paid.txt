@@ -1,0 +1,11 @@
+subject: Your Sharon ESL payout was sent
+title: Your Sharon ESL payout was sent
+--- body
+We have paid your payout to your bank account. It can take up to two working days to show. The statement is in your earnings wallet.
+--- text
+Hi Yuki,
+
+We have paid your payout to your bank account. It can take up to two working days to show. The statement is in your earnings wallet.
+
+--- html
+<p>Hi Yuki,</p><p>We have paid your payout to your bank account. It can take up to two working days to show. The statement is in your earnings wallet.</p>

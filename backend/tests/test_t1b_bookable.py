@@ -211,13 +211,17 @@ class TestPayoutPreview:
         settings.PAYOUT_DATA_KEYS = {'v1': Fernet.generate_key().decode()}
         settings.PAYOUT_DATA_ACTIVE_KEY = 'v1'
 
+    @pytest.fixture(autouse=True)
+    def accept_the_test_code(self, monkeypatch):
+        monkeypatch.setattr('apps.payments.serializers.check_code', lambda user, code: code == '123456')
+
     def _payable(self, tutor, amount='100.00'):
         LedgerEntry.objects.create(
             journal_batch_id=f'5555555{str(tutor.pk)[:1]}-5555-5555-5555-555555555555',
             account=LedgerAccount.LIABILITY_TUTOR_PAYABLE, entry_type=LedgerEntry.EntryType.CREDIT,
             amount=Decimal(amount), currency='ZAR', fx_rate_to_zar=Decimal('1.000000'), fx_source='transaction_currency',
             amount_zar=Decimal(amount), event_type=LedgerEntry.EventType.ESCROW_CLEARED, description='payable', user=tutor.user)
-        body = {'current_password': 'password123', 'account_holder_name': 'T', 'account_number': '1234567890',
+        body = {'verification_code': '123456', 'current_password': 'password123', 'account_holder_name': 'T', 'account_number': '1234567890',
                 'bank_name': 'Capitec Bank', 'branch_code': '470010', 'account_type': 'savings',
                 'identification_number': '9001015009087'}
         assert api(tutor.user).post('/api/v1/payments/payout-settings/', body, format='json').status_code == 201

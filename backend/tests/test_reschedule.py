@@ -43,9 +43,7 @@ def resched(user, booking, new_start):
 @pytest.fixture(autouse=True)
 def no_background_work():
     with mock.patch('apps.bookings.services.rescheduling.cleanup_zoom_meeting') as zoom, \
-         mock.patch('apps.bookings.services.rescheduling.dispatch_booking_fulfillment') as fulfil, \
-         mock.patch('apps.bookings.services.rescheduling.cleanup_gcal_event') as gcal:
-        fulfil.gcal = gcal
+         mock.patch('apps.bookings.services.rescheduling.dispatch_booking_fulfillment') as fulfil:
         yield zoom, fulfil
 
 
@@ -79,8 +77,7 @@ class TestHappyPath:
         b.refresh_from_db()
         assert (b.zoom_meeting_id, b.zoom_join_url, b.zoom_start_url, b.zoom_password) == ('', '', '', '')
         zoom.delay.assert_called_once_with('111')
-        fulfil.gcal.delay.assert_called_once_with(str(tutor.user_id), 'evt-1')
-        assert b.teacher_gcal_event_id == ''
+        assert b.teacher_gcal_event_id == 'evt-1'      # the calendar event is kept and updated in place, never deleted
         fulfil.delay.assert_called_once_with(str(b.id))
 
     def test_the_old_slot_is_free_again(self, tutor, student_user):

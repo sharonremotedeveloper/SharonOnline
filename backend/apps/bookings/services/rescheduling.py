@@ -21,13 +21,13 @@ from apps.bookings.services.fulfillment import reset_for_reprovision
 from apps.bookings.services.holds import live_hold_q
 from apps.bookings.services.lock_service import acquire_slot_lock, new_slot_lock_token, release_slot_lock
 from apps.bookings.services.slot_generator import LESSON_DURATION_MINUTES, generate_teacher_slots, horizon_days, horizon_scan_days
-from apps.integrations.tasks import cleanup_gcal_event, cleanup_zoom_meeting, dispatch_booking_fulfillment
+from apps.integrations.tasks import cleanup_zoom_meeting, dispatch_booking_fulfillment
 from django.db.models import Q
 
 S = Booking.Status
 MOVED_FIELDS = ['original_start_time_utc', 'start_time_utc', 'end_time_utc', 'reschedule_count', 'reminder_24h_sent',
                 'reminder_1h_sent', 'reminder_10m_sent', 'tutor_late_alert_sent', 'zoom_meeting_id', 'zoom_join_url',
-                'zoom_start_url', 'zoom_password', 'zoom_host_user_id', 'slot_lock_token', 'teacher_gcal_event_id',
+                'zoom_start_url', 'zoom_password', 'zoom_host_user_id', 'slot_lock_token',
                 'updated_at']
 
 
@@ -86,7 +86,6 @@ def reschedule_booking(booking_id, student, new_start, now=None) -> Booking:
             raise taken
 
         old_start, old_meeting = booking.start_time_utc, booking.zoom_meeting_id
-        old_gcal = (str(teacher.user_id), booking.teacher_gcal_event_id)
         try:
             with transaction.atomic():
                 booking.original_start_time_utc = booking.original_start_time_utc or old_start
@@ -96,7 +95,6 @@ def reschedule_booking(booking_id, student, new_start, now=None) -> Booking:
                 booking.zoom_meeting_id = booking.zoom_join_url = booking.zoom_start_url = booking.zoom_password = ''
                 booking.zoom_host_user_id = None
                 booking.slot_lock_token = token
-                booking.teacher_gcal_event_id = ''
                 booking.save(update_fields=MOVED_FIELDS)
                 BookingReschedule.objects.create(booking=booking, old_start_time_utc=old_start, new_start_time_utc=new_start,
                                                  actor=f'user:{student.username}')
@@ -106,16 +104,15 @@ def reschedule_booking(booking_id, student, new_start, now=None) -> Booking:
             release_slot_lock(*lock_args, token=token)
             raise taken
         booking_pk = str(booking.id)
-        transaction.on_commit(lambda: _after_move(booking_pk, old_meeting, old_gcal))
+        transaction.on_commit(lambda: _after_move(booking_pk, old_meeting))
     return booking
 
 
-def _after_move(booking_id: str, old_meeting_id: str, old_gcal: tuple):
-    """Outside the money/slot transaction: drop the old Zoom room and calendar event, then let fulfilment build the new ones and tell everyone."""
+def _after_move(booking_id: str, old_meeting_id: str):
+    """Outside the money/slot transaction: drop the old Zoom room, then let fulfilment build the new one, move the tutor's calendar
+    event (same event id, see sync_booking_to_teacher_gcal) and tell everyone."""
     if old_meeting_id:
         cleanup_zoom_meeting.delay(old_meeting_id)
-    if old_gcal[1]:
-        cleanup_gcal_event.delay(*old_gcal)
     dispatch_booking_fulfillment.delay(booking_id)
 
 

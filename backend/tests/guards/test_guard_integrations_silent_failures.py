@@ -14,7 +14,7 @@ from guards._scan import APPS, app_files, parse, ratchet_errors, scan
 INTEGRATIONS = APPS / 'integrations'
 # Baseline 2026-10-04: {file (relative to apps/): number of silent failures}. Only ever lower these numbers.
 ALLOWLIST = {
-    'integrations/google_calendar.py': 2,         # explicit "not connected" / failed insert results (G1 rewrites)
+    'integrations/google_calendar.py': 1,         # explicit "not connected" result (G1 rewrites)
 }                                                 # zoom.py: 0 since Z1 (no-credentials token call raises)
 
 

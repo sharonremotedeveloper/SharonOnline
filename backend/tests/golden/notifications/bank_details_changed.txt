@@ -1,0 +1,11 @@
+subject: Your Sharon ESL payout bank details changed
+title: Payout bank details changed
+--- body
+Your payout bank details were created or changed. Payouts are held for 72 hours after a change. If this was not you, change your password and contact support now.
+--- text
+Hi Yuki,
+
+Your payout bank details were created or changed. Payouts are held for 72 hours after a change. If this was not you, change your password and contact support now.
+
+--- html
+<p>Hi Yuki,</p><p>Your payout bank details were created or changed. Payouts are held for 72 hours after a change. If this was not you, change your password and contact support now.</p>

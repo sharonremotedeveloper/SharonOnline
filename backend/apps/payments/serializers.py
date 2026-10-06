@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from .models import TutorPayoutAccount
+from .services.bank_change_code import check_code, consume_code
 from .services.payout_crypto import decrypt_payout_payload, encrypt_payout_payload
 
 
@@ -24,6 +25,8 @@ class PayoutAccountWriteSerializer(serializers.Serializer):
     branch_code = serializers.RegexField(r'^\d{6}$', max_length=6)
     account_type = serializers.ChoiceField(choices=('cheque', 'savings'))
     identification_number = serializers.RegexField(r'^[A-Za-z0-9 -]{6,30}$', required=False, allow_blank=True)
+    verification_code = serializers.RegexField(r'^\d{6}$', write_only=True,
+                                               help_text='The 6-digit code e-mailed by POST /payments/payout-settings/code/.')
 
     def validate_account_holder_name(self, value):
         value = ' '.join(value.split())
@@ -35,6 +38,8 @@ class PayoutAccountWriteSerializer(serializers.Serializer):
         request = self.context['request']
         if not request.user.check_password(attrs['current_password']):
             raise serializers.ValidationError({'current_password': 'Your current password is incorrect.'})
+        if not check_code(request.user, attrs['verification_code']):
+            raise serializers.ValidationError({'verification_code': 'That code is wrong or has expired. Request a new one.'})
         expected = SA_BANKS[attrs['bank_name']]
         if attrs['branch_code'] != expected:
             raise serializers.ValidationError({'branch_code': f'Use the supported universal branch code {expected}.'})
@@ -43,6 +48,7 @@ class PayoutAccountWriteSerializer(serializers.Serializer):
     def save(self, **kwargs):
         data = dict(self.validated_data)
         data.pop('current_password')
+        data.pop('verification_code')
         ciphertext, version = encrypt_payout_payload(data)
         account, _ = TutorPayoutAccount.objects.update_or_create(
             tutor=self.context['request'].user,
@@ -52,6 +58,7 @@ class PayoutAccountWriteSerializer(serializers.Serializer):
                 'account_last_four': data['account_number'][-4:],
             },
         )
+        consume_code(self.context['request'].user)
         return account
 
 

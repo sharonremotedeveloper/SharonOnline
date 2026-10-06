@@ -228,3 +228,53 @@ class TestFanOut:
         CalendarCredential.objects.filter(pk=credential.pk).update(block_busy=False)
         assert refresh(tutor) == 'opted_out'
         assert cache.get(f'gcal:busy:{tutor.id}') == []
+
+
+class TestRescheduleKeepsTheEvent:
+    """G2 follow-up: a moved lesson updates the same Google event (the id, the tutor's notes and invitations survive)."""
+
+    def _booking(self, tutor, start):
+        return f.make_booking(teacher=tutor, start=start, status='confirmed', zoom_join_url='https://zoom.example/j/1')
+
+    def test_a_booking_with_an_event_updates_it_in_place(self, tutor, fake_google):
+        connect(tutor)
+        booking = self._booking(tutor, at(9, 0))
+        event_id = google_calendar.sync_booking_to_teacher_gcal(booking)
+        booking.teacher_gcal_event_id = event_id
+        booking.start_time_utc, booking.end_time_utc = at(10, 0), at(10, 25)
+        booking.zoom_join_url = 'https://zoom.example/j/2'
+        assert google_calendar.sync_booking_to_teacher_gcal(booking) == event_id
+        assert list(fake_google.events) == [event_id]
+        event = fake_google.events[event_id]
+        assert event['start']['dateTime'] == at(10, 0).isoformat() and 'j/2' in event['description']
+
+    def test_an_event_the_tutor_deleted_is_recreated_with_a_new_id(self, tutor, fake_google):
+        connect(tutor)
+        booking = self._booking(tutor, at(9, 0))
+        booking.teacher_gcal_event_id = 'gone-event'
+        new_id = google_calendar.sync_booking_to_teacher_gcal(booking)
+        assert new_id and new_id != 'gone-event' and new_id in fake_google.events
+
+    def test_a_google_error_on_update_returns_empty_and_creates_nothing(self, tutor, fake_google):
+        connect(tutor)
+        booking = self._booking(tutor, at(9, 0))
+        event_id = google_calendar.sync_booking_to_teacher_gcal(booking)
+        booking.teacher_gcal_event_id = event_id
+        fake_google.fail_next('update', 500)
+        assert google_calendar.sync_booking_to_teacher_gcal(booking) == ''
+        assert list(fake_google.events) == [event_id]
+
+    def test_the_fulfilment_step_keeps_the_same_id_after_a_move(self, tutor, fake_google):
+        from apps.bookings.models import Booking
+        from apps.bookings.services import fulfillment
+        connect(tutor)
+        booking = self._booking(tutor, at(9, 0))
+        event_id = google_calendar.sync_booking_to_teacher_gcal(booking)
+        Booking.objects.filter(pk=booking.pk).update(teacher_gcal_event_id=event_id, start_time_utc=at(10, 0),
+                                                     end_time_utc=at(10, 25))
+        with mock.patch.object(fulfillment, '_live_booking', side_effect=lambda *_: Booking.objects.get(pk=booking.pk)), \
+                mock.patch.object(fulfillment, '_locked_confirmed', side_effect=lambda *_: Booking.objects.get(pk=booking.pk)), \
+                mock.patch.object(fulfillment, '_set_step'):
+            fulfillment._calendar_step(str(booking.id), 'token', at(0, 0))
+        assert Booking.objects.get(pk=booking.pk).teacher_gcal_event_id == event_id
+        assert fake_google.events[event_id]['start']['dateTime'] == at(10, 0).isoformat()

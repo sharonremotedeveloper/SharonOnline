@@ -1,7 +1,8 @@
 import json
 from apps.common.schema import WalletSerializer
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
+from datetime import date
 import logging
 import uuid
 from urllib.parse import urlencode
@@ -24,6 +25,7 @@ from django.utils import timezone
 
 from apps.bookings.models import Booking
 from apps.common.money import money_str
+from apps.notifications.service import notify
 from apps.users.permissions import IsTeacher
 from apps.bookings.services.holds import SLOT_OWNING_STATUSES, hold_expires_at, hold_is_live, inflight_grace, max_hold
 from apps.bookings.services.booking_block import booking_block_message
@@ -46,6 +48,8 @@ from .services.pricing import CURRENCY_EXPONENT, PriceNotConfigured, lesson_pric
 from .services.payout_crypto import PayoutDataError
 from .throttles import WritesOnlyScopedThrottle
 from .services.receipts import render_receipt_pdf
+from .services import bank_change_code
+from .services.statements import statement_csv
 from .services.tutor_wallet import tutor_wallet_payload
 from .services.webhook_handler import process_payment_webhook, record_unallocated_payment
 
@@ -685,7 +689,45 @@ class PayoutSettingsView(APIView):
         except ImproperlyConfigured:
             logger.exception('Payout encryption is not configured for user_id=%s', request.user.id)
             return Response({'code': 'payout_encryption_unavailable'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        # Mandatory notice to the tutor's own address (a changed account is the classic payout-fraud step).
+        notify(request.user, 'bank_details_changed', key=f'bank-change:{request.user.pk}:{account.updated_at:%Y%m%d%H%M%S%f}',
+               payload={'tutor_id': str(request.user.pk)})
         return Response(masked_payout_account(account), status=status.HTTP_200_OK if existed else status.HTTP_201_CREATED)
+
+
+@extend_schema(parameters=[OpenApiParameter('from', str, description='First day (YYYY-MM-DD, UTC).'),
+                           OpenApiParameter('to', str, description='Last day (YYYY-MM-DD, UTC).')],
+               responses={(200, 'text/csv'): OpenApiTypes.BINARY})
+class TutorStatementView(APIView):
+    """P2: the tutor's own earnings and payouts as a CSV with a running balance (ledger 2020)."""
+    permission_classes = (IsTeacher,)
+
+    def get(self, request):
+        try:
+            start = date.fromisoformat(request.query_params['from']) if 'from' in request.query_params else None
+            end = date.fromisoformat(request.query_params['to']) if 'to' in request.query_params else None
+        except ValueError:
+            return Response({'code': 'invalid_date', 'message': 'Use YYYY-MM-DD for from and to.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        response = HttpResponse(statement_csv(request.user, start, end), content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="sharon-esl-statement.csv"'
+        response['Cache-Control'] = 'private, no-store'
+        return response
+
+
+@extend_schema(request=None, responses={202: OpenApiTypes.OBJECT, 503: OpenApiTypes.OBJECT})
+class PayoutCodeView(APIView):
+    """E-mail the tutor the one-time code that PayoutSettingsView requires before it saves bank details."""
+    permission_classes = (IsTeacher,)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'bank_code'
+
+    def post(self, request):
+        try:
+            bank_change_code.issue_code(request.user)
+        except bank_change_code.CodeNotSent:
+            return Response({'code': 'verification_email_unavailable'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response({'sent': True, 'expires_in_minutes': 10}, status=status.HTTP_202_ACCEPTED)
 
 
 class ReceiptSerializer(serializers.Serializer):

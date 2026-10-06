@@ -21,6 +21,7 @@ from django.db import transaction
 
 from apps.admin_api.models import PayoutAttempt, PayoutBatch, PayoutBatchLine, PayoutExportAudit
 from apps.common import clock
+from apps.notifications.service import notify
 from apps.payments.serializers import masked_payout_account
 from apps.payments.services.ledger_service import record_payout_batch_entry, record_payout_return_entry
 from apps.payments.services.payable import available_balance_zar, payable_balance_zar
@@ -212,6 +213,7 @@ def mark_processed(batch_id, *, actor, now=None) -> PayoutBatch:
             line.status, line.is_open, line.paid_at = Line.PAID, False, now
             line.save(update_fields=['status', 'is_open', 'paid_at'])
             _attempt(line, actor, PayoutAttempt.Status.SUCCEEDED)
+            notify(line.teacher.user, 'payout_paid', key=f'payout:paid:{line.id}', payload={'line_id': str(line.id)})
         batch.status, batch.executed_by, batch.executed_at = Batch.PROCESSED, actor, now
         batch.save(update_fields=['status', 'executed_by', 'executed_at'])
         return batch
@@ -246,4 +248,5 @@ def return_line(line_id, *, actor, reason: str, now=None) -> PayoutBatchLine:
         line.status, line.returned_at, line.return_reason = Line.RETURNED, now, reason[:255]
         line.save(update_fields=['status', 'returned_at', 'return_reason'])
         _attempt(line, actor, PayoutAttempt.Status.RETURNED, reason)
+        notify(line.teacher.user, 'payout_returned', key=f'payout:returned:{line.id}', payload={'line_id': str(line.id)})
         return line

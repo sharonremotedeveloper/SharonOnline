@@ -2394,6 +2394,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/PayoutAccountMasked'
           description: ''
+  /api/v1/payments/payout-settings/code/:
+    post:
+      operationId: v1_payments_payout_settings_code_create
+      description: E-mail the tutor the one-time code that PayoutSettingsView requires
+        before it saves bank details.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /api/v1/payments/paypal/capture/:
     post:
       operationId: v1_payments_paypal_capture_create
@@ -2481,6 +2505,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TutorWallet'
+          description: ''
+  /api/v1/payments/wallet/tutor/statement/:
+    get:
+      operationId: v1_payments_wallet_tutor_statement_retrieve
+      description: 'P2: the tutor''s own earnings and payouts as a CSV with a running
+        balance (ledger 2020).'
+      parameters:
+      - in: query
+        name: from
+        schema:
+          type: string
+        description: First day (YYYY-MM-DD, UTC).
+      - in: query
+        name: to
+        schema:
+          type: string
+        description: Last day (YYYY-MM-DD, UTC).
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
           description: ''
   /api/v1/refunds/:
     get:
@@ -5122,6 +5174,12 @@ components:
             pattern: ^[A-Za-z0-9 -]{6,30}$
           - type: string
             maxLength: 0
+        verification_code:
+          type: string
+          writeOnly: true
+          minLength: 1
+          description: The 6-digit code e-mailed by POST /payments/payout-settings/code/.
+          pattern: ^\d{6}$
     PatchedPowerBackupRequest:
       type: object
       properties:
@@ -5261,6 +5319,12 @@ components:
             pattern: ^[A-Za-z0-9 -]{6,30}$
           - type: string
             maxLength: 0
+        verification_code:
+          type: string
+          writeOnly: true
+          minLength: 1
+          description: The 6-digit code e-mailed by POST /payments/payout-settings/code/.
+          pattern: ^\d{6}$
       required:
       - account_holder_name
       - account_number
@@ -5268,6 +5332,7 @@ components:
       - bank_name
       - branch_code
       - current_password
+      - verification_code
     PayoutBatch:
       type: object
       properties:

@@ -30,8 +30,15 @@ def payout_keys(settings):
     settings.PAYOUT_DATA_ACTIVE_KEY = 'v1'
 
 
+@pytest.fixture(autouse=True)
+def accept_the_test_code(monkeypatch):
+    """These tests are about balances, masking and encryption: the e-mailed code itself is covered by test_bank_change_code.py."""
+    monkeypatch.setattr('apps.payments.serializers.check_code', lambda user, code: code == '123456')
+
+
 def payout_payload(**overrides):
     payload = {
+        'verification_code': '123456',
         'current_password': 'password123',
         'account_holder_name': 'Test Tutor',
         'account_number': '1234567890',

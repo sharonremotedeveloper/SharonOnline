@@ -240,58 +240,62 @@ def _access_token(user):
     legacy = getattr(user, 'google_calendar_token', None) or {}
     return legacy.get('access_token') if local_mode and isinstance(legacy, dict) else None
 
-def sync_booking_to_teacher_gcal(booking) -> str:
-    """
-    Inserts a confirmed booking onto the teacher's connected Google Calendar via Google Calendar API v3.
-    Returns the Google Calendar event ID if successful. It does NOT save the booking: the caller stores the id under the
-    booking's row lock (bookings/services/fulfillment.py), so a stale instance can never overwrite a cancel or a reschedule.
-    """
-    access_token = _access_token(booking.teacher.user)
-    if not access_token:
-        logger.info(f"Teacher {booking.teacher.user.username} does not have Google Calendar connected. Skipping sync.")
-        return ""
-
-    url = "https://www.googleapis.com/calendar/v3/calendars/primary/events"
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json"
-    }
-
-    event_body = {
+def _lesson_event_body(booking) -> dict:
+    return {
         "summary": f"Sharon ESL: Lesson with {booking.student.first_name or booking.student.username}",
         # Join link only (Slice Z1): the host link expires; the tutor opens the classroom page for a fresh one.
         "description": f"25-minute lesson.\n\nZoom join link: {booking.zoom_join_url}\n"
                        f"Start the lesson as host from your Sharon ESL classroom page.",
-        "start": {
-            "dateTime": booking.start_time_utc.isoformat(),
-            "timeZone": "UTC"
-        },
-        "end": {
-            "dateTime": booking.end_time_utc.isoformat(),
-            "timeZone": "UTC"
-        },
+        "start": {"dateTime": booking.start_time_utc.isoformat(), "timeZone": "UTC"},
+        "end": {"dateTime": booking.end_time_utc.isoformat(), "timeZone": "UTC"},
         "extendedProperties": {"private": {OWN_EVENT_MARKER: str(booking.id)}},
         "reminders": {
             "useDefault": False,
-            "overrides": [
-                {"method": "popup", "minutes": 10},
-                {"method": "email", "minutes": 30}
-            ]
-        }
+            "overrides": [{"method": "popup", "minutes": 10}, {"method": "email", "minutes": 30}],
+        },
     }
 
-    try:
-        resp = requests.post(url, headers=headers, json=event_body, timeout=10)
-        if resp.status_code in [200, 201]:
-            event_id = resp.json().get('id', '')
-            logger.info(f"Successfully synced to Google Calendar event_id={event_id}")
-            return event_id
-        else:
-            logger.warning(f"Google Calendar sync error: {resp.text}")
-    except Exception as e:
-        logger.error(f"Failed to communicate with Google Calendar API: {e}")
 
-    return ""
+def sync_booking_to_teacher_gcal(booking) -> str:
+    """
+    Puts a confirmed booking on the teacher's Google Calendar and returns the event id ('' on failure). It does NOT save the
+    booking: the caller stores the id under the booking's row lock (bookings/services/fulfillment.py), so a stale instance can
+    never overwrite a cancel or a reschedule.
+
+    A booking that already has an event (a rescheduled lesson) UPDATES it, so the id survives the move and the tutor's invitation
+    list and notes stay; if the tutor deleted it (404/410) a new event is created and its new id is returned.
+    """
+    access_token = _access_token(booking.teacher.user)
+    if not access_token:
+        logger.info("Teacher %s does not have Google Calendar connected. Skipping sync.", booking.teacher.user_id)
+        return ""
+
+    base = f"{GOOGLE_CALENDAR_URL}/calendars/primary/events"
+    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+    body = _lesson_event_body(booking)
+    event_id = None
+    try:
+        updated_in_place = False
+        if booking.teacher_gcal_event_id:
+            resp = requests.patch(f"{base}/{booking.teacher_gcal_event_id}", headers=headers, json=body, timeout=10)
+            if resp.status_code == 200:
+                event_id, updated_in_place = resp.json().get('id', booking.teacher_gcal_event_id), True
+            elif resp.status_code in (404, 410):
+                logger.info("Google Calendar event for booking %s was deleted by the tutor; creating a new one", booking.id)
+            else:
+                logger.warning("Google Calendar update error: HTTP %s", resp.status_code)
+                updated_in_place = True          # a real error, not "gone": do not create a duplicate
+        if not updated_in_place:
+            resp = requests.post(base, headers=headers, json=body, timeout=10)
+            if resp.status_code in [200, 201]:
+                event_id = resp.json().get('id', '')
+                logger.info("Successfully synced to Google Calendar event_id=%s", event_id)
+            else:
+                logger.warning("Google Calendar sync error: HTTP %s", resp.status_code)
+    except Exception as e:
+        logger.error("Failed to communicate with Google Calendar API: %s", type(e).__name__)
+
+    return event_id or ""
 
 
 def delete_teacher_gcal_event(user, event_id: str) -> bool:

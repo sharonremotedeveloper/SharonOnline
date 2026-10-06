@@ -172,8 +172,7 @@ class TestNoStoredHostLink:
         b = captured(teacher_user, student_user, 30 * 60)
         Booking.objects.filter(pk=b.pk).update(zoom_meeting_id='111', zoom_host_user_id='host-1')
         with mock.patch('apps.bookings.services.rescheduling.cleanup_zoom_meeting'), \
-                mock.patch('apps.bookings.services.rescheduling.dispatch_booking_fulfillment'), \
-                mock.patch('apps.bookings.services.rescheduling.cleanup_gcal_event'):
+                mock.patch('apps.bookings.services.rescheduling.dispatch_booking_fulfillment'):
             assert resched(student_user, b, open_slots(teacher_user)[0]).status_code == 200
         b.refresh_from_db()
         assert b.zoom_meeting_id == '' and b.zoom_host_user_id is None

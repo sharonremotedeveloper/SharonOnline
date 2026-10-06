@@ -1252,6 +1252,23 @@ export interface paths {
         patch: operations["v1_payments_payout_settings_partial_update"];
         trace?: never;
     };
+    "/api/v1/payments/payout-settings/code/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description E-mail the tutor the one-time code that PayoutSettingsView requires before it saves bank details. */
+        post: operations["v1_payments_payout_settings_code_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payments/paypal/capture/": {
         parameters: {
             query?: never;
@@ -1315,6 +1332,23 @@ export interface paths {
             cookie?: never;
         };
         get: operations["v1_payments_wallet_tutor_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payments/wallet/tutor/statement/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description P2: the tutor's own earnings and payouts as a CSV with a running balance (ledger 2020). */
+        get: operations["v1_payments_wallet_tutor_statement_retrieve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2586,6 +2620,8 @@ export interface components {
             branch_code?: string;
             account_type?: components["schemas"]["AccountTypeEnum"];
             identification_number?: string;
+            /** @description The 6-digit code e-mailed by POST /payments/payout-settings/code/. */
+            verification_code?: string;
         };
         PatchedPowerBackupRequest: {
             has_inverter_backup?: boolean;
@@ -2640,6 +2676,8 @@ export interface components {
             branch_code: string;
             account_type: components["schemas"]["AccountTypeEnum"];
             identification_number?: string;
+            /** @description The 6-digit code e-mailed by POST /payments/payout-settings/code/. */
+            verification_code: string;
         };
         PayoutBatch: {
             /** Format: uuid */
@@ -5684,6 +5722,37 @@ export interface operations {
             };
         };
     };
+    v1_payments_payout_settings_code_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     v1_payments_paypal_capture_create: {
         parameters: {
             query?: never;
@@ -5772,6 +5841,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TutorWallet"];
+                };
+            };
+        };
+    };
+    v1_payments_wallet_tutor_statement_retrieve: {
+        parameters: {
+            query?: {
+                /** @description First day (YYYY-MM-DD, UTC). */
+                from?: string;
+                /** @description Last day (YYYY-MM-DD, UTC). */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
                 };
             };
         };

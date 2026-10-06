@@ -1,0 +1,11 @@
+subject: Your Sharon ESL payout was returned by the bank
+title: Your Sharon ESL payout was returned by the bank
+--- body
+The bank returned your payout. The money is back in your earnings balance. Check your bank details in payout settings; it is paid again in the next run.
+--- text
+Hi Yuki,
+
+The bank returned your payout. The money is back in your earnings balance. Check your bank details in payout settings; it is paid again in the next run.
+
+--- html
+<p>Hi Yuki,</p><p>The bank returned your payout. The money is back in your earnings balance. Check your bank details in payout settings; it is paid again in the next run.</p>

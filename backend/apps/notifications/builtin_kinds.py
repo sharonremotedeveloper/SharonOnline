@@ -56,3 +56,66 @@ def _example_sample(booking):
 
 register(Kind(ADMIN_ALERT, 'staff_alert', frozenset({EMAIL, IN_APP}), _render_admin_alert, _example_admin_alert))
 register(Kind(SAMPLE_LESSON_NOTICE, 'booking', frozenset({EMAIL, IN_APP}), _render_sample, _example_sample))
+
+
+# --- Payout kinds (Package A, slices P1b/P1c): payloads carry ids only; amounts are read from the tutor's own line. -------------
+PAYOUT_PAID = 'payout_paid'
+PAYOUT_RETURNED = 'payout_returned'
+BANK_DETAILS_CHANGED = 'bank_details_changed'
+_NO_LINE = '00000000-0000-4000-8000-000000000000'
+
+
+def _payout_line(user, payload):
+    """The tutor's OWN payout line, or None (a stranger's id, a deleted row, an example payload): nothing else is shown."""
+    from apps.admin_api.models import PayoutBatchLine
+    return (PayoutBatchLine.objects.select_related('batch').filter(pk=str(payload.get('line_id', _NO_LINE)),
+                                                                    teacher__user=user).first())
+
+
+def _payout_message(user, payload, *, subject, headline, detail):
+    from apps.common.money import money_str
+    line = _payout_line(user, payload)
+    amount = f'R{money_str(line.amount_zar, "ZAR")}' if line else 'your payout'
+    ref = f' (batch {line.batch.batch_reference})' if line else ''
+    name = first_name(user)
+    body = f'{headline.format(amount=amount)}{ref}. {detail}'
+    text = f'Hi {name},\n\n{body}\n'
+    html = render_html('<p>Hi {name},</p><p>{body}</p>', name=name, body=body)
+    return Rendered(subject=one_line(subject), html=html, text=text, title=one_line(subject), body=body)
+
+
+def _render_payout_paid(user, payload, booking):
+    return _payout_message(
+        user, payload, subject='Your Sharon ESL payout was sent',
+        headline='We have paid {amount} to your bank account',
+        detail='It can take up to two working days to show. The statement is in your earnings wallet.')
+
+
+def _render_payout_returned(user, payload, booking):
+    return _payout_message(
+        user, payload, subject='Your Sharon ESL payout was returned by the bank',
+        headline='The bank returned {amount}',
+        detail='The money is back in your earnings balance. Check your bank details in payout settings; it is paid again in the next run.')
+
+
+def _render_bank_details_changed(user, payload, booking):
+    name = first_name(user)
+    body = ('Your payout bank details were created or changed. Payouts are held for 72 hours after a change. '
+            'If this was not you, change your password and contact support now.')
+    return Rendered(subject='Your Sharon ESL payout bank details changed',
+                    html=render_html('<p>Hi {name},</p><p>{body}</p>', name=name, body=body),
+                    text=f'Hi {name},\n\n{body}\n', title='Payout bank details changed', body=body)
+
+
+def _example_payout(booking):
+    return {'line_id': _NO_LINE}
+
+
+def _example_bank_change(booking):
+    return {'tutor_id': str(booking.teacher.user_id)}
+
+
+register(Kind(PAYOUT_PAID, 'payment', frozenset({EMAIL, IN_APP}), _render_payout_paid, _example_payout))
+register(Kind(PAYOUT_RETURNED, 'payment', frozenset({EMAIL, IN_APP}), _render_payout_returned, _example_payout))
+register(Kind(BANK_DETAILS_CHANGED, 'bank_change', frozenset({EMAIL, IN_APP}), _render_bank_details_changed,
+              _example_bank_change))

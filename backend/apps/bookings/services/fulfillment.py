@@ -327,19 +327,22 @@ def _calendar_step(booking_id, token, now) -> None:
     event_id = sync_booking_to_teacher_gcal(booking)          # HTTP, outside the row lock; returns the id, saves nothing
     if not event_id:
         raise CalendarNotSynced()
-    _store_event(booking_id, token, str(event_id), str(booking.teacher.user_id), now)
+    _store_event(booking_id, token, str(event_id), str(booking.teacher.user_id), now, previous=booking.teacher_gcal_event_id)
 
 
-def _store_event(booking_id, token, event_id, tutor_user_id, now) -> None:
-    """Same fence as `_store_meeting`: keep the event only for a still-confirmed lesson we still own that has none yet."""
+def _store_event(booking_id, token, event_id, tutor_user_id, now, previous='') -> None:
+    """Same fence as `_store_meeting`: keep the event only for a still-confirmed lesson we still own whose stored event is still
+    the one this step started from (`previous`: empty for a new lesson, the old id for a rescheduled one, whose event was updated
+    in place or, if the tutor deleted it, replaced)."""
     from apps.integrations.tasks import cleanup_gcal_event
     stored, wrote = False, False
     try:
         with transaction.atomic():
             booking = _locked_confirmed(booking_id, token)
-            if not booking.teacher_gcal_event_id:
-                booking.teacher_gcal_event_id = event_id
-                booking.save(update_fields=['teacher_gcal_event_id', 'updated_at'])
+            if booking.teacher_gcal_event_id == previous:
+                if booking.teacher_gcal_event_id != event_id:
+                    booking.teacher_gcal_event_id = event_id
+                    booking.save(update_fields=['teacher_gcal_event_id', 'updated_at'])
                 wrote = True
             _set_step(booking_id, token, 'calendar', St.DONE, now)
         stored = wrote

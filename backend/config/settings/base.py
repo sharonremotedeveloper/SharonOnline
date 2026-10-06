@@ -142,6 +142,7 @@ REST_FRAMEWORK = {
         'cancel': '30/hour',
         'review': '30/hour',
         'payout_settings': '5/hour',
+        'bank_code': '5/hour',                # e-mailed bank-change codes, per tutor
         'payout_admin': '60/hour',            # staff payout actions (create/approve/export/process): money moves here
         'password_reset': '5/hour',          # per IP; plus 3/hour per target address (PasswordResetEmailThrottle)
         'password_reset_email': '3/hour',
