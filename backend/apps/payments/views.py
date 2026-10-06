@@ -10,10 +10,12 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from rest_framework import permissions, status
+from rest_framework import permissions, serializers, status
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
@@ -21,6 +23,7 @@ from rest_framework.views import APIView
 from django.utils import timezone
 
 from apps.bookings.models import Booking
+from apps.common.money import money_str
 from apps.users.permissions import IsTeacher
 from apps.bookings.services.holds import SLOT_OWNING_STATUSES, hold_expires_at, hold_is_live, inflight_grace, max_hold
 from apps.bookings.services.booking_block import booking_block_message
@@ -28,7 +31,7 @@ from apps.bookings.services.lock_service import extend_slot_lock
 from apps.bookings.services.notice import TOO_CLOSE_CODE, TOO_CLOSE_MESSAGE, notice_closed
 from .gateways import payfast, paypal
 from .services import grace
-from .models import BookingFunding, FxRate, LessonPrice, CreditBundle, CreditPack, CreditPurchase, CreditWalletEntry, GatewayAnomaly, PaymentTransaction, TutorPayoutAccount
+from .models import BookingFunding, FxRate, LessonPrice, CreditBundle, CreditPack, CreditPurchase, CreditWalletEntry, GatewayAnomaly, PaymentTransaction, Receipt, TutorPayoutAccount
 from .serializers import (
     PayoutAccountMaskedSerializer, PayoutAccountWriteSerializer, TutorWalletSerializer, masked_payout_account,
 )
@@ -42,6 +45,7 @@ from .services.fx import FxRateStale, FxRateUnavailable, current_rate, fx_source
 from .services.pricing import CURRENCY_EXPONENT, PriceNotConfigured, lesson_price, quantize_money
 from .services.payout_crypto import PayoutDataError
 from .throttles import WritesOnlyScopedThrottle
+from .services.receipts import render_receipt_pdf
 from .services.tutor_wallet import tutor_wallet_payload
 from .services.webhook_handler import process_payment_webhook, record_unallocated_payment
 
@@ -682,3 +686,51 @@ class PayoutSettingsView(APIView):
             logger.exception('Payout encryption is not configured for user_id=%s', request.user.id)
             return Response({'code': 'payout_encryption_unavailable'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         return Response(masked_payout_account(account), status=status.HTTP_200_OK if existed else status.HTTP_201_CREATED)
+
+
+class ReceiptSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    receipt_number = serializers.CharField()
+    currency = serializers.CharField()
+    subtotal = serializers.CharField()
+    tax_amount = serializers.CharField()
+    total_amount = serializers.CharField()
+    description = serializers.CharField()
+    issued_at = serializers.DateTimeField()
+    pdf_url = serializers.CharField()
+
+
+@extend_schema(responses=ReceiptSerializer(many=True))
+class ReceiptListView(APIView):
+    """Task 10.8: the signed-in student's own receipts, newest first."""
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request):
+        rows = []
+        for receipt in Receipt.objects.filter(student=request.user):
+            rows.append({
+                'id': str(receipt.id),
+                'receipt_number': receipt.receipt_number,
+                'currency': receipt.currency,
+                'subtotal': money_str(receipt.subtotal, receipt.currency),
+                'tax_amount': money_str(receipt.tax_amount, receipt.currency),
+                'total_amount': money_str(receipt.total_amount, receipt.currency),
+                'description': receipt.description,
+                'issued_at': receipt.created_at,
+                'pdf_url': reverse('payment-receipt-pdf', args=[receipt.id]),
+            })
+        return Response(ReceiptSerializer(rows, many=True).data)
+
+
+@extend_schema(responses={(200, 'application/pdf'): OpenApiTypes.BINARY})
+class ReceiptPdfView(APIView):
+    """The receipt as a PDF. Scoped to its owner in the query, so someone else's id is a plain 404 (no existence oracle)."""
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, receipt_id):
+        receipt = get_object_or_404(
+            Receipt.objects.select_related('transaction', 'student'), pk=receipt_id, student=request.user)
+        response = HttpResponse(render_receipt_pdf(receipt), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{receipt.receipt_number}.pdf"'
+        response['Cache-Control'] = 'private, no-store'
+        return response

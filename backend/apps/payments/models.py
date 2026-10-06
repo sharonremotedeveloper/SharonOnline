@@ -660,3 +660,34 @@ class LedgerEntry(models.Model):
         return f"[{self.journal_batch_id}] {self.entry_type.upper()} {self.amount} {self.currency} -> {self.account}"
 
 
+
+
+class ReceiptSequence(models.Model):
+    """One counter row per calendar month (period 'YYYYMM'); locked with select_for_update when a number is taken."""
+    period = models.CharField(max_length=6, primary_key=True)
+    last_number = models.PositiveIntegerField(default=0)
+
+
+class Receipt(models.Model):
+    """
+    Task 10.8: the student's proof of payment, issued once for every successful PaymentTransaction (see
+    services/receipts.py). Money fields are the captured amount in its own currency; `tax_amount` is a placeholder until D-12.
+    The PDF is rendered on demand from these fields (`pdf_storage_key` is reserved for a stored copy and is unused today).
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    transaction = models.OneToOneField(PaymentTransaction, on_delete=models.PROTECT, related_name='receipt')
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='receipts')
+    receipt_number = models.CharField(max_length=20, unique=True)
+    currency = models.CharField(max_length=3)
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+    tax_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.CharField(max_length=255)
+    pdf_storage_key = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.receipt_number} {self.total_amount} {self.currency}"

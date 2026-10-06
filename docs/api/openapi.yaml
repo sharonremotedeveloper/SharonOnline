@@ -2192,6 +2192,47 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/payments/receipts/:
+    get:
+      operationId: v1_payments_receipts_list
+      description: 'Task 10.8: the signed-in student''s own receipts, newest first.'
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Receipt'
+          description: ''
+  /api/v1/payments/receipts/{receipt_id}/pdf/:
+    get:
+      operationId: v1_payments_receipts_pdf_retrieve
+      description: The receipt as a PDF. Scoped to its owner in the query, so someone
+        else's id is a plain 404 (no existence oracle).
+      parameters:
+      - in: path
+        name: receipt_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          description: ''
   /api/v1/payments/wallet/tutor/:
     get:
       operationId: v1_payments_wallet_tutor_retrieve
@@ -4992,6 +5033,39 @@ components:
           minimum: 0
       required:
       - updated
+    Receipt:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        receipt_number:
+          type: string
+        currency:
+          type: string
+        subtotal:
+          type: string
+        tax_amount:
+          type: string
+        total_amount:
+          type: string
+        description:
+          type: string
+        issued_at:
+          type: string
+          format: date-time
+        pdf_url:
+          type: string
+      required:
+      - currency
+      - description
+      - id
+      - issued_at
+      - pdf_url
+      - receipt_number
+      - subtotal
+      - tax_amount
+      - total_amount
     Refund:
       type: object
       properties:

@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import timedelta
+from decimal import Decimal
 import json
 import os
 
@@ -226,6 +227,8 @@ OUTAGE_REPORT_AFTER_END_SECONDS = int(os.environ.get('OUTAGE_REPORT_AFTER_END_SE
 STUDENT_FREE_CANCEL_HOURS = int(os.environ.get('STUDENT_FREE_CANCEL_HOURS', '2'))        # student cancels MORE than this before start: full refund
 RESCHEDULE_MIN_NOTICE_HOURS = int(os.environ.get('RESCHEDULE_MIN_NOTICE_HOURS', '2'))    # old slot must start MORE than this away
 RESCHEDULE_MAX_PER_BOOKING = int(os.environ.get('RESCHEDULE_MAX_PER_BOOKING', '1'))
+# --- Task 10.8: VAT rate printed on receipts (a fraction, '0.15' = 15%, prices are VAT-inclusive). 0 until Anesu settles D-12 (tax identity).
+PLATFORM_VAT_RATE = Decimal(os.environ.get('PLATFORM_VAT_RATE', '0'))
 # --- T2 (PRP 11.6): availability horizon and notice. One horizon replaces MAX_SLOT_DAYS / SLOT_HORIZON_DAYS /
 # RESCHEDULE_MAX_DAYS_AHEAD. Both are PROVISIONAL (plan section 9) until Anesu confirms them.
 BOOKING_HORIZON_DAYS = int(os.environ.get('BOOKING_HORIZON_DAYS', '14'))             # how far ahead a lesson can be listed, reserved or rescheduled

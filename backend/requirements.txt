@@ -25,6 +25,7 @@ whitenoise>=6.12.0
 boto3>=1.43.105
 django-storages>=1.14.4
 Pillow>=10.4.0
+reportlab>=4.2.0
 
 # Testing
 pytest>=8.4.2
