@@ -12,6 +12,7 @@ import { LessonScheduler } from "@/components/booking/LessonScheduler";
 import { Avatar } from "@/components/ui/Avatar";
 import { StarRating } from "@/components/ui/StarRating";
 import { LessonPriceLabel } from "@/components/ui/LessonPriceLabel";
+import { formatRating } from "@/lib/rating";
 
 export default function StudentBookingPage() {
   const params = useParams();
@@ -61,7 +62,7 @@ export default function StudentBookingPage() {
                 <div className="mt-1 flex items-center gap-1.5">
                   <StarRating rating={tutor.rating_avg} size="sm" showNumber={false} />
                   <span className="text-sm font-semibold text-ink">
-                    {tutor.rating_avg.toFixed(1)} <span className="font-normal text-ink-muted">({tutor.rating_count})</span>
+                    {formatRating(tutor.rating_avg)} <span className="font-normal text-ink-muted">({tutor.rating_count})</span>
                   </span>
                 </div>
               )}

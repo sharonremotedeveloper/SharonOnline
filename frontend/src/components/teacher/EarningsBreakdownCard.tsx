@@ -24,13 +24,13 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
           <div className="text-2xl sm:text-3xl font-black text-success-hover font-serif">
             R{wallet.cleared_balance_zar.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
           </div>
-          <p className="text-sm text-ink-muted">Derived from ledger account 2020.</p>
+          <p className="text-sm text-ink-muted">Money from completed lessons that is ready to be paid out.</p>
         </div>
 
         {/* Card 2: Pending Escrow */}
         <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
-            <span>In 24h Escrow</span>
+            <span>Held for 24 hours</span>
             <span className="text-warning-hover bg-warning-surface px-2 py-0.5 rounded-full text-xs">
               Holding Buffer
             </span>

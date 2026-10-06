@@ -13,6 +13,7 @@ import { VideoReelPlayer } from "@/components/tutors/VideoReelPlayer";
 import { AudioSnippetButton } from "@/components/tutors/AudioSnippetButton";
 import { TutorPortrait } from "@/components/public/TutorPortrait";
 import { LessonPriceLabel } from "@/components/ui/LessonPriceLabel";
+import { formatRating } from "@/lib/rating";
 
 /** "ZA" becomes "South Africa"; a value that is already a name is left alone. */
 function countryName(value: string): string {
@@ -112,7 +113,7 @@ export default function TutorProfilePage() {
               {hasReviews && (
                 <li className="flex items-center gap-1.5">
                   <Star className="h-5 w-5 fill-star text-star" aria-hidden="true" />
-                  <span className="font-bold">{tutor.rating_avg.toFixed(1)}</span>
+                  <span className="font-bold">{formatRating(tutor.rating_avg)}</span>
                   <span className="text-ink-muted">({tutor.rating_count} reviews)</span>
                 </li>
               )}

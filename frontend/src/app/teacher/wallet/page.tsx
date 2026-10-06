@@ -27,7 +27,7 @@ export default function TeacherWalletPage() {
       <div className="min-h-screen bg-cream flex items-center justify-center py-20">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-cocoa border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm font-bold text-ink-muted">Loading earnings and payout ledger...</p>
+          <p className="text-sm font-bold text-ink-muted">Loading your earnings...</p>
         </div>
       </div>
     );
@@ -132,7 +132,7 @@ export default function TeacherWalletPage() {
         <div className="bg-white rounded-3xl border border-divider shadow-card p-6 sm:p-8 space-y-6">
           <div className="flex items-center justify-between border-b border-divider pb-4">
             <div>
-              <h3 className="text-lg font-black text-ink font-serif">Lesson Clearing Ledger</h3>
+              <h3 className="text-lg font-black text-ink font-serif">Lesson earnings history</h3>
               <p className="text-sm text-ink-muted">Transparent breakdown of gross USD fees and net ZAR settlement</p>
             </div>
             <span className="text-xs font-bold text-ink-muted">Showing {wallet.transactions.length} entries</span>
@@ -170,7 +170,7 @@ export default function TeacherWalletPage() {
                         </span>
                       ) : tx.status === "pending" ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-warning-surface text-warning-hover text-xs font-bold border border-warning-border">
-                          <Clock className="w-3 h-3 text-warning" /> In 24h Escrow
+                          <Clock className="w-3 h-3 text-warning" /> Held for 24 hours
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-cocoa/10 text-cocoa text-xs font-bold border border-cocoa/20">

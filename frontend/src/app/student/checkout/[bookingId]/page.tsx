@@ -31,6 +31,7 @@ import { PayFastForm } from "@/components/booking/PayFastForm";
 import { PayPalButtonsWrapper } from "@/components/booking/PayPalButtonsWrapper";
 import type { OutcomeView } from "@/lib/paypalOutcome";
 import { rememberPendingPayFast } from "@/lib/pendingPayment";
+import { creditsLabel } from "@/lib/rating";
 
 export default function StudentCheckoutPage() {
   const params = useParams();
@@ -347,7 +348,7 @@ export default function StudentCheckoutPage() {
                     <span className="text-sm font-bold text-ink">Lesson Credit Wallet</span>
                   </div>
                   <span className="text-sm font-bold text-cocoa bg-white px-3 py-1 rounded-full border border-divider">
-                    Balance: {userCredits} Credits
+                    Balance: {creditsLabel(userCredits)}
                   </span>
                 </div>
 
@@ -489,7 +490,7 @@ export default function StudentCheckoutPage() {
           <div className="bg-cream-surface rounded-2xl p-4 border border-cream-deep flex items-start gap-2.5 text-sm text-ink-muted">
             <ShieldCheck className="w-4 h-4 text-success shrink-0 mt-0.5" />
             <span>
-              <strong>24-Hour Escrow Hold:</strong> Payment is held safely in escrow until the lesson completes and attendance is confirmed.
+              <strong>Your payment is protected:</strong> we hold it safely until your lesson has taken place and attendance is confirmed.
             </span>
           </div>
         </div>

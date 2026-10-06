@@ -12,7 +12,8 @@ export function VerifyEmailBanner() {
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState("");
 
-  if (!user || user.email_verified !== false) return null;
+  // Staff accounts are managed internally: the banner is for students and tutors only.
+  if (!user || user.role === "admin" || user.email_verified !== false) return null;
 
   const resend = async () => {
     setState("sending");

@@ -4,6 +4,7 @@ import type { FeaturedTeacher } from "@/lib/api";
 import { StarRating } from "@/components/ui/StarRating";
 import { LessonPriceLabel } from "@/components/ui/LessonPriceLabel";
 import { TutorPortrait } from "./TutorPortrait";
+import { formatRating } from "@/lib/rating";
 
 /**
  * Compact tutor card: a square photo beside the details, so three fit on one row without the page becoming a wall of
@@ -36,7 +37,7 @@ export function FeaturedTutorCard({ tutor }: { tutor: FeaturedTeacher }) {
             <div className="mt-1 flex items-center gap-1.5">
               <StarRating rating={tutor.rating} size="sm" showNumber={false} />
               <span className="text-sm font-semibold text-ink">
-                {tutor.rating.toFixed(1)} <span className="font-normal text-ink-muted">({tutor.review_count})</span>
+                {formatRating(tutor.rating)} <span className="font-normal text-ink-muted">({tutor.review_count})</span>
               </span>
             </div>
           )}

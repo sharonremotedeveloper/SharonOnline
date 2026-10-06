@@ -7,6 +7,7 @@ import { StarRating } from "@/components/ui/StarRating";
 import { LessonPriceLabel } from "@/components/ui/LessonPriceLabel";
 import { TutorPortrait } from "@/components/public/TutorPortrait";
 import { AudioSnippetButton } from "./AudioSnippetButton";
+import { formatRating } from "@/lib/rating";
 
 const ACCENT_NAMES: Record<string, string> = { ZA: "South African tutor", UK: "British tutor", US: "American tutor", OTHER: "International tutor" };
 
@@ -60,7 +61,7 @@ export function TutorCard({ tutor }: TutorCardProps) {
             <div className="mt-1.5 flex items-center gap-1.5">
               <StarRating rating={tutor.rating_avg} size="sm" showNumber={false} />
               <span className="text-sm font-semibold text-ink">
-                {tutor.rating_avg.toFixed(1)} <span className="font-normal text-ink-muted">({tutor.rating_count} reviews)</span>
+                {formatRating(tutor.rating_avg)} <span className="font-normal text-ink-muted">({tutor.rating_count} reviews)</span>
               </span>
             </div>
           )}

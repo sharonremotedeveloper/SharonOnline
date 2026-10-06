@@ -25,6 +25,7 @@ import type { OutcomeView } from "@/lib/paypalOutcome";
 import { rememberPendingPayFast } from "@/lib/pendingPayment";
 import { ReceiptsList } from "@/components/student/ReceiptsList";
 import { ReceiptDrawer } from "@/components/wallet/ReceiptDrawer";
+import { creditsLabel } from "@/lib/rating";
 
 // Generated from the backend OpenAPI schema (`npm run gen:api`), so a contract change breaks the build instead of the page.
 type WalletResponse = components["schemas"]["Wallet"];
@@ -276,7 +277,7 @@ export default function StudentWalletPage() {
                   }`}
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
-                  <span>{buyingPack === bundle.id ? "Starting checkout..." : `Add ${bundle.credits} Credits`}</span>
+                  <span>{buyingPack === bundle.id ? "Starting checkout..." : `Add ${creditsLabel(bundle.credits)}`}</span>
                 </button>
               </div>
             );
@@ -305,7 +306,7 @@ export default function StudentWalletPage() {
                     </div>
                   </div>
                   <div className="font-black text-sm font-serif text-cocoa">
-                    {b.remaining} of {b.total} Credits left
+                    {b.remaining} of {b.total} {b.total === 1 ? "credit" : "credits"} left
                   </div>
                 </div>
               ))}

@@ -1,4 +1,5 @@
 import React, { useId } from "react";
+import { formatRating } from "@/lib/rating";
 
 export interface StarRatingProps {
   rating: number; // e.g., 4.95
@@ -24,7 +25,7 @@ export function StarRating({
 
   return (
     <div className={`inline-flex items-center gap-1.5 ${className}`}>
-      <div className="flex items-center text-star [--star-empty:theme(colors.cream.300)]" role="img" aria-label={`Rated ${rating.toFixed(1)} out of 5`}>
+      <div className="flex items-center text-star [--star-empty:theme(colors.cream.300)]" role="img" aria-label={`Rated ${formatRating(rating)} out of 5`}>
         {[1, 2, 3, 4, 5].map((star) => {
           const filled = star <= Math.floor(rating);
           const half = !filled && star - 0.5 <= rating;
@@ -55,7 +56,7 @@ export function StarRating({
 
       {showNumber && (
         <span className="text-xs font-semibold text-ink tabular-nums">
-          {rating.toFixed(1)}
+          {formatRating(rating)}
         </span>
       )}
 
