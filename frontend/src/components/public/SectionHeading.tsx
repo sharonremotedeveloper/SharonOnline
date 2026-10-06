@@ -10,7 +10,7 @@ interface SectionHeadingProps {
 export function SectionHeading({ eyebrow, title, description, align = "center", id }: SectionHeadingProps) {
   return (
     <div className={align === "center" ? "mx-auto max-w-2xl text-center" : "max-w-2xl"}>
-      {eyebrow && <p className="text-sm font-bold uppercase tracking-wider text-primary">{eyebrow}</p>}
+      {eyebrow && <p className="text-sm font-bold uppercase tracking-wider text-primary-hover">{eyebrow}</p>}
       <h2 id={id} className="mt-1 font-serif text-3xl font-extrabold leading-tight tracking-tight text-ink sm:text-4xl lg:text-5xl">
         {title}
       </h2>

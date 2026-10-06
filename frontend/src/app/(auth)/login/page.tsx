@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Lock, Mail, ArrowRight } from "lucide-react";
+import { Lock, Mail, ArrowRight, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { UserRole } from "@/types/auth";
 
@@ -74,17 +74,18 @@ function LoginForm() {
       )}
 
       {error && (
-        <div className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-sm text-primary font-medium">
-          {error}
+        <div role="alert" className="flex items-start gap-2 p-3 bg-error-surface border border-error-border rounded-xl text-sm text-error font-medium">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1">
-          <label className="text-sm font-bold text-ink">Username or Email</label>
+          <label htmlFor="f-username-or-email" className="text-sm font-bold text-ink">Username or Email</label>
           <div className="relative">
             <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
-            <input
+            <input id="f-username-or-email"
               type="text"
               required
               value={username}
@@ -97,14 +98,14 @@ function LoginForm() {
 
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-bold text-ink">Password</label>
+            <label htmlFor="f-password" className="text-sm font-bold text-ink">Password</label>
             <Link href="/forgot-password" className="text-sm text-primary hover:underline">
               Forgot?
             </Link>
           </div>
           <div className="relative">
             <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
-            <input
+            <input id="f-password"
               type="password"
               required
               value={password}

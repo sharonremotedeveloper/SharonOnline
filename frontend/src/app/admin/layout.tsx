@@ -23,7 +23,7 @@ const NAV_ITEMS = [
   { href: "/admin/teachers/vetting", label: "Tutor Vetting Studio", icon: UserCheck, badge: "3" },
   { href: "/admin/teachers", label: "Tutor Directory & Roster", icon: Users },
   { href: "/admin/sessions/live", label: "Live Attendance Radar", icon: Radio, pulse: true },
-  { href: "/admin/disputes", label: "Dispute Tribunal", icon: Scale, badge: "2", badgeColor: "bg-rose-500" },
+  { href: "/admin/disputes", label: "Dispute Tribunal", icon: Scale, badge: "2", badgeColor: "bg-error text-white" },
   { href: "/admin/finance/ledger", label: "Escrow Ledger Audit", icon: FileSpreadsheet },
   { href: "/admin/finance/payouts", label: "Batch Bank Payouts", icon: CreditCard },
   { href: "/admin/finance/fx-rates", label: "FX Rates (EUR/JPY)", icon: Coins },
@@ -54,7 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </Link>
 
             <div className="hidden md:flex items-center gap-2 pt-1 text-sm text-cream/70">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="w-2 h-2 rounded-full bg-sun animate-pulse"></span>
               <span>Platform Core Online</span>
             </div>
           </div>
@@ -82,7 +82,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                   {item.badge && (
                     <span
-                      className={`text-xs font-mono px-2 py-0.5 rounded-full font-black text-white ${
+                      className={`text-xs font-mono px-2 py-0.5 rounded-full font-black ${
                         item.badgeColor || "bg-accent text-ink"
                       }`}
                     >
@@ -92,8 +92,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                   {item.pulse && (
                     <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sun opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-sun"></span>
                     </span>
                   )}
                 </Link>
@@ -104,7 +104,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Footer Navigation / Quick Switch */}
         <div className="hidden md:block p-6 border-t border-white/10 space-y-3">
-          <div className="text-xs font-bold text-cream/40 uppercase tracking-wider">Quick Portals</div>
+          <div className="text-xs font-bold text-cream/70 uppercase tracking-wider">Quick Portals</div>
           <div className="flex flex-col gap-1.5 text-sm text-cream/80">
             <Link
               href="/teacher/dashboard"
@@ -138,8 +138,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
-              <Zap className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" />
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-success-surface text-success-hover border border-success-border text-xs font-bold">
+              <Zap className="w-3.5 h-3.5 text-success fill-success" />
               <span>Power Guard monitoring enabled</span>
             </div>
           </div>

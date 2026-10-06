@@ -118,7 +118,7 @@ export default function BookingConfirmedPage() {
       </div>
 
       {paymentPending && (
-        <div role="status"className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm text-amber-900">
+        <div role="status"className="p-4 rounded-2xl bg-warning-surface border border-warning-border text-sm text-warning-hover">
           {PENDING_NOTICE}
         </div>
       )}

@@ -19,13 +19,13 @@ function StatusBadge({ row }: { row: FxRateRow }) {
   const status = fxStatus(row);
   if (status === "ok") {
     return (
-      <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+      <span className="inline-flex items-center gap-1 text-xs font-black text-success-hover bg-success-surface px-2 py-0.5 rounded-full">
         <CheckCircle2 className="w-3 h-3" aria-hidden="true" /> FRESH
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-xs font-black text-white bg-rose-600 px-2 py-0.5 rounded-full">
+    <span className="inline-flex items-center gap-1 text-xs font-black text-white bg-error px-2 py-0.5 rounded-full">
       <AlertTriangle className="w-3 h-3" aria-hidden="true" /> {status === "missing" ? "MISSING" : "STALE"}
     </span>
   );
@@ -113,7 +113,7 @@ export default function AdminFxRatesPage() {
       </div>
 
       {blocked.length > 0 && (
-        <div role="alert" className="flex items-start gap-3 rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800">
+        <div role="alert" className="flex items-start gap-3 rounded-2xl border border-error-border bg-error-surface p-4 text-sm text-error-hover">
           <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
           <div>
             <strong>{blocked.map((r) => r.currency).join(" and ")} checkout is blocked while the rate is stale or missing.</strong>{" "}
@@ -193,16 +193,16 @@ export default function AdminFxRatesPage() {
         </div>
         {fieldError && <p className="text-xs font-medium text-error">{fieldError}</p>}
         <InlineError error={saveError} />
-        {savedNote && <p className="text-xs font-bold text-emerald-800">{savedNote}</p>}
+        {savedNote && <p className="text-xs font-bold text-success-hover">{savedNote}</p>}
 
         {needsConfirm && (
-          <div role="alert" className="rounded-2xl border border-amber-300 bg-amber-50 p-4 space-y-3 text-sm text-amber-900">
+          <div role="alert" className="rounded-2xl border border-warning-border bg-warning-surface p-4 space-y-3 text-sm text-warning-hover">
             <p>{needsConfirm}</p>
             <button
               type="button"
               disabled={saving}
               onClick={() => void submit(true)}
-              className="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-warning text-white text-xs font-bold disabled:opacity-50"
             >
               {saving ? "Saving..." : "Confirm and save"}
             </button>

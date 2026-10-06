@@ -371,18 +371,18 @@ export function VideoSdkClassroom({
     return (
       <div
         data-testid="device-settings-modal"
-        className="fixed inset-0 sm:absolute sm:inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+        className="fixed inset-0 sm:absolute sm:inset-0 z-50 bg-cocoa-950/80 backdrop-blur-sm flex items-center justify-center p-4"
       >
-        <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-white">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="on-dark bg-cocoa-800 border border-cocoa-500 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-white">
+          <div className="flex items-center justify-between border-b border-cocoa-600 pb-3">
             <div className="flex items-center gap-2">
-              <Settings className="w-4 h-4 text-cocoa" />
+              <Settings className="w-4 h-4 text-sun" />
               <h4 className="text-sm font-bold text-white">Audio &amp; Video Devices</h4>
             </div>
             <button
               type="button"
               onClick={() => setShowSettings(false)}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center p-1.5 rounded-xl text-cocoa-200 hover:text-white hover:bg-cocoa-600 transition-colors"
               aria-label="Close Device Settings"
             >
               <X className="w-4 h-4" />
@@ -392,8 +392,8 @@ export function VideoSdkClassroom({
           <div className="space-y-3.5 text-xs">
             {/* Camera Selection */}
             <div className="space-y-1.5">
-              <label htmlFor="camera-select" className="font-semibold text-slate-300 flex items-center gap-1.5">
-                <Video className="w-3.5 h-3.5 text-cocoa" />
+              <label htmlFor="camera-select" className="font-semibold text-cocoa-100 flex items-center gap-1.5">
+                <Video className="w-3.5 h-3.5 text-sun" />
                 <span>Camera</span>
               </label>
               <select
@@ -401,7 +401,7 @@ export function VideoSdkClassroom({
                 aria-label="Select Camera"
                 value={selectedCamera}
                 onChange={(e) => void switchCameraDevice(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cocoa"
+                className="w-full bg-cocoa-600 border border-cocoa-500 rounded-xl p-2.5 text-xs text-white focus-visible:outline-2 focus-visible:outline-sun focus-visible:outline-offset-2"
               >
                 {cameras.length === 0 ? (
                   <option value="">Default System Camera</option>
@@ -417,8 +417,8 @@ export function VideoSdkClassroom({
 
             {/* Microphone Selection */}
             <div className="space-y-1.5">
-              <label htmlFor="mic-select" className="font-semibold text-slate-300 flex items-center gap-1.5">
-                <Mic className="w-3.5 h-3.5 text-cocoa" />
+              <label htmlFor="mic-select" className="font-semibold text-cocoa-100 flex items-center gap-1.5">
+                <Mic className="w-3.5 h-3.5 text-sun" />
                 <span>Microphone</span>
               </label>
               <select
@@ -426,7 +426,7 @@ export function VideoSdkClassroom({
                 aria-label="Select Microphone"
                 value={selectedMic}
                 onChange={(e) => void switchMicDevice(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cocoa"
+                className="w-full bg-cocoa-600 border border-cocoa-500 rounded-xl p-2.5 text-xs text-white focus-visible:outline-2 focus-visible:outline-sun focus-visible:outline-offset-2"
               >
                 {mics.length === 0 ? (
                   <option value="">Default System Microphone</option>
@@ -442,8 +442,8 @@ export function VideoSdkClassroom({
 
             {/* Speaker Selection */}
             <div className="space-y-1.5">
-              <label htmlFor="speaker-select" className="font-semibold text-slate-300 flex items-center gap-1.5">
-                <Volume2 className="w-3.5 h-3.5 text-cocoa" />
+              <label htmlFor="speaker-select" className="font-semibold text-cocoa-100 flex items-center gap-1.5">
+                <Volume2 className="w-3.5 h-3.5 text-sun" />
                 <span>Speaker / Audio Output</span>
               </label>
               <select
@@ -451,7 +451,7 @@ export function VideoSdkClassroom({
                 aria-label="Select Speaker"
                 value={selectedSpeaker}
                 onChange={(e) => void switchSpeakerDevice(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-cocoa"
+                className="w-full bg-cocoa-600 border border-cocoa-500 rounded-xl p-2.5 text-xs text-white focus-visible:outline-2 focus-visible:outline-sun focus-visible:outline-offset-2"
               >
                 {speakers.length === 0 ? (
                   <option value="">Default System Speaker</option>
@@ -466,11 +466,11 @@ export function VideoSdkClassroom({
             </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-800 flex justify-end">
+          <div className="pt-2 border-t border-cocoa-600 flex justify-end">
             <button
               type="button"
               onClick={() => setShowSettings(false)}
-              className="px-4 py-2 rounded-xl bg-cocoa text-slate-950 font-bold text-xs hover:bg-cocoa-hover transition-colors"
+              className="px-4 py-2 rounded-xl bg-sun text-ink font-bold text-xs hover:bg-accent-300 transition-colors"
             >
               Done
             </button>
@@ -483,34 +483,34 @@ export function VideoSdkClassroom({
   // Not connected yet: display pre-join stage
   if (!joined) {
     return (
-      <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white space-y-6 shadow-xl relative overflow-hidden border border-slate-800">
+      <div className="on-dark bg-cocoa-800 rounded-3xl p-6 sm:p-8 text-white space-y-6 shadow-xl relative overflow-hidden border border-cocoa-600">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-cocoa animate-pulse" />
-            <span className="text-xs font-bold uppercase tracking-wider text-cocoa">
+            <span className="text-xs font-bold uppercase tracking-wider text-sun">
               In-Browser Classroom
             </span>
           </div>
-          <span className="text-xs text-slate-400 flex items-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-cocoa" /> WebRTC HD
+          <span className="text-xs text-cocoa-200 flex items-center gap-1">
+            <ShieldCheck className="w-3.5 h-3.5 text-sun" /> WebRTC HD
           </span>
         </div>
 
         <div className="text-center py-8 space-y-4">
-          <div className="w-20 h-20 rounded-3xl bg-slate-800 border border-slate-700 mx-auto flex items-center justify-center text-cocoa shadow-inner">
+          <div className="w-20 h-20 rounded-3xl bg-cocoa-600 border border-cocoa-500 mx-auto flex items-center justify-center text-sun shadow-inner">
             <Video className="w-10 h-10" />
           </div>
           <div className="space-y-1">
             <h3 className="text-lg font-bold">Live Synchronous Classroom</h3>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            <p className="text-xs text-cocoa-200 max-w-sm mx-auto">
               Your lesson with <span className="text-white font-medium">{partnerName}</span> runs
               directly in this browser tab. No Zoom app or download required.
             </p>
           </div>
 
           {problem && (
-            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200 max-w-md mx-auto flex items-start gap-2.5 text-left">
-              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div className="p-3.5 rounded-2xl bg-sun/10 border border-sun/30 text-xs text-sun-soft max-w-md mx-auto flex items-start gap-2.5 text-left">
+              <AlertTriangle className="w-4 h-4 text-sun shrink-0 mt-0.5" />
               <span>{problem.message}</span>
             </div>
           )}
@@ -520,7 +520,7 @@ export function VideoSdkClassroom({
               type="button"
               onClick={joinSession}
               disabled={connecting}
-              className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-cocoa text-slate-950 font-black text-sm hover:bg-cocoa-hover transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
+              className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-sun text-ink font-black text-sm hover:bg-accent-300 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-50"
             >
               {connecting ? (
                 <>
@@ -541,9 +541,9 @@ export function VideoSdkClassroom({
                 setShowSettings(true);
                 void loadDevices();
               }}
-              className="w-full sm:w-auto px-4 py-3 rounded-2xl bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700 transition-all flex items-center justify-center gap-1.5 border border-slate-700"
+              className="w-full sm:w-auto px-4 py-3 rounded-2xl bg-cocoa-600 text-cocoa-100 font-bold text-xs hover:bg-cocoa-500 transition-all flex items-center justify-center gap-1.5 border border-cocoa-500"
             >
-              <Settings className="w-3.5 h-3.5 text-cocoa" />
+              <Settings className="w-3.5 h-3.5 text-sun" />
               <span>Device Settings</span>
             </button>
 
@@ -552,7 +552,7 @@ export function VideoSdkClassroom({
                 href={legacyJoinUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full sm:w-auto px-4 py-3 rounded-2xl bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700 transition-all flex items-center justify-center gap-1.5 border border-slate-700"
+                className="w-full sm:w-auto px-4 py-3 rounded-2xl bg-cocoa-600 text-cocoa-100 font-bold text-xs hover:bg-cocoa-500 transition-all flex items-center justify-center gap-1.5 border border-cocoa-500"
               >
                 <span>Launch in Zoom App</span>
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -568,22 +568,22 @@ export function VideoSdkClassroom({
 
   // Active in-browser video call stage
   return (
-    <div className="bg-slate-950 rounded-3xl overflow-hidden shadow-2xl border border-slate-800 relative flex flex-col min-h-[460px] lg:min-h-[540px]">
+    <div className="on-dark bg-cocoa-950 rounded-3xl overflow-hidden shadow-2xl border border-cocoa-600 relative flex flex-col min-h-[460px] lg:min-h-[540px]">
       {/* Top Header Pill */}
       <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between pointer-events-none">
-        <div className="bg-slate-900/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-slate-700/60 shadow-md flex items-center gap-2 pointer-events-auto">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+        <div className="bg-cocoa-800/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-cocoa-500/60 shadow-md flex items-center gap-2 pointer-events-auto">
+          <span className="w-2 h-2 rounded-full bg-sky animate-pulse" />
           <span className="text-xs font-bold text-white">Live · {remoteUserName}</span>
         </div>
 
-        <div className="bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/60 shadow-md flex items-center gap-1.5 text-xs text-slate-300 pointer-events-auto">
-          <ShieldCheck className="w-3.5 h-3.5 text-cocoa" />
+        <div className="bg-cocoa-800/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-cocoa-500/60 shadow-md flex items-center gap-1.5 text-xs text-cocoa-100 pointer-events-auto">
+          <ShieldCheck className="w-3.5 h-3.5 text-sun" />
           <span>Encrypted Session</span>
         </div>
       </div>
 
       {/* Main Remote Video Feed */}
-      <div className="relative flex-1 bg-slate-900 flex items-center justify-center overflow-hidden">
+      <div className="relative flex-1 bg-cocoa-800 flex items-center justify-center overflow-hidden">
         <canvas
           ref={remoteCanvasRef}
           width={640}
@@ -593,16 +593,16 @@ export function VideoSdkClassroom({
 
         {!remoteUserJoined && (
           <div className="text-center p-8 space-y-3 z-10">
-            <div className="w-20 h-20 rounded-full bg-slate-800 border border-slate-700 mx-auto flex items-center justify-center text-slate-400 overflow-hidden shadow-inner">
+            <div className="w-20 h-20 rounded-full bg-cocoa-600 border border-cocoa-500 mx-auto flex items-center justify-center text-cocoa-200 overflow-hidden shadow-inner">
               {partnerAvatar ? (
                 <img src={partnerAvatar} alt={partnerName} className="w-full h-full object-cover" />
               ) : (
-                <User className="w-10 h-10 text-slate-500" />
+                <User className="w-10 h-10 text-cocoa-300" />
               )}
             </div>
             <div className="space-y-1">
               <p className="text-sm font-bold text-white">Waiting for {partnerName} to join...</p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-cocoa-200">
                 You are in the classroom. The video will start automatically when they connect.
               </p>
             </div>
@@ -610,7 +610,7 @@ export function VideoSdkClassroom({
         )}
 
         {/* Self Picture-in-Picture Preview */}
-        <div className="absolute bottom-20 right-2 sm:right-4 z-20 w-28 h-20 sm:w-44 sm:h-32 rounded-2xl overflow-hidden border-2 border-slate-700/80 shadow-2xl bg-slate-950">
+        <div className="absolute bottom-20 right-2 sm:right-4 z-20 w-28 h-20 sm:w-44 sm:h-32 rounded-2xl overflow-hidden border-2 border-cocoa-500/80 shadow-2xl bg-cocoa-950">
           <canvas
             ref={selfCanvasRef}
             width={320}
@@ -618,28 +618,28 @@ export function VideoSdkClassroom({
             className={`w-full h-full object-cover ${isVideoOff ? "hidden" : "block"}`}
           />
           {isVideoOff && (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 text-slate-500 text-xs font-bold">
-              <VideoOff className="w-5 h-5 mb-1 text-slate-600" />
+            <div className="w-full h-full flex flex-col items-center justify-center bg-cocoa-800 text-cocoa-300 text-xs font-bold">
+              <VideoOff className="w-5 h-5 mb-1 text-cocoa-300" />
               <span>Camera Off</span>
             </div>
           )}
-          <span className="absolute bottom-1.5 left-2 text-xs font-bold bg-slate-900/80 px-1.5 py-0.5 rounded text-white backdrop-blur-xs">
+          <span className="absolute bottom-1.5 left-2 text-xs font-bold bg-cocoa-800/80 px-1.5 py-0.5 rounded text-white backdrop-blur-xs">
             You
           </span>
         </div>
       </div>
 
       {/* Bottom Floating Classroom Control Bar */}
-      <div className="bg-slate-900/95 backdrop-blur-lg border-t border-slate-800/80 px-3 py-3 sm:px-6 sm:py-4 flex items-center justify-between z-20 gap-2">
+      <div className="bg-cocoa-800/95 backdrop-blur-lg border-t border-cocoa-600/80 px-3 py-3 sm:px-6 sm:py-4 flex items-center justify-between z-20 gap-2">
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Microphone Mute/Unmute */}
           <button
             type="button"
             onClick={toggleAudio}
-            className={`p-2.5 sm:p-3 rounded-2xl transition-all shadow-sm ${
+            className={`inline-flex min-h-11 min-w-11 items-center justify-center p-2.5 sm:p-3 rounded-2xl transition-all shadow-sm ${
               isAudioMuted
-                ? "bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:bg-rose-500/30"
-                : "bg-slate-800 text-white hover:bg-slate-700 border border-slate-700"
+                ? "bg-coral/20 text-coral-soft border border-coral/50 hover:bg-coral/30"
+                : "bg-cocoa-600 text-white hover:bg-cocoa-500 border border-cocoa-500"
             }`}
             title={isAudioMuted ? "Unmute Microphone" : "Mute Microphone"}
             aria-label={isAudioMuted ? "Unmute Microphone" : "Mute Microphone"}
@@ -651,10 +651,10 @@ export function VideoSdkClassroom({
           <button
             type="button"
             onClick={toggleVideo}
-            className={`p-2.5 sm:p-3 rounded-2xl transition-all shadow-sm ${
+            className={`inline-flex min-h-11 min-w-11 items-center justify-center p-2.5 sm:p-3 rounded-2xl transition-all shadow-sm ${
               isVideoOff
-                ? "bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:bg-rose-500/30"
-                : "bg-slate-800 text-white hover:bg-slate-700 border border-slate-700"
+                ? "bg-coral/20 text-coral-soft border border-coral/50 hover:bg-coral/30"
+                : "bg-cocoa-600 text-white hover:bg-cocoa-500 border border-cocoa-500"
             }`}
             title={isVideoOff ? "Turn Video On" : "Turn Video Off"}
             aria-label={isVideoOff ? "Turn Video On" : "Turn Video Off"}
@@ -666,10 +666,10 @@ export function VideoSdkClassroom({
           <button
             type="button"
             onClick={toggleShareScreen}
-            className={`p-2.5 sm:p-3 rounded-2xl transition-all hidden sm:flex shadow-sm ${
+            className={`min-h-11 min-w-11 items-center justify-center p-2.5 sm:p-3 rounded-2xl transition-all hidden sm:flex shadow-sm ${
               isSharing
-                ? "bg-cocoa text-slate-950 hover:bg-cocoa-hover"
-                : "bg-slate-800 text-white hover:bg-slate-700 border border-slate-700"
+                ? "bg-sun text-ink hover:bg-accent-300"
+                : "bg-cocoa-600 text-white hover:bg-cocoa-500 border border-cocoa-500"
             }`}
             title={isSharing ? "Stop Sharing Screen" : "Share Screen"}
             aria-label={isSharing ? "Stop Sharing Screen" : "Share Screen"}
@@ -684,10 +684,10 @@ export function VideoSdkClassroom({
               setShowSettings((prev) => !prev);
               void loadDevices();
             }}
-            className={`p-2.5 sm:p-3 rounded-2xl transition-all shadow-sm ${
+            className={`inline-flex min-h-11 min-w-11 items-center justify-center p-2.5 sm:p-3 rounded-2xl transition-all shadow-sm ${
               showSettings
-                ? "bg-cocoa text-slate-950 hover:bg-cocoa-hover"
-                : "bg-slate-800 text-white hover:bg-slate-700 border border-slate-700"
+                ? "bg-sun text-ink hover:bg-accent-300"
+                : "bg-cocoa-600 text-white hover:bg-cocoa-500 border border-cocoa-500"
             }`}
             title="Audio & Video Devices"
             aria-label="Device Settings"
@@ -700,7 +700,7 @@ export function VideoSdkClassroom({
         <button
           type="button"
           onClick={leaveSession}
-          className="px-3 py-2 sm:px-5 sm:py-2.5 rounded-2xl bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 transition-all flex items-center gap-1.5 sm:gap-2 shadow-lg shrink-0"
+          className="min-h-11 px-3 py-2 sm:px-5 sm:py-2.5 rounded-2xl bg-error text-white font-bold text-xs hover:bg-error-hover transition-all flex items-center gap-1.5 sm:gap-2 shadow-lg shrink-0"
         >
           <PhoneOff className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           <span>Leave Room</span>

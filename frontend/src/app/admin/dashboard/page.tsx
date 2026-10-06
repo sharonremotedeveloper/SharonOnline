@@ -59,7 +59,7 @@ export default function AdminDashboardPage() {
         <div className="flex items-center gap-2 self-start sm:self-auto">
           <Link
             href="/admin/sessions/live"
-            className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white text-xs font-black rounded-xl shadow-xs flex items-center gap-2 transition-colors animate-pulse"
+            className="px-4 py-2 bg-error hover:bg-error text-white text-xs font-black rounded-xl shadow-xs flex items-center gap-2 transition-colors animate-pulse"
           >
             <Radio className="w-4 h-4" />
             <span>{telemetry.active_zoom_sessions_count} Live Sessions Active</span>
@@ -73,7 +73,7 @@ export default function AdminDashboardPage() {
         <Link
           href="/admin/finance/fx-rates"
           role="alert"
-          className="flex items-center gap-3 rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800 hover:bg-rose-100 transition-colors"
+          className="flex items-center gap-3 rounded-2xl border border-error-border bg-error-surface p-4 text-sm text-error-hover hover:bg-error-surface transition-colors"
         >
           <AlertTriangle className="w-5 h-5 shrink-0" aria-hidden="true" />
           <span className="flex-1">
@@ -119,11 +119,11 @@ export default function AdminDashboardPage() {
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
             <span>Tutor Auditions Queue</span>
-            <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full text-xs font-bold">
+            <span className="text-warning-hover bg-warning-surface px-2 py-0.5 rounded-full text-xs font-bold">
               Action Required
             </span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-amber-700 font-serif">
+          <div className="text-2xl sm:text-3xl font-black text-warning-hover font-serif">
             {telemetry.pending_vetting_count} Applications
           </div>
           <p className="text-xs text-ink-muted">
@@ -135,11 +135,11 @@ export default function AdminDashboardPage() {
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
             <span>Dispute Tribunal</span>
-            <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full text-xs font-bold">
+            <span className="text-error-hover bg-error-surface px-2 py-0.5 rounded-full text-xs font-bold">
               Escrow Frozen
             </span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-rose-600 font-serif">
+          <div className="text-2xl sm:text-3xl font-black text-error font-serif">
             {telemetry.open_disputes_count} Open Cases
           </div>
           <p className="text-xs text-ink-muted">
@@ -153,7 +153,7 @@ export default function AdminDashboardPage() {
         {/* Card 1: Vetting Studio */}
         <div className="bg-white rounded-3xl p-6 sm:p-7 border border-divider shadow-card flex flex-col justify-between space-y-6">
           <div className="space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+            <div className="w-12 h-12 rounded-2xl bg-warning-surface text-warning-hover flex items-center justify-center font-bold">
               <UserCheck className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-black text-ink font-serif">Tutor Video Auditions</h3>
@@ -164,7 +164,7 @@ export default function AdminDashboardPage() {
 
           <Link
             href="/admin/teachers/vetting"
-            className="w-full py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
+            className="w-full py-3 px-4 rounded-xl bg-warning hover:bg-warning-hover text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
           >
             <span>Review {telemetry.pending_vetting_count} Pending Application{telemetry.pending_vetting_count === 1 ? "" : "s"}</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -174,7 +174,7 @@ export default function AdminDashboardPage() {
         {/* Card 2: Dispute Tribunal */}
         <div className="bg-white rounded-3xl p-6 sm:p-7 border border-divider shadow-card flex flex-col justify-between space-y-6">
           <div className="space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center font-bold">
+            <div className="w-12 h-12 rounded-2xl bg-error-surface text-error-hover flex items-center justify-center font-bold">
               <Scale className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-black text-ink font-serif">Dispute Arbitration</h3>
@@ -185,7 +185,7 @@ export default function AdminDashboardPage() {
 
           <Link
             href="/admin/disputes"
-            className="w-full py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
+            className="w-full py-3 px-4 rounded-xl bg-error hover:bg-error-hover text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
           >
             <span>Arbitrate {telemetry.open_disputes_count} Open Case{telemetry.open_disputes_count === 1 ? "" : "s"}</span>
             <ArrowRight className="w-3.5 h-3.5" />

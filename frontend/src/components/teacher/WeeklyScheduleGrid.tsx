@@ -219,18 +219,18 @@ export function WeeklyScheduleGrid() {
 
       <InlineError error={saveError} />
       {availability?.truncated && (
-        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+        <p className="text-xs text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2">
           Only part of your saved availability could be loaded, so this grid may be incomplete. Do not save from here.
         </p>
       )}
       {availability && wouldChangeSavedWindows(availability.rows) && (
-        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+        <p className="text-xs text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2">
           Some saved windows do not line up with this hourly grid (or overlap each other). Saving here replaces them with
           the blocks shown.
         </p>
       )}
       {pendingConflicts && (
-        <div role="alert" className="text-xs text-amber-900 bg-amber-50 border border-amber-300 rounded-2xl px-4 py-3 space-y-2">
+        <div role="alert" className="text-xs text-warning-hover bg-warning-surface border border-warning-border rounded-2xl px-4 py-3 space-y-2">
           <p className="font-bold">
             Nothing was saved: {pendingConflicts.length} confirmed lesson{pendingConflicts.length === 1 ? "" : "s"} would
             fall outside your open hours.
@@ -249,7 +249,7 @@ export function WeeklyScheduleGrid() {
               type="button"
               disabled={saving}
               onClick={() => handleSave(true)}
-              className="px-3 py-1.5 rounded-xl bg-amber-600 text-white font-black"
+              className="px-3 py-1.5 rounded-xl bg-warning text-white font-black"
             >
               Save anyway
             </button>
@@ -264,7 +264,7 @@ export function WeeklyScheduleGrid() {
         </div>
       )}
       {leftConflicts.length > 0 && (
-        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+        <p className="text-xs text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2">
           Saved. {leftConflicts.length} confirmed lesson{leftConflicts.length === 1 ? " is" : "s are"} outside your new hours but
           still booked: teach {leftConflicts.length === 1 ? "it" : "them"} or cancel from your lessons.
         </p>
@@ -315,7 +315,7 @@ export function WeeklyScheduleGrid() {
                         className={`w-full min-h-[44px] py-2 px-1 rounded-xl text-sm font-bold transition-all ${
                           isOpen
                             ? "bg-cocoa text-white shadow-xs hover:bg-cocoa-hover"
-                            : "bg-cream-surface text-ink-muted/60 hover:bg-cream-deep hover:text-ink border border-divider/60"
+                            : "bg-cream-surface text-ink-muted hover:bg-cream-deep hover:text-ink border border-divider/60"
                         }`}
                       >
                         {isOpen ? "Open" : "—"}

@@ -68,13 +68,13 @@ export function PayPalButtonsWrapper(props: PayPalButtonsWrapperProps) {
         </div>
       </div>
 
-      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-900">
+      <div className="p-3 bg-warning-surface border border-warning-border rounded-xl text-sm text-warning-hover">
         Your payment is confirmed by our server after PayPal reports the result. This page never marks its own payment
         successful.
       </div>
 
       {!CLIENT_ID ? (
-        <div role="alert" className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-800">
+        <div role="alert" className="p-3 bg-error-surface border border-error-border rounded-xl text-sm text-error-hover">
           PayPal is not configured. Card and PayPal payments are unavailable right now; please try again later or contact
           support.
         </div>
@@ -111,7 +111,7 @@ function PayPalButtonsInner({ target, currency, onQuote, onOutcome, disabled = f
 
   if (isRejected) {
     return (
-      <div role="alert" className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-800">
+      <div role="alert" className="p-3 bg-error-surface border border-error-border rounded-xl text-sm text-error-hover">
         We could not load PayPal. Check your connection or ad-blocker and reload the page.
       </div>
     );
@@ -187,7 +187,7 @@ function PayPalButtonsInner({ target, currency, onQuote, onOutcome, disabled = f
       </div>
 
       {message && (
-        <div role="alert" className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-900">
+        <div role="alert" className="p-3 bg-warning-surface border border-warning-border rounded-xl text-sm text-warning-hover">
           {message}
         </div>
       )}

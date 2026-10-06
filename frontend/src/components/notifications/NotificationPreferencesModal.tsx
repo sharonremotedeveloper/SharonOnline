@@ -98,7 +98,7 @@ export function NotificationPreferencesModal({
     >
       <div className="relative w-full max-w-lg bg-surface rounded-2xl shadow-2xl border border-ink/10 overflow-hidden text-ink">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-ink/10 bg-slate-50/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-ink/10 bg-cocoa-50/50">
           <div>
             <h2 id="notification-prefs-title" className="text-base font-bold text-ink">
               Notification Preferences
@@ -109,7 +109,7 @@ export function NotificationPreferencesModal({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-ink-muted hover:text-ink rounded-lg hover:bg-slate-100 transition-colors"
+            className="p-1.5 text-ink-muted hover:text-ink rounded-lg hover:bg-cocoa-100 transition-colors"
             aria-label="Close preferences"
           >
             <X className="w-5 h-5" />
@@ -138,7 +138,7 @@ export function NotificationPreferencesModal({
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-ink">{cat.title}</span>
                     {cat.isMandatory && (
-                      <span className="inline-flex items-center gap-0.5 px-2 py-0.5 text-xs font-bold rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                      <span className="inline-flex items-center gap-0.5 px-2 py-0.5 text-xs font-bold rounded-md bg-cocoa-100 text-cocoa-700 border border-cocoa-200">
                         <Lock className="w-2.5 h-2.5" /> Mandatory
                       </span>
                     )}
@@ -160,13 +160,13 @@ export function NotificationPreferencesModal({
                     className={`w-16 flex justify-center py-1 rounded-md transition-colors ${
                       cat.isMandatory
                         ? "opacity-60 cursor-not-allowed"
-                        : "hover:bg-slate-100"
+                        : "hover:bg-cocoa-100"
                     }`}
                     aria-label={`Toggle in-app for ${cat.title}`}
                   >
                     <span
                       className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors ${
-                        inAppEnabled ? "bg-cocoa" : "bg-slate-300"
+                        inAppEnabled ? "bg-cocoa" : "bg-cocoa-300"
                       }`}
                     >
                       <span
@@ -187,13 +187,13 @@ export function NotificationPreferencesModal({
                     className={`w-16 flex justify-center py-1 rounded-md transition-colors ${
                       cat.isMandatory
                         ? "opacity-60 cursor-not-allowed"
-                        : "hover:bg-slate-100"
+                        : "hover:bg-cocoa-100"
                     }`}
                     aria-label={`Toggle email for ${cat.title}`}
                   >
                     <span
                       className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors ${
-                        emailEnabled ? "bg-cocoa" : "bg-slate-300"
+                        emailEnabled ? "bg-cocoa" : "bg-cocoa-300"
                       }`}
                     >
                       <span
@@ -210,7 +210,7 @@ export function NotificationPreferencesModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-ink/10">
+        <div className="flex items-center justify-between px-6 py-4 bg-cocoa-50 border-t border-ink/10">
           <span className="text-xs text-ink-muted">
             {savedSuccess ? (
               <span className="text-cocoa font-bold flex items-center gap-1">

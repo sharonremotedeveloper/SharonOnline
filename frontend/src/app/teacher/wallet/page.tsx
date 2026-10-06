@@ -62,7 +62,7 @@ export default function TeacherWalletPage() {
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                <span className="text-xs font-mono font-bold text-success-hover bg-success-surface px-2 py-0.5 rounded-md">
                   ZAR CLEARING LEDGER
                 </span>
                 <span className="text-xs font-bold text-ink-muted">Tutor Financial Center</span>
@@ -120,8 +120,8 @@ export default function TeacherWalletPage() {
 
           {wallet.payout_bank_account && (
             <div className="flex items-center gap-3">
-              <span className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span className="text-xs text-success-hover bg-success-surface border border-success-border px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-success" />
                 <span>Account Configured</span>
               </span>
             </div>
@@ -165,12 +165,12 @@ export default function TeacherWalletPage() {
                     </td>
                     <td className="py-3 px-4">
                       {tx.status === "cleared" ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Cleared
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-success-surface text-success-hover text-xs font-bold border border-success-border">
+                          <CheckCircle2 className="w-3 h-3 text-success" /> Cleared
                         </span>
                       ) : tx.status === "pending" ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-xs font-bold border border-amber-200">
-                          <Clock className="w-3 h-3 text-amber-600" /> In 24h Escrow
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-warning-surface text-warning-hover text-xs font-bold border border-warning-border">
+                          <Clock className="w-3 h-3 text-warning" /> In 24h Escrow
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-cocoa/10 text-cocoa text-xs font-bold border border-cocoa/20">

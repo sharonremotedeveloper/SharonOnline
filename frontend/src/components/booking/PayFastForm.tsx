@@ -62,7 +62,7 @@ export function PayFastForm({
         </div>
       </div>
 
-      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-900">
+      <div className="p-3 bg-warning-surface border border-warning-border rounded-xl text-sm text-warning-hover">
         You will be redirected to PayFast. This page waits for the verified ITN before showing success.
       </div>
 

@@ -91,7 +91,7 @@ export function ReviewRubricModal({
 
         {isSuccess ? (
           <div className="p-8 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto">
+            <div className="w-16 h-16 rounded-full bg-success-surface border border-success-border text-success flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <h4 className="text-xl font-bold text-ink-900">Review Submitted!</h4>
@@ -116,12 +116,12 @@ export function ReviewRubricModal({
                       onMouseEnter={() => setHoverRating(star)}
                       onMouseLeave={() => setHoverRating(null)}
                       onClick={() => setRating(star)}
-                      className="p-1 transition-transform hover:scale-110 focus:outline-none"
+                      className="p-1 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary rounded-md"
                     >
                       <Star
                         className={`w-8 h-8 ${
                           filled
-                            ? "fill-amber-400 text-amber-400 drop-shadow-sm"
+                            ? "fill-star text-star drop-shadow-sm"
                             : "text-cream-300 stroke-1"
                         }`}
                       />
@@ -167,10 +167,10 @@ export function ReviewRubricModal({
 
             {/* Private Qualitative Feedback */}
             <div className="space-y-2">
-              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
+              <label htmlFor="f-private-note-for-teacher" className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
                 Private Note for {teacherName} (Optional)
               </label>
-              <textarea
+              <textarea id="f-private-note-for-teacher"
                 value={privateNotes}
                 onChange={(e) => setPrivateNotes(e.target.value)}
                 placeholder="Share any specific pacing preferences, topics you'd like to dive into next time, or words of encouragement..."

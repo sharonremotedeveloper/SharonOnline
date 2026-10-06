@@ -109,7 +109,7 @@ function PayFastReturn() {
         <p role="status" className="text-sm text-ink-muted">Your payment was confirmed and the credits are now in your wallet.</p>
       )}
       {(view.state === "failed" || view.state === "error") && (
-        <p role="alert" className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-xl p-3">{view.text}</p>
+        <p role="alert" className="text-sm text-warning-hover bg-warning-surface border border-warning-border rounded-xl p-3">{view.text}</p>
       )}
       {view.state === "waiting" && (
         <p role="status" className="text-sm text-ink-muted">

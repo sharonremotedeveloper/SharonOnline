@@ -272,7 +272,7 @@ export default function StudentCheckoutPage() {
       <InlineError error={error} />
 
       {slotLost && (
-        <div role="alert" className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-sm text-amber-900 space-y-2">
+        <div role="alert" className="p-4 rounded-2xl bg-warning-surface border border-warning-border text-sm text-warning-hover space-y-2">
           <p>
             This time slot is no longer available (the reservation expired or the slot was taken). If PayPal took a
             payment we will refund it automatically and e-mail you.

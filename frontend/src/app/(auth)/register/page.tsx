@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Lock, Mail, User, Globe, ArrowRight, Zap, CheckCircle2, ShieldCheck } from "lucide-react";
+import { Lock, Mail, User, Globe, ArrowRight, Zap, CheckCircle2, ShieldCheck, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { UserRole } from "@/types/auth";
 
@@ -134,16 +134,17 @@ function RegisterForm() {
       </div>
 
       {error && (
-        <div className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-sm text-primary font-medium">
-          {error}
+        <div role="alert" className="flex items-start gap-2 p-3 bg-error-surface border border-error-border rounded-xl text-sm text-error font-medium">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-sm font-bold text-ink">First Name</label>
-            <input
+            <label htmlFor="f-first-name" className="text-sm font-bold text-ink">First Name</label>
+            <input id="f-first-name"
               type="text"
               required
               value={formData.first_name}
@@ -153,8 +154,8 @@ function RegisterForm() {
             {fieldError("first_name")}
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-bold text-ink">Last Name</label>
-            <input
+            <label htmlFor="f-last-name" className="text-sm font-bold text-ink">Last Name</label>
+            <input id="f-last-name"
               type="text"
               required
               value={formData.last_name}
@@ -167,8 +168,8 @@ function RegisterForm() {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-sm font-bold text-ink">Username</label>
-            <input
+            <label htmlFor="f-username" className="text-sm font-bold text-ink">Username</label>
+            <input id="f-username"
               type="text"
               required
               value={formData.username}
@@ -179,8 +180,8 @@ function RegisterForm() {
             {fieldError("username")}
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-bold text-ink">Email Address</label>
-            <input
+            <label htmlFor="f-email-address" className="text-sm font-bold text-ink">Email Address</label>
+            <input id="f-email-address"
               type="email"
               required
               value={formData.email}
@@ -194,8 +195,8 @@ function RegisterForm() {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-sm font-bold text-ink">Timezone</label>
-            <input
+            <label htmlFor="f-timezone" className="text-sm font-bold text-ink">Timezone</label>
+            <input id="f-timezone"
               type="text"
               readOnly
               value={formData.timezone}
@@ -203,8 +204,8 @@ function RegisterForm() {
             />
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-bold text-ink">Country Code</label>
-            <input
+            <label htmlFor="f-country-code" className="text-sm font-bold text-ink">Country Code</label>
+            <input id="f-country-code"
               type="text"
               required
               value={formData.country}
@@ -218,8 +219,8 @@ function RegisterForm() {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-sm font-bold text-ink">Password</label>
-            <input
+            <label htmlFor="f-password" className="text-sm font-bold text-ink">Password</label>
+            <input id="f-password"
               type="password"
               required
               value={formData.password}
@@ -230,8 +231,8 @@ function RegisterForm() {
             {fieldError("password")}
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-bold text-ink">Confirm Password</label>
-            <input
+            <label htmlFor="f-confirm-password" className="text-sm font-bold text-ink">Confirm Password</label>
+            <input id="f-confirm-password"
               type="password"
               required
               value={formData.password_confirm}

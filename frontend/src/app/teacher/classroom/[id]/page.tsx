@@ -165,13 +165,13 @@ export default function TeacherClassroomPage() {
               onClick={() => setHardwareModalOpen(true)}
               className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors flex items-center gap-2 shadow-xs ${
                 hardwareChecked
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                  ? "bg-success-surface text-success-hover border-success-border"
                   : "bg-white text-ink border-divider hover:bg-cream-surface"
               }`}
             >
               {hardwareChecked ? (
                 <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <CheckCircle2 className="w-4 h-4 text-success" />
                   <span>Hardware Ready</span>
                 </>
               ) : (

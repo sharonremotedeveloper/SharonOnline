@@ -99,7 +99,7 @@ export function NotificationDrawer({
           className="w-screen max-w-md bg-surface border-l border-ink/10 shadow-2xl flex flex-col text-ink animate-in slide-in-from-right duration-200"
         >
           {/* Header */}
-          <div className="p-4 sm:px-6 border-b border-ink/10 flex items-center justify-between bg-slate-50/70">
+          <div className="p-4 sm:px-6 border-b border-ink/10 flex items-center justify-between bg-cocoa-50/70">
             <div className="flex items-center space-x-2.5">
               <div className="p-2 bg-cocoa/10 rounded-xl text-cocoa">
                 <Bell className="w-5 h-5" />
@@ -122,7 +122,7 @@ export function NotificationDrawer({
                 <button
                   type="button"
                   onClick={onMarkAllRead}
-                  className="p-2 text-ink-muted hover:text-cocoa hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1 text-xs font-medium"
+                  className="p-2 text-ink-muted hover:text-cocoa hover:bg-cocoa-100 rounded-lg transition-colors flex items-center gap-1 text-xs font-medium"
                   title="Mark all as read"
                   aria-label="Mark all as read"
                 >
@@ -134,7 +134,7 @@ export function NotificationDrawer({
               <button
                 type="button"
                 onClick={onOpenPreferences}
-                className="p-2 text-ink-muted hover:text-ink hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-2 text-ink-muted hover:text-ink hover:bg-cocoa-100 rounded-lg transition-colors"
                 title="Notification preferences"
                 aria-label="Notification preferences"
               >
@@ -144,7 +144,7 @@ export function NotificationDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 text-ink-muted hover:text-ink hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-2 text-ink-muted hover:text-ink hover:bg-cocoa-100 rounded-lg transition-colors"
                 aria-label="Close notification panel"
               >
                 <X className="w-5 h-5" />
@@ -184,7 +184,7 @@ export function NotificationDrawer({
                     className={`p-4 transition-colors relative flex items-start gap-3.5 group cursor-pointer ${
                       isUnread
                         ? "bg-cocoa-50/25 hover:bg-cocoa-50/50"
-                        : "bg-surface hover:bg-slate-50"
+                        : "bg-surface hover:bg-cocoa-50"
                     }`}
                   >
                     {/* Category Icon */}
@@ -254,7 +254,7 @@ export function NotificationDrawer({
 
             {/* Load More Button */}
             {hasMore && !isLoading && (
-              <div className="p-4 text-center bg-slate-50">
+              <div className="p-4 text-center bg-cocoa-50">
                 <button
                   type="button"
                   onClick={onFetchMore}

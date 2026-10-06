@@ -17,11 +17,11 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
         <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
             <span>Cleared for Payout</span>
-            <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-xs">
+            <span className="text-success-hover bg-success-surface px-2 py-0.5 rounded-full text-xs">
               Ready for EFT
             </span>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-800 font-serif">
+          <div className="text-2xl sm:text-3xl font-black text-success-hover font-serif">
             R{wallet.cleared_balance_zar.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
           </div>
           <p className="text-xs text-ink-muted">Derived from ledger account 2020.</p>
@@ -31,7 +31,7 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
         <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
             <span>In 24h Escrow</span>
-            <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full text-xs">
+            <span className="text-warning-hover bg-warning-surface px-2 py-0.5 rounded-full text-xs">
               Holding Buffer
             </span>
           </div>

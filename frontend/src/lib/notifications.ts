@@ -23,8 +23,8 @@ export function getNotificationCategoryInfo(kind: string): NotificationCategoryI
     return {
       label: "Lesson Memo",
       iconName: "fileText",
-      colorClass: "text-blue-600",
-      bgClass: "bg-blue-50 text-blue-800 border-blue-200",
+      colorClass: "text-info",
+      bgClass: "bg-info-surface text-info-hover border-info-border",
     };
   }
 
@@ -32,8 +32,8 @@ export function getNotificationCategoryInfo(kind: string): NotificationCategoryI
     return {
       label: "Lesson Reminder",
       iconName: "bell",
-      colorClass: "text-amber-500",
-      bgClass: "bg-amber-50 text-amber-700 border-amber-200",
+      colorClass: "text-warning",
+      bgClass: "bg-warning-surface text-warning-hover border-warning-border",
     };
   }
 
@@ -50,8 +50,8 @@ export function getNotificationCategoryInfo(kind: string): NotificationCategoryI
     return {
       label: "Billing & Credits",
       iconName: "coins",
-      colorClass: "text-emerald-600",
-      bgClass: "bg-emerald-50 text-emerald-800 border-emerald-200",
+      colorClass: "text-success",
+      bgClass: "bg-success-surface text-success-hover border-success-border",
     };
   }
 
@@ -59,8 +59,8 @@ export function getNotificationCategoryInfo(kind: string): NotificationCategoryI
     return {
       label: "Account Alert",
       iconName: "alert",
-      colorClass: "text-red-600",
-      bgClass: "bg-red-50 text-red-800 border-red-200",
+      colorClass: "text-error",
+      bgClass: "bg-error-surface text-error-hover border-error-border",
     };
   }
 
@@ -68,8 +68,8 @@ export function getNotificationCategoryInfo(kind: string): NotificationCategoryI
   return {
     label: "Notification",
     iconName: "shield",
-    colorClass: "text-slate-600",
-    bgClass: "bg-slate-50 text-slate-800 border-slate-200",
+    colorClass: "text-cocoa-600",
+    bgClass: "bg-cocoa-50 text-cocoa-800 border-cocoa-200",
   };
 }
 

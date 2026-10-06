@@ -49,7 +49,7 @@ export default function AdminLiveSessionsPage() {
   if (loading) {
     return (
       <div className="py-20 text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-12 h-12 border-4 border-error border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm font-bold text-ink-muted">Loading live session radar...</p>
       </div>
     );
@@ -84,10 +84,10 @@ export default function AdminLiveSessionsPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-error"></span>
               </span>
-              <span className="text-xs font-mono font-bold text-rose-600 uppercase tracking-wider">
+              <span className="text-xs font-mono font-bold text-error uppercase tracking-wider">
                 LIVE ZOOM RADAR
               </span>
               <span className="text-xs font-bold text-ink-muted">· {sessions.length} Active Classes</span>
@@ -129,9 +129,9 @@ export default function AdminLiveSessionsPage() {
               key={sess.id}
               className={`bg-white rounded-3xl p-6 border shadow-card transition-all space-y-5 ${
                 isWrapUp
-                  ? "border-amber-300 ring-2 ring-amber-100"
+                  ? "border-warning-border ring-2 ring-warning-surface"
                   : isStaging
-                  ? "border-blue-200"
+                  ? "border-info-border"
                   : "border-divider"
               }`}
             >
@@ -144,15 +144,15 @@ export default function AdminLiveSessionsPage() {
                 <span
                   className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
                     isWrapUp
-                      ? "bg-amber-100 text-amber-900 animate-pulse"
+                      ? "bg-warning-surface text-warning-hover animate-pulse"
                       : isStaging
-                      ? "bg-blue-100 text-blue-900"
-                      : "bg-emerald-100 text-emerald-900"
+                      ? "bg-info-surface text-info-hover"
+                      : "bg-success-surface text-success-hover"
                   }`}
                 >
                   <span
                     className={`w-2 h-2 rounded-full ${
-                      isWrapUp ? "bg-amber-600" : isStaging ? "bg-blue-600" : "bg-emerald-600"
+                      isWrapUp ? "bg-warning" : isStaging ? "bg-info" : "bg-success"
                     }`}
                   />
                   <span>
@@ -176,8 +176,8 @@ export default function AdminLiveSessionsPage() {
                       <span className="text-xs text-ink-muted">Native Educator (Host)</span>
                     </div>
                   </div>
-                  <span className="text-emerald-700 font-bold flex items-center gap-1 text-xs">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-success-hover font-bold flex items-center gap-1 text-xs">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-success" />
                     {sess.teacher_joined_at ? "In Call" : "Awaiting Host"}
                   </span>
                 </div>
@@ -191,8 +191,8 @@ export default function AdminLiveSessionsPage() {
                       <span className="text-xs text-ink-muted">Enrolled Student</span>
                     </div>
                   </div>
-                  <span className="text-emerald-700 font-bold flex items-center gap-1 text-xs">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-success-hover font-bold flex items-center gap-1 text-xs">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-success" />
                     {sess.student_joined_at ? "In Call" : "Connecting..."}
                   </span>
                 </div>
@@ -215,7 +215,7 @@ export default function AdminLiveSessionsPage() {
                 <div className="w-full h-2.5 bg-cream-deep rounded-full overflow-hidden">
                   <div
                     className={`h-full transition-all duration-500 rounded-full ${
-                      isWrapUp ? "bg-amber-500" : isStaging ? "bg-blue-500" : "bg-cocoa"
+                      isWrapUp ? "bg-warning" : isStaging ? "bg-info" : "bg-cocoa"
                     }`}
                     style={{ width: `${Math.min(100, (sess.elapsed_minutes / 25) * 100)}%` }}
                   />

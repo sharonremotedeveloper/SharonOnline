@@ -56,7 +56,7 @@ export default function TeacherPowerGuardPage() {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center py-20">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-12 h-12 border-4 border-warning border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm font-bold text-ink-muted">Loading the latest cached Power Guard status...</p>
         </div>
       </div>
@@ -83,10 +83,10 @@ export default function TeacherPowerGuardPage() {
   }
 
   const getStageColor = (stage: number) => {
-    if (stage === 0) return "bg-emerald-500 text-white";
-    if (stage <= 2) return "bg-amber-500 text-white";
-    if (stage <= 4) return "bg-orange-500 text-white";
-    return "bg-rose-600 text-white";
+    if (stage === 0) return "bg-success text-white";
+    if (stage <= 2) return "bg-warning text-white";
+    if (stage <= 4) return "bg-primary text-white";
+    return "bg-error text-white";
   };
 
   return (
@@ -103,7 +103,7 @@ export default function TeacherPowerGuardPage() {
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
+                <span className="text-xs font-mono font-bold text-warning-hover bg-warning-surface px-2 py-0.5 rounded-md">
                   ESKOM POWER GUARD
                 </span>
                 <span className="text-xs font-bold text-ink-muted">Grid Resilience Console</span>
@@ -128,7 +128,7 @@ export default function TeacherPowerGuardPage() {
         <InlineError error={saveError} />
 
         {status.stale && (
-          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-950 flex gap-2">
+          <div className="p-4 rounded-2xl bg-warning-surface border border-warning-border text-xs text-warning-hover flex gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>
               Showing the last provider reading from {new Date(status.retrieved_at).toLocaleString()}. Provider state: {status.provider_status}.
@@ -142,7 +142,7 @@ export default function TeacherPowerGuardPage() {
             <div className="space-y-1">
               <span className="text-xs font-bold text-ink-muted uppercase tracking-wider block">Live Eskom Status</span>
               <h2 className="text-xl font-black text-ink font-serif flex items-center gap-2">
-                <Zap className="w-5 h-5 text-amber-500 fill-amber-500" />
+                <Zap className="w-5 h-5 text-warning fill-warning" />
                 <span>Stage {status.stage} Currently Active</span>
               </h2>
               <p className="text-xs text-ink-muted">
@@ -181,7 +181,7 @@ export default function TeacherPowerGuardPage() {
 
             <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-1">
               <span className="text-xs font-bold text-ink flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-amber-600" />
+                <Clock className="w-3.5 h-3.5 text-warning" />
                 <span>Next Scheduled Outage Window</span>
               </span>
               <p className="text-sm font-extrabold text-ink font-mono">
@@ -211,14 +211,14 @@ export default function TeacherPowerGuardPage() {
               onClick={() => setHasInverter(!hasInverter)}
               className={`p-5 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-4 ${
                 hasInverter
-                  ? "bg-emerald-50/70 border-emerald-300"
-                  : "bg-cream-surface border-divider hover:border-gray-300"
+                  ? "bg-success-surface/70 border-success-border"
+                  : "bg-cream-surface border-divider hover:border-cocoa-300"
               }`}
             >
               <div className="flex items-start gap-3.5">
                 <div
                   className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                    hasInverter ? "bg-emerald-600 text-white" : "bg-cream-deep text-ink-muted"
+                    hasInverter ? "bg-success text-white" : "bg-cream-deep text-ink-muted"
                   }`}
                 >
                   <BatteryCharging className="w-5 h-5" />
@@ -236,7 +236,7 @@ export default function TeacherPowerGuardPage() {
 
               <div
                 className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors border ${
-                  hasInverter ? "bg-emerald-600 border-emerald-600 text-white" : "border-divider bg-white"
+                  hasInverter ? "bg-success border-success text-white" : "border-divider bg-white"
                 }`}
               >
                 {hasInverter && <Check className="w-4 h-4 stroke-[3]" />}
@@ -249,7 +249,7 @@ export default function TeacherPowerGuardPage() {
               className={`p-5 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-4 ${
                 hasLte
                   ? "bg-cocoa/10 border-cocoa/30"
-                  : "bg-cream-surface border-divider hover:border-gray-300"
+                  : "bg-cream-surface border-divider hover:border-cocoa-300"
               }`}
             >
               <div className="flex items-start gap-3.5">

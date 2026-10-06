@@ -30,14 +30,14 @@ export default function TeacherTrainingPage() {
         </header>
 
         {training.loading && <div className="rounded-3xl bg-white p-10 text-sm text-ink-muted shadow-card">Loading your training path…</div>}
-        {training.error != null && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">{errorMessage(training.error, "Training could not be loaded.")}</div>}
-        {data && !data.can_train && <div className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900"><LockKeyhole className="mt-0.5 h-5 w-5 shrink-0" /><p>Training becomes available after your tutor application is approved. Your progress will be ready here once the review is complete.</p></div>}
+        {training.error != null && <div className="rounded-2xl border border-warning-border bg-warning-surface p-5 text-sm text-warning-hover">{errorMessage(training.error, "Training could not be loaded.")}</div>}
+        {data && !data.can_train && <div className="flex gap-3 rounded-2xl border border-warning-border bg-warning-surface p-5 text-sm text-warning-hover"><LockKeyhole className="mt-0.5 h-5 w-5 shrink-0" /><p>Training becomes available after your tutor application is approved. Your progress will be ready here once the review is complete.</p></div>}
         {data && data.can_train && !data.completed_at && <div className="rounded-2xl border border-cocoa/20 bg-cocoa/5 p-5 text-sm text-cocoa">Calendar slots remain locked until all required modules are complete.</div>}
 
         {data && <section className="grid gap-4 md:grid-cols-2">
           {[...data.modules].sort((a, b) => a.position - b.position).map((module) => (
             <Link key={module.slug} href={`/teacher/training/${module.slug}`} className="group rounded-3xl border border-divider bg-white p-6 shadow-card transition hover:-translate-y-0.5 hover:border-cocoa/30">
-              <div className="flex items-start justify-between gap-4"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cocoa/10 text-cocoa"><BookOpen className="h-5 w-5" /></span>{module.completed ? <CheckCircle2 className="h-6 w-6 text-emerald-600" /> : <ArrowRight className="h-5 w-5 text-ink-muted transition group-hover:translate-x-1" />}</div>
+              <div className="flex items-start justify-between gap-4"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cocoa/10 text-cocoa"><BookOpen className="h-5 w-5" /></span>{module.completed ? <CheckCircle2 className="h-6 w-6 text-success" /> : <ArrowRight className="h-5 w-5 text-ink-muted transition group-hover:translate-x-1" />}</div>
               <p className="mt-5 text-xs font-bold uppercase tracking-wider text-ink-muted">Module {module.position}{module.is_required ? " · Required" : " · Optional"}</p>
               <h2 className="mt-2 font-serif text-2xl font-black text-ink">{module.title}</h2>
               <p className="mt-3 text-sm leading-6 text-ink-muted">{module.summary}</p>

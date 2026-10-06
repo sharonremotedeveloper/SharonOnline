@@ -149,8 +149,8 @@ export default function StudentProfilePage() {
       </div>
 
       {savedSuccess && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl flex items-center gap-3 text-sm font-semibold animate-scale-up">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+        <div className="bg-success-surface border border-success-border text-success-hover p-4 rounded-2xl flex items-center gap-3 text-sm font-semibold animate-scale-up">
+          <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
           <span>Profile updated! Your scheduled lessons and memos will reflect your new preferences.</span>
         </div>
       )}
@@ -167,10 +167,10 @@ export default function StudentProfilePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label htmlFor="f-full-name" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Full Name
               </label>
-              <input
+              <input id="f-full-name"
                 type="text"
                 value={formData.full_name}
                 onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
@@ -180,10 +180,10 @@ export default function StudentProfilePage() {
             </div>
 
             <div>
-              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label htmlFor="f-email-address" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Email Address
               </label>
-              <input
+              <input id="f-email-address"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -193,10 +193,10 @@ export default function StudentProfilePage() {
             </div>
 
             <div>
-              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label htmlFor="f-country-of-residence" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Country of Residence
               </label>
-              <input
+              <input id="f-country-of-residence"
                 type="text"
                 value={formData.country}
                 onChange={(e) => setFormData({ ...formData, country: e.target.value })}
@@ -206,10 +206,10 @@ export default function StudentProfilePage() {
             </div>
 
             <div>
-              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label htmlFor="f-local-timezone-iana" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Local Timezone (IANA)
               </label>
-              <select
+              <select id="f-local-timezone-iana"
                 value={formData.timezone}
                 onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
                 className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
@@ -230,10 +230,10 @@ export default function StudentProfilePage() {
 
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label htmlFor="f-target-cefr-proficiency" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Target CEFR Proficiency
               </label>
-              <select
+              <select id="f-target-cefr-proficiency"
                 value={formData.target_level}
                 onChange={(e) => setFormData({ ...formData, target_level: e.target.value })}
                 className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
@@ -247,10 +247,10 @@ export default function StudentProfilePage() {
             </div>
 
             <div>
-              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label htmlFor="f-primary-learning-objecti" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Primary Learning Objectives & Pedagogical Notes
               </label>
-              <textarea
+              <textarea id="f-primary-learning-objecti"
                 value={formData.learning_goals}
                 onChange={(e) => setFormData({ ...formData, learning_goals: e.target.value })}
                 rows={4}

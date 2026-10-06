@@ -154,8 +154,8 @@ export default function SupportPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-ink mb-1">Your Full Name</label>
-                <input
+                <label htmlFor="f-your-full-name" className="block text-sm font-bold text-ink mb-1">Your Full Name</label>
+                <input id="f-your-full-name"
                   type="text"
                   required
                   placeholder="e.g. Aiko Tanaka"
@@ -166,8 +166,8 @@ export default function SupportPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-ink mb-1">Your Email Address</label>
-                <input
+                <label htmlFor="f-your-email-address" className="block text-sm font-bold text-ink mb-1">Your Email Address</label>
+                <input id="f-your-email-address"
                   type="email"
                   required
                   placeholder="aiko@example.com"
@@ -178,8 +178,8 @@ export default function SupportPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-ink mb-1">Subject</label>
-                <input
+                <label htmlFor="f-subject" className="block text-sm font-bold text-ink mb-1">Subject</label>
+                <input id="f-subject"
                   type="text"
                   required
                   placeholder="e.g. Question about PayPal checkout or slot booking"
@@ -190,8 +190,8 @@ export default function SupportPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-ink mb-1">Message</label>
-                <textarea
+                <label htmlFor="f-message" className="block text-sm font-bold text-ink mb-1">Message</label>
+                <textarea id="f-message"
                   required
                   rows={4}
                   placeholder="How can we assist you today?"

@@ -92,7 +92,7 @@ ${initialScratchpad}` : ""
   if (submitted) {
     return (
       <div className="bg-white rounded-3xl p-8 border border-divider shadow-card text-center space-y-6">
-        <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
+        <div className="w-16 h-16 rounded-full bg-success-surface text-success-hover flex items-center justify-center mx-auto">
           <CheckCircle2 className="w-8 h-8" />
         </div>
 
@@ -174,7 +174,7 @@ ${initialScratchpad}` : ""
               <button
                 type="button"
                 onClick={() => removeVocabWord(item.id)}
-                className="hover:text-red-600 transition-colors p-0.5"
+                className="hover:text-error transition-colors p-0.5"
                 title="Remove word"
               >
                 <X className="w-3.5 h-3.5" />

@@ -106,7 +106,7 @@ export function ZoomLauncherButton({
             disabled
               ? "bg-cream-surface text-ink-muted/50 cursor-not-allowed border border-divider"
               : isHost
-              ? "bg-accent hover:bg-amber-600 text-ink shadow-accent/20 hover:scale-[1.01]"
+              ? "bg-accent hover:bg-warning text-ink shadow-accent/20 hover:scale-[1.01]"
               : "bg-cocoa hover:bg-cocoa-hover text-white shadow-cocoa/20 hover:scale-[1.01]"
           }`}
         >

@@ -129,7 +129,7 @@ export default function TeacherPayoutSettingsPage() {
             <ArrowLeft className="w-4 h-4" />
             <span>Return to Earnings Wallet</span>
           </Link>
-          <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+          <span className="text-xs font-bold text-success-hover bg-success-surface px-3 py-1 rounded-full border border-success-border">
             Payout Setup Only
           </span>
         </div>
@@ -166,8 +166,8 @@ export default function TeacherPayoutSettingsPage() {
           <InlineError error={error} />
 
           {saved && (
-            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 font-bold flex items-center gap-2">
-              <Check className="w-4 h-4 shrink-0 text-emerald-700" />
+            <div className="p-4 rounded-2xl bg-success-surface border border-success-border text-xs text-success-hover font-bold flex items-center gap-2">
+              <Check className="w-4 h-4 shrink-0 text-success-hover" />
               <span>Banking information saved.</span>
             </div>
           )}
@@ -175,8 +175,8 @@ export default function TeacherPayoutSettingsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Bank Name Selector */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-ink block">Bank Institution</label>
-              <select
+              <label htmlFor="f-bank-institution" className="text-xs font-bold uppercase tracking-wider text-ink block">Bank Institution</label>
+              <select id="f-bank-institution"
                 value={bankName}
                 onChange={(e) => handleBankChange(e.target.value as BankName)}
                 className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
@@ -191,10 +191,10 @@ export default function TeacherPayoutSettingsPage() {
 
             {/* Universal Branch Code */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-ink block">
+              <label htmlFor="f-universal-branch-code-6-" className="text-xs font-bold uppercase tracking-wider text-ink block">
                 Universal Branch Code (6 digits)
               </label>
-              <input
+              <input id="f-universal-branch-code-6-"
                 type="text"
                 maxLength={6}
                 value={branchCode}
@@ -207,8 +207,8 @@ export default function TeacherPayoutSettingsPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-ink block">Current Password</label>
-            <input
+            <label htmlFor="f-current-password" className="text-xs font-bold uppercase tracking-wider text-ink block">Current Password</label>
+            <input id="f-current-password"
               type="password"
               autoComplete="current-password"
               value={currentPassword}
@@ -256,8 +256,8 @@ export default function TeacherPayoutSettingsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Account Holder Name */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-ink block">Account Holder Name</label>
-              <input
+              <label htmlFor="f-account-holder-name" className="text-xs font-bold uppercase tracking-wider text-ink block">Account Holder Name</label>
+              <input id="f-account-holder-name"
                 type="text"
                 value={accountHolder}
                 onChange={(e) => setAccountHolder(e.target.value)}
@@ -269,8 +269,8 @@ export default function TeacherPayoutSettingsPage() {
 
             {/* Account Number */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-ink block">Account Number</label>
-              <input
+              <label htmlFor="f-account-number" className="text-xs font-bold uppercase tracking-wider text-ink block">Account Number</label>
+              <input id="f-account-number"
                 type="text"
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)}
@@ -313,10 +313,10 @@ export default function TeacherPayoutSettingsPage() {
 
             {/* SA ID / Passport */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-ink block">
+              <label htmlFor="f-sa-national-id-or-passpo" className="text-xs font-bold uppercase tracking-wider text-ink block">
                 SA National ID or Passport Number
               </label>
-              <input
+              <input id="f-sa-national-id-or-passpo"
                 type="text"
                 value={idNumber}
                 onChange={(e) => setIdNumber(e.target.value)}

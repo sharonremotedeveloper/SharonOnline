@@ -164,8 +164,8 @@ export default function TeacherStudentsCRMPage() {
       <InlineError error={saveError} />
 
       {saveSuccessMsg && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl flex items-center gap-2 text-xs font-semibold animate-scale-up">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div className="bg-success-surface border border-success-border text-success-hover p-4 rounded-2xl flex items-center gap-2 text-xs font-semibold animate-scale-up">
+          <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
           <span>{saveSuccessMsg}</span>
         </div>
       )}
@@ -295,22 +295,22 @@ export default function TeacherStudentsCRMPage() {
               {/* Recurring Grammar & Pronunciation Slips */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-xs font-bold text-ink-700 uppercase tracking-wider">
-                  <AlertCircle className="w-4 h-4 text-amber-600" />
+                  <AlertCircle className="w-4 h-4 text-warning" />
                   <span>Recurring Grammar & Pronunciation Slips</span>
                 </div>
 
-                <div className="bg-amber-50/30 border border-amber-200/60 rounded-2xl p-4 space-y-3 min-h-[96px]">
+                <div className="bg-warning-surface/30 border border-warning-border/60 rounded-2xl p-4 space-y-3 min-h-[96px]">
                   <div className="flex flex-wrap gap-1.5">
                     {student.common_grammar_mistakes.map((slip, idx) => (
                       <span
                         key={idx}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-amber-200 text-amber-900 rounded-lg text-xs font-medium shadow-2xs"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-warning-border text-warning-hover rounded-lg text-xs font-medium shadow-2xs"
                       >
                         {slip}
                         <button
                           type="button"
                           onClick={() => handleRemoveMistake(student.student_id, idx)}
-                          className="text-amber-400 hover:text-amber-800 ml-0.5"
+                          className="text-warning hover:text-warning-hover ml-0.5"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -318,7 +318,7 @@ export default function TeacherStudentsCRMPage() {
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-2 pt-1 border-t border-amber-100">
+                  <div className="flex items-center gap-2 pt-1 border-t border-warning-surface">
                     <input
                       type="text"
                       value={draftMistake}

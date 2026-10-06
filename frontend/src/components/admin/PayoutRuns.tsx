@@ -27,14 +27,14 @@ function LineRow({ line, canReturn, onReturn }: { line: PayoutRunLine; canReturn
     <tr className="border-t border-divider">
       <td className="py-2.5 px-4 font-bold text-ink">{line.teacher_name}</td>
       <td className="py-2.5 px-4 font-mono text-ink-muted">{line.account_last_four ? `****${line.account_last_four}` : "-"}</td>
-      <td className="py-2.5 px-4 font-black text-emerald-800 font-serif">R{line.amount_zar}</td>
+      <td className="py-2.5 px-4 font-black text-success-hover font-serif">R{line.amount_zar}</td>
       <td className="py-2.5 px-4 text-ink-muted">
         {line.status}
         {line.skip_reason ? `: ${SKIP_REASON[line.skip_reason] ?? line.skip_reason}` : ""}
       </td>
       <td className="py-2.5 px-4 text-right">
         {canReturn && line.status === "paid" && (
-          <button type="button" onClick={() => onReturn(line)} className="text-xs font-bold text-red-700 hover:underline">
+          <button type="button" onClick={() => onReturn(line)} className="text-xs font-bold text-error-hover hover:underline">
             Mark returned by bank
           </button>
         )}
@@ -115,11 +115,11 @@ export function PayoutRuns({ onChanged }: { onChanged?: () => void }) {
                 <div className="font-mono font-bold text-sm text-ink">{run.batch_reference}</div>
                 <div className="text-xs text-ink-muted flex items-center gap-1.5">
                   {run.status === "processed" ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-success" />
                   ) : run.status === "cancelled" ? (
-                    <XCircle className="w-3.5 h-3.5 text-red-600" />
+                    <XCircle className="w-3.5 h-3.5 text-error" />
                   ) : (
-                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    <Clock className="w-3.5 h-3.5 text-warning" />
                   )}
                   {STATUS_LABEL[run.status] ?? run.status} · {run.recipients_count} tutor{run.recipients_count === 1 ? "" : "s"} ·
                   R{run.total_payout_zar} · made by {run.created_by ?? "unknown"}
@@ -142,12 +142,12 @@ export function PayoutRuns({ onChanged }: { onChanged?: () => void }) {
                 )}
                 {run.status === "exported" && (
                   <button type="button" disabled={busy === `process:${run.id}`} onClick={() => act(`process:${run.id}`, () => api.processPayoutRun(run.id))}
-                    className="px-3.5 py-2 bg-emerald-700 text-white rounded-xl text-xs font-black disabled:opacity-60">
+                    className="px-3.5 py-2 bg-success-hover text-white rounded-xl text-xs font-black disabled:opacity-60">
                     Mark as paid (bank run done)
                   </button>
                 )}
                 {(run.status === "pending" || run.status === "approved") && (
-                  <button type="button" onClick={() => cancel(run)} className="px-3.5 py-2 text-xs font-bold text-red-700 hover:underline">
+                  <button type="button" onClick={() => cancel(run)} className="px-3.5 py-2 text-xs font-bold text-error-hover hover:underline">
                     Cancel run
                   </button>
                 )}

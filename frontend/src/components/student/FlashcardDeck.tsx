@@ -132,10 +132,10 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
 
   const masteryBadgeColor =
     activeCard.mastery === "mastered"
-      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+      ? "bg-success-surface text-success-hover border-success-border"
       : activeCard.mastery === "learning"
-      ? "bg-amber-50 text-amber-700 border-amber-200"
-      : "bg-blue-50 text-blue-700 border-blue-200";
+      ? "bg-warning-surface text-warning-hover border-warning-border"
+      : "bg-info-surface text-info-hover border-info-border";
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
@@ -161,7 +161,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
               setIsFlipped(false);
             }}
             className={`px-3 py-1.5 rounded-lg transition-colors ${
-              filter === "learning" ? "bg-white text-amber-700 shadow-sm font-semibold" : "text-ink-600 hover:text-ink-900"
+              filter === "learning" ? "bg-white text-warning-hover shadow-sm font-semibold" : "text-ink-600 hover:text-ink-900"
             }`}
           >
             Due / Learning ({cards.filter((c) => c.mastery !== "mastered").length})
@@ -173,7 +173,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
               setIsFlipped(false);
             }}
             className={`px-3 py-1.5 rounded-lg transition-colors ${
-              filter === "mastered" ? "bg-white text-emerald-700 shadow-sm font-semibold" : "text-ink-600 hover:text-ink-900"
+              filter === "mastered" ? "bg-white text-success-hover shadow-sm font-semibold" : "text-ink-600 hover:text-ink-900"
             }`}
           >
             Mastered ({cards.filter((c) => c.mastery === "mastered").length})
@@ -312,28 +312,28 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
         <div className="grid grid-cols-3 gap-3">
           <button
             onClick={() => handleGrade("again")}
-            className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-rose-200 bg-rose-50/50 hover:bg-rose-100/70 text-rose-700 font-medium transition-colors"
+            className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-error-border bg-error-surface/50 hover:bg-error-surface/70 text-error-hover font-medium transition-colors"
           >
             <span className="text-sm font-bold">Again</span>
-            <span className="text-sm text-rose-600/80">&lt; 1 day</span>
+            <span className="text-sm text-error/80">&lt; 1 day</span>
           </button>
 
           <button
             onClick={() => handleGrade("good")}
-            className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-amber-200 bg-amber-50/50 hover:bg-amber-100/70 text-amber-700 font-medium transition-colors"
+            className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-warning-border bg-warning-surface/50 hover:bg-warning-surface/70 text-warning-hover font-medium transition-colors"
           >
             <span className="text-sm font-bold">Good</span>
-            <span className="text-sm text-amber-600/80">3 days</span>
+            <span className="text-sm text-warning/80">3 days</span>
           </button>
 
           <button
             onClick={() => handleGrade("easy")}
-            className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-100/70 text-emerald-700 font-medium transition-colors"
+            className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border border-success-border bg-success-surface/50 hover:bg-success-surface/70 text-success-hover font-medium transition-colors"
           >
             <span className="text-sm font-bold flex items-center gap-1">
               <CheckCircle className="w-3.5 h-3.5" /> Easy
             </span>
-            <span className="text-sm text-emerald-600/80">7 days</span>
+            <span className="text-sm text-success/80">7 days</span>
           </button>
         </div>
       </div>

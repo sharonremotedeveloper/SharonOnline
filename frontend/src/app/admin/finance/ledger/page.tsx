@@ -98,8 +98,8 @@ export default function AdminLedgerPage() {
 
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-2">
           <span className="text-xs font-bold text-ink-muted">Entries Cleared for Payout</span>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-700 font-serif flex items-center gap-2">
-            <ShieldCheck className="w-7 h-7 text-emerald-600" />
+          <div className="text-2xl sm:text-3xl font-black text-success-hover font-serif flex items-center gap-2">
+            <ShieldCheck className="w-7 h-7 text-success" />
             <span>{clearedCount}</span>
           </div>
           <p className="text-xs text-ink-muted">Counted from the entries listed below</p>
@@ -145,12 +145,12 @@ export default function AdminLedgerPage() {
                   <td className="py-4 px-4 text-ink-muted font-mono">{entry.release_date}</td>
                   <td className="py-4 px-6">
                     {entry.escrow_status === "holding" ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-xs font-bold border border-amber-200">
-                        <Clock className="w-3 h-3 text-amber-600" /> In 24h Buffer
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-warning-surface text-warning-hover text-xs font-bold border border-warning-border">
+                        <Clock className="w-3 h-3 text-warning" /> In 24h Buffer
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Cleared for Payout
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-success-surface text-success-hover text-xs font-bold border border-success-border">
+                        <CheckCircle2 className="w-3 h-3 text-success" /> Cleared for Payout
                       </span>
                     )}
                   </td>

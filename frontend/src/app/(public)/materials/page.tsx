@@ -239,7 +239,7 @@ export default function MaterialsPage() {
                   <div className="pt-1 text-center">
                     <Link
                       href="/tutors"
-                      className="text-sm font-bold text-gold-bright hover:text-amber-800 transition-colors inline-flex items-center gap-1"
+                      className="text-sm font-bold text-gold-bright hover:text-warning-hover transition-colors inline-flex items-center gap-1"
                     >
                       Practice with a Verified Native Tutor <ArrowRight className="w-3 h-3" />
                     </Link>

@@ -158,10 +158,10 @@ ${memo.homework}
           {memo.grammar_notes && (
             <div>
               <div className="flex items-center gap-2 mb-2 text-ink-900 font-bold text-sm uppercase tracking-wider">
-                <Award className="w-4 h-4 text-amber-600" />
+                <Award className="w-4 h-4 text-warning" />
                 <span>Grammar & Nuances</span>
               </div>
-              <div className="bg-amber-50/50 border border-amber-100 p-4 rounded-2xl text-ink-800 text-sm leading-relaxed">
+              <div className="bg-warning-surface/50 border border-warning-surface p-4 rounded-2xl text-ink-800 text-sm leading-relaxed">
                 {memo.grammar_notes}
               </div>
             </div>
@@ -171,10 +171,10 @@ ${memo.homework}
           {memo.homework && (
             <div>
               <div className="flex items-center gap-2 mb-2 text-ink-900 font-bold text-sm uppercase tracking-wider">
-                <FileText className="w-4 h-4 text-blue-600" />
+                <FileText className="w-4 h-4 text-info" />
                 <span>Next Lesson Prep / Homework</span>
               </div>
-              <div className="bg-blue-50/50 border border-blue-100 p-4 rounded-2xl text-ink-800 text-sm leading-relaxed">
+              <div className="bg-info-surface/50 border border-info-surface p-4 rounded-2xl text-ink-800 text-sm leading-relaxed">
                 {memo.homework}
               </div>
             </div>
@@ -190,7 +190,7 @@ ${memo.homework}
             >
               {copied ? (
                 <>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Copied!
+                  <CheckCircle2 className="w-3.5 h-3.5 text-success" /> Copied!
                 </>
               ) : (
                 <>

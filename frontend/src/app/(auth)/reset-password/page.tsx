@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertTriangle, Lock } from "lucide-react";
+import { AlertTriangle, Lock, AlertCircle } from "lucide-react";
 import { confirmPasswordReset } from "@/lib/account";
 import { ApiError, errorMessage } from "@/lib/http";
 
@@ -79,8 +79,9 @@ function ResetForm() {
         <p className="text-sm text-ink-muted">You&apos;ll be signed out everywhere else.</p>
       </div>
       {error && (
-        <div role="alert" className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-sm text-primary font-medium">
-          {error}
+        <div role="alert" className="flex items-start gap-2 p-3 bg-error-surface border border-error-border rounded-xl text-sm text-error font-medium">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
         </div>
       )}
       {(

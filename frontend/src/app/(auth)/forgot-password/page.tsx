@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { Mail, ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
 import { requestPasswordReset } from "@/lib/account";
 import { ApiError, errorMessage } from "@/lib/http";
 
@@ -50,9 +50,10 @@ export default function ForgotPasswordPage() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div role="alert" className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-sm text-primary font-medium">
-                {error}
-              </div>
+              <div role="alert" className="flex items-start gap-2 p-3 bg-error-surface border border-error-border rounded-xl text-sm text-error font-medium">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
+        </div>
             )}
             <div className="space-y-1">
               <label htmlFor="email" className="text-sm font-bold text-ink">E-mail address</label>

@@ -71,19 +71,19 @@ export function LessonCountDownClock({
   // State 2: Staging window (within 5m before start)
   if (diffMs > 0 && diffMs <= 5 * 60 * 1000) {
     return (
-      <div className={`p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-3 ${className}`}>
+      <div className={`p-4 rounded-2xl bg-success-surface border border-success-border flex items-center justify-between gap-3 ${className}`}>
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center animate-pulse">
+          <div className="w-8 h-8 rounded-xl bg-success text-white flex items-center justify-center animate-pulse">
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-xs font-black text-emerald-950 block">Staging Window Active</span>
-            <span className="text-xs text-emerald-800">Complete your AV hardware check and join early</span>
+            <span className="text-xs font-black text-success-hover block">Staging Window Active</span>
+            <span className="text-xs text-success-hover">Complete your AV hardware check and join early</span>
           </div>
         </div>
         <div className="text-right font-mono">
-          <span className="text-xs uppercase tracking-wider text-emerald-700 block font-bold">Starts in</span>
-          <span className="text-lg font-black text-emerald-900">{formatTime(diffMs / 1000)}</span>
+          <span className="text-xs uppercase tracking-wider text-success-hover block font-bold">Starts in</span>
+          <span className="text-lg font-black text-success-hover">{formatTime(diffMs / 1000)}</span>
         </div>
       </div>
     );
@@ -97,7 +97,7 @@ export function LessonCountDownClock({
       <div
         className={`p-4 rounded-2xl border flex items-center justify-between gap-3 ${
           isWrapUp
-            ? "bg-amber-50 border-amber-200 text-amber-950"
+            ? "bg-warning-surface border-warning-border text-warning-hover"
             : "bg-cocoa/10 border-cocoa/30 text-ink"
         } ${className}`}
       >

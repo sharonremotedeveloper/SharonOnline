@@ -153,9 +153,9 @@ export function ReceiptDrawer({ isOpen, onClose }: ReceiptDrawerProps) {
                 ))}
               </div>
             ) : error ? (
-              <div className="p-6 rounded-2xl border border-amber-200 bg-amber-50 text-center space-y-3">
-                <AlertCircle className="w-8 h-8 text-amber-600 mx-auto" />
-                <p className="text-sm text-amber-900 font-medium">{error}</p>
+              <div className="p-6 rounded-2xl border border-warning-border bg-warning-surface text-center space-y-3">
+                <AlertCircle className="w-8 h-8 text-warning mx-auto" />
+                <p className="text-sm text-warning-hover font-medium">{error}</p>
                 <button
                   type="button"
                   onClick={loadReceipts}

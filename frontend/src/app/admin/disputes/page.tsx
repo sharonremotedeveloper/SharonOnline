@@ -84,7 +84,7 @@ export default function AdminDisputesPage() {
   if (loading) {
     return (
       <div className="py-20 text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-12 h-12 border-4 border-error border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm font-bold text-ink-muted">Loading frozen escrow arbitration tribunal...</p>
       </div>
     );
@@ -117,7 +117,7 @@ export default function AdminDisputesPage() {
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-md">
+              <span className="text-xs font-mono font-bold text-error-hover bg-error-surface px-2 py-0.5 rounded-md">
                 ESCROW ARBITRATION
               </span>
               <span className="text-xs font-bold text-ink-muted">{openCases.length} Cases Requiring Decision</span>
@@ -130,8 +130,8 @@ export default function AdminDisputesPage() {
       </div>
 
       {successNote && (
-        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-950 flex items-center gap-2.5">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div className="p-4 rounded-2xl bg-success-surface border border-success-border text-xs font-bold text-success-hover flex items-center gap-2.5">
+          <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
           <span>{successNote}</span>
         </div>
       )}
@@ -150,7 +150,7 @@ export default function AdminDisputesPage() {
             <div
               key={c.id}
               className={`bg-white rounded-3xl p-6 sm:p-8 border shadow-card space-y-6 transition-all ${
-                isResolved ? "opacity-75 border-divider" : "border-rose-300 ring-2 ring-rose-50"
+                isResolved ? "opacity-75 border-divider" : "border-error-border ring-2 ring-error-surface"
               }`}
             >
               {/* Case Bar */}
@@ -178,8 +178,8 @@ export default function AdminDisputesPage() {
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-bold ${
                       isResolved
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-rose-100 text-rose-800 animate-pulse"
+                        ? "bg-success-surface text-success-hover"
+                        : "bg-error-surface text-error-hover animate-pulse"
                     }`}
                   >
                     {isResolved ? `Resolved (${c.resolution})` : "Arbitration Open"}
@@ -228,7 +228,7 @@ export default function AdminDisputesPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-cream/60">Audio Connected:</span>
-                      <strong className={c.zoom_telemetry.call_connected ? "text-emerald-400" : "text-rose-400"}>
+                      <strong className={c.zoom_telemetry.call_connected ? "text-sky" : "text-coral-soft"}>
                         {c.zoom_telemetry.call_connected ? "Yes" : "Failed / Dropped"}
                       </strong>
                     </div>
@@ -250,15 +250,15 @@ export default function AdminDisputesPage() {
                   </div>
 
                   {pendingConfirm?.caseId === c.id ? (
-                    <div className="flex flex-wrap items-center gap-2 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
-                      <span className="text-xs font-bold text-rose-900">
+                    <div className="flex flex-wrap items-center gap-2 bg-error-surface border border-error-border rounded-xl px-3 py-2">
+                      <span className="text-xs font-bold text-error-hover">
                         Confirm {ACTION_LABELS[pendingConfirm.action]} for {c.booking_ref}? This moves money and cannot be undone.
                       </span>
                       <button
                         type="button"
                         disabled={resolvingId === c.id}
                         onClick={() => handleResolve(c.id, pendingConfirm.action)}
-                        className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 disabled:opacity-50"
+                        className="px-3 py-1.5 rounded-lg bg-error text-white text-xs font-bold hover:bg-error-hover disabled:opacity-50"
                       >
                         {resolvingId === c.id ? "Executing..." : "Confirm & execute"}
                       </button>
@@ -286,7 +286,7 @@ export default function AdminDisputesPage() {
                       type="button"
                       disabled={resolvingId === c.id || pendingConfirm?.caseId === c.id}
                       onClick={() => setPendingConfirm({ caseId: c.id, action: "split_50_50" })}
-                      className="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-colors shadow-xs"
+                      className="px-4 py-2 rounded-xl bg-warning text-white text-xs font-bold hover:bg-warning-hover transition-colors shadow-xs"
                     >
                       Split 50/50 Goodwill
                     </button>

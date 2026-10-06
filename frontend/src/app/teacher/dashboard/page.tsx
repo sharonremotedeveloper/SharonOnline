@@ -101,7 +101,7 @@ export default function TeacherDashboardPage() {
               href="/teacher/power-guard"
               className="px-4 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-1.5 transition-colors"
             >
-              <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+              <Zap className="w-3.5 h-3.5 text-warning fill-warning" />
               <span>Power Guard</span>
             </Link>
 
@@ -165,10 +165,10 @@ export default function TeacherDashboardPage() {
             <p className="text-xs text-ink-muted">Confirmed bookings will appear here once students book your slots.</p>
           </div>
         ) : (
-          <div className="bg-gradient-to-br from-[#0B3530] via-cocoa to-[#082622] text-white rounded-3xl p-6 sm:p-10 shadow-card space-y-6 relative overflow-hidden">
+          <div className="bg-cocoa text-white rounded-3xl p-6 sm:p-10 shadow-card space-y-6 relative overflow-hidden">
             <div className="flex items-center justify-between">
               <span className="inline-flex items-center gap-2 text-xs font-extrabold bg-white/10 border border-white/20 px-3.5 py-1 rounded-full text-sun-soft">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="w-2.5 h-2.5 rounded-full bg-sun animate-pulse"></span>
                 Next Class to Host
               </span>
               <span className="text-xs text-white/80 font-medium">Staging opens 5m before start</span>
@@ -202,7 +202,7 @@ export default function TeacherDashboardPage() {
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
                 <Link
                   href={`/teacher/classroom/${upcomingLesson.id}`}
-                  className="px-6 py-4 bg-accent hover:bg-amber-600 text-ink font-black rounded-2xl text-xs sm:text-sm transition-all shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01]"
+                  className="px-6 py-4 bg-accent hover:bg-warning text-ink font-black rounded-2xl text-xs sm:text-sm transition-all shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01]"
                 >
                   <Video className="w-4 h-4" />
                   <span>Enter Classroom Staging Pad</span>
@@ -240,7 +240,7 @@ export default function TeacherDashboardPage() {
               <div className="h-8 rounded bg-cream-surface animate-pulse" />
             ) : wallet ? (
               <>
-                <div className="text-2xl font-black text-emerald-800 font-serif">
+                <div className="text-2xl font-black text-success-hover font-serif">
                   R{wallet.cleared_balance_zar.toFixed(2)} ZAR
                 </div>
                 <p className="text-xs text-ink-muted">Ledger-cleared and awaiting an approved payout workflow.</p>

@@ -22,14 +22,15 @@ export function Badge({
   dot = false,
   className = "",
 }: BadgeProps) {
+  // Every pair is >= 4.5:1 (see the contrast ledger in tailwind.config.ts). Status is also carried by the label text, never colour alone.
   const styles = {
-    accent: "bg-cream-surface text-primary border-[#E8C2B3]",
-    gold: "bg-gold-surface text-[#8A5B14] border-[#F2DCA8]",
-    success: "bg-success-surface text-success border-[#C3D7C8]",
-    error: "bg-error-surface text-error border-[#F2C2BA]",
+    accent: "bg-cream-surface text-primary border-peach",
+    gold: "bg-warning-surface text-warning border-warning-border",
+    success: "bg-success-surface text-success border-success-border",
+    error: "bg-error-surface text-error border-error-border",
     teal: "bg-cocoa-surface text-cocoa border-cocoa-border",
-    plum: "bg-plum-surface text-plum border-[#F0CDB8]",
-    neutral: "bg-[#F3EBE4] text-ink-muted border-[#E4D3C6]",
+    plum: "bg-plum-surface text-plum border-peach",
+    neutral: "bg-cream-deep text-ink-muted border-divider",
   }[variant];
 
   const sizeStyles = {
@@ -40,7 +41,7 @@ export function Badge({
 
   const dotColors = {
     accent: "bg-primary",
-    gold: "bg-gold",
+    gold: "bg-warning",
     success: "bg-success",
     error: "bg-error",
     teal: "bg-cocoa",

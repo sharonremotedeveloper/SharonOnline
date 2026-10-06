@@ -102,7 +102,7 @@ export default function StudentDashboardPage() {
           href="/student/vocabulary"
           className="px-3.5 py-1.5 text-ink-600 hover:text-ink-900 hover:bg-cream-100 font-medium rounded-xl text-sm transition-colors flex items-center gap-1.5"
         >
-          <Layers className="w-3.5 h-3.5 text-amber-600" /> Flashcard Deck{cardsQ.data ? ` (${flashcards.length})` : ""}
+          <Layers className="w-3.5 h-3.5 text-warning" /> Flashcard Deck{cardsQ.data ? ` (${flashcards.length})` : ""}
         </Link>
         <Link
           href="/student/profile"
@@ -131,7 +131,7 @@ export default function StudentDashboardPage() {
 
           <div className="flex items-center justify-between">
             <span className="inline-flex items-center gap-2 text-sm font-bold bg-white/10 border border-white/20 px-3 py-1 rounded-full text-accent-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
               Next Scheduled Lesson
             </span>
             <span className="text-sm text-white/70 font-medium">
@@ -186,7 +186,7 @@ export default function StudentDashboardPage() {
         <div className="md:col-span-2 bg-white rounded-3xl border border-cream-200 p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-warning-surface border border-warning-border text-warning-hover flex items-center justify-center">
                 <Layers className="w-4 h-4" />
               </div>
               <div>
@@ -217,13 +217,13 @@ export default function StudentDashboardPage() {
               <span className="text-sm text-ink-500 block">Total Cards</span>
               <strong className="text-lg font-black text-ink-900">{flashcards.length}</strong>
             </div>
-            <div className="bg-amber-50/60 rounded-2xl p-3.5 border border-amber-200/60 text-center">
-              <span className="text-sm text-amber-700 block">Due for Review</span>
-              <strong className="text-lg font-black text-amber-900">{wordsDueCount}</strong>
+            <div className="bg-warning-surface/60 rounded-2xl p-3.5 border border-warning-border/60 text-center">
+              <span className="text-sm text-warning-hover block">Due for Review</span>
+              <strong className="text-lg font-black text-warning-hover">{wordsDueCount}</strong>
             </div>
-            <div className="bg-emerald-50/60 rounded-2xl p-3.5 border border-emerald-200/60 text-center">
-              <span className="text-sm text-emerald-700 block">Mastered</span>
-              <strong className="text-lg font-black text-emerald-900">
+            <div className="bg-success-surface/60 rounded-2xl p-3.5 border border-success-border/60 text-center">
+              <span className="text-sm text-success-hover block">Mastered</span>
+              <strong className="text-lg font-black text-success-hover">
                 {flashcards.filter((c) => c.mastery === "mastered").length}
               </strong>
             </div>
@@ -342,15 +342,15 @@ export default function StudentDashboardPage() {
                 )}
 
                 {item.review ? (
-                  <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 text-sm font-medium rounded-xl">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Rated {item.review.rating}★
+                  <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-success-surface text-success-hover border border-success-border text-sm font-medium rounded-xl">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-success" /> Rated {item.review.rating}★
                   </span>
                 ) : (
                   <button
                     onClick={() => setReviewLesson(item)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-sm font-semibold rounded-xl transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-warning-surface hover:bg-warning-surface border border-warning-border text-warning-hover text-sm font-semibold rounded-xl transition-colors"
                   >
-                    <Star className="w-3.5 h-3.5 text-amber-600 fill-amber-500" /> Leave Review
+                    <Star className="w-3.5 h-3.5 text-warning fill-warning" /> Leave Review
                   </button>
                 )}
               </div>

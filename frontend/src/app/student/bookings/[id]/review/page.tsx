@@ -136,7 +136,7 @@ export default function BookingReviewPage() {
 
       {isSubmitted ? (
         <div className="bg-white rounded-3xl border border-cream-200 p-12 text-center shadow-sm space-y-4">
-          <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto">
+          <div className="w-16 h-16 rounded-full bg-success-surface border border-success-border text-success flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-8 h-8" />
           </div>
           <h2 className="text-2xl font-extrabold text-ink-900">Review Submitted!</h2>
@@ -187,12 +187,12 @@ export default function BookingReviewPage() {
                       onMouseEnter={() => setHoverRating(star)}
                       onMouseLeave={() => setHoverRating(null)}
                       onClick={() => setRating(star)}
-                      className="p-1 transition-transform hover:scale-110 focus:outline-none"
+                      className="p-1 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary rounded-md"
                     >
                       <Star
                         className={`w-9 h-9 ${
                           filled
-                            ? "fill-amber-400 text-amber-400 drop-shadow-sm"
+                            ? "fill-star text-star drop-shadow-sm"
                             : "text-cream-300 stroke-1"
                         }`}
                       />
@@ -238,10 +238,10 @@ export default function BookingReviewPage() {
 
             {/* Qualitative Constructive Feedback */}
             <div className="space-y-2">
-              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
+              <label htmlFor="f-private-constructive-not" className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
                 Private Constructive Note for {lesson?.teacher.name || "Tutor"}
               </label>
-              <textarea
+              <textarea id="f-private-constructive-not"
                 value={privateNotes}
                 onChange={(e) => setPrivateNotes(e.target.value)}
                 placeholder="Share any pacing notes, topics you'd like to dive into for your next session, or specific grammar focus..."

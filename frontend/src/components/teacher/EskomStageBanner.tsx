@@ -17,9 +17,9 @@ export function EskomStageBanner({ status, className = "" }: EskomStageBannerPro
     <div
       className={`rounded-2xl border p-4 sm:p-5 transition-all shadow-sm ${
         status.has_inverter_backup
-          ? "bg-emerald-50/80 border-emerald-200 text-emerald-950"
+          ? "bg-success-surface/80 border-success-border text-success-hover"
           : isOutageRisk
-          ? "bg-amber-50/90 border-amber-300 text-amber-950"
+          ? "bg-warning-surface/90 border-warning-border text-warning-hover"
           : "bg-cream-surface border-divider text-ink"
       } ${className}`}
     >
@@ -29,9 +29,9 @@ export function EskomStageBanner({ status, className = "" }: EskomStageBannerPro
           <div
             className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
               status.has_inverter_backup
-                ? "bg-emerald-600 text-white"
+                ? "bg-success text-white"
                 : isOutageRisk
-                ? "bg-amber-600 text-white animate-pulse"
+                ? "bg-warning text-white animate-pulse"
                 : "bg-cocoa/10 text-cocoa"
             }`}
           >
@@ -50,12 +50,12 @@ export function EskomStageBanner({ status, className = "" }: EskomStageBannerPro
 
             <p className="text-xs font-medium opacity-90">
               {status.has_inverter_backup ? (
-                <span className="flex items-center gap-1.5 text-emerald-800 font-semibold">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="flex items-center gap-1.5 text-success-hover font-semibold">
+                  <ShieldCheck className="w-3.5 h-3.5 text-success" />
                   Inverter Backup Certified — Your calendar slots remain active &amp; open to global students.
                 </span>
               ) : isOutageRisk ? (
-                <span className="text-amber-900 font-semibold">
+                <span className="text-warning-hover font-semibold">
                   Warning: Outage window scheduled {status.next_outage_start} - {status.next_outage_end}.
                   Uncertified slots are temporarily hidden.
                 </span>
@@ -69,8 +69,8 @@ export function EskomStageBanner({ status, className = "" }: EskomStageBannerPro
         {/* Right: Certified Badges & Console Link */}
         <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
           {status.has_inverter_backup && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-bold">
-              <BatteryCharging className="w-3.5 h-3.5 text-emerald-700" />
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-success-surface text-success-hover text-xs font-bold">
+              <BatteryCharging className="w-3.5 h-3.5 text-success-hover" />
               <span>Inverter Verified</span>
             </span>
           )}

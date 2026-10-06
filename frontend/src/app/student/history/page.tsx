@@ -74,7 +74,7 @@ export default function StudentHistoryPage() {
           href="/student/vocabulary"
           className="px-4 py-2.5 bg-white border border-cream-200 hover:bg-cream-50 text-cocoa-800 font-bold text-sm rounded-xl shadow-xs transition-colors flex items-center gap-2"
         >
-          <Sparkles className="w-4 h-4 text-amber-500" /> Go to Vocabulary SRS Deck
+          <Sparkles className="w-4 h-4 text-warning" /> Go to Vocabulary SRS Deck
         </Link>
       </div>
 
@@ -114,7 +114,7 @@ export default function StudentHistoryPage() {
             onClick={() => setStatusFilter("interrupted")}
             className={`px-3 py-1.5 rounded-lg transition-colors ${
               statusFilter === "interrupted"
-                ? "bg-white text-amber-800 shadow-sm font-semibold"
+                ? "bg-white text-warning-hover shadow-sm font-semibold"
                 : "text-ink-600 hover:text-ink-900"
             }`}
           >
@@ -178,12 +178,12 @@ export default function StudentHistoryPage() {
                     {lesson.booking_reference}
                   </span>
                   {lesson.status === "completed" && (
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-success-surface text-success-hover border border-success-border">
                       <CheckCircle2 className="w-3.5 h-3.5" /> Completed
                     </span>
                   )}
                   {lesson.status === "interrupted_power" && (
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-warning-surface text-warning-hover border border-warning-border">
                       <AlertCircle className="w-3.5 h-3.5" /> Grid Interrupted (Credit Refunded)
                     </span>
                   )}
@@ -227,15 +227,15 @@ export default function StudentHistoryPage() {
                     <>
                       {lesson.review ? (
                         <span className="inline-flex items-center gap-1 px-3 py-2 bg-cream-50 border border-cream-200 text-sm font-semibold text-ink-700 rounded-xl">
-                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                          <Star className="w-3.5 h-3.5 text-warning fill-warning" />
                           Rated {lesson.review.rating} / 5
                         </span>
                       ) : (
                         <button
                           onClick={() => setActiveReviewLesson(lesson)}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-sm font-bold rounded-xl transition-colors"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-warning-surface hover:bg-warning-surface border border-warning-border text-warning-hover text-sm font-bold rounded-xl transition-colors"
                         >
-                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" /> Review Tutor
+                          <Star className="w-3.5 h-3.5 fill-warning text-warning" /> Review Tutor
                         </button>
                       )}
                     </>

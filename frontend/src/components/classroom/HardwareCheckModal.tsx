@@ -217,7 +217,7 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
                   <CheckCircle2 className="w-3.5 h-3.5" /> Working
                 </span>
               ) : hasCamera === false ? (
-                <span className="text-amber-600 flex items-center gap-1 font-bold">
+                <span className="text-warning flex items-center gap-1 font-bold">
                   <AlertTriangle className="w-3.5 h-3.5" /> Camera Inactive
                 </span>
               ) : (
@@ -302,7 +302,7 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
                 {isMeasuringPing ? (
                   <span className="text-ink-muted text-xs animate-pulse">Measuring...</span>
                 ) : pingMs !== null ? (
-                  <span className={pingMs < 100 ? "text-success" : pingMs < 250 ? "text-amber-600" : "text-rose-500"}>
+                  <span className={pingMs < 100 ? "text-success" : pingMs < 250 ? "text-warning" : "text-error"}>
                     {pingMs} ms ({pingMs < 100 ? "Excellent" : pingMs < 250 ? "Good" : "High Latency"})
                   </span>
                 ) : (
