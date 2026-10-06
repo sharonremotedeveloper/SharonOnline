@@ -585,3 +585,31 @@ def configure_test_settings(settings):
 - **Root cause:** `probe_session` consolidated HTTP retry loops, JSON payload validation, topic matching, inline user parsing, and secondary REST calls into a single monolithic routine.
 - **Fix:** Decomposed `probe_session` into single-responsibility helpers: `_get_matching_sessions`, `_parse_sessions_data`, `_session_contains_tutor`, and `_user_list_contains_tutor`. Each helper remains under 7 cyclomatic complexity. Full suite (139 backend + 186 frontend tests, ruff clean) verified green.
 
+### ERR-440: Package B worktree had no frontend dependency junction
+
+- **Observed:** `frontend/npm test` stopped with `'tsc' is not recognized as an internal or external command`.
+- **Root cause:** the new isolated worktree did not carry the ignored `frontend/node_modules` directory from the base checkout.
+- **Resolution:** restore the local dependency junction from the existing `Project-files/frontend/node_modules`; no package installation or external service was used.
+- **Verification:** source checks passed after the local dependency was made available.
+
+### ERR-441: Turbopack rejected the worktree dependency junction
+
+- **Observed:** `npm run build` failed before compilation with `Symlink [project]/node_modules is invalid, it points out of the filesystem root`.
+- **Root cause:** Next.js 16 Turbopack does not accept the worktree's dependency junction to the sibling base checkout.
+- **Resolution:** replaced only the generated worktree junction with a local dependency copy; source files and the base checkout remain untouched.
+- **Verification:** production build passed after the local dependency copy.
+
+### ERR-442: React purity and unknown error rendering checks caught during Package B build
+
+- **Observed:** lint rejected `Date.now()` during render, and TypeScript rejected `unknown` error values used directly as JSX conditions.
+- **Root cause:** schedule time comparisons were computed during render and the shared hook intentionally types errors as `unknown`.
+- **Resolution:** capture the current time after mount with `useEffect` and use explicit null checks before rendering error banners; renamed a route variable that conflicted with Next.js module rules.
+- **Verification:** lint and production build passed after this fix.
+
+### ERR-443: admin noindex metadata insertion contained a literal escape
+
+- **Observed:** the post-verification build parser reported `Expected unicode escape` in `admin/layout.tsx`.
+- **Root cause:** the scripted restoration inserted the two newline escape characters literally instead of as line breaks.
+- **Resolution:** replaced the literal escape with real source newlines while preserving the original admin layout.
+- **Verification:** lint, API type check, and production build passed after the fix.
+

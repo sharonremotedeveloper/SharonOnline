@@ -2,11 +2,16 @@
 
 import Link from "next/link";
 import { ArrowLeft, Calendar, Info, Clock, ShieldCheck } from "lucide-react";
+import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { WeeklyScheduleGrid } from "@/components/teacher/WeeklyScheduleGrid";
+import { api } from "@/lib/api";
+import { errorMessage } from "@/lib/http";
 
 export default function TeacherSchedulePage() {
   const { user } = useAuth();
+  const [open, setOpen] = useState(false); const [start, setStart] = useState(""); const [end, setEnd] = useState(""); const [reason, setReason] = useState(""); const [saving, setSaving] = useState(false); const [error, setError] = useState(""); const [message, setMessage] = useState("");
+  const saveTimeOff = async (event: React.FormEvent) => { event.preventDefault(); setSaving(true); setError(""); setMessage(""); try { await api.createTeacherTimeOff({ start_utc: new Date(start).toISOString(), end_utc: new Date(end).toISOString(), reason }); setMessage("Time off added. Confirmed lessons remain visible and are never cancelled by an availability change."); setOpen(false); } catch (err) { setError(errorMessage(err, "Time off could not be added.")); } finally { setSaving(false); } };
   return (
     <div className="min-h-screen bg-cream py-8 sm:py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
@@ -53,6 +58,10 @@ export default function TeacherSchedulePage() {
           </div>
         </div>
 
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-black text-ink">Recurring availability</h2><p className="text-xs text-ink-muted">Set your weekly teaching windows in your own timezone.</p></div><button onClick={() => setOpen(true)} className="rounded-xl bg-teal px-4 py-2.5 text-xs font-bold text-white">Add time off</button></div>
+        {message && <p className="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">{message}</p>}
+        {error && <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">{error}</p>}
+        {open && <div className="rounded-3xl border border-divider bg-white p-6 shadow-card"><div className="mb-5 flex items-center justify-between"><div><h2 className="text-lg font-black text-ink">Add time off</h2><p className="text-xs text-ink-muted">Use your browser timezone fields to select the exact window.</p></div><button type="button" onClick={() => setOpen(false)} className="text-sm font-bold text-ink-muted">Cancel</button></div><form onSubmit={saveTimeOff} className="grid gap-4 sm:grid-cols-3"><label className="text-xs font-bold">Starts<input required type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className="mt-2 w-full rounded-xl border border-divider p-3 text-sm" /></label><label className="text-xs font-bold">Ends<input required type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className="mt-2 w-full rounded-xl border border-divider p-3 text-sm" /></label><label className="text-xs font-bold">Reason<input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={200} className="mt-2 w-full rounded-xl border border-divider p-3 text-sm" /></label><button disabled={saving} className="rounded-xl bg-teal px-4 py-3 text-xs font-bold text-white disabled:opacity-50 sm:col-start-3">{saving ? "Saving…" : "Save time off"}</button></form></div>}
         {/* Schedule Grid Component */}
         <WeeklyScheduleGrid />
       </div>
