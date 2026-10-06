@@ -1,0 +1,12 @@
+subject: Power Guard Alert: Potential Outage Overlap
+title: Power Guard load-shedding alert
+--- body
+An Eskom outage reported for Cape Town Area 7 overlaps lesson 00000000-0000-4000-8000-0000000000b1 on Mon 02 Mar 2026, 16:00 (Asia/Tokyo).
+--- text
+Hi Yuki,
+
+Power Guard detected an Eskom load-shedding outage window for Cape Town Area 7 overlapping your upcoming lesson on Mon 02 Mar 2026, 16:00 (Asia/Tokyo).
+
+Please verify your power backup connectivity.
+--- html
+<p>Hi Yuki,</p><p>Power Guard detected a load-shedding outage for <strong>Cape Town Area 7</strong> overlapping your lesson on <strong>Mon 02 Mar 2026, 16:00 (Asia/Tokyo)</strong>.</p><p>Please ensure backup power and internet are ready.</p>

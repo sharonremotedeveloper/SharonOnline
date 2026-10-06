@@ -42,12 +42,15 @@ def add_strike(teacher, kind: str, booking=None) -> int:
     with transaction.atomic():
         locked = TeacherProfile.objects.select_for_update().only('id', 'status', 'user_id', 'sla_strikes').get(pk=teacher.pk)
         if booking is not None:
-            TeacherStrike.objects.get_or_create(teacher=locked, booking=booking, kind=kind)
+            strike, _ = TeacherStrike.objects.get_or_create(teacher=locked, booking=booking, kind=kind)
         else:
-            TeacherStrike.objects.create(teacher=locked, kind=kind)
+            strike = TeacherStrike.objects.create(teacher=locked, kind=kind)
         count = active_strike_count(locked)
         locked.sla_strikes = count
         locked.save(update_fields=['sla_strikes'])
+        from apps.notifications.service import notify
+        notify(locked.user, 'strike_issued', key=f'strike:{strike.id}',
+               payload={'strike_kind': str(kind), 'total_strikes': count}, booking=booking)
         if count >= settings.STRIKE_LIMIT and locked.status == TeacherProfile.Status.APPROVED:
             result = transition_teacher(locked, TeacherProfile.Status.SUSPENDED, actor='system:strikes',
                                         reason=f'{count} strikes inside {settings.STRIKE_WINDOW_DAYS} days')

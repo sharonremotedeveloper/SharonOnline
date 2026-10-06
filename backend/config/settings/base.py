@@ -178,6 +178,7 @@ SUPPORT_TO_EMAIL = os.environ.get('SUPPORT_TO_EMAIL', 'support@sharonesl.com')
 from .guard import resolve_email_backend_mode  # noqa: E402
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 RESEND_TIMEOUT_SECONDS = float(os.environ.get('RESEND_TIMEOUT_SECONDS', '10'))
+RESEND_WEBHOOK_SECRET = os.environ.get('RESEND_WEBHOOK_SECRET', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Sharon ESL <bookings@sharonesl.com>')
 EMAIL_BACKEND_MODE = resolve_email_backend_mode()
 

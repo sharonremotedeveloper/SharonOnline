@@ -1,0 +1,12 @@
+subject: Classroom Open: Your lesson with Thandi starts in 10 minutes
+title: Classroom is open (starts in 10 minutes)
+--- body
+Your lesson with Thandi is starting in 10 minutes. Click to join the classroom now.
+--- text
+Hi Yuki,
+
+Your lesson with Thandi begins in 10 minutes.
+
+Join now: http://localhost:3000/student/classroom/00000000-0000-4000-8000-0000000000b1
+--- html
+<p>Hi Yuki,</p><p>Your lesson with Thandi starts in 10 minutes.</p><p><a href="http://localhost:3000/student/classroom/00000000-0000-4000-8000-0000000000b1">Join Classroom Now</a></p>

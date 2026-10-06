@@ -1,0 +1,12 @@
+subject: Rescheduled: Your lesson with Thandi
+title: Lesson rescheduled
+--- body
+Your lesson with Thandi has been rescheduled to Mon 02 Mar 2026, 16:00 (Asia/Tokyo).
+--- text
+Hi Yuki,
+
+Your lesson with Thandi was rescheduled to Mon 02 Mar 2026, 16:00 (Asia/Tokyo).
+
+Classroom: http://localhost:3000/student/classroom/00000000-0000-4000-8000-0000000000b1
+--- html
+<p>Hi Yuki,</p><p>Your lesson with <strong>Thandi</strong> was rescheduled to <strong>Mon 02 Mar 2026, 16:00 (Asia/Tokyo)</strong>.</p><p><a href="http://localhost:3000/student/classroom/00000000-0000-4000-8000-0000000000b1">Launch Classroom</a></p>

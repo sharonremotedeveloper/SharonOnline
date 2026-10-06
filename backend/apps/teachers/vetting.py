@@ -90,11 +90,22 @@ def notify_status_change(change_id) -> None:
     """
     logger.info('tutor status change %s committed', change_id)
     try:
-        change = TeacherStatusChange.objects.select_related('teacher').filter(pk=change_id).first()
-        if change and change.to_status == St.SUBMITTED and change.actor_user_id == change.teacher.user_id:
+        change = TeacherStatusChange.objects.select_related('teacher__user').filter(pk=change_id).first()
+        if not change:
+            return
+        tutor_user = change.teacher.user
+        if change.to_status == St.SUBMITTED and change.actor_user_id == tutor_user.id:
             from apps.notifications.alerts import alert_staff
             alert_staff('vetting_submitted', key=f'admin:vetting-submitted:{change.id}',
                         payload={'teacher_id': str(change.teacher_id), 'change_id': str(change.id)})
+        elif change.to_status in (St.APPROVED, St.CHANGES_REQUESTED, St.REJECTED):
+            from apps.notifications.service import notify
+            notify(tutor_user, 'vetting_outcome', key=f'vetting:{change.id}',
+                   payload={'status': change.to_status}, booking=None)
+        elif change.to_status == St.SUSPENDED:
+            from apps.notifications.service import notify
+            notify(tutor_user, 'teacher_suspended', key=f'suspended:{change.id}',
+                   payload={'reason': change.reason or 'policy'}, booking=None)
     except Exception as exc:
         logger.error('vetting alert failed: change=%s error=%s', change_id, type(exc).__name__)
 

@@ -1,0 +1,14 @@
+subject: Reminder: Your lesson with Thandi is in 24 hours
+title: Upcoming lesson in 24 hours
+--- body
+Your lesson with Thandi is scheduled for Mon 02 Mar 2026, 16:00 (Asia/Tokyo). Review your materials and verify your time zone.
+--- text
+Hi Yuki,
+
+Your lesson with Thandi is in 24 hours on Mon 02 Mar 2026, 16:00 (Asia/Tokyo).
+
+Classroom: http://localhost:3000/student/classroom/00000000-0000-4000-8000-0000000000b1
+
+Please check your microphone and camera before class.
+--- html
+<p>Hi Yuki,</p><p>Your lesson with Thandi is in 24 hours on <strong>Mon 02 Mar 2026, 16:00 (Asia/Tokyo)</strong>.</p><p><a href="http://localhost:3000/student/classroom/00000000-0000-4000-8000-0000000000b1">Go to Classroom</a></p><p>Please check your microphone and camera before class.</p>

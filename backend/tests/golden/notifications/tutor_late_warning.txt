@@ -1,0 +1,10 @@
+subject: Lesson Update: Your tutor is delayed
+title: Tutor delay notice
+--- body
+Your tutor has not yet connected for lesson 00000000-0000-4000-8000-0000000000b1. Our team is monitoring the room.
+--- text
+Hi Yuki,
+
+Your tutor has not yet joined lesson 00000000-0000-4000-8000-0000000000b1. If the tutor cannot attend within 10 minutes, the lesson will be cancelled with full restitution.
+--- html
+<p>Hi Yuki,</p><p>Your tutor has not joined lesson <code>00000000-0000-4000-8000-0000000000b1</code> yet.</p><p>If the tutor cannot attend within 10 minutes, the session will be marked no-show and your account will receive full restitution.</p>

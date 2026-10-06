@@ -10,7 +10,7 @@ from django.utils.html import escape
 from apps.bookings.models import Booking, AttendanceAudit
 from apps.bookings.services.state_machine import transition_booking
 from apps.payments.services.settlement import RELEASABLE_STATUSES, attendance_verified_for_release, settled_exists
-from apps.payments.models import BookingFunding, PaymentTransaction, RefundRequest, SettlementAnomaly
+from apps.payments.models import BookingFunding, CreditBundle, PaymentTransaction, RefundRequest, SettlementAnomaly
 from apps.payments.services.alerts import alert_admin
 from apps.payments.services.reconciliation import reconcile_initialized_transaction, reconcile_pending_capture
 from apps.payments.services.funding import funding_for_settlement
@@ -38,23 +38,22 @@ def send_admin_alert_email_task(self, subject: str, detail: str):
         raise
 
 
-@shared_task(bind=True, autoretry_for=(EmailDeliveryError,), dont_autoretry_for=(EmailPermanentError,),
-             retry_backoff=30, retry_backoff_max=900, max_retries=5)
+@shared_task(bind=True, max_retries=5)
 def send_payment_failure_email_task(self, transaction_id: str, kind: str, ticket_id: str):
-    """Tell the student, in plain words, that a pending payment did not go through."""
-    from apps.payments.services.notices import student_email
+    """Tell the student that a pending payment did not go through (slice N4)."""
+    from apps.notifications.service import notify
     tx = PaymentTransaction.objects.select_related('booking__student', 'credit_purchase__user').filter(pk=transaction_id).first()
     if tx is None:
         return
     student = tx.credit_purchase.user if tx.credit_purchase_id else tx.booking.student
-    if not student.email:
-        return
-    subject, html, text = student_email(student, tx, kind, ticket_id)
-    try:
-        send_email(student.email, subject, html, text)
-    except EmailPermanentError as exc:
-        log_permanent_failure('send_payment_failure_email_task', transaction_id, exc)
-        raise
+    booking = getattr(tx, 'booking', None)
+    notify(
+        student,
+        'payment_failed',
+        key=f'payment-failed:{tx.pk}',
+        payload={'booking_id': str(booking.pk) if booking else ''},
+        booking=booking,
+    )
 
 
 def _flag_payment_still_pending(booking, funding) -> None:
@@ -233,6 +232,27 @@ def expire_credits_task():
     return expire_credits()
 
 
+@shared_task(name='apps.payments.tasks.warn_expiring_credits_task')
+def warn_expiring_credits_task():
+    """Daily: warn students when credit bundles are expiring within 7 days (slice N2b)."""
+    from apps.notifications.service import notify
+    now = timezone.now()
+    window_start = now + timedelta(days=6, hours=12)
+    window_end = now + timedelta(days=7, hours=12)
+    expiring = CreditBundle.objects.filter(
+        remaining_credits__gt=0,
+        expires_at__gte=window_start,
+        expires_at__lte=window_end,
+    ).select_related('user')
+    count = 0
+    for bundle in expiring:
+        notify(bundle.user, 'credit_expiring', key=f'credit-expiring:{bundle.id}',
+               payload={'credits': bundle.remaining_credits, 'days_remaining': 7})
+        count += 1
+    return {'warned_count': count}
+
+
+
 @shared_task(name='apps.payments.tasks.process_pending_refunds_task')
 @distributed_task_lock('lock:beat:process_pending_refunds', timeout_seconds=800)
 def process_pending_refunds_task():
@@ -245,32 +265,26 @@ def process_pending_refunds_task():
     return process_pending_refunds()
 
 
-@shared_task(bind=True, autoretry_for=(EmailDeliveryError,), dont_autoretry_for=(EmailPermanentError,),
-             retry_backoff=30, retry_backoff_max=900, max_retries=5)
+@shared_task(bind=True, max_retries=5)
 def send_refund_processed_email_task(self, refund_id: str):
     """
-    Tell the student, once, that their refund has been sent. Queued exactly when the refund becomes `processed` (that transition
-    happens once); the cache key makes a duplicate delivery of the task itself harmless. Plain words, no provider references.
+    Tell the student that their refund has been sent (slice N4).
+    Routes through notify() using deterministic key refund-processed:{rid}.
     """
-    from django.core.cache import cache
     from apps.common.money import money_str
-    refund = RefundRequest.objects.select_related('user').filter(pk=refund_id).first()
-    if refund is None or refund.status != RefundRequest.Status.PROCESSED or not refund.user.email:
+    from apps.notifications.service import notify
+    refund = RefundRequest.objects.select_related('user', 'booking').filter(pk=refund_id).first()
+    if refund is None or refund.status != RefundRequest.Status.PROCESSED:
         return
-    key = f'refund-processed-email:{refund.pk}'
-    if not cache.add(key, 1, timeout=60 * 86400):         # atomic claim BEFORE sending: a duplicate delivery during the send finds it taken
-        return
-    name = refund.user.first_name or refund.user.username
-    amount = f"{money_str(refund.amount, refund.currency)} {refund.currency}"
-    lines = [f"Your refund of {amount} has been sent back to the payment method you used.",
-             "It can take 3 to 5 business days to show up on your statement or in your PayPal account.",
-             "If you do not see it after that, reply to this e-mail and we will look into it."]
-    text = f"Hi {name},\n\n" + "\n\n".join(lines) + "\n\nSharon Online"
-    html = f"<p>Hi {escape(name)},</p>" + "".join(f"<p>{escape(line)}</p>" for line in lines) + "<p>Sharon Online</p>"
-    try:
-        send_email(refund.user.email, "Your refund has been sent", html, text)
-    except Exception as exc:
-        cache.delete(key)                                  # nothing was delivered: release the claim so the retry can send
-        if isinstance(exc, EmailPermanentError):
-            log_permanent_failure('send_refund_processed_email_task', refund_id, exc)
-        raise
+    amount_str = f"{money_str(refund.amount, refund.currency)}"
+    notify(
+        refund.user,
+        'refund_processed',
+        key=f'refund-processed:{refund.pk}',
+        payload={
+            'booking_id': str(refund.booking_id or ''),
+            'amount': amount_str,
+            'currency': refund.currency,
+        },
+        booking=refund.booking,
+    )

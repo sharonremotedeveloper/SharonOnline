@@ -1,0 +1,10 @@
+subject: Welcome! Your Sharon ESL tutor application has been approved
+title: Application status update
+--- body
+Congratulations! Your tutor application was approved. You can now configure your schedule and accept bookings.
+--- text
+Hi Yuki,
+
+Congratulations! Your tutor application on Sharon ESL has been approved. You can now set your teaching availability.
+--- html
+<p>Hi Yuki,</p><p>Congratulations! Your tutor application has been <strong>approved</strong>.</p><p>You can now log in, configure your availability, and accept student bookings.</p>

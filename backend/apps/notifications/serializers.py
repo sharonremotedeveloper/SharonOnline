@@ -53,3 +53,9 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
                 if kind.mandatory and enabled is False:
                     raise serializers.ValidationError({field: {kind_name: 'This notification is mandatory.'}})
         return attrs
+
+
+class ResendWebhookResponseSerializer(serializers.Serializer):
+    received = serializers.BooleanField()
+    action = serializers.CharField()
+

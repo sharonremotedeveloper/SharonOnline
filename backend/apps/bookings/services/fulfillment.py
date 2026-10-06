@@ -364,4 +364,9 @@ def _email_step(booking_id, token, now) -> None:
     booking = _live_booking(booking_id, token)
     if not email_was_sent(send_booking_confirmation_email(booking)):
         raise EmailNotSent()
+    from apps.notifications.service import booking_key, notify
+    notify(booking.student, 'booking_confirmed', key=booking_key('booking-confirmed', booking, 'student'),
+           payload={'booking_id': str(booking.id)}, booking=booking)
+    notify(booking.teacher.user, 'booking_confirmed', key=booking_key('booking-confirmed', booking, 'teacher'),
+           payload={'booking_id': str(booking.id)}, booking=booking)
     _set_step(booking_id, token, 'email', St.DONE, now)

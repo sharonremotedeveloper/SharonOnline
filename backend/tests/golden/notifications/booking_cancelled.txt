@@ -1,0 +1,12 @@
+subject: Notice: Your lesson has been cancelled
+title: Lesson cancelled
+--- body
+Lesson 00000000-0000-4000-8000-0000000000b1 on Mon 02 Mar 2026, 16:00 (Asia/Tokyo) was cancelled.
+--- text
+Hi Yuki,
+
+Lesson 00000000-0000-4000-8000-0000000000b1 on Mon 02 Mar 2026, 16:00 (Asia/Tokyo) was cancelled by student.
+
+A refund has been initiated to your original payment method.
+--- html
+<p>Hi Yuki,</p><p>Lesson <code>00000000-0000-4000-8000-0000000000b1</code> on <strong>Mon 02 Mar 2026, 16:00 (Asia/Tokyo)</strong> was cancelled by student.</p><p>A refund has been initiated to your original payment method.</p>

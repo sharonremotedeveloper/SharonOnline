@@ -33,7 +33,6 @@ def is_pii_name(identifier):
     return bool(words) and (words[-1] in PII_WORDS or tuple(words[-2:]) in PII_PAIRS)
 # Baseline 2026-10-04: {file: number of logging calls with PII}. Only ever lower these numbers.
 ALLOWLIST = {
-    'bookings/tasks.py': 5,                       # reminder / late-alert logs print e-mail addresses (N2a moves them)
     'integrations/services/attendance.py': 2,     # Zoom participant e-mail in attendance logs
 }
 
