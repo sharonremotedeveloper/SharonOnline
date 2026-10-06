@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   PlusCircle,
   CreditCard,
+  FileText,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type { components } from "@/types/api.generated";
@@ -22,6 +23,7 @@ import { useApiData } from "@/hooks/useApiData";
 import { PayPalButtonsWrapper } from "@/components/booking/PayPalButtonsWrapper";
 import type { OutcomeView } from "@/lib/paypalOutcome";
 import { rememberPendingPayFast } from "@/lib/pendingPayment";
+import { ReceiptDrawer } from "@/components/wallet/ReceiptDrawer";
 
 // Generated from the backend OpenAPI schema (`npm run gen:api`), so a contract change breaks the build instead of the page.
 type WalletResponse = components["schemas"]["Wallet"];
@@ -41,6 +43,7 @@ export default function StudentWalletPage() {
   const [pendingPurchaseId, setPendingPurchaseId] = useState<string | null>(null);
   // The pack whose PayPal buttons are currently shown (PayPal creates the order when the student clicks the button).
   const [paypalPack, setPaypalPack] = useState<CreditPack | null>(null);
+  const [receiptDrawerOpen, setReceiptDrawerOpen] = useState<boolean>(false);
 
   useEffect(() => {
     setCurrency(detectDefaultCurrency());
@@ -134,7 +137,17 @@ export default function StudentWalletPage() {
           </p>
         </div>
 
-        <CurrencySwitcher variant="inline" onCurrencyChange={(c) => setCurrency(c)} />
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setReceiptDrawerOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-divider bg-white hover:bg-cream-surface text-xs font-bold text-ink transition-colors shadow-sm"
+          >
+            <FileText className="w-3.5 h-3.5 text-teal" />
+            <span>Invoices & Receipts</span>
+          </button>
+          <CurrencySwitcher variant="inline" onCurrencyChange={(c) => setCurrency(c)} />
+        </div>
       </div>
 
       {error ? (
@@ -298,11 +311,27 @@ export default function StudentWalletPage() {
             </div>
           )}
 
-          <p className="text-[11px] text-ink-muted border-t border-divider pt-4">
-            A per-transaction credit history (redemptions and refunds) is not available yet.
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-divider pt-4 text-xs">
+            <p className="text-[11px] text-ink-muted">
+              A per-transaction credit history (redemptions and refunds) is not available yet.
+            </p>
+            <button
+              type="button"
+              onClick={() => setReceiptDrawerOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-teal hover:text-teal-deep transition-colors"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>View Invoices & Receipts</span>
+            </button>
+          </div>
         </div>
       )}
+
+      {/* Slide-out Receipt Drawer */}
+      <ReceiptDrawer
+        isOpen={receiptDrawerOpen}
+        onClose={() => setReceiptDrawerOpen(false)}
+      />
     </div>
   );
 }
