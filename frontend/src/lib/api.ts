@@ -434,6 +434,21 @@ export const api = {
     return request(`${API_BASE}/teachers/me/`, {});
   },
 
+  async getTeacherTraining() {
+    return request(`${API_BASE}/teachers/me/training/`, {});
+  },
+
+  async getTeacherTrainingModule(slug: string) {
+    return request(`${API_BASE}/teachers/me/training/${encodeURIComponent(slug)}/`, {});
+  },
+
+  async completeTeacherTrainingModule(slug: string) {
+    return request(`${API_BASE}/teachers/me/training/${encodeURIComponent(slug)}/complete/`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  },
+
   async updateMyTeacherProfile(data: { headline?: string; bio?: string; specialties?: string[] }) {
     return request(`${API_BASE}/teachers/me/`, { method: "PATCH", body: JSON.stringify(data) });
   },
@@ -838,6 +853,17 @@ export const api = {
     if (live !== MOCK) return live;
 
     return { rows: [], conflicts: [] };
+  },
+
+  async getTeacherTimeOff() {
+    return request(`${API_BASE}/teachers/availability/time-off/`, {});
+  },
+
+  async createTeacherTimeOff(data: { start_utc: string; end_utc: string; reason?: string; acknowledge_conflicts?: boolean }) {
+    return request(`${API_BASE}/teachers/availability/time-off/`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   },
 
   async getAdminTelemetry(): Promise<AdminTelemetry> {
