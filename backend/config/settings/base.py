@@ -158,6 +158,7 @@ REST_FRAMEWORK = {
         'admin_teacher_review': '300/hour',   # slice T1b: staff review actions + admin cancel of a suspended tutor's lessons
         'zoom_host_link': '30/hour',
         'zoom_video_token': '120/hour',       # Slice Z1: fresh Zoom host link when the classroom opens (one Zoom call each)
+        'sar_export': '10/hour',              # GDPR/POPIA SAR export
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
     # NEVER map 0 to None: DRF treats None as "trust the whole client-supplied X-Forwarded-For header", which lets

@@ -15,7 +15,9 @@ from .serializers import (
     SupportInquirySerializer,
     SupportInquiryAcceptedSerializer,
 )
+from django.http import HttpResponse
 from .services import queue_password_reset_email, queue_support_inquiry, queue_verification_email, revoke_all_sessions
+from .services.data_export import build_user_data_export, generate_user_data_zip
 from .throttles import LoginUsernameThrottle, PasswordResetEmailThrottle
 from .tokens import user_from_verify_token
 
@@ -174,3 +176,25 @@ class SupportInquiryView(APIView):
             {'detail': 'Your inquiry has been received.', 'inquiry_id': str(inquiry.id)},
             status=status.HTTP_202_ACCEPTED,
         )
+
+
+class UserDataExportView(APIView):
+    """
+    Generate a Subject Access Request (SAR) export under GDPR Art. 15 / POPIA Section 23.
+    Returns a ZIP archive containing structured JSON personal data and data rights notices.
+    If ?format=json is passed, returns the raw JSON dictionary.
+    """
+    permission_classes = (IsAuthenticated,)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'sar_export'
+
+    def get(self, request):
+        if request.query_params.get('format') == 'json':
+            data = build_user_data_export(request.user)
+            return Response(data)
+
+        zip_bytes = generate_user_data_zip(request.user)
+        filename = f"sar_export_{request.user.id}.zip"
+        response = HttpResponse(zip_bytes, content_type='application/zip')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response

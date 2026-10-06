@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint . --max-warnings 0",
     "test": "tsc -p tsconfig.test.json && node --test \".test-build/src/lib/*.test.js\" \".test-build/src/lib/server/*.test.js\" \".test-build/test/*.test.js\"",

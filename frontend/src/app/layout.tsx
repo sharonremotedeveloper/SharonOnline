@@ -4,6 +4,7 @@ import { Navbar } from "../components/Navbar";
 import { Footer } from "../components/Footer";
 import { AuthProvider } from "@/context/AuthContext";
 import { VerifyEmailBanner } from "@/components/account/VerifyEmailBanner";
+import { CookieBanner } from "@/components/legal/CookieBanner";
 
 export const metadata: Metadata = {
   title: "Sharon's ESL Marketplace | 25-Min 1-on-1 English Lessons",
@@ -24,6 +25,7 @@ export default function RootLayout({
           <VerifyEmailBanner />
           <main className="flex-1">{children}</main>
           <Footer />
+          <CookieBanner />
         </AuthProvider>
       </body>
     </html>
