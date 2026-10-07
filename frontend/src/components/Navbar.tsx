@@ -47,7 +47,7 @@ export function Navbar() {
   }, [mobileMenuOpen]);
 
   const desktopLink =
-    "relative inline-flex min-h-[44px] items-center whitespace-nowrap text-sm font-semibold text-ink/80 transition-colors hover:text-primary";
+    "inline-flex min-h-[44px] items-center whitespace-nowrap rounded-full px-4 text-sm font-semibold transition-colors";
   const drawerLink =
     "flex min-h-[48px] items-center rounded-xl px-3 text-base font-semibold text-ink hover:bg-cream-surface hover:text-primary";
 
@@ -65,15 +65,22 @@ export function Navbar() {
         </Link>
 
         {/* Desktop links */}
-        <nav aria-label="Main" className="hidden items-center gap-6 xl:flex">
-          {NAV_LINKS.map((l) => (
-            <Link key={l.href} href={l.href} className={desktopLink} aria-current={pathname === l.href ? "page" : undefined}>
-              {l.label}
-              {pathname === l.href && (
-                <span className="absolute inset-x-0 bottom-1.5 h-0.5 rounded-full bg-primary" aria-hidden="true" />
-              )}
-            </Link>
-          ))}
+        <nav aria-label="Main" className="on-dark hidden items-center gap-1 rounded-full bg-cocoa p-1.5 shadow-md xl:flex">
+          {NAV_LINKS.map((l) => {
+            const active = pathname === l.href;
+            return (
+              <Link
+                key={l.href}
+                href={l.href}
+                className={`${desktopLink} ${
+                  active ? "bg-sun text-ink" : "text-cream hover:bg-white/10 hover:text-white"
+                }`}
+                aria-current={active ? "page" : undefined}
+              >
+                {l.label}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Right side. Signed in: one avatar menu at every size. Signed out: currency and the two calls to action. */}
