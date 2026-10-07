@@ -19,7 +19,9 @@ export function useDialog(ref: RefObject<HTMLElement | null>, isOpen: boolean, o
   // The callback is read through a ref so a new function identity on every parent render never re-runs the effect
   // (which used to restore focus to the opener straight after moving it in).
   const closeRef = useRef(onClose);
-  closeRef.current = onClose;
+  useEffect(() => {
+    closeRef.current = onClose;
+  });
 
   useEffect(() => {
     if (!isOpen) return;
