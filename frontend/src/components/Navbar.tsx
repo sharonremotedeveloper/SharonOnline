@@ -47,7 +47,7 @@ export function Navbar() {
   }, [mobileMenuOpen]);
 
   const desktopLink =
-    "inline-flex min-h-[44px] items-center whitespace-nowrap rounded-full px-4 text-sm font-semibold transition-colors";
+    "inline-flex min-h-[40px] items-center whitespace-nowrap rounded-full px-3.5 text-sm font-semibold transition-colors";
   const drawerLink =
     "flex min-h-[48px] items-center rounded-xl px-3 text-base font-semibold text-ink hover:bg-cream-surface hover:text-primary";
 
@@ -65,7 +65,7 @@ export function Navbar() {
         </Link>
 
         {/* Desktop links */}
-        <nav aria-label="Main" className="on-dark hidden items-center gap-1 rounded-full bg-cocoa p-1.5 shadow-md xl:flex">
+        <nav aria-label="Main" className="on-dark hidden items-center gap-0.5 rounded-full bg-cocoa p-1 shadow-md xl:flex">
           {NAV_LINKS.map((l) => {
             const active = pathname === l.href;
             return (
