@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, type ReactNode } from "react";
 import { Portal } from "./Portal";
-import { useDialog } from "@/hooks/useDialog";
+import { useDialog } from "../../hooks/useDialog";
 
 export interface ModalProps {
   isOpen: boolean;

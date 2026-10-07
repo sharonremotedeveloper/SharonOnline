@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Zap } from "lucide-react";
+import { ArrowLeft, Zap, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import type { PublicTutor } from "@/types/tutor";
 import { toPublicTutor } from "@/lib/tutorsDirectory";
@@ -49,7 +49,7 @@ export default function StudentBookingPage() {
 
       <h1 className="font-serif text-3xl font-bold text-ink sm:text-4xl">Choose your lesson time</h1>
 
-      {error && <p role="alert" className="rounded-2xl border border-error/30 bg-error-surface p-4 text-base text-error">{error}</p>}
+      {error && <p role="alert" className="rounded-2xl border border-error/30 bg-error-surface p-4 text-base text-error"><AlertCircle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Error: </span>{error}</p>}
 
       {tutor && (
         <div className="flex flex-col gap-4 rounded-3xl border border-divider bg-white p-5 shadow-card sm:flex-row sm:items-center sm:justify-between">

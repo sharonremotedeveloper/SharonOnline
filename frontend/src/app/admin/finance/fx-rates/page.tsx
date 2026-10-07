@@ -196,7 +196,7 @@ export default function AdminFxRatesPage() {
         {savedNote && <p className="text-sm font-bold text-success-hover">{savedNote}</p>}
 
         {needsConfirm && (
-          <div role="alert" className="rounded-2xl border border-warning-border bg-warning-surface p-4 space-y-3 text-sm text-warning-hover">
+          <div role="alert" className="rounded-2xl border border-warning-border bg-warning-surface p-4 space-y-3 text-sm text-warning-hover"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
             <p>{needsConfirm}</p>
             <button
               type="button"
@@ -210,7 +210,7 @@ export default function AdminFxRatesPage() {
         )}
       </form>
 
-      <div className="bg-white rounded-3xl border border-divider shadow-card overflow-x-auto">
+      <div className="bg-white rounded-3xl border border-divider shadow-card overflow-x-auto scroll-cue">
         <h2 className="text-base font-bold text-ink font-serif p-6 pb-3">History (last 20)</h2>
         {data.history.length === 0 ? (
           <p className="px-6 pb-6 text-sm text-ink-muted">No rates have been recorded yet.</p>

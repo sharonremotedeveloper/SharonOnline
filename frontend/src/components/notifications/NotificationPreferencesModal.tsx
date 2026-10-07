@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Portal } from "@/components/ui/Portal";
-import { useDialog } from "@/hooks/useDialog";
+import { Portal } from "../ui/Portal";
+import { useDialog } from "../../hooks/useDialog";
 import { X, Lock, Check, Bell, Mail } from "lucide-react";
 import { Button } from "../ui/Button";
 import type { NotificationPreference, PatchedNotificationPreferenceRequest } from "../../lib/notifications";

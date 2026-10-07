@@ -125,7 +125,7 @@ export function TutorFilters({ filters, onFilterChange, totalCount }: TutorFilte
       <div className="grid grid-cols-1 gap-3 border-t border-divider pt-5 sm:grid-cols-2">
         <label
           className={`flex min-h-[52px] cursor-pointer items-center gap-3 rounded-2xl border px-4 text-base font-semibold transition-colors ${
-            filters.only_power_guard ? "border-cocoa bg-sun-soft text-ink" : "border-divider bg-cream-surface text-ink hover:bg-cream-deep"
+            filters.only_power_guard ? "border-cocoa bg-cream-deep text-ink" : "border-divider bg-cream-surface text-ink hover:bg-cream-deep"
           }`}
         >
           <input
@@ -140,7 +140,7 @@ export function TutorFilters({ filters, onFilterChange, totalCount }: TutorFilte
 
         <label
           className={`flex min-h-[52px] cursor-pointer items-center gap-3 rounded-2xl border px-4 text-base font-semibold transition-colors ${
-            filters.only_today ? "border-cocoa bg-sun-soft text-ink" : "border-divider bg-cream-surface text-ink hover:bg-cream-deep"
+            filters.only_today ? "border-cocoa bg-cream-deep text-ink" : "border-divider bg-cream-surface text-ink hover:bg-cream-deep"
           }`}
         >
           <input

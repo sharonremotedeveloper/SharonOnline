@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Save, Clock, Copy, Sparkles, AlertCircle, Info } from "lucide-react";
+import { Check, Save, Clock, Copy, Sparkles, AlertCircle, Info, AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";
 import { request } from "@/lib/http";
 import {
@@ -219,18 +219,18 @@ export function WeeklyScheduleGrid() {
 
       <InlineError error={saveError} />
       {availability?.truncated && (
-        <p className="text-sm text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2">
+        <p className="text-sm text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
           Only part of your saved availability could be loaded, so this grid may be incomplete. Do not save from here.
         </p>
       )}
       {availability && wouldChangeSavedWindows(availability.rows) && (
-        <p className="text-sm text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2">
+        <p className="text-sm text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
           Some saved windows do not line up with this hourly grid (or overlap each other). Saving here replaces them with
           the blocks shown.
         </p>
       )}
       {pendingConflicts && (
-        <div role="alert" className="text-xs text-warning-hover bg-warning-surface border border-warning-border rounded-2xl px-4 py-3 space-y-2">
+        <div role="alert" className="text-xs text-warning-hover bg-warning-surface border border-warning-border rounded-2xl px-4 py-3 space-y-2"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
           <p className="font-bold">
             Nothing was saved: {pendingConflicts.length} confirmed lesson{pendingConflicts.length === 1 ? "" : "s"} would
             fall outside your open hours.
@@ -264,7 +264,7 @@ export function WeeklyScheduleGrid() {
         </div>
       )}
       {leftConflicts.length > 0 && (
-        <p className="text-sm text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2">
+        <p className="text-sm text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
           Saved. {leftConflicts.length} confirmed lesson{leftConflicts.length === 1 ? " is" : "s are"} outside your new hours but
           still booked: teach {leftConflicts.length === 1 ? "it" : "them"} or cancel from your lessons.
         </p>
@@ -284,7 +284,7 @@ export function WeeklyScheduleGrid() {
       </div>
 
       {/* 7-Day Matrix Table */}
-      <div className="overflow-x-auto rounded-2xl border border-divider">
+      <div className="overflow-x-auto scroll-cue rounded-2xl border border-divider">
         <table className="w-full min-w-[700px] border-collapse text-sm">
           <thead>
             <tr className="bg-cream-surface border-b border-divider">

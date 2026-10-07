@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { PayPalButtons, PayPalScriptProvider, usePayPalScriptReducer } from "@paypal/react-paypal-js";
-import { Lock, ShieldCheck } from "lucide-react";
+import { Lock, ShieldCheck, AlertTriangle, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/lib/http";
 import { checkoutFailureMessage } from "@/lib/fx";
@@ -68,13 +68,13 @@ export function PayPalButtonsWrapper(props: PayPalButtonsWrapperProps) {
         </div>
       </div>
 
-      <div className="p-3 bg-warning-surface border border-warning-border rounded-xl text-sm text-warning-hover">
+      <div className="p-3 bg-warning-surface border border-warning-border rounded-xl text-sm text-warning-hover"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
         Your payment is confirmed by our server after PayPal reports the result. This page never marks its own payment
         successful.
       </div>
 
       {!CLIENT_ID ? (
-        <div role="alert" className="p-3 bg-error-surface border border-error-border rounded-xl text-sm text-error-hover">
+        <div role="alert" className="p-3 bg-error-surface border border-error-border rounded-xl text-sm text-error-hover"><AlertCircle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Error: </span>
           PayPal is not configured. Card and PayPal payments are unavailable right now; please try again later or contact
           support.
         </div>
@@ -111,7 +111,7 @@ function PayPalButtonsInner({ target, currency, onQuote, onOutcome, disabled = f
 
   if (isRejected) {
     return (
-      <div role="alert" className="p-3 bg-error-surface border border-error-border rounded-xl text-sm text-error-hover">
+      <div role="alert" className="p-3 bg-error-surface border border-error-border rounded-xl text-sm text-error-hover"><AlertCircle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Error: </span>
         We could not load PayPal. Check your connection or ad-blocker and reload the page.
       </div>
     );
@@ -187,7 +187,7 @@ function PayPalButtonsInner({ target, currency, onQuote, onOutcome, disabled = f
       </div>
 
       {message && (
-        <div role="alert" className="p-3 bg-warning-surface border border-warning-border rounded-xl text-sm text-warning-hover">
+        <div role="alert" className="p-3 bg-warning-surface border border-warning-border rounded-xl text-sm text-warning-hover"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
           {message}
         </div>
       )}

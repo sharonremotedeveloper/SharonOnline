@@ -14,8 +14,7 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
-  CheckCircle2,
-} from "lucide-react";
+  CheckCircle2, AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";
 import { BookingDetail } from "@/types/booking";
 import { useAuth } from "@/context/AuthContext";
@@ -273,7 +272,7 @@ export default function StudentCheckoutPage() {
       <InlineError error={error} />
 
       {slotLost && (
-        <div role="alert" className="p-4 rounded-2xl bg-warning-surface border border-warning-border text-sm text-warning-hover space-y-2">
+        <div role="alert" className="p-4 rounded-2xl bg-warning-surface border border-warning-border text-sm text-warning-hover space-y-2"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
           <p>
             This time slot is no longer available (the reservation expired or the slot was taken). If PayPal took a
             payment we will refund it automatically and e-mail you.

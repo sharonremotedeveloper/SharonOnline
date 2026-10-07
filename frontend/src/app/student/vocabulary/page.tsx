@@ -146,7 +146,7 @@ export default function StudentVocabularyPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto scroll-cue">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
                 <tr className="border-b border-cream-200 text-ink-400 uppercase tracking-wider font-bold text-sm">

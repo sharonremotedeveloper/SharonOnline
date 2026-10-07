@@ -11,8 +11,7 @@ import {
   ExternalLink,
   ArrowRight,
   ShieldCheck,
-  LayoutDashboard,
-} from "lucide-react";
+  LayoutDashboard, AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";
 import { BookingDetail } from "@/types/booking";
 import { Avatar } from "@/components/ui/Avatar";
@@ -118,7 +117,7 @@ export default function BookingConfirmedPage() {
       </div>
 
       {paymentPending && (
-        <div role="status"className="p-4 rounded-2xl bg-warning-surface border border-warning-border text-sm text-warning-hover">
+        <div role="status"className="p-4 rounded-2xl bg-warning-surface border border-warning-border text-sm text-warning-hover"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
           {PENDING_NOTICE}
         </div>
       )}

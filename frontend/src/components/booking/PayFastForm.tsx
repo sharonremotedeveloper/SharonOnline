@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldCheck, CreditCard, Lock, ArrowRight, ExternalLink } from "lucide-react";
+import { ShieldCheck, CreditCard, Lock, ArrowRight, ExternalLink, AlertTriangle } from "lucide-react";
 
 interface PayFastFormProps {
   /** Formatted amount to display (from the platform price list, or the server's checkout/init response); null while unknown. */
@@ -62,7 +62,7 @@ export function PayFastForm({
         </div>
       </div>
 
-      <div className="p-3 bg-warning-surface border border-warning-border rounded-xl text-sm text-warning-hover">
+      <div className="p-3 bg-warning-surface border border-warning-border rounded-xl text-sm text-warning-hover"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
         You will be redirected to PayFast. This page waits for the verified ITN before showing success.
       </div>
 

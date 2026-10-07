@@ -1,5 +1,6 @@
 "use client";
 
+import { AlertCircle } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { TutorFilters } from "@/components/tutors/TutorFilters";
@@ -73,7 +74,7 @@ function TutorsContent() {
       </div>
 
       {error && (
-        <p role="alert" className="mt-6 rounded-2xl border border-error/30 bg-error-surface p-4 text-base text-error">
+        <p role="alert" className="mt-6 rounded-2xl border border-error/30 bg-error-surface p-4 text-base text-error"><AlertCircle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Error: </span>
           {error}
         </p>
       )}

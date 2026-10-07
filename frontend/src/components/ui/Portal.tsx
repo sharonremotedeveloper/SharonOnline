@@ -10,5 +10,6 @@ import { createPortal } from "react-dom";
 export function Portal({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  return mounted ? createPortal(children, document.body) : null;
+  // Before mount (server render, first client render) the children render in place so markup matches; a dialog is closed then anyway.
+  return mounted ? createPortal(children, document.body) : <>{children}</>;
 }

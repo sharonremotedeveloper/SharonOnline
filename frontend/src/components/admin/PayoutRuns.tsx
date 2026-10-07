@@ -177,7 +177,7 @@ export function PayoutRuns({ onChanged }: { onChanged?: () => void }) {
               </form>
             )}
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto scroll-cue">
               <table className="w-full min-w-[560px] text-xs">
                 <thead>
                   <tr className="text-left text-ink-muted uppercase tracking-wider font-bold">

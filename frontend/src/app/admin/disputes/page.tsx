@@ -12,8 +12,7 @@ import {
   ShieldAlert,
   Radio,
   Sparkles,
-  ArrowRight,
-} from "lucide-react";
+  ArrowRight, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { DisputeCase } from "@/types/admin";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
@@ -250,7 +249,7 @@ export default function AdminDisputesPage() {
                   </div>
 
                   {pendingConfirm?.caseId === c.id ? (
-                    <div className="flex flex-wrap items-center gap-2 bg-error-surface border border-error-border rounded-xl px-3 py-2">
+                    <div role="alert" className="flex flex-wrap items-center gap-2 bg-error-surface border border-error-border rounded-xl px-3 py-2"><AlertCircle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Error: </span>
                       <span className="text-xs font-bold text-error-hover">
                         Confirm {ACTION_LABELS[pendingConfirm.action]} for {c.booking_ref}? This moves money and cannot be undone.
                       </span>

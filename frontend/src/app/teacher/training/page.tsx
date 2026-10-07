@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BookOpen, CheckCircle2, Clock, LockKeyhole } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, Clock, LockKeyhole, AlertTriangle } from "lucide-react";
 import { useApiData } from "@/hooks/useApiData";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/lib/http";
@@ -30,7 +30,7 @@ export default function TeacherTrainingPage() {
         </header>
 
         {training.loading && <div className="rounded-3xl bg-white p-10 text-sm text-ink-muted shadow-card">Loading your training path…</div>}
-        {training.error != null && <div className="rounded-2xl border border-warning-border bg-warning-surface p-5 text-sm text-warning-hover">{errorMessage(training.error, "Training could not be loaded.")}</div>}
+        {training.error != null && <div className="rounded-2xl border border-warning-border bg-warning-surface p-5 text-sm text-warning-hover"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>{errorMessage(training.error, "Training could not be loaded.")}</div>}
         {data && !data.can_train && <div className="flex gap-3 rounded-2xl border border-warning-border bg-warning-surface p-5 text-sm text-warning-hover"><LockKeyhole className="mt-0.5 h-5 w-5 shrink-0" /><p>Training becomes available after your tutor application is approved. Your progress will be ready here once the review is complete.</p></div>}
         {data && data.can_train && !data.completed_at && <div className="rounded-2xl border border-cocoa/20 bg-cocoa/5 p-5 text-sm text-cocoa">Calendar slots remain locked until all required modules are complete.</div>}
 

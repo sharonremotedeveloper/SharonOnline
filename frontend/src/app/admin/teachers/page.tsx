@@ -93,7 +93,7 @@ export default function AdminTeachersPage() {
             {tutors.length === 0 ? "No tutors have been onboarded yet." : "No tutors match your filter."}
           </p>
         )}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto scroll-cue">
           <table className="w-full min-w-[700px] border-collapse text-xs">
             <thead>
               <tr className="bg-cream-surface border-b border-divider text-ink-muted uppercase font-bold tracking-wider text-left">

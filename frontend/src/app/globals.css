@@ -106,3 +106,16 @@ h1, h2, h3 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Horizontal scroll cue: soft edge shadows appear only on the side that still has content to scroll to. */
+.scroll-cue {
+  background-image:
+    linear-gradient(to right, #fff 30%, rgba(255, 255, 255, 0)),
+    linear-gradient(to left, #fff 30%, rgba(255, 255, 255, 0)),
+    linear-gradient(to right, rgba(74, 44, 26, 0.28), rgba(74, 44, 26, 0)),
+    linear-gradient(to left, rgba(74, 44, 26, 0.28), rgba(74, 44, 26, 0));
+  background-position: left center, right center, left center, right center;
+  background-size: 2.5rem 100%, 2.5rem 100%, 0.9rem 100%, 0.9rem 100%;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
+}

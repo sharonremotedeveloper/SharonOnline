@@ -141,7 +141,7 @@ export default function TeacherWalletPage() {
           {wallet.transactions.length === 0 ? (
             <p className="text-sm text-ink-muted text-center py-6">No transactions yet.</p>
           ) : (
-          <div className="overflow-x-auto rounded-2xl border border-divider">
+          <div className="overflow-x-auto scroll-cue rounded-2xl border border-divider">
             <table className="w-full min-w-[700px] border-collapse text-xs">
               <thead>
                 <tr className="bg-cream-surface border-b border-divider text-ink-muted uppercase font-bold tracking-wider text-left">

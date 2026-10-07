@@ -323,7 +323,7 @@ export function LessonScheduler({ tutorId, tutorName, days = 14, returnTo }: Les
           {/* Summary and the one action */}
           <div
             className={`rounded-2xl border p-4 transition-colors ${
-              selectedSlot ? "border-cocoa/40 bg-cocoa-surface" : "border-divider bg-cream-surface"
+              selectedSlot ? "border-cocoa bg-cream-deep" : "border-divider bg-cream-surface"
             }`}
           >
             <p className="sr-only" aria-live="polite">

@@ -137,7 +137,7 @@ export default function AdminPayoutsPage() {
         {batch.length === 0 ? (
           <p className="p-8 text-center text-sm text-ink-muted">No cleared balances are waiting for payout.</p>
         ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto scroll-cue">
           <table className="w-full min-w-[750px] border-collapse text-xs">
             <thead>
               <tr className="bg-cream-surface border-b border-divider text-ink-muted uppercase font-bold tracking-wider text-left">

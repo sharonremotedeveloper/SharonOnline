@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { Portal } from "@/components/ui/Portal";
-import { useDialog } from "@/hooks/useDialog";
+import { Portal } from "../ui/Portal";
+import { useDialog } from "../../hooks/useDialog";
 import {
   Bell,
   Calendar,

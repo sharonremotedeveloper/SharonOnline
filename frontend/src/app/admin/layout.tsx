@@ -20,10 +20,10 @@ import {
 
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Executive Dashboard", icon: LayoutDashboard },
-  { href: "/admin/teachers/vetting", label: "Tutor Vetting Studio", icon: UserCheck, badge: "3" },
+  { href: "/admin/teachers/vetting", label: "Tutor Vetting Studio", icon: UserCheck },
   { href: "/admin/teachers", label: "Tutor Directory & Roster", icon: Users },
   { href: "/admin/sessions/live", label: "Live Attendance Radar", icon: Radio, pulse: true },
-  { href: "/admin/disputes", label: "Dispute Tribunal", icon: Scale, badge: "2", badgeColor: "bg-error text-white" },
+  { href: "/admin/disputes", label: "Dispute Tribunal", icon: Scale },
   { href: "/admin/finance/ledger", label: "Escrow Ledger Audit", icon: FileSpreadsheet },
   { href: "/admin/finance/payouts", label: "Batch Bank Payouts", icon: CreditCard },
   { href: "/admin/finance/fx-rates", label: "FX Rates (EUR/JPY)", icon: Coins },
@@ -79,16 +79,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <Icon className="w-4 h-4 opacity-80" />
                     <span>{item.label}</span>
                   </div>
-
-                  {item.badge && (
-                    <span
-                      className={`text-xs font-mono px-2 py-0.5 rounded-full font-black ${
-                        item.badgeColor || "bg-accent text-ink"
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
 
                   {item.pulse && (
                     <span className="relative flex h-2 w-2">

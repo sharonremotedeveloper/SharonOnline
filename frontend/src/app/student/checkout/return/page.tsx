@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";
 import { clearPendingPayFast, readPendingPayFast, type PendingPayFast } from "@/lib/pendingPayment";
 
@@ -109,7 +109,7 @@ function PayFastReturn() {
         <p role="status" className="text-sm text-ink-muted">Your payment was confirmed and the credits are now in your wallet.</p>
       )}
       {(view.state === "failed" || view.state === "error") && (
-        <p role="alert" className="text-sm text-warning-hover bg-warning-surface border border-warning-border rounded-xl p-3">{view.text}</p>
+        <p role="alert" className="text-sm text-warning-hover bg-warning-surface border border-warning-border rounded-xl p-3"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>{view.text}</p>
       )}
       {view.state === "waiting" && (
         <p role="status" className="text-sm text-ink-muted">
