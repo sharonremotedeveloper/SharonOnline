@@ -127,6 +127,13 @@ export function AccountMenu() {
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => {
+          if (e.key !== "ArrowDown") return;
+          e.preventDefault();
+          setOpen(true);
+          // The panel is mounted but hidden until the state flips: focus its first item once it shows.
+          requestAnimationFrame(() => panelRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus());
+        }}
         aria-expanded={open}
         aria-controls={panelId}
         aria-label={`Account menu for ${fullName}${notifs.unreadCount > 0 ? `, ${notifs.unreadCount} unread notifications` : ""}`}

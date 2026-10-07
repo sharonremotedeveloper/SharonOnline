@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useEffect, type ReactNode } from "react";
+import React, { useEffect, useRef, type ReactNode } from "react";
+import { Portal } from "./Portal";
+import { useDialog } from "@/hooks/useDialog";
 
 export interface ModalProps {
   isOpen: boolean;
@@ -19,19 +21,16 @@ export function Modal({
   children,
   maxWidth = "md",
 }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialog(dialogRef, isOpen, onClose);
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      window.addEventListener("keydown", handleKeyDown);
-    }
+    if (!isOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = "unset";
-      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previous;
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -43,8 +42,14 @@ export function Modal({
   }[maxWidth];
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
         className={`w-full ${maxWidthClass} bg-white rounded-xl shadow-2xl border border-divider overflow-hidden animate-in zoom-in-95 duration-200`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -68,5 +73,6 @@ export function Modal({
         <div className="p-6">{children}</div>
       </div>
     </div>
+    </Portal>
   );
 }

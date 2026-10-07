@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Portal } from "@/components/ui/Portal";
+import { useDialog } from "@/hooks/useDialog";
 import { X, Lock, Check, Bell, Mail } from "lucide-react";
 import { Button } from "../ui/Button";
 import type { NotificationPreference, PatchedNotificationPreferenceRequest } from "../../lib/notifications";
@@ -65,6 +67,9 @@ export function NotificationPreferencesModal({
     }
   }, [preferences]);
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialog(dialogRef, isOpen, onClose);
+
   if (!isOpen) return null;
 
   const handleToggle = (type: "email" | "in_app", key: string, isMandatory?: boolean) => {
@@ -90,7 +95,10 @@ export function NotificationPreferencesModal({
   };
 
   return (
+    <Portal>
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       role="dialog"
       aria-modal="true"
       aria-labelledby="notification-prefs-title"
@@ -237,5 +245,6 @@ export function NotificationPreferencesModal({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

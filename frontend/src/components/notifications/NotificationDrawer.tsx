@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { Portal } from "@/components/ui/Portal";
+import { useDialog } from "@/hooks/useDialog";
 import {
   Bell,
   Calendar,
@@ -52,17 +54,7 @@ export function NotificationDrawer({
 }: NotificationDrawerProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Close on Escape key
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  useDialog(panelRef, isOpen, onClose);
 
   if (!isOpen) return null;
 
@@ -84,6 +76,7 @@ export function NotificationDrawer({
   };
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-label="Notifications panel">
       {/* Backdrop */}
       <div
@@ -96,7 +89,7 @@ export function NotificationDrawer({
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
         <div
           ref={panelRef}
-          className="w-screen max-w-md bg-surface border-l border-ink/10 shadow-2xl flex flex-col text-ink animate-in slide-in-from-right duration-200"
+          tabIndex={-1} className="w-screen max-w-md bg-surface border-l border-ink/10 shadow-2xl flex flex-col text-ink animate-in slide-in-from-right duration-200"
         >
           {/* Header */}
           <div className="p-4 sm:px-6 border-b border-ink/10 flex items-center justify-between bg-cocoa-50/70">
@@ -279,5 +272,6 @@ export function NotificationDrawer({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
