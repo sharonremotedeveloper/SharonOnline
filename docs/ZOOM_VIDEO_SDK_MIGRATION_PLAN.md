@@ -161,22 +161,95 @@ sequenceDiagram
 
 ---
 
-## 5. What Sharon Needs to Provide (Zoom Marketplace Setup)
+## 5. Zoom Credentials and Webhook Configuration Runbook
 
-To configure the Zoom Video SDK, Sharon needs to create a **Video SDK App** in the Zoom App Marketplace:
+This section records the current Zoom state and the exact work to complete once the
+backend has a public HTTPS URL. Secrets must never be committed to this repository
+or written into documentation.
 
-1. **Sign in to Zoom Marketplace**: Navigate to [marketplace.zoom.us](https://marketplace.zoom.us/) using `sharonremotedeveloper@gmail.com`.
-2. **Create Video SDK App**:
-   - Click **Develop** $\rightarrow$ **Build App**.
-   - Choose **Video SDK** (do *not* choose Server-to-Server OAuth or Meeting SDK).
-   - Enter App Name: `Sharon Online Classroom Engine`.
-3. **Copy Credentials**:
-   - **SDK Key**: (32-character string).
-   - **SDK Secret**: (Secret key used for JWT signing).
-4. **Configure Event Subscriptions (Webhooks)**:
-   - Add endpoint URL: `https://api.sharonesl.com/api/v1/integrations/video-sdk/webhooks/`.
-   - Subscribe to events: `session.started`, `session.ended`, `session.user_joined`, `session.user_left`.
-   - Copy **Secret Token** for webhook HMAC signature verification.
+### 5.1 What is already available
+
+The authenticated Zoom account already has a Video SDK project in Platform Studio:
+
+- Project: `sharon esther Build Project 0001`.
+- The project's SDK key is already present in the local ignored `.env` file as
+  `ZOOM_VIDEO_SDK_KEY`.
+- The matching SDK secret is already present in the local ignored `.env` file as
+  `ZOOM_VIDEO_SDK_SECRET`.
+- Platform Studio's **Event subscriptions** page currently redirects to the
+  project's legacy Marketplace app page. This is the supported configuration
+  location at present.
+- The legacy app page already exposes a **Secret Token**. It is available in Zoom,
+  but it has not yet been copied into the local environment.
+- The legacy app page also exposes API key fields. They are not required for the
+  normal webhook setup and must not be added to the application unless API-based
+  subscription automation is explicitly chosen.
+- The legacy **Event Subscription** switch is currently disabled.
+
+### 5.2 What is still required from Sharon
+
+Provide or approve a public HTTPS backend URL that Zoom can reach. A local URL such
+as `localhost:3000`, `localhost:8000`, or a private LAN address cannot pass Zoom's
+webhook validation. The intended production endpoint is:
+
+```text
+https://api.sharonesl.com/api/v1/integrations/video-sdk/webhooks/
+```
+
+If that domain is not ready, use the final deployed staging URL instead and record
+the environment clearly. Do not enable the Zoom subscription until the URL returns
+over HTTPS and the endpoint is reachable from the public internet.
+
+### 5.3 Configuration procedure once the URL exists
+
+1. Deploy the backend and confirm the endpoint is reachable over public HTTPS.
+2. Confirm the endpoint accepts Zoom's `endpoint.url_validation` challenge and
+   returns the required `plainToken` and HMAC `encryptedToken` response.
+3. In Platform Studio, open **Event subscriptions** and follow **Manage event
+   subscriptions** to the legacy Marketplace app page.
+4. Enable **Event Subscription**.
+5. Add a webhook subscription with the public endpoint URL above.
+6. Select these Video SDK events:
+   - `session.started`
+   - `session.ended`
+   - `session.user_joined`
+   - `session.user_left`
+7. Run Zoom's **Validate** action and save only after validation succeeds.
+8. Copy the Zoom Secret Token directly into the deployment secret store as:
+
+   ```text
+   ZOOM_VIDEO_SDK_WEBHOOK_SECRET=<value stored outside git>
+   ```
+
+   The code falls back to `ZOOM_WEBHOOK_SECRET_TOKEN` for compatibility, but the
+   dedicated `ZOOM_VIDEO_SDK_WEBHOOK_SECRET` variable is preferred because it makes
+   the Video SDK boundary explicit.
+9. Restart the backend and run a signed webhook smoke test. Verify that invalid
+   signatures, stale timestamps, duplicate events, and the URL-validation challenge
+   behave as expected.
+10. Join and end a real test classroom session, then verify the four event types,
+    attendance minutes, booking state transitions, and idempotent replay behavior.
+
+### 5.4 Why the legacy UI is the selected approach
+
+Zoom's current Platform Studio explicitly directs this project to the legacy
+Marketplace app page for event subscriptions. The REST API can manage event
+subscriptions, but it still requires the same public endpoint, validation, signing
+secret, and event selection. The UI is therefore the shortest and safest initial
+setup path; API automation can be considered later after the first subscription is
+working and has been verified.
+
+### 5.5 Completion gates
+
+This integration is not production-ready until all of the following are true:
+
+- The endpoint is publicly reachable over HTTPS.
+- Zoom URL validation succeeds.
+- The Secret Token is stored in the deployment secret manager and is not committed.
+- The four required event types are enabled.
+- A real session produces signed webhook deliveries.
+- Backend tests and a real end-to-end attendance check pass.
+- The deployment logs show no missing-secret or signature-validation errors.
 
 ---
 
@@ -186,4 +259,4 @@ To configure the Zoom Video SDK, Sharon needs to create a **Video SDK App** in t
    - Treat `Project-files/docs/ZOOM_ATTENDANCE.md` (legacy S2S section) as **STALE**.
    - Do NOT generate code referencing `HostPicker`, `zoom_start_url`, or Zoom Meetings user licenses.
    - When asked about video conferencing, reference this document (`ZOOM_VIDEO_SDK_MIGRATION_PLAN.md`).
-   - Do NOT implement Phase 12-V1 through V5 until explicitly authorized by the project lead (Anesu MUPESA).
+   - Status as of 2026-10-07: **V1-V4 are implemented and merged on `develop`** (the lead's 2026-10-05 chat message was taken as the go; see `PHASE_11_12_TASK_ASSIGNMENTS.md` §0). **V5 (retire the legacy Meetings columns and files) is still NOT authorized**: do not implement it until Anesu says so explicitly after a real Zoom Video SDK session has been exercised. V1-V4 have never run against real Zoom (see `GAP_ANALYSIS_AND_LAUNCH_TIMELINE_2026-10-07.md` §2e).

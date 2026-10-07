@@ -16,7 +16,7 @@ Copy `.env.example` to `.env` in `Project-files/`:
 ```bash
 # Core Environment
 DEBUG=True
-SECRET_KEY=django-insecure-prod-key-change-in-production
+DJANGO_SECRET_KEY=django-insecure-prod-key-change-in-production   # the code reads DJANGO_SECRET_KEY (config/settings/base.py), not SECRET_KEY
 ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
 
 # Database Configuration (Neon Serverless in Staging/Prod)

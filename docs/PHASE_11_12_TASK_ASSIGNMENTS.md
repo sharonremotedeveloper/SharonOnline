@@ -2,6 +2,16 @@
 
 **Written:** 2026-10-05 by Claude (lead architect agent) on Anesu MUPESA's instruction · **Supersedes** the "next slices" list in `HANDOFF_PHASE_11_12.md` §3-4 for *assignment* (that file stays the reference for process, gates and gotchas) · **Plan of record:** `PHASE_11_12_EXECUTION_PLAN.md` §4 (slice table) · **Video plan:** `ZOOM_VIDEO_SDK_MIGRATION_PLAN.md`.
 
+## 0.0 UPDATE 2026-10-07 - read first
+
+Everything in sections 0-0.46 below is the 2026-10-05 picture and is kept for history. The current picture and the plan to launch are in [`GAP_ANALYSIS_AND_LAUNCH_TIMELINE_2026-10-07.md`](GAP_ANALYSIS_AND_LAUNCH_TIMELINE_2026-10-07.md). What changed since 0.46:
+
+- `develop` is `7699a68` (backend live-failure repair merged; generated API types updated). T4b (admin vetting UI), T5b (funnel UI), F2 (notification centre), Task 15.1 (live `/tutors`), Package A (receipts, payout runs, P2 statements, G2, T3b), N2-N4 and V4 are on `develop`.
+- **Antigravity**: finish the frontend half of the live-failure repair (F-01..F-08, branch `feature/antigravity-repair`, currently docs only), then STU-12, TEA-06, STU-11, cancel/reschedule UX.
+- **Codex**: verify N2a-c/N3/N4, ADM-08/ADM-10 APIs, deep health check, Celery broker hardening.
+- **Claude (integrator)**: fix `docker-compose.prod.yml` gaps, staging deploy runbook, sandbox verification plan; run one fresh full gate on `develop` to replace stale test counts.
+- **Nothing here may start live-provider work** until Anesu supplies the accounts and credentials listed in the gap analysis section 2i. V5 stays unauthorized.
+
 ## 0. Where we are (observed 2026-10-05, working tree of `Project-files`, branch `develop` = `origin/develop` `f4c0e0a`)
 
 - Layers 0 and 1 (Q0, F0, N1c, T1a, T1c, N1a, T1b, Z1, T2) are pushed, CI green.
