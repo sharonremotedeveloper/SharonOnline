@@ -116,7 +116,7 @@ export function ReviewRubricModal({
                       onMouseEnter={() => setHoverRating(star)}
                       onMouseLeave={() => setHoverRating(null)}
                       onClick={() => setRating(star)}
-                      className="min-w-11 justify-center min-h-11 inline-flex items-center p-1 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary rounded-md"
+                      className="min-w-11 justify-center min-h-11 inline-flex items-center p-1 transition-transform hover:scale-110 focus-visible:outline-[2.5px] focus-visible:outline-offset-2 focus-visible:outline-primary rounded-md"
                     >
                       <Star
                         className={`w-8 h-8 ${

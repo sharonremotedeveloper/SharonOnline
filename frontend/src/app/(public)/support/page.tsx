@@ -19,9 +19,23 @@ export default function SupportPage() {
   const [submitted, setSubmitted] = useState(false);
   const [responseMsg, setResponseMsg] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const missing: Record<string, string> = {};
+    if (!formData.name.trim()) missing.name = "Enter your name.";
+    if (!formData.email.trim()) missing.email = "Enter your e-mail address so we can reply.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) missing.email = "That does not look like an e-mail address. Check it for typing mistakes.";
+    if (!formData.subject.trim()) missing.subject = "Add a short subject.";
+    if (!formData.message.trim()) missing.message = "Write your message.";
+    setFieldErrors(missing);
+    const firstKey = ["name", "email", "subject", "message"].find((k) => missing[k]);
+    if (firstKey) {
+      setSubmitError(null);
+      document.getElementById(`f-${{ name: "your-full-name", email: "your-email-address", subject: "subject", message: "message" }[firstKey]}`)?.focus();
+      return;
+    }
     setLoading(true);
     setSubmitError(null);
     try {
@@ -126,7 +140,7 @@ export default function SupportPage() {
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
               <div>
                 <p id="user-type-label" className="block text-sm font-bold text-ink mb-1">I am a...</p>
                 <div role="radiogroup" aria-labelledby="user-type-label" className="flex gap-4 text-sm font-semibold text-ink">
@@ -155,7 +169,7 @@ export default function SupportPage() {
 
               <div>
                 <label htmlFor="f-your-full-name" className="block text-sm font-bold text-ink mb-1">Your Full Name</label>
-                <input id="f-your-full-name" aria-invalid={submitError ? true : undefined} aria-describedby={submitError ? "support-error" : undefined}
+                <input id="f-your-full-name" aria-invalid={fieldErrors.name || submitError ? true : undefined} aria-describedby={fieldErrors.name ? "support-name-error" : submitError ? "support-error" : undefined}
                   type="text"
                   required
                   placeholder="e.g. Aiko Tanaka"
@@ -163,11 +177,12 @@ export default function SupportPage() {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="min-h-11 w-full bg-cream-surface border border-strong rounded-xl px-4 py-2.5 text-base sm:text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
+                {fieldErrors.name && <p id="support-name-error" role="alert" className="mt-1 text-sm font-medium text-error">{fieldErrors.name}</p>}
               </div>
 
               <div>
                 <label htmlFor="f-your-email-address" className="block text-sm font-bold text-ink mb-1">Your Email Address</label>
-                <input id="f-your-email-address" aria-invalid={submitError ? true : undefined} aria-describedby={submitError ? "support-error" : undefined}
+                <input id="f-your-email-address" aria-invalid={fieldErrors.email || submitError ? true : undefined} aria-describedby={fieldErrors.email ? "support-email-error" : submitError ? "support-error" : undefined}
                   type="email"
                   required
                   placeholder="aiko@example.com"
@@ -175,11 +190,12 @@ export default function SupportPage() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="min-h-11 w-full bg-cream-surface border border-strong rounded-xl px-4 py-2.5 text-base sm:text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
+                {fieldErrors.email && <p id="support-email-error" role="alert" className="mt-1 text-sm font-medium text-error">{fieldErrors.email}</p>}
               </div>
 
               <div>
                 <label htmlFor="f-subject" className="block text-sm font-bold text-ink mb-1">Subject</label>
-                <input id="f-subject" aria-invalid={submitError ? true : undefined} aria-describedby={submitError ? "support-error" : undefined}
+                <input id="f-subject" aria-invalid={fieldErrors.subject || submitError ? true : undefined} aria-describedby={fieldErrors.subject ? "support-subject-error" : submitError ? "support-error" : undefined}
                   type="text"
                   required
                   placeholder="e.g. Question about PayPal checkout or slot booking"
@@ -187,11 +203,12 @@ export default function SupportPage() {
                   onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                   className="min-h-11 w-full bg-cream-surface border border-strong rounded-xl px-4 py-2.5 text-base sm:text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
+                {fieldErrors.subject && <p id="support-subject-error" role="alert" className="mt-1 text-sm font-medium text-error">{fieldErrors.subject}</p>}
               </div>
 
               <div>
                 <label htmlFor="f-message" className="block text-sm font-bold text-ink mb-1">Message</label>
-                <textarea id="f-message" aria-invalid={submitError ? true : undefined} aria-describedby={submitError ? "support-error" : undefined}
+                <textarea id="f-message" aria-invalid={fieldErrors.message || submitError ? true : undefined} aria-describedby={fieldErrors.message ? "support-message-error" : submitError ? "support-error" : undefined}
                   required
                   rows={4}
                   placeholder="How can we assist you today?"
@@ -199,6 +216,7 @@ export default function SupportPage() {
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                   className="w-full bg-cream-surface border border-strong rounded-xl px-4 py-2.5 text-base sm:text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
+                {fieldErrors.message && <p id="support-message-error" role="alert" className="mt-1 text-sm font-medium text-error">{fieldErrors.message}</p>}
               </div>
 
               <InlineError id="support-error" error={submitError} />

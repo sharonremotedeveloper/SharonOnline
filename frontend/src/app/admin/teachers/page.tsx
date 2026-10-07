@@ -74,7 +74,7 @@ export default function AdminTeachersPage() {
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white p-4 rounded-3xl border border-strong shadow-xs flex items-center gap-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary">
+      <div className="bg-white p-4 rounded-3xl border border-strong shadow-xs flex items-center gap-3 focus-within:outline focus-within:outline-[2.5px] focus-within:outline-offset-2 focus-within:outline-primary">
         <Search className="w-4 h-4 text-ink-muted ml-2" />
         <input
           type="text"

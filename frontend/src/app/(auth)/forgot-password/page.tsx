@@ -11,9 +11,18 @@ export default function ForgotPasswordPage() {
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const value = email.trim();
+    if (!value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      setEmailError(value ? "That does not look like an e-mail address. Check it for typing mistakes." : "Enter the e-mail address you signed up with.");
+      setError("");
+      document.getElementById("email")?.focus();
+      return;
+    }
+    setEmailError("");
     setSubmitting(true);
     setError("");
     try {
@@ -48,7 +57,7 @@ export default function ForgotPasswordPage() {
             </p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             {error && (
               <div role="alert" className="flex items-start gap-2 p-3 bg-error-surface border border-error-border rounded-xl text-sm text-error font-medium">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
@@ -63,6 +72,8 @@ export default function ForgotPasswordPage() {
                   id="email"
                   type="email"
                   required
+                  aria-invalid={emailError ? true : undefined}
+                  aria-describedby={emailError ? "email-error" : undefined}
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -70,6 +81,7 @@ export default function ForgotPasswordPage() {
                   className="min-h-11 w-full pl-10 pr-4 py-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
               </div>
+              {emailError && <p id="email-error" role="alert" className="text-sm font-medium text-error">{emailError}</p>}
             </div>
             <button
               type="submit"

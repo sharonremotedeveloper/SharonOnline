@@ -205,7 +205,7 @@ export function FlashcardDeck({ initialCards, onGradeCard }: FlashcardDeckProps)
             setIsFlipped(!isFlipped);
           }
         }}
-        className="relative min-h-[360px] cursor-pointer group rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+        className="relative min-h-[360px] cursor-pointer group rounded-3xl focus-visible:outline-[2.5px] focus-visible:outline-offset-4 focus-visible:outline-primary"
       >
         <div
           className={`w-full min-h-[360px] bg-white rounded-3xl border-2 border-cream-200 p-8 shadow-sm transition-all duration-300 flex flex-col justify-between hover:border-cocoa-400 hover:shadow-md ${

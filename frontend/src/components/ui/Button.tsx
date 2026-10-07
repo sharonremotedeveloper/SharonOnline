@@ -21,7 +21,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const base =
-    "inline-flex items-center justify-center gap-2 font-bold rounded-full transition-all tracking-[0.01em] focus-visible:outline-2 focus-visible:outline-offset-2 active:translate-y-px disabled:opacity-60 disabled:cursor-not-allowed disabled:active:translate-y-0";
+    "inline-flex items-center justify-center gap-2 font-bold rounded-full transition-all tracking-[0.01em] focus-visible:outline-[2.5px] focus-visible:outline-offset-2 active:translate-y-px disabled:opacity-60 disabled:cursor-not-allowed disabled:active:translate-y-0";
 
   const sizes = {
     sm: "px-4 py-1.5 text-sm min-h-[44px]",

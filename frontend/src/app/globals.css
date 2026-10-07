@@ -41,7 +41,7 @@ button {
 }
 
 :focus-visible {
-  outline: 2px solid #C2410C;
+  outline: 2.5px solid #C2410C; /* 2px nominal; 2.5px so engines that snap to device pixels never render under 2px */
   outline-offset: 3px;
   border-radius: 5px;
 }

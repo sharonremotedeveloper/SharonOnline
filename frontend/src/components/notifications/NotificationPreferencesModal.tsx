@@ -125,7 +125,7 @@ export function NotificationPreferencesModal({
         </div>
 
         {/* Channel Labels */}
-        <div className="flex items-center justify-end px-6 pt-4 pb-1 space-x-6 text-xs font-bold text-ink-muted uppercase tracking-wider">
+        <div className="hidden items-center justify-end px-6 pt-4 pb-1 space-x-6 text-xs sm:flex font-bold text-ink-muted uppercase tracking-wider">
           <div className="flex items-center gap-1 w-16 justify-center">
             <Bell className="w-3.5 h-3.5" /> In-App
           </div>
@@ -135,13 +135,13 @@ export function NotificationPreferencesModal({
         </div>
 
         {/* Category Rows */}
-        <div className="px-6 py-2 divide-y divide-ink/10 max-h-[60vh] overflow-y-auto">
+        <div className="px-4 py-2 sm:px-6 divide-y divide-ink/10 max-h-[60vh] overflow-y-auto">
           {CATEGORIES.map((cat) => {
             const inAppEnabled = cat.isMandatory ? true : inAppSettings[cat.key] ?? true;
             const emailEnabled = cat.isMandatory ? true : emailSettings[cat.key] ?? true;
 
             return (
-              <div key={cat.key} className="py-3.5 flex items-start justify-between gap-4">
+              <div key={cat.key} className="py-3.5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="flex-1 pr-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-ink">{cat.title}</span>
@@ -157,7 +157,7 @@ export function NotificationPreferencesModal({
                 </div>
 
                 {/* Toggles */}
-                <div className="flex items-center space-x-6 pt-1">
+                <div className="flex items-center gap-2 sm:space-x-6 sm:gap-0 sm:pt-1">
                   {/* In-App Toggle */}
                   <button
                     type="button"
@@ -165,7 +165,7 @@ export function NotificationPreferencesModal({
                     aria-checked={inAppEnabled}
                     disabled={cat.isMandatory}
                     onClick={() => handleToggle("in_app", cat.key, cat.isMandatory)}
-                    className={`min-h-11 items-center w-16 flex justify-center py-1 rounded-md transition-colors ${
+                    className={`min-h-11 items-center gap-2 px-2 sm:px-0 sm:w-16 flex justify-start sm:justify-center py-1 rounded-md transition-colors ${
                       cat.isMandatory
                         ? "opacity-60 cursor-not-allowed"
                         : "hover:bg-cocoa-100"
@@ -183,6 +183,7 @@ export function NotificationPreferencesModal({
                         }`}
                       />
                     </span>
+                    <span className="text-sm font-semibold text-ink sm:hidden">In-app</span>
                   </button>
 
                   {/* Email Toggle */}
@@ -192,7 +193,7 @@ export function NotificationPreferencesModal({
                     aria-checked={emailEnabled}
                     disabled={cat.isMandatory}
                     onClick={() => handleToggle("email", cat.key, cat.isMandatory)}
-                    className={`min-h-11 items-center w-16 flex justify-center py-1 rounded-md transition-colors ${
+                    className={`min-h-11 items-center gap-2 px-2 sm:px-0 sm:w-16 flex justify-start sm:justify-center py-1 rounded-md transition-colors ${
                       cat.isMandatory
                         ? "opacity-60 cursor-not-allowed"
                         : "hover:bg-cocoa-100"
@@ -210,6 +211,7 @@ export function NotificationPreferencesModal({
                         }`}
                       />
                     </span>
+                    <span className="text-sm font-semibold text-ink sm:hidden">Email</span>
                   </button>
                 </div>
               </div>
@@ -218,7 +220,7 @@ export function NotificationPreferencesModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 bg-cocoa-50 border-t border-ink/10">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-4 sm:px-6 bg-cocoa-50 border-t border-ink/10">
           <span className="text-xs text-ink-muted">
             {savedSuccess ? (
               <span className="text-cocoa font-bold flex items-center gap-1">

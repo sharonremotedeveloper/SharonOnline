@@ -8,7 +8,9 @@ import { createPortal } from "react-dom";
  * transform or filter (the sticky header) becomes the containing block of `position: fixed` and would clip them.
  */
 export function Portal({ children }: { children: ReactNode }) {
-  const [mounted, setMounted] = useState(false);
+  // Dialogs mount when they open, long after hydration, so on the client the portal target exists immediately. Starting
+  // "unmounted" there would render in place for a frame and then move the DOM, which drops the focus set by useDialog.
+  const [mounted, setMounted] = useState(() => typeof document !== "undefined" && !!document.body);
   useEffect(() => setMounted(true), []);
   // Before mount (server render, first client render) the children render in place so markup matches; a dialog is closed then anyway.
   return mounted ? createPortal(children, document.body) : <>{children}</>;

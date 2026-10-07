@@ -126,6 +126,7 @@ export function AccountMenu() {
       <button
         ref={buttonRef}
         type="button"
+        data-dialog-return
         onClick={() => setOpen((o) => !o)}
         onKeyDown={(e) => {
           if (e.key !== "ArrowDown") return;
