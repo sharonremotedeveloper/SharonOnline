@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from apps.common.timezones import get_zone
 from apps.srs.models import StudentFlashcard
 from apps.bookings.models import Booking, LessonMemo
 
@@ -52,25 +53,34 @@ class StudentLessonItemSerializer(serializers.ModelSerializer):
         }
 
     def get_local_date(self, obj):
-        return obj.start_time_utc.strftime('%b %d, %Y')
+        return self._local_start(obj).strftime('%b %d, %Y')
 
     def get_local_start_time(self, obj):
-        return obj.start_time_utc.strftime('%H:%M')
+        return self._local_start(obj).strftime('%H:%M')
 
     def get_local_end_time(self, obj):
-        return obj.end_time_utc.strftime('%H:%M')
+        return self._local_end(obj).strftime('%H:%M')
 
     def get_viewer_timezone(self, obj):
-        return obj.student.timezone or "Asia/Tokyo"
+        return obj.student.timezone
+
+    def _student_zone(self, obj):
+        return get_zone(obj.student.timezone)
+
+    def _local_start(self, obj):
+        return obj.start_time_utc.astimezone(self._student_zone(obj))
+
+    def _local_end(self, obj):
+        return obj.end_time_utc.astimezone(self._student_zone(obj))
 
     def get_material_title(self, obj):
-        return obj.material.title if obj.material else "FreeTalk & Topic Discussion"
+        return obj.material.title if obj.material else None
 
     def get_material_cefr(self, obj):
-        return obj.material.cefr_level if obj.material else "B2"
+        return obj.material.cefr_level if obj.material else None
 
     def get_material_slug(self, obj):
-        return obj.material.slug if obj.material else "freetalk-discussion"
+        return obj.material.slug if obj.material else None
 
     def get_memo(self, obj):
         if not hasattr(obj, 'memo') or not obj.memo:

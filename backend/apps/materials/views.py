@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.db import models
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
@@ -26,6 +27,13 @@ class MaterialListView(generics.ListAPIView):
         cefr = self.request.query_params.get('cefr')
         if cefr:
             queryset = queryset.filter(cefr_level=cefr)
+        search = (self.request.query_params.get('search') or '').strip()
+        if search:
+            queryset = queryset.filter(
+                models.Q(title__icontains=search)
+                | models.Q(description__icontains=search)
+                | models.Q(content_html__icontains=search)
+            )
         return queryset
 
 class MaterialDetailView(generics.RetrieveAPIView):
