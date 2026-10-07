@@ -63,8 +63,31 @@ function RegisterForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.password !== formData.password_confirm) {
-      setError("Passwords do not match");
+    const required: [keyof typeof formData, string, string][] = [
+      ["first_name", "f-first-name", "Enter your first name."],
+      ["last_name", "f-last-name", "Enter your last name."],
+      ["username", "f-username", "Choose a username."],
+      ["email", "f-email-address", "Enter your e-mail address."],
+      ["country", "f-country-code", "Enter your country code, for example JP."],
+      ["password", "f-password", "Choose a password."],
+      ["password_confirm", "f-confirm-password", "Type the password again to confirm it."],
+    ];
+    const missing: Record<string, string[]> = {};
+    let firstId = "";
+    for (const [key, id, message] of required) {
+      if (!String(formData[key] ?? "").trim()) {
+        missing[key] = [message];
+        firstId = firstId || id;
+      }
+    }
+    if (!missing.password_confirm && formData.password !== formData.password_confirm) {
+      missing.password_confirm = ["The two passwords do not match."];
+      firstId = firstId || "f-confirm-password";
+    }
+    if (firstId) {
+      setError("");
+      setFieldErrors(missing);
+      document.getElementById(firstId)?.focus();
       return;
     }
 
@@ -140,8 +163,8 @@ function RegisterForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <label htmlFor="f-first-name" className="text-sm font-bold text-ink">First Name</label>
             <input id="f-first-name" aria-invalid={fieldErrors.first_name?.length ? true : undefined} aria-describedby={fieldErrors.first_name?.length ? "err-first_name" : undefined}
@@ -166,7 +189,7 @@ function RegisterForm() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <label htmlFor="f-username" className="text-sm font-bold text-ink">Username</label>
             <input id="f-username" aria-invalid={fieldErrors.username?.length ? true : undefined} aria-describedby={fieldErrors.username?.length ? "err-username" : undefined}
@@ -193,7 +216,7 @@ function RegisterForm() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <label htmlFor="f-timezone" className="text-sm font-bold text-ink">Timezone</label>
             <input id="f-timezone"
@@ -217,7 +240,7 @@ function RegisterForm() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <label htmlFor="f-password" className="text-sm font-bold text-ink">Password</label>
             <input id="f-password" aria-invalid={fieldErrors.password?.length ? true : undefined} aria-describedby={fieldErrors.password?.length ? "err-password" : undefined}

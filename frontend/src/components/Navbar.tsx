@@ -53,13 +53,13 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-divider bg-cream/95 text-ink shadow-sm backdrop-blur supports-[backdrop-filter]:bg-cream/85">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8">
         {/* Brand */}
         <Link href="/" className="flex min-h-[44px] shrink-0 items-center gap-2" aria-label="Sharon Online, home">
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-cocoa font-serif text-lg font-bold text-sun shadow-sm">
             S
           </span>
-          <span className="whitespace-nowrap font-serif text-xl font-extrabold tracking-tight text-ink">
+          <span className="whitespace-nowrap font-serif text-lg font-extrabold sm:text-xl tracking-tight text-ink">
             Sharon<span className="text-primary">Online</span>
           </span>
         </Link>

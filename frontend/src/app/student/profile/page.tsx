@@ -155,7 +155,7 @@ export default function StudentProfilePage() {
         </div>
       )}
 
-      <InlineError error={saveError} />
+      <InlineError id="profile-error" error={saveError} />
 
       {/* Profile Form */}
       <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-cream-200 shadow-sm overflow-hidden">
@@ -170,7 +170,7 @@ export default function StudentProfilePage() {
               <label htmlFor="f-full-name" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Full Name
               </label>
-              <input id="f-full-name"
+              <input aria-invalid={saveError ? true : undefined} aria-describedby={saveError ? "profile-error" : undefined} id="f-full-name"
                 type="text"
                 value={formData.full_name}
                 onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
@@ -183,7 +183,7 @@ export default function StudentProfilePage() {
               <label htmlFor="f-email-address" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Email Address
               </label>
-              <input id="f-email-address"
+              <input aria-invalid={saveError ? true : undefined} aria-describedby={saveError ? "profile-error" : undefined} id="f-email-address"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -196,7 +196,7 @@ export default function StudentProfilePage() {
               <label htmlFor="f-country-of-residence" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Country of Residence
               </label>
-              <input id="f-country-of-residence"
+              <input aria-invalid={saveError ? true : undefined} aria-describedby={saveError ? "profile-error" : undefined} id="f-country-of-residence"
                 type="text"
                 value={formData.country}
                 onChange={(e) => setFormData({ ...formData, country: e.target.value })}
@@ -209,7 +209,7 @@ export default function StudentProfilePage() {
               <label htmlFor="f-local-timezone-iana" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Local Timezone (IANA)
               </label>
-              <select id="f-local-timezone-iana"
+              <select aria-invalid={saveError ? true : undefined} aria-describedby={saveError ? "profile-error" : undefined} id="f-local-timezone-iana"
                 value={formData.timezone}
                 onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
                 className="min-h-11 w-full text-base sm:text-sm rounded-xl border border-strong p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
@@ -233,7 +233,7 @@ export default function StudentProfilePage() {
               <label htmlFor="f-target-cefr-proficiency" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Target CEFR Proficiency
               </label>
-              <select id="f-target-cefr-proficiency"
+              <select aria-invalid={saveError ? true : undefined} aria-describedby={saveError ? "profile-error" : undefined} id="f-target-cefr-proficiency"
                 value={formData.target_level}
                 onChange={(e) => setFormData({ ...formData, target_level: e.target.value })}
                 className="min-h-11 w-full text-base sm:text-sm rounded-xl border border-strong p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
@@ -250,7 +250,7 @@ export default function StudentProfilePage() {
               <label htmlFor="f-primary-learning-objecti" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Primary Learning Objectives & Pedagogical Notes
               </label>
-              <textarea id="f-primary-learning-objecti"
+              <textarea aria-invalid={saveError ? true : undefined} aria-describedby={saveError ? "profile-error" : undefined} id="f-primary-learning-objecti"
                 value={formData.learning_goals}
                 onChange={(e) => setFormData({ ...formData, learning_goals: e.target.value })}
                 rows={4}

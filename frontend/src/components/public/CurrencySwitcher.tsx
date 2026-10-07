@@ -76,7 +76,7 @@ export function CurrencySwitcher({ onCurrencyChange, variant = "select" }: Curre
   // Flag emoji render as bare letters ("us", "eu") on Windows, so the currency is shown by its code and symbol only.
   if (variant === "inline") {
     return (
-      <div role="group" aria-label="Display currency" className="inline-flex items-center gap-1 p-1 bg-cream-surface rounded-xl border border-divider">
+      <div role="group" aria-label="Display currency" className="inline-flex max-w-full items-center gap-0.5 p-1 bg-cream-surface rounded-xl border border-divider sm:gap-1">
         {offered.map((code) => {
           const curr = CURRENCIES[code];
           const isActive = active === code;
@@ -86,7 +86,7 @@ export function CurrencySwitcher({ onCurrencyChange, variant = "select" }: Curre
               type="button"
               onClick={() => handleChange(code)}
               aria-pressed={isActive}
-              className={`min-h-[44px] min-w-[44px] px-3.5 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-1.5 ${
+              className={`min-h-[44px] min-w-[44px] px-2.5 sm:px-3.5 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-1.5 ${
                 isActive
                   ? "bg-cocoa text-white shadow-sm"
                   : "text-ink-muted hover:text-ink hover:bg-cream-deep"

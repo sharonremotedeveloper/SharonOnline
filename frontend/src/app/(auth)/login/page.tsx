@@ -19,6 +19,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{ username?: string; password?: string }>({});
 
   const handleLoginSuccess = (role: UserRole) => {
     // Only follow same-site relative paths ("/x"); "//evil.com", "/\evil.com" and absolute URLs would be an open redirect.
@@ -38,6 +39,15 @@ function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const missing: { username?: string; password?: string } = {};
+    if (!username.trim()) missing.username = "Enter your username or e-mail address.";
+    if (!password) missing.password = "Enter your password.";
+    setFieldErrors(missing);
+    if (missing.username || missing.password) {
+      setError("");
+      document.getElementById(missing.username ? "f-username-or-email" : "f-password")?.focus();
+      return;
+    }
     setSubmitting(true);
     setError("");
 
@@ -74,13 +84,13 @@ function LoginForm() {
       )}
 
       {error && (
-        <div role="alert" className="flex items-start gap-2 p-3 bg-error-surface border border-error-border rounded-xl text-sm text-error font-medium">
+        <div id="login-error" role="alert" className="flex items-start gap-2 p-3 bg-error-surface border border-error-border rounded-xl text-sm text-error font-medium">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <div className="space-y-1">
           <label htmlFor="f-username-or-email" className="text-sm font-bold text-ink">Username or Email</label>
           <div className="relative">
@@ -88,12 +98,16 @@ function LoginForm() {
             <input id="f-username-or-email"
               type="text"
               required
+              aria-required="true"
+              aria-invalid={fieldErrors.username || error ? true : undefined}
+              aria-describedby={fieldErrors.username ? "login-username-error" : error ? "login-error" : undefined}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="you@example.com or username"
               className="min-h-11 w-full pl-10 pr-4 py-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
           </div>
+          {fieldErrors.username && <p id="login-username-error" role="alert" className="text-sm font-medium text-error">{fieldErrors.username}</p>}
         </div>
 
         <div className="space-y-1">
@@ -108,12 +122,16 @@ function LoginForm() {
             <input id="f-password"
               type="password"
               required
+              aria-required="true"
+              aria-invalid={fieldErrors.password || error ? true : undefined}
+              aria-describedby={fieldErrors.password ? "login-password-error" : error ? "login-error" : undefined}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               className="min-h-11 w-full pl-10 pr-4 py-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
           </div>
+          {fieldErrors.password && <p id="login-password-error" role="alert" className="text-sm font-medium text-error">{fieldErrors.password}</p>}
         </div>
 
         <div className="pt-2">

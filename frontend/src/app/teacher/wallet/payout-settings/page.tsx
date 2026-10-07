@@ -163,7 +163,7 @@ export default function TeacherPayoutSettingsPage() {
 
         {/* Settings Form */}
         <form onSubmit={handleSave} className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">
-          <InlineError error={error} />
+          <InlineError id="payout-error" error={error} />
 
           {saved && (
             <div className="p-4 rounded-2xl bg-success-surface border border-success-border text-xs text-success-hover font-bold flex items-center gap-2">
@@ -176,7 +176,7 @@ export default function TeacherPayoutSettingsPage() {
             {/* Bank Name Selector */}
             <div className="space-y-1.5">
               <label htmlFor="f-bank-institution" className="text-xs font-bold uppercase tracking-wider text-ink block">Bank Institution</label>
-              <select id="f-bank-institution"
+              <select aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined} id="f-bank-institution"
                 value={bankName}
                 onChange={(e) => handleBankChange(e.target.value as BankName)}
                 className="min-h-11 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
@@ -194,7 +194,7 @@ export default function TeacherPayoutSettingsPage() {
               <label htmlFor="f-universal-branch-code-6-" className="text-xs font-bold uppercase tracking-wider text-ink block">
                 Universal Branch Code (6 digits)
               </label>
-              <input id="f-universal-branch-code-6-"
+              <input aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined} id="f-universal-branch-code-6-"
                 type="text"
                 maxLength={6}
                 value={branchCode}
@@ -208,7 +208,7 @@ export default function TeacherPayoutSettingsPage() {
 
           <div className="space-y-1.5">
             <label htmlFor="f-current-password" className="text-xs font-bold uppercase tracking-wider text-ink block">Current Password</label>
-            <input id="f-current-password"
+            <input aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined} id="f-current-password"
               type="password"
               autoComplete="current-password"
               value={currentPassword}
@@ -224,7 +224,7 @@ export default function TeacherPayoutSettingsPage() {
               E-mailed Verification Code
             </label>
             <div className="flex gap-2">
-              <input
+              <input aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined}
                 id="verification-code"
                 type="text"
                 inputMode="numeric"
@@ -257,7 +257,7 @@ export default function TeacherPayoutSettingsPage() {
             {/* Account Holder Name */}
             <div className="space-y-1.5">
               <label htmlFor="f-account-holder-name" className="text-xs font-bold uppercase tracking-wider text-ink block">Account Holder Name</label>
-              <input id="f-account-holder-name"
+              <input aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined} id="f-account-holder-name"
                 type="text"
                 value={accountHolder}
                 onChange={(e) => setAccountHolder(e.target.value)}
@@ -270,7 +270,7 @@ export default function TeacherPayoutSettingsPage() {
             {/* Account Number */}
             <div className="space-y-1.5">
               <label htmlFor="f-account-number" className="text-xs font-bold uppercase tracking-wider text-ink block">Account Number</label>
-              <input id="f-account-number"
+              <input aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined} id="f-account-number"
                 type="text"
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)}
@@ -316,7 +316,7 @@ export default function TeacherPayoutSettingsPage() {
               <label htmlFor="f-sa-national-id-or-passpo" className="text-xs font-bold uppercase tracking-wider text-ink block">
                 SA National ID or Passport Number
               </label>
-              <input id="f-sa-national-id-or-passpo"
+              <input aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined} id="f-sa-national-id-or-passpo"
                 type="text"
                 value={idNumber}
                 onChange={(e) => setIdNumber(e.target.value)}

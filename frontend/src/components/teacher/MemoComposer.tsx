@@ -132,7 +132,7 @@ ${initialScratchpad}` : ""
         </p>
       </div>
 
-      <InlineError error={error} />
+      <InlineError id="memo-error" error={error} />
 
       {/* 1. Overall Feedback */}
       <div className="space-y-2">
@@ -143,7 +143,7 @@ ${initialScratchpad}` : ""
         <p className="text-sm text-ink-muted">
           Praise strengths, evaluate conversational confidence, and summarize key conversational highlights.
         </p>
-        <textarea
+        <textarea aria-invalid={error ? true : undefined} aria-describedby={error ? "memo-error" : undefined}
           rows={4}
           value={feedbackText}
           onChange={(e) => setFeedbackText(e.target.value)}
@@ -185,7 +185,7 @@ ${initialScratchpad}` : ""
 
         {/* Add Word Row */}
         <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
-          <input
+          <input aria-invalid={error ? true : undefined} aria-describedby={error ? "memo-error" : undefined}
             type="text"
             value={newWord}
             onChange={(e) => setNewWord(e.target.value)}
@@ -198,7 +198,7 @@ ${initialScratchpad}` : ""
             placeholder="New word (e.g. Asynchronous)..."
             className="min-h-11 w-full sm:w-1/3 p-2.5 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
           />
-          <input
+          <input aria-invalid={error ? true : undefined} aria-describedby={error ? "memo-error" : undefined}
             type="text"
             value={newDef}
             onChange={(e) => setNewDef(e.target.value)}
@@ -228,7 +228,7 @@ ${initialScratchpad}` : ""
           <Volume2 className="w-4 h-4 text-cocoa" />
           <span>Pronunciation &amp; Accent Notes</span>
         </label>
-        <textarea
+        <textarea aria-invalid={error ? true : undefined} aria-describedby={error ? "memo-error" : undefined}
           rows={3}
           value={pronunciationNotes}
           onChange={(e) => setPronunciationNotes(e.target.value)}
@@ -243,7 +243,7 @@ ${initialScratchpad}` : ""
           <FileText className="w-4 h-4 text-plum" />
           <span>Grammar Slips &amp; Corrections</span>
         </label>
-        <textarea
+        <textarea aria-invalid={error ? true : undefined} aria-describedby={error ? "memo-error" : undefined}
           rows={3}
           value={grammarNotes}
           onChange={(e) => setGrammarNotes(e.target.value)}
@@ -258,7 +258,7 @@ ${initialScratchpad}` : ""
           <Sparkles className="w-4 h-4 text-cocoa" aria-hidden="true" />
           <span>Homework Assignment &amp; Next Session Objectives</span>
         </label>
-        <textarea
+        <textarea aria-invalid={error ? true : undefined} aria-describedby={error ? "memo-error" : undefined}
           rows={2}
           value={homework}
           onChange={(e) => setHomework(e.target.value)}
