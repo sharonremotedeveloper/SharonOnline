@@ -2334,6 +2334,10 @@ export interface components {
             description?: string;
             readonly pdf_file_url: string;
             readonly audio_snippet_url: string;
+            readonly summary: string;
+            readonly estimated_minutes: number;
+            readonly vocabulary: unknown[];
+            readonly discussion_questions: unknown[];
             /** @description Structured HTML content: article text, vocab definitions, discussion questions */
             content_html?: string;
             /** Format: date-time */
@@ -2353,6 +2357,10 @@ export interface components {
             description?: string;
             readonly pdf_file_url: string;
             readonly audio_snippet_url: string;
+            readonly summary: string;
+            readonly estimated_minutes: number;
+            readonly vocabulary: unknown[];
+            readonly discussion_questions: unknown[];
         };
         Notification: {
             /** Format: uuid */
