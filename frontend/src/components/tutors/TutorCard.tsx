@@ -1,125 +1,106 @@
 "use client";
 
 import Link from "next/link";
-import { Star, ShieldCheck, Zap, ArrowRight, Clock, Video } from "lucide-react";
-import { PublicTutor } from "@/types/tutor";
-import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Badge";
+import { ArrowRight, Clock, Zap } from "lucide-react";
+import type { PublicTutor } from "@/types/tutor";
 import { StarRating } from "@/components/ui/StarRating";
 import { LessonPriceLabel } from "@/components/ui/LessonPriceLabel";
+import { TutorPortrait } from "@/components/public/TutorPortrait";
 import { AudioSnippetButton } from "./AudioSnippetButton";
+import { formatRating } from "@/lib/rating";
+
+const ACCENT_NAMES: Record<string, string> = { ZA: "South African tutor", UK: "British tutor", US: "American tutor", OTHER: "International tutor" };
+
+/** The API may send a code ("ZA") or a ready name; show a name either way. */
+function accentName(value: string | undefined): string {
+  if (!value) return "Tutor";
+  return ACCENT_NAMES[value] ?? value;
+}
 
 interface TutorCardProps {
   tutor: PublicTutor;
 }
 
+/** Photo-first card, the same look as the home page. Only real review numbers are shown. */
 export function TutorCard({ tutor }: TutorCardProps) {
   const profileUrl = `/tutors/${tutor.slug || tutor.id}`;
+  const hasReviews = tutor.rating_count > 0 && tutor.rating_avg > 0;
 
   return (
-    <div className="bg-white rounded-3xl border border-divider shadow-card hover:shadow-card-hover transition-all flex flex-col justify-between overflow-hidden group">
-      {/* Header section with photo, accent & audio */}
-      <div className="p-6 space-y-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <Link href={profileUrl}>
-              <Avatar
-                src={tutor.avatar_url}
-                name={tutor.full_name}
-                size="lg"
-                className="ring-2 ring-cream-deep group-hover:scale-105 transition-transform"
-              />
-            </Link>
-
-            <div>
-              <div className="flex items-center gap-1.5">
-                <Link href={profileUrl}>
-                  <h3 className="text-lg font-bold text-ink font-serif hover:text-teal transition-colors">
-                    {tutor.full_name}
-                  </h3>
-                </Link>
-                <span title={`From ${tutor.country}`}>{tutor.country_flag}</span>
-              </div>
-
-              <div className="text-xs text-ink-muted font-medium mt-0.5">
-                {tutor.accent_display || tutor.accent}
-              </div>
-
-              <div className="flex items-center gap-1.5 mt-1">
-                <StarRating rating={tutor.rating_avg} size="sm" />
-                <span className="text-xs font-bold text-ink">
-                  {tutor.rating_avg.toFixed(2)} ({tutor.rating_count})
-                </span>
-                <span className="text-[10px] text-ink-faint">· {tutor.lessons_completed} lessons</span>
-              </div>
-            </div>
-          </div>
-
-          <AudioSnippetButton
-            audioUrl={tutor.intro_audio_url}
-            tutorName={tutor.first_name}
-            size="sm"
+    <article className="group flex flex-col overflow-hidden rounded-3xl border border-divider bg-white shadow-card transition-shadow hover:shadow-card-hover">
+      <div className="relative">
+        <Link href={profileUrl} tabIndex={-1} aria-label={`View ${tutor.full_name}'s profile`} className="block">
+          <TutorPortrait
+            src={tutor.avatar_url}
+            name={tutor.full_name}
+            className="aspect-[4/5] w-full"
+            sizes="(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 92vw"
           />
-        </div>
-
-        {/* Headline & Bio */}
-        <div>
-          <h4 className="text-xs font-bold text-teal line-clamp-1">{tutor.headline}</h4>
-          <p className="text-xs text-ink-muted line-clamp-2 mt-1 leading-relaxed">{tutor.bio}</p>
-        </div>
-
-        {/* Specialties / Badges */}
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {tutor.specialties.slice(0, 3).map((spec) => (
-            <Badge key={spec} variant="neutral" size="sm">
-              {spec}
-            </Badge>
-          ))}
-          {tutor.has_inverter_backup && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-              <Zap className="w-3 h-3 text-accent" /> Power Guard
-            </span>
-          )}
-        </div>
-
-        {/* Next Available Slot Preview */}
-        {tutor.next_available_slot && (
-          <div className="bg-cream-surface rounded-xl px-3 py-2 border border-cream-deep flex items-center justify-between text-[11px]">
-            <span className="text-ink-muted flex items-center gap-1 font-medium">
-              <Clock className="w-3.5 h-3.5 text-teal" /> Next Open:
-            </span>
-            <span className="font-bold text-ink">{tutor.next_available_slot.local_display}</span>
+        </Link>
+        {tutor.intro_audio_url && (
+          <div className="absolute right-3 top-3">
+            <AudioSnippetButton audioUrl={tutor.intro_audio_url} tutorName={tutor.first_name} size="sm" />
           </div>
+        )}
+        {tutor.has_inverter_backup && (
+          <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-sun px-3 py-1 text-sm font-bold text-ink">
+            <Zap className="h-4 w-4" aria-hidden="true" /> Backup power
+          </span>
         )}
       </div>
 
-      {/* Footer CTA & Pricing */}
-      <div className="p-4 bg-cream-surface/60 border-t border-divider flex items-center justify-between">
+      <div className="flex flex-1 flex-col gap-3 p-5">
         <div>
-          <LessonPriceLabel className="text-base font-extrabold text-ink font-serif" />
-          <span className="text-[11px] text-ink-muted"> / 25 min</span>
+          <h3 className="font-serif text-xl font-bold text-ink">
+            <Link href={profileUrl} className="inline-flex min-h-[44px] items-center hover:text-primary">
+              {tutor.full_name}
+            </Link>
+          </h3>
+          <p className="text-sm text-ink-muted">{accentName(tutor.accent_display || tutor.accent)}</p>
+          {hasReviews && (
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <StarRating rating={tutor.rating_avg} size="sm" showNumber={false} />
+              <span className="text-sm font-semibold text-ink">
+                {formatRating(tutor.rating_avg)} <span className="font-normal text-ink-muted">({tutor.rating_count} reviews)</span>
+              </span>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
-          {tutor.intro_video_url && (
-            <Link
-              href={profileUrl}
-              title="Watch 60s video intro"
-              className="p-2 rounded-xl bg-white hover:bg-cream-deep border border-divider text-ink-muted hover:text-ink transition-colors"
-            >
-              <Video className="w-4 h-4 text-primary" />
-            </Link>
-          )}
+        {tutor.headline && <p className="line-clamp-2 text-base font-medium leading-snug text-ink">{tutor.headline}</p>}
 
+        {tutor.specialties.length > 0 && (
+          <ul className="flex flex-wrap gap-2" aria-label="Lesson topics">
+            {tutor.specialties.slice(0, 3).map((spec) => (
+              <li key={spec} className="rounded-full bg-peach-soft px-3 py-1 text-sm font-medium text-ink">
+                {spec}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {tutor.next_available_slot && (
+          <p className="flex items-center gap-2 rounded-2xl bg-sky-soft px-3 py-2 text-sm text-ink">
+            <Clock className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>
+              Next time: <strong>{tutor.next_available_slot.local_display}</strong>
+            </span>
+          </p>
+        )}
+
+        <div className="mt-auto flex flex-col gap-3 border-t border-divider pt-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="leading-tight">
+            <LessonPriceLabel className="font-serif text-lg font-bold text-ink" />
+            <div className="text-sm text-ink-muted">per 25 minutes</div>
+          </div>
           <Link
             href={profileUrl}
-            className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1"
+            className="inline-flex min-h-[44px] items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-cocoa px-5 text-base font-bold text-white transition-colors hover:bg-cocoa-hover"
           >
-            <span>Book Slot</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            See times <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </div>
       </div>
-    </div>
+    </article>
   );
 }

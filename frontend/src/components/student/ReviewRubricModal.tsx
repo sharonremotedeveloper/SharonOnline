@@ -78,12 +78,12 @@ export function ReviewRubricModal({
         {/* Header */}
         <div className="bg-cream-50 border-b border-cream-200 p-6 flex items-start justify-between">
           <div>
-            <span className="text-xs font-bold text-teal-700 uppercase tracking-wider">Lesson Feedback</span>
+            <span className="text-sm font-bold text-cocoa-700 uppercase tracking-wider">Lesson Feedback</span>
             <h3 className="text-xl font-extrabold text-ink-900 mt-1">Review Lesson with {teacherName}</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-ink-400 hover:text-ink-700 hover:bg-cream-200/50 rounded-full transition-colors"
+            className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 text-ink-400 hover:text-ink-700 hover:bg-cream-200/50 rounded-full transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -91,7 +91,7 @@ export function ReviewRubricModal({
 
         {isSuccess ? (
           <div className="p-8 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mx-auto">
+            <div className="w-16 h-16 rounded-full bg-success-surface border border-success-border text-success flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <h4 className="text-xl font-bold text-ink-900">Review Submitted!</h4>
@@ -103,7 +103,7 @@ export function ReviewRubricModal({
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             {/* Star Rating */}
             <div className="text-center space-y-2">
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block">
+              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
                 Overall Lesson Experience
               </label>
               <div className="flex items-center justify-center gap-2">
@@ -116,12 +116,12 @@ export function ReviewRubricModal({
                       onMouseEnter={() => setHoverRating(star)}
                       onMouseLeave={() => setHoverRating(null)}
                       onClick={() => setRating(star)}
-                      className="p-1 transition-transform hover:scale-110 focus:outline-none"
+                      className="min-w-11 justify-center min-h-11 inline-flex items-center p-1 transition-transform hover:scale-110 focus-visible:outline-[2.5px] focus-visible:outline-offset-2 focus-visible:outline-primary rounded-md"
                     >
                       <Star
                         className={`w-8 h-8 ${
                           filled
-                            ? "fill-amber-400 text-amber-400 drop-shadow-sm"
+                            ? "fill-star text-star drop-shadow-sm"
                             : "text-cream-300 stroke-1"
                         }`}
                       />
@@ -129,7 +129,7 @@ export function ReviewRubricModal({
                   );
                 })}
               </div>
-              <p className="text-xs font-medium text-ink-600">
+              <p className="text-sm font-medium text-ink-600">
                 {rating === 5 && "⭐ Excellent - Flawless session"}
                 {rating === 4 && "⭐ Very Good - Highly effective"}
                 {rating === 3 && "⭐ Good - Standard session"}
@@ -140,7 +140,7 @@ export function ReviewRubricModal({
 
             {/* Rubric Category Tags */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block">
+              <label className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
                 What did the tutor do especially well?
               </label>
               <div className="flex flex-wrap gap-2">
@@ -151,9 +151,9 @@ export function ReviewRubricModal({
                       key={tag}
                       type="button"
                       onClick={() => toggleTag(tag)}
-                      className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
+                      className={`min-h-11 inline-flex items-center text-sm px-3 py-1.5 rounded-full border transition-all ${
                         isSelected
-                          ? "bg-teal-600 border-teal-600 text-white font-semibold shadow-xs"
+                          ? "bg-cocoa-600 border-cocoa-600 text-white font-semibold shadow-xs"
                           : "bg-cream-50 border-cream-200 text-ink-700 hover:border-cream-300"
                       }`}
                     >
@@ -167,21 +167,21 @@ export function ReviewRubricModal({
 
             {/* Private Qualitative Feedback */}
             <div className="space-y-2">
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block">
+              <label htmlFor="f-private-note-for-teacher" className="text-sm font-bold text-ink-500 uppercase tracking-wider block">
                 Private Note for {teacherName} (Optional)
               </label>
-              <textarea
+              <textarea id="f-private-note-for-teacher"
                 value={privateNotes}
                 onChange={(e) => setPrivateNotes(e.target.value)}
                 placeholder="Share any specific pacing preferences, topics you'd like to dive into next time, or words of encouragement..."
                 rows={3}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-ink-900 bg-cream-50/30"
+                className="w-full text-base sm:text-sm rounded-xl border border-strong p-3 focus:outline-none focus:ring-2 focus:ring-cocoa-500 focus:border-transparent text-ink-900 bg-cream-50/30"
               />
             </div>
 
             {/* Asymmetric Confidentiality Notice */}
-            <div className="bg-teal-50/70 border border-teal-200/80 rounded-2xl p-3.5 flex items-start gap-3 text-xs text-teal-900">
-              <ShieldCheck className="w-5 h-5 text-teal-700 shrink-0 mt-0.5" />
+            <div className="bg-cocoa-50/70 border border-cocoa-200/80 rounded-2xl p-3.5 flex items-start gap-3 text-sm text-cocoa-900">
+              <ShieldCheck className="w-5 h-5 text-cocoa-700 shrink-0 mt-0.5" />
               <div>
                 <strong className="font-semibold block mb-0.5">Asymmetric Privacy Protection</strong>
                 <span>
@@ -197,14 +197,14 @@ export function ReviewRubricModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-xs font-semibold text-ink-600 hover:text-ink-900 rounded-xl"
+                className="min-h-11 inline-flex items-center px-4 py-2 text-sm font-semibold text-ink-600 hover:text-ink-900 rounded-xl"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+                className="min-h-11 inline-flex items-center gap-2 px-6 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
               >
                 {isSubmitting ? (
                   <>Submitting...</>

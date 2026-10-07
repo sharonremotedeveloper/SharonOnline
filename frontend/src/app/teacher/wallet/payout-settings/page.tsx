@@ -124,12 +124,12 @@ export default function TeacherPayoutSettingsPage() {
         <div className="flex items-center justify-between">
           <Link
             href="/teacher/wallet"
-            className="inline-flex items-center gap-2 text-xs font-bold text-ink-muted hover:text-ink transition-colors"
+            className="min-h-11 inline-flex items-center gap-2 text-xs font-bold text-ink-muted hover:text-ink transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Return to Earnings Wallet</span>
           </Link>
-          <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+          <span className="text-xs font-bold text-success-hover bg-success-surface px-3 py-1 rounded-full border border-success-border">
             Payout Setup Only
           </span>
         </div>
@@ -137,12 +137,12 @@ export default function TeacherPayoutSettingsPage() {
         {/* Header Card */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-2">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-teal/10 text-teal flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-cocoa/10 text-cocoa flex items-center justify-center">
               <Building2 className="w-5 h-5" />
             </div>
             <div>
               <h1 className="text-2xl font-black text-ink font-serif">South African EFT Payout Settings</h1>
-              <p className="text-xs text-ink-muted">
+              <p className="text-sm text-ink-muted">
                 Store a South African bank account for a future approved payout process in ZAR.
               </p>
             </div>
@@ -151,10 +151,10 @@ export default function TeacherPayoutSettingsPage() {
 
         {/* Security Alert Callout */}
         <div className="p-4 rounded-2xl bg-cream-surface border border-divider flex items-start gap-3 text-xs">
-          <Lock className="w-4 h-4 text-teal shrink-0 mt-0.5" />
+          <Lock className="w-4 h-4 text-cocoa shrink-0 mt-0.5" />
           <div className="space-y-0.5">
             <span className="font-bold text-ink">Encrypted payout details</span>
-            <p className="text-[11px] text-ink-muted leading-relaxed">
+            <p className="text-sm text-ink-muted leading-relaxed">
               Your banking details are encrypted at rest with a versioned application key. Payout execution remains
               disabled until an approved banking rail and maker-checker process are in place.
             </p>
@@ -163,11 +163,11 @@ export default function TeacherPayoutSettingsPage() {
 
         {/* Settings Form */}
         <form onSubmit={handleSave} className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">
-          <InlineError error={error} />
+          <InlineError id="payout-error" error={error} />
 
           {saved && (
-            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 font-bold flex items-center gap-2">
-              <Check className="w-4 h-4 shrink-0 text-emerald-700" />
+            <div className="p-4 rounded-2xl bg-success-surface border border-success-border text-xs text-success-hover font-bold flex items-center gap-2">
+              <Check className="w-4 h-4 shrink-0 text-success-hover" />
               <span>Banking information saved.</span>
             </div>
           )}
@@ -175,11 +175,11 @@ export default function TeacherPayoutSettingsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Bank Name Selector */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-ink block">Bank Institution</label>
-              <select
+              <label htmlFor="f-bank-institution" className="text-xs font-bold uppercase tracking-wider text-ink block">Bank Institution</label>
+              <select aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined} id="f-bank-institution"
                 value={bankName}
                 onChange={(e) => handleBankChange(e.target.value as BankName)}
-                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-bold text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+                className="min-h-11 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
               >
                 {SA_BANKS.map((b) => (
                   <option key={b.name} value={b.name}>
@@ -191,32 +191,32 @@ export default function TeacherPayoutSettingsPage() {
 
             {/* Universal Branch Code */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-ink block">
+              <label htmlFor="f-universal-branch-code-6-" className="text-xs font-bold uppercase tracking-wider text-ink block">
                 Universal Branch Code (6 digits)
               </label>
-              <input
+              <input aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined} id="f-universal-branch-code-6-"
                 type="text"
                 maxLength={6}
                 value={branchCode}
                 onChange={(e) => setBranchCode(e.target.value)}
                 placeholder="470010"
-                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+                className="min-h-11 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
                 required
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-ink block">Current Password</label>
-            <input
+            <label htmlFor="f-current-password" className="text-xs font-bold uppercase tracking-wider text-ink block">Current Password</label>
+            <input aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined} id="f-current-password"
               type="password"
               autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+              className="min-h-11 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
               required
             />
-            <p className="text-[11px] text-ink-muted">Required every time banking details are created or changed.</p>
+            <p className="text-sm text-ink-muted">Required every time banking details are created or changed.</p>
           </div>
 
           <div className="space-y-1.5">
@@ -224,7 +224,7 @@ export default function TeacherPayoutSettingsPage() {
               E-mailed Verification Code
             </label>
             <div className="flex gap-2">
-              <input
+              <input aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined}
                 id="verification-code"
                 type="text"
                 inputMode="numeric"
@@ -233,7 +233,7 @@ export default function TeacherPayoutSettingsPage() {
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ""))}
                 placeholder="6-digit code"
-                className="flex-1 p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+                className="min-w-11 justify-center min-h-11 flex-1 p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
                 required
                 pattern="\d{6}"
               />
@@ -241,12 +241,12 @@ export default function TeacherPayoutSettingsPage() {
                 type="button"
                 onClick={handleSendCode}
                 disabled={codeSending}
-                className="px-4 py-3 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider disabled:opacity-60"
+                className="min-h-11 inline-flex items-center px-4 py-3 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider disabled:opacity-60"
               >
                 {codeSending ? "Sending..." : codeSent ? "Send a new code" : "E-mail me a code"}
               </button>
             </div>
-            <p className="text-[11px] text-ink-muted" role="status">
+            <p className="text-sm text-ink-muted" role="status">
               {codeSent
                 ? "We sent a 6-digit code to your account e-mail. It expires in 10 minutes."
                 : "We e-mail you a code so nobody with only your password can redirect your payouts."}
@@ -256,26 +256,26 @@ export default function TeacherPayoutSettingsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Account Holder Name */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-ink block">Account Holder Name</label>
-              <input
+              <label htmlFor="f-account-holder-name" className="text-xs font-bold uppercase tracking-wider text-ink block">Account Holder Name</label>
+              <input aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined} id="f-account-holder-name"
                 type="text"
                 value={accountHolder}
                 onChange={(e) => setAccountHolder(e.target.value)}
                 placeholder="e.g. Sharon Mupesa"
-                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-bold text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+                className="min-h-11 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
                 required
               />
             </div>
 
             {/* Account Number */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-ink block">Account Number</label>
-              <input
+              <label htmlFor="f-account-number" className="text-xs font-bold uppercase tracking-wider text-ink block">Account Number</label>
+              <input aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined} id="f-account-number"
                 type="text"
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)}
                 placeholder="e.g. 1234567890"
-                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+                className="min-h-11 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm font-mono font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
                 required
               />
             </div>
@@ -289,9 +289,9 @@ export default function TeacherPayoutSettingsPage() {
                 <button
                   type="button"
                   onClick={() => setAccountType("savings")}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-colors ${
+                  className={`min-h-11 inline-flex items-center py-2.5 px-3 rounded-xl text-xs font-bold border transition-colors ${
                     accountType === "savings"
-                      ? "bg-teal text-white border-teal shadow-xs"
+                      ? "bg-cocoa text-white border-cocoa shadow-xs"
                       : "bg-cream-surface text-ink-muted border-divider hover:bg-cream-deep"
                   }`}
                 >
@@ -300,9 +300,9 @@ export default function TeacherPayoutSettingsPage() {
                 <button
                   type="button"
                   onClick={() => setAccountType("cheque")}
-                  className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-colors ${
+                  className={`min-h-11 inline-flex items-center py-2.5 px-3 rounded-xl text-xs font-bold border transition-colors ${
                     accountType === "cheque"
-                      ? "bg-teal text-white border-teal shadow-xs"
+                      ? "bg-cocoa text-white border-cocoa shadow-xs"
                       : "bg-cream-surface text-ink-muted border-divider hover:bg-cream-deep"
                   }`}
                 >
@@ -313,15 +313,15 @@ export default function TeacherPayoutSettingsPage() {
 
             {/* SA ID / Passport */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-ink block">
+              <label htmlFor="f-sa-national-id-or-passpo" className="text-xs font-bold uppercase tracking-wider text-ink block">
                 SA National ID or Passport Number
               </label>
-              <input
+              <input aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined} id="f-sa-national-id-or-passpo"
                 type="text"
                 value={idNumber}
                 onChange={(e) => setIdNumber(e.target.value)}
                 placeholder="13-digit SA ID Number"
-                className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs font-mono text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+                className="min-h-11 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm font-mono text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
               />
             </div>
           </div>
@@ -331,7 +331,7 @@ export default function TeacherPayoutSettingsPage() {
             <button
               type="submit"
               disabled={saving}
-              className="px-8 py-3.5 bg-teal hover:bg-teal-hover text-white text-xs font-black rounded-2xl flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
+              className="min-h-11 px-8 py-3.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-2xl flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
             >
               <ShieldCheck className="w-4 h-4" />
               <span>{saving ? "Verifying & Encrypting..." : "Save Payout Bank Details"}</span>

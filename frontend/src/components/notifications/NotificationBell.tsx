@@ -43,7 +43,7 @@ export function NotificationBell({ className = "" }: NotificationBellProps) {
         aria-label={ariaLabel}
         aria-expanded={isOpen}
         aria-haspopup="dialog"
-        className={`relative p-2 rounded-xl text-white/90 hover:text-white hover:bg-white/10 transition-colors focus:outline-hidden focus:ring-2 focus:ring-gold ${className}`}
+        className={`min-h-11 inline-flex items-center relative p-2 rounded-xl text-white/90 hover:text-white hover:bg-white/10 transition-colors focus:outline-hidden focus:ring-2 focus:ring-gold ${className}`}
       >
         <Bell className="w-5 h-5" />
 
@@ -51,7 +51,7 @@ export function NotificationBell({ className = "" }: NotificationBellProps) {
         {badgeText && (
           <span
             aria-hidden="true"
-            className="absolute top-1 right-1 flex items-center justify-center min-w-4.5 h-4.5 px-1 text-[10px] font-black leading-none text-teal bg-gold rounded-full ring-2 ring-teal shadow-xs animate-in zoom-in-75 duration-150"
+            className="absolute top-1 right-1 flex items-center justify-center min-w-4.5 h-4.5 px-1 text-xs font-black leading-none text-cocoa bg-gold rounded-full ring-2 ring-cocoa shadow-xs animate-in zoom-in-75 duration-150"
           >
             {badgeText}
           </span>

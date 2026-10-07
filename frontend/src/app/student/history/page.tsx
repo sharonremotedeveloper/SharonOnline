@@ -59,22 +59,22 @@ export default function StudentHistoryPage() {
           <div className="flex items-center gap-2">
             <Link
               href="/student/dashboard"
-              className="p-1.5 text-ink-400 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 text-ink-400 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
             </Link>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-ink-900 tracking-tight">Lesson History & Memos</h1>
           </div>
-          <p className="text-xs sm:text-sm text-ink-600 mt-1 pl-8">
+          <p className="text-sm sm:text-sm text-ink-600 mt-1 pl-8">
             Access past 25-minute lesson summaries, review tutor feedback, and inspect acquired vocabulary notes.
           </p>
         </div>
 
         <Link
           href="/student/vocabulary"
-          className="px-4 py-2.5 bg-white border border-cream-200 hover:bg-cream-50 text-teal-800 font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-2"
+          className="min-h-11 px-4 py-2.5 bg-white border border-cream-200 hover:bg-cream-50 text-cocoa-800 font-bold text-sm rounded-xl shadow-xs transition-colors flex items-center gap-2"
         >
-          <Sparkles className="w-4 h-4 text-amber-500" /> Go to Vocabulary SRS Deck
+          <Sparkles className="w-4 h-4 text-warning" /> Go to Vocabulary SRS Deck
         </Link>
       </div>
 
@@ -87,14 +87,15 @@ export default function StudentHistoryPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by tutor name, lesson topic, or booking ID..."
-            className="w-full pl-10 pr-4 py-2 bg-cream-50/50 border border-cream-200 rounded-xl text-xs sm:text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            aria-label="Search by tutor name, lesson topic, or booking ID..."
+            className="min-h-11 w-full pl-10 pr-4 py-2 bg-cream-50/50 border border-strong rounded-xl text-base sm:text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-cocoa-500 focus:border-transparent"
           />
         </div>
 
-        <div className="flex items-center gap-1.5 bg-cream-50 p-1 rounded-xl border border-cream-200 text-xs font-medium">
+        <div className="flex flex-wrap items-center gap-1.5 bg-cream-50 p-1 rounded-xl border border-cream-200 text-sm font-medium">
           <button
             onClick={() => setStatusFilter("all")}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
+            className={`min-h-11 inline-flex items-center px-3 py-1.5 rounded-lg transition-colors ${
               statusFilter === "all" ? "bg-white text-ink-900 shadow-sm font-semibold" : "text-ink-600 hover:text-ink-900"
             }`}
           >
@@ -102,9 +103,9 @@ export default function StudentHistoryPage() {
           </button>
           <button
             onClick={() => setStatusFilter("completed")}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
+            className={`min-h-11 inline-flex items-center px-3 py-1.5 rounded-lg transition-colors ${
               statusFilter === "completed"
-                ? "bg-white text-teal-800 shadow-sm font-semibold"
+                ? "bg-white text-cocoa-800 shadow-sm font-semibold"
                 : "text-ink-600 hover:text-ink-900"
             }`}
           >
@@ -112,9 +113,9 @@ export default function StudentHistoryPage() {
           </button>
           <button
             onClick={() => setStatusFilter("interrupted")}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${
+            className={`min-h-11 inline-flex items-center px-3 py-1.5 rounded-lg transition-colors ${
               statusFilter === "interrupted"
-                ? "bg-white text-amber-800 shadow-sm font-semibold"
+                ? "bg-white text-warning-hover shadow-sm font-semibold"
                 : "text-ink-600 hover:text-ink-900"
             }`}
           >
@@ -128,14 +129,14 @@ export default function StudentHistoryPage() {
         {error ? (
           <ErrorState error={error} title="We could not load your lesson history" onRetry={reload} />
         ) : isLoading ? (
-          <div className="bg-white rounded-3xl border border-cream-200 p-12 text-center text-xs text-ink-500">
+          <div className="bg-white rounded-3xl border border-cream-200 p-12 text-center text-sm text-ink-500">
             Loading your lessons...
           </div>
         ) : filteredLessons.length === 0 ? (
           <div className="bg-white rounded-3xl border border-cream-200 p-12 text-center shadow-sm">
             <History className="w-12 h-12 text-ink-300 mx-auto mb-3" />
             <h3 className="text-base font-bold text-ink-900">No lessons found</h3>
-            <p className="text-xs text-ink-500 max-w-sm mx-auto mt-1">
+            <p className="text-sm text-ink-500 max-w-sm mx-auto mt-1">
               {lessons.length === 0
                 ? "You have no lessons yet. Once you book and take a lesson it will appear here."
                 : "No completed or past lessons match your search criteria."}
@@ -157,11 +158,11 @@ export default function StudentHistoryPage() {
                   <div>
                     <div className="flex items-center gap-2">
                       <h3 className="font-extrabold text-base text-ink-900">{lesson.teacher.name}</h3>
-                      <span className="text-xs bg-cream-100 text-ink-700 px-2 py-0.5 rounded-md font-medium">
+                      <span className="text-sm bg-cream-100 text-ink-700 px-2 py-0.5 rounded-md font-medium">
                         {lesson.teacher.accent}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-ink-400 mt-1">
+                    <div className="flex items-center gap-2 text-sm text-ink-400 mt-1">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5" /> {lesson.local_date}
                       </span>
@@ -174,21 +175,21 @@ export default function StudentHistoryPage() {
                 </div>
 
                 <div className="flex items-center gap-2 self-start sm:self-auto">
-                  <span className="text-xs font-mono text-ink-400 bg-cream-50 px-2.5 py-1 rounded-lg border border-cream-200">
+                  <span className="text-sm font-mono text-ink-400 bg-cream-50 px-2.5 py-1 rounded-lg border border-cream-200">
                     {lesson.booking_reference}
                   </span>
                   {lesson.status === "completed" && (
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-success-surface text-success-hover border border-success-border">
                       <CheckCircle2 className="w-3.5 h-3.5" /> Completed
                     </span>
                   )}
                   {lesson.status === "interrupted_power" && (
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-warning-surface text-warning-hover border border-warning-border">
                       <AlertCircle className="w-3.5 h-3.5" /> Grid Interrupted (Credit Refunded)
                     </span>
                   )}
                   {lesson.status === "confirmed" && (
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-cocoa-50 text-cocoa-700 border border-cocoa-200">
                       Scheduled
                     </span>
                   )}
@@ -199,13 +200,13 @@ export default function StudentHistoryPage() {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-teal-100 text-teal-800 text-[11px] font-bold rounded-md">
+                    <span className="px-2 py-0.5 bg-cocoa-100 text-cocoa-800 text-sm font-bold rounded-md">
                       CEFR {lesson.material_cefr}
                     </span>
                     <h4 className="font-bold text-sm text-ink-900">{lesson.material_title}</h4>
                   </div>
                   {lesson.memo && (
-                    <p className="text-xs text-ink-600 line-clamp-1 italic max-w-xl">
+                    <p className="text-sm text-ink-600 line-clamp-1 italic max-w-xl">
                       &ldquo;{lesson.memo.feedback_text}&rdquo;
                     </p>
                   )}
@@ -215,27 +216,27 @@ export default function StudentHistoryPage() {
                   {lesson.memo ? (
                     <button
                       onClick={() => setActiveMemoLesson(lesson)}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition-colors shadow-xs"
+                      className="min-h-11 inline-flex items-center gap-1.5 px-4 py-2 bg-cocoa-600 hover:bg-cocoa-700 text-white text-sm font-bold rounded-xl transition-colors shadow-xs"
                     >
                       <FileText className="w-3.5 h-3.5" /> Read Memo & Vocab
                     </button>
                   ) : (
-                    <span className="text-xs text-ink-400 italic">No memo available</span>
+                    <span className="text-sm text-ink-400 italic">No memo available</span>
                   )}
 
                   {lesson.status === "completed" && (
                     <>
                       {lesson.review ? (
-                        <span className="inline-flex items-center gap-1 px-3 py-2 bg-cream-50 border border-cream-200 text-xs font-semibold text-ink-700 rounded-xl">
-                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                        <span className="inline-flex items-center gap-1 px-3 py-2 bg-cream-50 border border-cream-200 text-sm font-semibold text-ink-700 rounded-xl">
+                          <Star className="w-3.5 h-3.5 text-warning fill-warning" />
                           Rated {lesson.review.rating} / 5
                         </span>
                       ) : (
                         <button
                           onClick={() => setActiveReviewLesson(lesson)}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-xs font-bold rounded-xl transition-colors"
+                          className="min-h-11 inline-flex items-center gap-1.5 px-4 py-2 bg-warning-surface hover:bg-warning-surface border border-warning-border text-warning-hover text-sm font-bold rounded-xl transition-colors"
                         >
-                          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" /> Review Tutor
+                          <Star className="w-3.5 h-3.5 fill-warning text-warning" /> Review Tutor
                         </button>
                       )}
                     </>
@@ -244,7 +245,7 @@ export default function StudentHistoryPage() {
                   {lesson.material_slug && (
                     <Link
                       href={`/materials/${lesson.material_slug}`}
-                      className="inline-flex items-center gap-1 px-3 py-2 bg-cream-100 hover:bg-cream-200 text-ink-700 text-xs font-medium rounded-xl transition-colors"
+                      className="min-h-11 inline-flex items-center gap-1 px-3 py-2 bg-cream-100 hover:bg-cream-200 text-ink-700 text-sm font-medium rounded-xl transition-colors"
                     >
                       <BookOpen className="w-3.5 h-3.5" /> Open Sheet
                     </Link>
@@ -255,11 +256,11 @@ export default function StudentHistoryPage() {
               {/* Acquired Vocabulary Chip Bar */}
               {lesson.memo?.vocabulary_words && lesson.memo.vocabulary_words.length > 0 && (
                 <div className="pt-2 border-t border-cream-100 flex items-center gap-2 flex-wrap">
-                  <span className="text-[11px] font-bold text-ink-400 uppercase tracking-wider">Acquired Vocab:</span>
+                  <span className="text-sm font-bold text-ink-400 uppercase tracking-wider">Acquired Vocab:</span>
                   {lesson.memo.vocabulary_words.map((item, idx) => (
                     <span
                       key={idx}
-                      className="px-2.5 py-0.5 bg-cream-50 text-teal-800 border border-cream-200 rounded-lg text-xs font-mono font-medium"
+                      className="px-2.5 py-0.5 bg-cream-50 text-cocoa-800 border border-cream-200 rounded-lg text-sm font-mono font-medium"
                     >
                       {item.word}
                     </span>

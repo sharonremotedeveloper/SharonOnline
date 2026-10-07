@@ -60,8 +60,12 @@ def parse_time(raw, fallback):
     return value.replace(tzinfo=dt_timezone.utc) if timezone.is_naive(value) else value
 
 
-def _minutes(join, leave) -> int:
-    if not (join and leave) or leave < join:
+def _minutes(join, leave, *, lower=None, upper=None) -> int:
+    if not join:
+        return 0
+    join = max(join, lower) if lower else join
+    leave = min(leave, upper) if leave and upper else leave
+    if not leave or leave < join:
         return 0
     return int((leave - join).total_seconds() // 60)
 
@@ -80,7 +84,11 @@ def _fill(row, *, join=None, leave=None, user_id='', event_id=''):
         row.zoom_user_id = user_id
     if event_id and event_id not in row.event_ids:
         row.event_ids = [*row.event_ids, event_id]
-    row.total_minutes = _minutes(row.join_time_utc, row.leave_time_utc)
+    row.total_minutes = _minutes(
+        row.join_time_utc,
+        row.leave_time_utc,
+        upper=row.booking.end_time_utc,
+    )
     row.save()
 
 
@@ -222,7 +230,10 @@ def credited_attendance_minutes(booking, classification, *, through=None):
     through = through or timezone.now()
     rows = classified_rows(booking, classification)
     legacy_rows = rows.filter(Q(join_time_utc__isnull=True) | Q(leave_time_utc__isnull=True, total_minutes__gt=0))
-    legacy_minutes = sum(legacy_rows.values_list('total_minutes', flat=True))
+    legacy_minutes = min(
+        sum(legacy_rows.values_list('total_minutes', flat=True)),
+        int((booking.end_time_utc - booking.start_time_utc).total_seconds() // 60),
+    )
     intervals = []
     interval_rows = rows.exclude(join_time_utc__isnull=True).exclude(leave_time_utc__isnull=True, total_minutes__gt=0)
     for row in interval_rows.order_by('join_time_utc'):
@@ -238,4 +249,5 @@ def credited_attendance_minutes(booking, classification, *, through=None):
             merged[-1][1] = max(merged[-1][1], end)
         else:
             merged.append([start, end])
-    return legacy_minutes + int(sum((end - start).total_seconds() for start, end in merged) // 60)
+    lesson_minutes = int((booking.end_time_utc - booking.start_time_utc).total_seconds() // 60)
+    return min(lesson_minutes, legacy_minutes + int(sum((end - start).total_seconds() for start, end in merged) // 60))

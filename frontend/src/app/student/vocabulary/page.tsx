@@ -63,7 +63,7 @@ export default function StudentVocabularyPage() {
           <div className="flex items-center gap-2">
             <Link
               href="/student/dashboard"
-              className="p-1.5 text-ink-400 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 text-ink-400 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
             </Link>
@@ -71,18 +71,18 @@ export default function StudentVocabularyPage() {
               Spaced Repetition Flashcards
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-ink-600 mt-1 pl-8">
+          <p className="text-sm sm:text-sm text-ink-600 mt-1 pl-8">
             Review vocabulary acquired in your lessons using Sharon Online&apos;s adaptive SRS recall engine.
           </p>
         </div>
 
         {/* Tab switch between deck and word bank */}
-        <div className="flex items-center gap-1.5 bg-cream-100 p-1 rounded-2xl border border-cream-200 text-xs font-semibold">
+        <div className="flex items-center gap-1.5 bg-cream-100 p-1 rounded-2xl border border-cream-200 text-sm font-semibold">
           <button
             onClick={() => setActiveTab("flashcards")}
-            className={`px-4 py-2 rounded-xl transition-all ${
+            className={`min-h-11 inline-flex items-center px-4 py-2 rounded-xl transition-all ${
               activeTab === "flashcards"
-                ? "bg-white text-teal-900 shadow-xs font-bold"
+                ? "bg-white text-cocoa-900 shadow-xs font-bold"
                 : "text-ink-600 hover:text-ink-900"
             }`}
           >
@@ -90,9 +90,9 @@ export default function StudentVocabularyPage() {
           </button>
           <button
             onClick={() => setActiveTab("wordbank")}
-            className={`px-4 py-2 rounded-xl transition-all ${
+            className={`min-h-11 inline-flex items-center px-4 py-2 rounded-xl transition-all ${
               activeTab === "wordbank"
-                ? "bg-white text-teal-900 shadow-xs font-bold"
+                ? "bg-white text-cocoa-900 shadow-xs font-bold"
                 : "text-ink-600 hover:text-ink-900"
             }`}
           >
@@ -107,8 +107,8 @@ export default function StudentVocabularyPage() {
         <ErrorState error={error} title="We could not load your vocabulary deck" onRetry={reload} />
       ) : isLoading ? (
         <div className="py-20 text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs text-ink-500">Loading your vocabulary deck...</p>
+          <div className="w-8 h-8 border-2 border-cocoa-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-ink-500">Loading your vocabulary deck...</p>
         </div>
       ) : activeTab === "flashcards" ? (
         <div className="space-y-8">
@@ -116,12 +116,12 @@ export default function StudentVocabularyPage() {
           <FlashcardDeck initialCards={cards} onGradeCard={handleGradeCard} />
 
           {/* SRS Explanation Banner */}
-          <div className="max-w-2xl mx-auto bg-teal-50/50 border border-teal-200/60 rounded-3xl p-6 text-xs text-teal-900 space-y-2">
-            <div className="flex items-center gap-2 font-bold text-sm text-teal-950">
-              <Sparkles className="w-4 h-4 text-teal-600" />
+          <div className="max-w-2xl mx-auto bg-cocoa-50/50 border border-cocoa-200/60 rounded-3xl p-6 text-sm text-cocoa-900 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-sm text-cocoa-950">
+              <Sparkles className="w-4 h-4 text-cocoa-600" />
               <span>How Sharon Online Spaced Repetition Works</span>
             </div>
-            <p className="leading-relaxed text-teal-800">
+            <p className="leading-relaxed text-cocoa-800">
               Target words captured in tutor memos automatically populate your deck. When you rate a card as <strong>Again</strong>, it reappears within 24 hours. Rating <strong>Good</strong> schedules it for 3 days, and <strong>Easy</strong> schedules it for 7 days to solidify long-term neurological retention.
             </p>
           </div>
@@ -137,19 +137,19 @@ export default function StudentVocabularyPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search vocabulary words or definitions..."
-                className="w-full pl-10 pr-4 py-2 bg-cream-50/50 border border-cream-200 rounded-xl text-xs sm:text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="min-h-11 w-full pl-10 pr-4 py-2 bg-cream-50/50 border border-strong rounded-xl text-base sm:text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
               />
             </div>
 
-            <div className="text-xs text-ink-500 font-medium">
+            <div className="text-sm text-ink-500 font-medium">
               Showing {filteredCards.length} of {cards.length} vocabulary words
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+          <div className="overflow-x-auto scroll-cue">
+            <table className="w-full text-left border-collapse text-sm">
               <thead>
-                <tr className="border-b border-cream-200 text-ink-400 uppercase tracking-wider font-bold text-[10px]">
+                <tr className="border-b border-cream-200 text-ink-400 uppercase tracking-wider font-bold text-sm">
                   <th className="py-3 px-4">Word & Phonetic</th>
                   <th className="py-3 px-4">Part of Speech</th>
                   <th className="py-3 px-4">Definition & Example</th>
@@ -163,24 +163,24 @@ export default function StudentVocabularyPage() {
                   <tr key={card.id} className="hover:bg-cream-50/50 transition-colors">
                     <td className="py-3.5 px-4">
                       <div className="font-bold text-sm text-ink-900">{card.word}</div>
-                      <div className="text-[11px] font-mono text-ink-400">{card.phonetic}</div>
+                      <div className="text-sm font-mono text-ink-400">{card.phonetic}</div>
                     </td>
                     <td className="py-3.5 px-4 font-medium text-ink-600">{card.part_of_speech}</td>
                     <td className="py-3.5 px-4 max-w-md">
                       <div className="font-medium text-ink-800">{card.definition}</div>
-                      <div className="text-[11px] text-ink-500 italic mt-0.5">&ldquo;{card.example_sentence}&rdquo;</div>
+                      <div className="text-sm text-ink-500 italic mt-0.5">&ldquo;{card.example_sentence}&rdquo;</div>
                     </td>
                     <td className="py-3.5 px-4 text-ink-600 font-medium max-w-xs truncate">
                       {card.lesson_source}
                     </td>
                     <td className="py-3.5 px-4">
                       <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-sm font-semibold border ${
                           card.mastery === "mastered"
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            ? "bg-success-surface text-success-hover border-success-border"
                             : card.mastery === "learning"
-                            ? "bg-amber-50 text-amber-700 border-amber-200"
-                            : "bg-blue-50 text-blue-700 border-blue-200"
+                            ? "bg-warning-surface text-warning-hover border-warning-border"
+                            : "bg-info-surface text-info-hover border-info-border"
                         }`}
                       >
                         {card.mastery}
@@ -189,7 +189,7 @@ export default function StudentVocabularyPage() {
                     <td className="py-3.5 px-4 text-right">
                       <button
                         onClick={() => speakWord(card.word)}
-                        className="p-1.5 text-teal-700 hover:text-teal-900 hover:bg-teal-50 rounded-lg transition-colors"
+                        className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 text-cocoa-700 hover:text-cocoa-900 hover:bg-cocoa-50 rounded-lg transition-colors"
                         title="Listen"
                       >
                         <Volume2 className="w-4 h-4" />

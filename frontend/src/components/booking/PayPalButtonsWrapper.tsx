@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { PayPalButtons, PayPalScriptProvider, usePayPalScriptReducer } from "@paypal/react-paypal-js";
-import { Lock, ShieldCheck } from "lucide-react";
+import { Lock, ShieldCheck, AlertTriangle, AlertCircle, Info } from "lucide-react";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/lib/http";
 import { checkoutFailureMessage } from "@/lib/fx";
@@ -46,18 +46,18 @@ export function PayPalButtonsWrapper(props: PayPalButtonsWrapperProps) {
     <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-gold/15 text-gold-bright flex items-center justify-center font-bold text-xs">
+          <div className="w-8 h-8 rounded-xl bg-gold/15 text-cocoa flex items-center justify-center font-bold text-sm">
             PP
           </div>
           <div>
-            <div className="text-xs font-bold text-ink">PayPal & International Cards</div>
-            <div className="text-[10px] text-ink-muted">USD, EUR, JPY Gateway</div>
+            <div className="text-sm font-bold text-ink">PayPal & International Cards</div>
+            <div className="text-sm text-ink-muted">USD, EUR, JPY Gateway</div>
           </div>
         </div>
         <span className="text-sm font-extrabold text-ink font-serif">{amountLabel ?? "Price unavailable"}</span>
       </div>
 
-      <div className="p-3 bg-cream-surface rounded-xl border border-divider text-xs space-y-1.5">
+      <div className="p-3 bg-cream-surface rounded-xl border border-divider text-sm space-y-1.5">
         <div className="flex justify-between text-ink-muted">
           <span>Reference:</span>
           <span className="font-bold text-ink">{reference}</span>
@@ -68,13 +68,13 @@ export function PayPalButtonsWrapper(props: PayPalButtonsWrapperProps) {
         </div>
       </div>
 
-      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900">
+      <div className="p-3 bg-info-surface border border-info-border rounded-xl text-sm text-info"><Info className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Note: </span>
         Your payment is confirmed by our server after PayPal reports the result. This page never marks its own payment
         successful.
       </div>
 
       {!CLIENT_ID ? (
-        <div role="alert" className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800">
+        <div role="alert" className="p-3 bg-error-surface border border-error-border rounded-xl text-sm text-error-hover"><AlertCircle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Error: </span>
           PayPal is not configured. Card and PayPal payments are unavailable right now; please try again later or contact
           support.
         </div>
@@ -88,7 +88,7 @@ export function PayPalButtonsWrapper(props: PayPalButtonsWrapperProps) {
         </PayPalScriptProvider>
       )}
 
-      <div className="text-[10px] text-center text-ink-muted flex items-center justify-center gap-1">
+      <div className="text-sm text-center text-ink-muted flex items-center justify-center gap-1">
         <ShieldCheck className="w-3 h-3 text-success" />
         <span>PayPal Buyer Protection & 24-Hour Escrow Hold</span>
       </div>
@@ -111,7 +111,7 @@ function PayPalButtonsInner({ target, currency, onQuote, onOutcome, disabled = f
 
   if (isRejected) {
     return (
-      <div role="alert" className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800">
+      <div role="alert" className="p-3 bg-error-surface border border-error-border rounded-xl text-sm text-error-hover"><AlertCircle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Error: </span>
         We could not load PayPal. Check your connection or ad-blocker and reload the page.
       </div>
     );
@@ -119,10 +119,10 @@ function PayPalButtonsInner({ target, currency, onQuote, onOutcome, disabled = f
 
   return (
     <div className="space-y-3">
-      {isPending && <div className="text-xs text-ink-muted text-center py-3">Loading PayPal...</div>}
+      {isPending && <div className="text-sm text-ink-muted text-center py-3">Loading PayPal...</div>}
 
       {finishing && (
-        <div role="status" className="text-xs text-ink font-semibold text-center py-2 flex items-center justify-center gap-1.5">
+        <div role="status" className="text-sm text-ink font-semibold text-center py-2 flex items-center justify-center gap-1.5">
           <Lock className="w-3.5 h-3.5" /> Finishing your payment securely. Please do not close this page...
         </div>
       )}
@@ -187,7 +187,7 @@ function PayPalButtonsInner({ target, currency, onQuote, onOutcome, disabled = f
       </div>
 
       {message && (
-        <div role="alert" className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900">
+        <div role="alert" className="p-3 bg-warning-surface border border-warning-border rounded-xl text-sm text-warning-hover"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
           {message}
         </div>
       )}

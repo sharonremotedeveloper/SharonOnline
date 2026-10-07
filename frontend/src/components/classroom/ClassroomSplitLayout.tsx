@@ -23,7 +23,7 @@ export function ClassroomSplitLayout({
       {/* Layout Control Bar */}
       <div className="flex items-center justify-between bg-white px-5 py-2.5 rounded-2xl border border-divider shadow-sm">
         <span className="text-xs font-bold text-ink-muted flex items-center gap-2">
-          <Columns className="w-4 h-4 text-teal" />
+          <Columns className="w-4 h-4 text-cocoa" />
           <span>Classroom Dual-Pane Stage</span>
         </span>
 
@@ -31,9 +31,9 @@ export function ClassroomSplitLayout({
           <button
             type="button"
             onClick={() => setViewMode("split")}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`min-h-11 px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
               viewMode === "split"
-                ? "bg-white text-teal shadow-xs border border-divider"
+                ? "bg-white text-cocoa shadow-xs border border-divider"
                 : "text-ink-muted hover:text-ink"
             }`}
           >
@@ -44,9 +44,9 @@ export function ClassroomSplitLayout({
           <button
             type="button"
             onClick={() => setViewMode("video_focus")}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`min-h-11 px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
               viewMode === "video_focus"
-                ? "bg-white text-teal shadow-xs border border-divider"
+                ? "bg-white text-cocoa shadow-xs border border-divider"
                 : "text-ink-muted hover:text-ink"
             }`}
           >
@@ -58,9 +58,9 @@ export function ClassroomSplitLayout({
             <button
               type="button"
               onClick={() => setViewMode("material_focus")}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              className={`min-h-11 px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                 viewMode === "material_focus"
-                  ? "bg-white text-teal shadow-xs border border-divider"
+                  ? "bg-white text-cocoa shadow-xs border border-divider"
                   : "text-ink-muted hover:text-ink"
               }`}
             >

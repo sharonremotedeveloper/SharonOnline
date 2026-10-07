@@ -12,8 +12,7 @@ import {
   ShieldAlert,
   Radio,
   Sparkles,
-  ArrowRight,
-} from "lucide-react";
+  ArrowRight, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { DisputeCase } from "@/types/admin";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
@@ -84,7 +83,7 @@ export default function AdminDisputesPage() {
   if (loading) {
     return (
       <div className="py-20 text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-rose-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-12 h-12 border-4 border-error border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm font-bold text-ink-muted">Loading frozen escrow arbitration tribunal...</p>
       </div>
     );
@@ -111,13 +110,13 @@ export default function AdminDisputesPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/admin/dashboard"
-            className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+            className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-md">
+              <span className="text-xs font-mono font-bold text-error-hover bg-error-surface px-2 py-0.5 rounded-md">
                 ESCROW ARBITRATION
               </span>
               <span className="text-xs font-bold text-ink-muted">{openCases.length} Cases Requiring Decision</span>
@@ -130,8 +129,8 @@ export default function AdminDisputesPage() {
       </div>
 
       {successNote && (
-        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-950 flex items-center gap-2.5">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div className="p-4 rounded-2xl bg-success-surface border border-success-border text-xs font-bold text-success-hover flex items-center gap-2.5">
+          <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
           <span>{successNote}</span>
         </div>
       )}
@@ -150,14 +149,14 @@ export default function AdminDisputesPage() {
             <div
               key={c.id}
               className={`bg-white rounded-3xl p-6 sm:p-8 border shadow-card space-y-6 transition-all ${
-                isResolved ? "opacity-75 border-divider" : "border-rose-300 ring-2 ring-rose-50"
+                isResolved ? "opacity-75 border-divider" : "border-error-border ring-2 ring-error-surface"
               }`}
             >
               {/* Case Bar */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-divider pb-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-teal bg-teal/10 px-2.5 py-0.5 rounded-full">
+                    <span className="text-xs font-mono font-bold text-cocoa bg-cocoa/10 px-2.5 py-0.5 rounded-full">
                       CASE: {c.booking_ref}
                     </span>
                     <span className="text-xs text-ink-muted">{c.lesson_date}</span>
@@ -169,7 +168,7 @@ export default function AdminDisputesPage() {
 
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <span className="text-[10px] uppercase font-bold text-ink-muted block">Frozen Amount</span>
+                    <span className="text-xs uppercase font-bold text-ink-muted block">Frozen Amount</span>
                     <span className="text-base font-black text-ink">
                       ${c.amount_usd} USD (R{c.amount_zar})
                     </span>
@@ -178,8 +177,8 @@ export default function AdminDisputesPage() {
                   <span
                     className={`px-3 py-1 rounded-full text-xs font-bold ${
                       isResolved
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-rose-100 text-rose-800 animate-pulse"
+                        ? "bg-success-surface text-success-hover"
+                        : "bg-error-surface text-error-hover"
                     }`}
                   >
                     {isResolved ? `Resolved (${c.resolution})` : "Arbitration Open"}
@@ -192,7 +191,7 @@ export default function AdminDisputesPage() {
                 {/* 1. Student Complaint */}
                 <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-2">
                   <div className="flex items-center gap-2 text-ink font-bold">
-                    <User className="w-4 h-4 text-accent" />
+                    <User className="w-4 h-4 text-star" />
                     <span>Student Complaint Statement</span>
                   </div>
                   <p className="text-ink-muted leading-relaxed font-sans italic bg-white p-3 rounded-xl border border-divider">
@@ -203,7 +202,7 @@ export default function AdminDisputesPage() {
                 {/* 2. Tutor Defense */}
                 <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-2">
                   <div className="flex items-center gap-2 text-ink font-bold">
-                    <User className="w-4 h-4 text-teal" />
+                    <User className="w-4 h-4 text-cocoa" />
                     <span>Tutor Defense Statement</span>
                   </div>
                   <p className="text-ink-muted leading-relaxed font-sans italic bg-white p-3 rounded-xl border border-divider">
@@ -212,28 +211,28 @@ export default function AdminDisputesPage() {
                 </div>
 
                 {/* 3. Authoritative Zoom Webhook Telemetry */}
-                <div className="p-4 rounded-2xl bg-[#1B1123] text-cream border border-white/10 space-y-2">
-                  <div className="flex items-center gap-2 font-bold text-accent">
+                <div className="p-4 rounded-2xl bg-cocoa text-cream border border-white/10 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-gold-bright">
                     <Radio className="w-4 h-4" />
                     <span>Zoom Server Dwell Logs</span>
                   </div>
-                  <div className="space-y-1.5 text-[11px] font-mono">
+                  <div className="space-y-1.5 text-xs font-mono">
                     <div className="flex justify-between">
-                      <span className="text-cream/60">Student Dwell:</span>
+                      <span className="text-cream/75">Student Dwell:</span>
                       <strong className="text-white">{c.zoom_telemetry.student_dwell_minutes} mins</strong>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-cream/60">Tutor Dwell:</span>
+                      <span className="text-cream/75">Tutor Dwell:</span>
                       <strong className="text-white">{c.zoom_telemetry.teacher_dwell_minutes} mins</strong>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-cream/60">Audio Connected:</span>
-                      <strong className={c.zoom_telemetry.call_connected ? "text-emerald-400" : "text-rose-400"}>
+                      <span className="text-cream/75">Audio Connected:</span>
+                      <strong className={c.zoom_telemetry.call_connected ? "text-sky" : "text-coral-soft"}>
                         {c.zoom_telemetry.call_connected ? "Yes" : "Failed / Dropped"}
                       </strong>
                     </div>
                     {c.zoom_telemetry.interrupted_reason && (
-                      <p className="text-[10px] text-accent-surface pt-1 border-t border-white/10">
+                      <p className="text-sm text-sun-soft pt-1 border-t border-white/10">
                         {c.zoom_telemetry.interrupted_reason}
                       </p>
                     )}
@@ -250,15 +249,15 @@ export default function AdminDisputesPage() {
                   </div>
 
                   {pendingConfirm?.caseId === c.id ? (
-                    <div className="flex flex-wrap items-center gap-2 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
-                      <span className="text-xs font-bold text-rose-900">
+                    <div role="alert" className="flex flex-wrap items-center gap-2 bg-error-surface border border-error-border rounded-xl px-3 py-2"><AlertCircle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Error: </span>
+                      <span className="text-xs font-bold text-error-hover">
                         Confirm {ACTION_LABELS[pendingConfirm.action]} for {c.booking_ref}? This moves money and cannot be undone.
                       </span>
                       <button
                         type="button"
                         disabled={resolvingId === c.id}
                         onClick={() => handleResolve(c.id, pendingConfirm.action)}
-                        className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 disabled:opacity-50"
+                        className="min-h-11 inline-flex items-center px-3 py-1.5 rounded-lg bg-error text-white text-xs font-bold hover:bg-error-hover disabled:opacity-50"
                       >
                         {resolvingId === c.id ? "Executing..." : "Confirm & execute"}
                       </button>
@@ -266,7 +265,7 @@ export default function AdminDisputesPage() {
                         type="button"
                         disabled={resolvingId === c.id}
                         onClick={() => setPendingConfirm(null)}
-                        className="px-3 py-1.5 rounded-lg bg-white border border-divider text-xs font-bold text-ink disabled:opacity-50"
+                        className="min-h-11 inline-flex items-center px-3 py-1.5 rounded-lg bg-white border border-divider text-xs font-bold text-ink disabled:opacity-50"
                       >
                         Cancel
                       </button>
@@ -277,7 +276,7 @@ export default function AdminDisputesPage() {
                       type="button"
                       disabled={resolvingId === c.id || pendingConfirm?.caseId === c.id}
                       onClick={() => setPendingConfirm({ caseId: c.id, action: "full_refund_student" })}
-                      className="px-4 py-2 rounded-xl bg-teal text-white text-xs font-bold hover:bg-teal-hover transition-colors shadow-xs"
+                      className="min-h-11 inline-flex items-center px-4 py-2 rounded-xl bg-cocoa text-white text-xs font-bold hover:bg-cocoa-hover transition-colors shadow-xs"
                     >
                       100% Refund to Student
                     </button>
@@ -286,7 +285,7 @@ export default function AdminDisputesPage() {
                       type="button"
                       disabled={resolvingId === c.id || pendingConfirm?.caseId === c.id}
                       onClick={() => setPendingConfirm({ caseId: c.id, action: "split_50_50" })}
-                      className="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-colors shadow-xs"
+                      className="min-h-11 inline-flex items-center px-4 py-2 rounded-xl bg-cocoa text-white text-xs font-bold hover:bg-cocoa-hover transition-colors shadow-xs"
                     >
                       Split 50/50 Goodwill
                     </button>
@@ -295,7 +294,7 @@ export default function AdminDisputesPage() {
                       type="button"
                       disabled={resolvingId === c.id || pendingConfirm?.caseId === c.id}
                       onClick={() => setPendingConfirm({ caseId: c.id, action: "release_tutor" })}
-                      className="px-4 py-2 rounded-xl bg-ink text-white text-xs font-bold hover:bg-black transition-colors shadow-xs"
+                      className="min-h-11 inline-flex items-center px-4 py-2 rounded-xl bg-ink text-white text-xs font-bold hover:bg-black transition-colors shadow-xs"
                     >
                       Release 100% to Tutor
                     </button>

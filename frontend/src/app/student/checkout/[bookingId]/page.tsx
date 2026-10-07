@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { dayLabel, zoneCityName } from "@/lib/scheduling";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -13,8 +14,7 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
-  CheckCircle2,
-} from "lucide-react";
+  CheckCircle2, AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";
 import { BookingDetail } from "@/types/booking";
 import { useAuth } from "@/context/AuthContext";
@@ -30,6 +30,7 @@ import { PayFastForm } from "@/components/booking/PayFastForm";
 import { PayPalButtonsWrapper } from "@/components/booking/PayPalButtonsWrapper";
 import type { OutcomeView } from "@/lib/paypalOutcome";
 import { rememberPendingPayFast } from "@/lib/pendingPayment";
+import { creditsLabel } from "@/lib/rating";
 
 export default function StudentCheckoutPage() {
   const params = useParams();
@@ -207,7 +208,7 @@ export default function StudentCheckoutPage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-16 text-center text-xs text-ink-muted">
+      <div className="max-w-4xl mx-auto px-4 py-16 text-center text-sm text-ink-muted">
         Loading checkout reservation...
       </div>
     );
@@ -232,14 +233,14 @@ export default function StudentCheckoutPage() {
         <h2 className="text-xl font-extrabold text-ink font-serif">
           {confirmed ? "This lesson is already confirmed" : "This reservation is no longer awaiting payment"}
         </h2>
-        <p className="text-xs text-ink-muted">
+        <p className="text-sm text-ink-muted">
           {confirmed
             ? "No further payment is needed."
             : "The slot hold may have expired or been released. Please pick a new time."}
         </p>
         <Link
           href={confirmed ? `/student/confirmed/${booking.id}` : `/student/book/${booking.teacher.id}`}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal text-white rounded-xl text-xs font-bold"
+          className="min-h-11 inline-flex items-center gap-2 px-5 py-2.5 bg-cocoa text-white rounded-xl text-sm font-bold"
         >
           {confirmed ? "View confirmation" : "Choose a new slot"} <ArrowRight className="w-3.5 h-3.5" />
         </Link>
@@ -253,7 +254,7 @@ export default function StudentCheckoutPage() {
       <div>
         <Link
           href={`/student/book/${booking.teacher.id}`}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-ink-muted hover:text-ink transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm font-bold text-ink-muted hover:text-ink transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Change Slot
         </Link>
@@ -271,12 +272,12 @@ export default function StudentCheckoutPage() {
       <InlineError error={error} />
 
       {slotLost && (
-        <div role="alert" className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900 space-y-2">
+        <div role="alert" className="p-4 rounded-2xl bg-warning-surface border border-warning-border text-sm text-warning-hover space-y-2"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
           <p>
             This time slot is no longer available (the reservation expired or the slot was taken). If PayPal took a
             payment we will refund it automatically and e-mail you.
           </p>
-          <Link href={`/student/book/${booking.teacher.id}`} className="inline-flex items-center gap-1.5 font-bold text-teal">
+          <Link href={`/student/book/${booking.teacher.id}`} className="inline-flex items-center gap-1.5 font-bold text-cocoa">
             Choose a new time <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -289,7 +290,7 @@ export default function StudentCheckoutPage() {
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">
             <div>
               <h2 className="text-xl font-extrabold text-ink font-serif">Select Checkout Method</h2>
-              <p className="text-xs text-ink-muted mt-0.5">
+              <p className="text-sm text-ink-muted mt-0.5">
                 Redeem a pre-purchased lesson credit or pay directly with card / instant EFT
               </p>
             </div>
@@ -300,13 +301,13 @@ export default function StudentCheckoutPage() {
               <button
                 type="button"
                 onClick={() => setActiveGateway("credit")}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                className={`min-h-11 py-2.5 px-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
                   activeGateway === "credit"
-                    ? "bg-teal text-white shadow-sm"
+                    ? "bg-cocoa text-white shadow-sm"
                     : "text-ink-muted hover:text-ink"
                 }`}
               >
-                <Coins className="w-3.5 h-3.5 text-accent" />
+                <Coins className="w-3.5 h-3.5" />
                 <span>1 Credit ({userCredits} left)</span>
               </button>
               )}
@@ -314,9 +315,9 @@ export default function StudentCheckoutPage() {
               <button
                 type="button"
                 onClick={() => setActiveGateway("paypal")}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                className={`min-h-11 py-2.5 px-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
                   activeGateway === "paypal"
-                    ? "bg-teal text-white shadow-sm"
+                    ? "bg-cocoa text-white shadow-sm"
                     : "text-ink-muted hover:text-ink"
                 }`}
               >
@@ -327,9 +328,9 @@ export default function StudentCheckoutPage() {
               <button
                 type="button"
                 onClick={() => setActiveGateway("payfast")}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                className={`min-h-11 py-2.5 px-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
                   activeGateway === "payfast"
-                    ? "bg-teal text-white shadow-sm"
+                    ? "bg-cocoa text-white shadow-sm"
                     : "text-ink-muted hover:text-ink"
                 }`}
               >
@@ -342,24 +343,24 @@ export default function StudentCheckoutPage() {
               <div className="p-6 rounded-2xl bg-cream-surface border border-cream-deep space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Coins className="w-5 h-5 text-accent" />
+                    <Coins className="w-5 h-5 text-cocoa" />
                     <span className="text-sm font-bold text-ink">Lesson Credit Wallet</span>
                   </div>
-                  <span className="text-xs font-bold text-teal bg-white px-3 py-1 rounded-full border border-divider">
-                    Balance: {userCredits} Credits
+                  <span className="text-sm font-bold text-cocoa bg-white px-3 py-1 rounded-full border border-divider">
+                    Balance: {creditsLabel(userCredits)}
                   </span>
                 </div>
 
                 {userCredits > 0 ? (
                   <>
-                    <p className="text-xs text-ink-muted leading-relaxed">
+                    <p className="text-sm text-ink-muted leading-relaxed">
                       You have <strong>{userCredits} active lesson credits</strong> available. Confirming will deduct 1 credit and immediately verify your private 25-minute classroom slot with {booking.teacher.full_name}.
                     </p>
 
                     <button
                       onClick={handleRedeemCredit}
                       disabled={submitting}
-                      className="w-full py-4 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="min-h-11 w-full py-4 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {submitting ? (
                         "Redeeming Credit..."
@@ -374,12 +375,12 @@ export default function StudentCheckoutPage() {
                   </>
                 ) : (
                   <div className="space-y-3">
-                    <p className="text-xs text-primary font-medium">
+                    <p className="text-sm text-primary font-medium">
                       You have 0 lesson credits left in your wallet.
                     </p>
                     <Link
                       href="/pricing"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-teal text-white rounded-xl text-xs font-bold"
+                      className="min-h-11 inline-flex items-center gap-2 px-4 py-2 bg-cocoa text-white rounded-xl text-sm font-bold"
                     >
                       Top Up Lesson Pack <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
@@ -392,7 +393,7 @@ export default function StudentCheckoutPage() {
             {underReview && (
               <div role="status" className="p-6 rounded-2xl bg-cream-surface border border-cream-deep space-y-2">
                 <h3 className="text-sm font-extrabold text-ink font-serif">Payment under review</h3>
-                <p className="text-xs text-ink-muted leading-relaxed">
+                <p className="text-sm text-ink-muted leading-relaxed">
                   PayPal is still checking your payment. Please keep this page open: your lesson will be confirmed
                   here as soon as PayPal finishes. We will also e-mail you the result, so you can safely leave.
                 </p>
@@ -428,7 +429,7 @@ export default function StudentCheckoutPage() {
         {/* Right Column: Order Summary Card */}
         <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-6">
           <div className="space-y-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-primary">Order Summary</span>
+            <span className="text-sm font-bold uppercase tracking-wider text-primary">Order Summary</span>
             <h3 className="text-lg font-bold text-ink font-serif">Lesson Reservation</h3>
           </div>
 
@@ -436,22 +437,22 @@ export default function StudentCheckoutPage() {
             <Avatar src={booking.teacher.avatar_url} name={booking.teacher.full_name} size="md" />
             <div>
               <div className="text-sm font-bold text-ink">{booking.teacher.full_name}</div>
-              <div className="text-xs text-ink-muted">{booking.teacher.accent}</div>
+              <div className="text-sm text-ink-muted">{booking.teacher.accent}</div>
             </div>
           </div>
 
           {/* Time & Date Breakdown */}
-          <div className="space-y-2 text-xs">
+          <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between text-ink-muted">
               <span className="flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-teal" /> Date:
+                <Calendar className="w-3.5 h-3.5 text-cocoa" /> Date:
               </span>
-              <span className="font-bold text-ink">{booking.local_date}</span>
+              <span className="font-bold text-ink">{dayLabel(booking.local_date).long}</span>
             </div>
 
             <div className="flex items-center justify-between text-ink-muted">
               <span className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-teal" /> Time:
+                <Clock className="w-3.5 h-3.5 text-cocoa" /> Time:
               </span>
               <span className="font-bold text-ink">
                 {booking.local_start_time} - {booking.local_end_time}
@@ -460,24 +461,24 @@ export default function StudentCheckoutPage() {
 
             <div className="flex items-center justify-between text-ink-muted">
               <span>Timezone:</span>
-              <span className="font-semibold text-ink">{booking.viewer_timezone}</span>
+              <span className="font-semibold text-ink">{zoneCityName(booking.viewer_timezone)}</span>
             </div>
 
             <div className="flex items-center justify-between text-ink-muted">
               <span>Duration:</span>
-              <span className="font-semibold text-ink">Strict 25 Minutes</span>
+              <span className="font-semibold text-ink">25 minutes</span>
             </div>
           </div>
 
           {/* Price Breakdown */}
-          <div className="pt-4 border-t border-divider space-y-2 text-xs">
+          <div className="pt-4 border-t border-divider space-y-2 text-sm">
             <div className="flex justify-between text-base font-extrabold text-ink font-serif">
               <span>Total Due:</span>
-              <span className="text-teal">
+              <span className="text-cocoa">
                 {amountLabel ? `${amountLabel} ${amountCurrency}` : "Shown at payment"}
               </span>
             </div>
-            <div className="text-[10px] text-right text-ink-muted">
+            <div className="text-sm text-right text-ink-muted">
               {activeQuote
                 ? "Amount confirmed by our payment server."
                 : "Lesson price for the selected payment method. The final amount is confirmed when you start payment."}
@@ -485,10 +486,10 @@ export default function StudentCheckoutPage() {
           </div>
 
           {/* Escrow Guarantee */}
-          <div className="bg-cream-surface rounded-2xl p-4 border border-cream-deep flex items-start gap-2.5 text-[11px] text-ink-muted">
+          <div className="bg-cream-surface rounded-2xl p-4 border border-cream-deep flex items-start gap-2.5 text-sm text-ink-muted">
             <ShieldCheck className="w-4 h-4 text-success shrink-0 mt-0.5" />
             <span>
-              <strong>24-Hour Escrow Hold:</strong> Payment is held safely in escrow until the lesson completes and attendance is confirmed.
+              <strong>Your payment is protected:</strong> we hold it safely until your lesson has taken place and attendance is confirmed.
             </span>
           </div>
         </div>

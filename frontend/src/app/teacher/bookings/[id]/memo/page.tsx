@@ -27,7 +27,7 @@ export default function TeacherMemoPage() {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center py-20">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-12 h-12 border-4 border-cocoa border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm font-bold text-ink-muted">Loading session details...</p>
         </div>
       </div>
@@ -42,7 +42,7 @@ export default function TeacherMemoPage() {
           <div className="text-center">
             <Link
               href="/teacher/dashboard"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-teal text-white text-xs font-bold"
+              className="min-h-11 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-cocoa text-white text-xs font-bold"
             >
               <ArrowLeft className="w-4 h-4" /> Return to Teacher Dashboard
             </Link>
@@ -65,7 +65,7 @@ export default function TeacherMemoPage() {
             <span>Return to Dashboard</span>
           </Link>
 
-          <span className="text-xs font-mono font-bold text-teal bg-teal/10 px-3 py-1 rounded-full">
+          <span className="text-xs font-mono font-bold text-cocoa bg-cocoa/10 px-3 py-1 rounded-full">
             REF: {booking.booking_reference}
           </span>
         </div>
@@ -73,19 +73,19 @@ export default function TeacherMemoPage() {
         {/* Lesson Metadata Summary Card */}
         <div className="bg-white rounded-3xl p-6 border border-divider shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-cream-surface border border-divider flex items-center justify-center font-bold text-teal text-base">
+            <div className="w-12 h-12 rounded-2xl bg-cream-surface border border-divider flex items-center justify-center font-bold text-cocoa text-base">
               {booking.student.full_name[0]}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-black text-ink">{booking.student.full_name}</span>
                 {booking.student.target_level && (
-                  <span className="text-[10px] font-bold text-teal bg-teal/10 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-bold text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-full">
                     Target: {booking.student.target_level}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-ink-muted">
+              <p className="text-sm text-ink-muted">
                 {booking.local_date} · {booking.local_start_time} - {booking.local_end_time} ({booking.viewer_timezone})
               </p>
             </div>
@@ -93,7 +93,7 @@ export default function TeacherMemoPage() {
 
           <div className="text-xs text-ink-muted bg-cream-surface px-4 py-2.5 rounded-2xl border border-divider">
             <span className="font-bold text-ink block">Material Covered:</span>
-            <span className="font-medium text-teal">{booking.material_title || "No material linked"}</span>
+            <span className="font-medium text-cocoa">{booking.material_title || "No material linked"}</span>
           </div>
         </div>
 

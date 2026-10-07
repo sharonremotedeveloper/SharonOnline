@@ -4586,6 +4586,20 @@ components:
         audio_snippet_url:
           type: string
           readOnly: true
+        summary:
+          type: string
+          readOnly: true
+        estimated_minutes:
+          type: integer
+          readOnly: true
+        vocabulary:
+          type: array
+          items: {}
+          readOnly: true
+        discussion_questions:
+          type: array
+          items: {}
+          readOnly: true
         content_html:
           type: string
           description: 'Structured HTML content: article text, vocab definitions,
@@ -4605,11 +4619,15 @@ components:
       - cefr_display
       - cefr_level
       - created_at
+      - discussion_questions
+      - estimated_minutes
       - id
       - pdf_file_url
       - slug
+      - summary
       - title
       - updated_at
+      - vocabulary
     MaterialList:
       type: object
       properties:
@@ -4642,16 +4660,34 @@ components:
         audio_snippet_url:
           type: string
           readOnly: true
+        summary:
+          type: string
+          readOnly: true
+        estimated_minutes:
+          type: integer
+          readOnly: true
+        vocabulary:
+          type: array
+          items: {}
+          readOnly: true
+        discussion_questions:
+          type: array
+          items: {}
+          readOnly: true
       required:
       - audio_snippet_url
       - category
       - category_display
       - cefr_display
       - cefr_level
+      - discussion_questions
+      - estimated_minutes
       - id
       - pdf_file_url
       - slug
+      - summary
       - title
+      - vocabulary
     Notification:
       type: object
       properties:

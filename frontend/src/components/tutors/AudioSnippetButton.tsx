@@ -53,7 +53,7 @@ export function AudioSnippetButton({ audioUrl, tutorName, size = "md" }: AudioSn
       <button
         onClick={togglePlay}
         title={isPlaying ? `Pause ${tutorName}'s voice` : `Hear ${tutorName}'s accent`}
-        className={`p-1.5 rounded-full transition-all flex items-center justify-center ${
+        className={`min-h-11 p-1.5 rounded-full transition-all flex items-center justify-center ${
           isPlaying
             ? "bg-accent text-ink animate-pulse"
             : "bg-cream-surface hover:bg-cream-deep text-ink-muted hover:text-ink border border-divider"
@@ -67,7 +67,7 @@ export function AudioSnippetButton({ audioUrl, tutorName, size = "md" }: AudioSn
   return (
     <button
       onClick={togglePlay}
-      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm ${
+      className={`min-h-11 px-3 py-1.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 shadow-sm ${
         isPlaying
           ? "bg-accent text-ink ring-2 ring-accent/40"
           : "bg-cream-surface hover:bg-cream-deep text-ink border border-divider"

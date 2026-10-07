@@ -102,7 +102,7 @@ export default function TeacherClassroomPage() {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center py-20">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-12 h-12 border-4 border-cocoa border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm font-bold text-ink-muted">Loading tutor cockpit &amp; classroom pad...</p>
         </div>
       </div>
@@ -121,7 +121,7 @@ export default function TeacherClassroomPage() {
           <div className="text-center">
             <Link
               href="/teacher/dashboard"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-teal text-white text-xs font-bold"
+              className="min-h-11 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-cocoa text-white text-xs font-bold"
             >
               <ArrowLeft className="w-4 h-4" /> Return to Teacher Dashboard
             </Link>
@@ -142,13 +142,13 @@ export default function TeacherClassroomPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/teacher/dashboard"
-              className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-accent bg-accent/15 px-2 py-0.5 rounded-md">
+                <span className="text-xs font-mono font-bold text-gold-bright bg-accent/15 px-2 py-0.5 rounded-md">
                   TUTOR COCKPIT
                 </span>
                 <span className="text-xs font-bold text-ink-muted">Ref: {booking.booking_reference}</span>
@@ -163,20 +163,20 @@ export default function TeacherClassroomPage() {
             <button
               type="button"
               onClick={() => setHardwareModalOpen(true)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors flex items-center gap-2 shadow-xs ${
+              className={`min-h-11 px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors flex items-center gap-2 shadow-xs ${
                 hardwareChecked
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                  ? "bg-success-surface text-success-hover border-success-border"
                   : "bg-white text-ink border-divider hover:bg-cream-surface"
               }`}
             >
               {hardwareChecked ? (
                 <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <CheckCircle2 className="w-4 h-4 text-success" />
                   <span>Hardware Ready</span>
                 </>
               ) : (
                 <>
-                  <Camera className="w-4 h-4 text-teal" />
+                  <Camera className="w-4 h-4 text-cocoa" />
                   <span>Test AV Setup</span>
                 </>
               )}
@@ -204,17 +204,17 @@ export default function TeacherClassroomPage() {
             <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-teal/10 text-teal flex items-center justify-center font-bold">
+                  <div className="w-9 h-9 rounded-xl bg-cocoa/10 text-cocoa flex items-center justify-center font-bold">
                     <User className="w-4 h-4" />
                   </div>
                   <div>
                     <h3 className="text-sm font-black text-ink">{booking.student.full_name}</h3>
-                    <p className="text-[11px] text-ink-muted">{booking.student.email}</p>
+                    <p className="text-sm text-ink-muted">{booking.student.email}</p>
                   </div>
                 </div>
 
                 {booking.student.target_level && (
-                  <span className="text-xs font-extrabold text-teal bg-teal/10 px-2.5 py-1 rounded-full">
+                  <span className="text-xs font-extrabold text-cocoa bg-cocoa/10 px-2.5 py-1 rounded-full">
                     Target CEFR: {booking.student.target_level}
                   </span>
                 )}
@@ -222,7 +222,7 @@ export default function TeacherClassroomPage() {
 
               <div className="text-xs text-ink-muted bg-white p-3 rounded-xl border border-divider">
                 <span className="font-bold text-ink block mb-0.5">Student Focus &amp; Goals:</span>
-                <p className="text-[11px] leading-relaxed">
+                <p className="text-sm leading-relaxed">
                   {booking.student.learning_goals || "The student has not shared any learning goals yet."}
                 </p>
               </div>
@@ -241,7 +241,7 @@ export default function TeacherClassroomPage() {
                 }
               />
               {materialError != null && (
-                <p className="text-[11px] text-error">Lesson material could not be loaded.</p>
+                <p className="text-sm text-error">Lesson material could not be loaded.</p>
               )}
             </div>
 
@@ -249,10 +249,10 @@ export default function TeacherClassroomPage() {
             <div className="space-y-2 pt-2 border-t border-divider">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
-                  <FileEdit className="w-3.5 h-3.5 text-teal" />
+                  <FileEdit className="w-3.5 h-3.5 text-cocoa" />
                   <span>Lesson Notes &amp; Mispronunciation Scratchpad</span>
                 </label>
-                <span className="text-[11px] text-ink-muted flex items-center gap-1">
+                <span className="text-xs text-ink-muted flex items-center gap-1">
                   <Save className="w-3 h-3" />
                   <span>Kept in this browser only</span>
                 </span>
@@ -263,7 +263,7 @@ export default function TeacherClassroomPage() {
                 value={scratchNotes}
                 onChange={(e) => handleNotesChange(e.target.value)}
                 placeholder="Jot down mispronounced words, grammar slips, or praise phrases during the call. These will carry into the post-lesson memo..."
-                className="w-full p-3.5 bg-cream-surface rounded-2xl border border-divider text-xs text-ink placeholder:text-ink-muted/60 focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal font-sans leading-relaxed"
+                className="w-full p-3.5 bg-cream-surface rounded-2xl border border-strong text-base sm:text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa font-sans leading-relaxed"
               />
             </div>
 
@@ -271,7 +271,7 @@ export default function TeacherClassroomPage() {
             <div className="pt-2 flex items-center justify-between">
               <Link
                 href={`/teacher/bookings/${booking.id}/memo`}
-                className="w-full py-3 px-4 rounded-xl bg-ink hover:bg-black text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-sm"
+                className="min-h-11 w-full py-3 px-4 rounded-xl bg-ink hover:bg-black text-white text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-sm"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Open Post-Lesson Memo Studio</span>

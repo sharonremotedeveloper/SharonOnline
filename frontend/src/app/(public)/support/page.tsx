@@ -19,9 +19,23 @@ export default function SupportPage() {
   const [submitted, setSubmitted] = useState(false);
   const [responseMsg, setResponseMsg] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const missing: Record<string, string> = {};
+    if (!formData.name.trim()) missing.name = "Enter your name.";
+    if (!formData.email.trim()) missing.email = "Enter your e-mail address so we can reply.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) missing.email = "That does not look like an e-mail address. Check it for typing mistakes.";
+    if (!formData.subject.trim()) missing.subject = "Add a short subject.";
+    if (!formData.message.trim()) missing.message = "Write your message.";
+    setFieldErrors(missing);
+    const firstKey = ["name", "email", "subject", "message"].find((k) => missing[k]);
+    if (firstKey) {
+      setSubmitError(null);
+      document.getElementById(`f-${{ name: "your-full-name", email: "your-email-address", subject: "subject", message: "message" }[firstKey]}`)?.focus();
+      return;
+    }
     setLoading(true);
     setSubmitError(null);
     try {
@@ -66,10 +80,10 @@ export default function SupportPage() {
   return (
     <div className="space-y-16 pb-16">
       {/* Header */}
-      <section className="bg-teal text-white py-16 px-4 sm:px-6 lg:px-8">
+      <section className="bg-cocoa text-white py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-accent-surface">
-            <HelpCircle className="w-3.5 h-3.5 text-accent" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-sm font-bold text-sun-soft">
+            <HelpCircle className="w-3.5 h-3.5 text-gold-bright" />
             <span>24/7 Dedicated Platform Support</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-extrabold font-serif">Support & Frequently Asked Questions</h1>
@@ -84,7 +98,7 @@ export default function SupportPage() {
         {/* FAQs */}
         <div className="space-y-6">
           <div className="space-y-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-primary">Instant Answers</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-primary">Instant Answers</h2>
             <h3 className="text-2xl font-extrabold text-ink font-serif">Frequently Asked Questions</h3>
           </div>
 
@@ -94,11 +108,11 @@ export default function SupportPage() {
                 key={i}
                 className="bg-white rounded-2xl p-6 border border-divider shadow-card group cursor-pointer"
               >
-                <summary className="text-base font-bold text-ink flex items-center justify-between list-none">
+                <summary className="min-h-11 cursor-pointer py-2 text-base font-bold text-ink flex items-center justify-between list-none">
                   <span>{faq.q}</span>
                   <span className="text-primary font-serif group-open:rotate-180 transition-transform">▼</span>
                 </summary>
-                <p className="text-xs text-ink-muted leading-relaxed mt-3 border-t border-divider pt-3">
+                <p className="text-sm text-ink-muted leading-relaxed mt-3 border-t border-divider pt-3">
                   {faq.a}
                 </p>
               </details>
@@ -109,7 +123,7 @@ export default function SupportPage() {
         {/* Ticket Submission Form */}
         <div className="bg-white rounded-3xl p-8 border border-divider shadow-card space-y-6">
           <div className="space-y-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-primary">Need Further Assistance?</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-primary">Need Further Assistance?</h2>
             <h3 className="text-2xl font-extrabold text-ink font-serif">Submit a Support Inquiry</h3>
           </div>
 
@@ -117,36 +131,36 @@ export default function SupportPage() {
             <div className="bg-success/10 border border-success/30 rounded-2xl p-6 text-center space-y-3">
               <CheckCircle2 className="w-10 h-10 text-success mx-auto" />
               <div className="text-base font-bold text-ink">Inquiry Received</div>
-              <p className="text-xs text-ink-muted leading-relaxed">{responseMsg}</p>
+              <p className="text-sm text-ink-muted leading-relaxed">{responseMsg}</p>
               <button
                 onClick={() => setSubmitted(false)}
-                className="px-4 py-2 bg-teal text-white rounded-xl text-xs font-bold"
+                className="min-h-11 inline-flex items-center px-4 py-2 bg-cocoa text-white rounded-xl text-sm font-bold"
               >
                 Send Another Message
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} noValidate className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-ink mb-1">I am a...</label>
-                <div className="flex gap-4 text-xs font-semibold text-ink">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
+                <p id="user-type-label" className="block text-sm font-bold text-ink mb-1">I am a...</p>
+                <div role="radiogroup" aria-labelledby="user-type-label" className="flex gap-4 text-sm font-semibold text-ink">
+                  <label className="flex min-h-11 items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
                       name="user_type"
                       checked={formData.user_type === "student"}
                       onChange={() => setFormData({ ...formData, user_type: "student" })}
-                      className="accent-teal"
+                      className="accent-cocoa"
                     />
                     Student
                   </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer">
+                  <label className="flex min-h-11 items-center gap-2 cursor-pointer">
                     <input
                       type="radio"
                       name="user_type"
                       checked={formData.user_type === "teacher"}
                       onChange={() => setFormData({ ...formData, user_type: "teacher" })}
-                      className="accent-teal"
+                      className="accent-cocoa"
                     />
                     Tutor / Applicant
                   </label>
@@ -154,59 +168,63 @@ export default function SupportPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-ink mb-1">Your Full Name</label>
-                <input
+                <label htmlFor="f-your-full-name" className="block text-sm font-bold text-ink mb-1">Your Full Name</label>
+                <input id="f-your-full-name" aria-invalid={fieldErrors.name || submitError ? true : undefined} aria-describedby={fieldErrors.name ? "support-name-error" : submitError ? "support-error" : undefined}
                   type="text"
                   required
                   placeholder="e.g. Aiko Tanaka"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-teal"
+                  className="min-h-11 w-full bg-cream-surface border border-strong rounded-xl px-4 py-2.5 text-base sm:text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
+                {fieldErrors.name && <p id="support-name-error" role="alert" className="mt-1 text-sm font-medium text-error">{fieldErrors.name}</p>}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-ink mb-1">Your Email Address</label>
-                <input
+                <label htmlFor="f-your-email-address" className="block text-sm font-bold text-ink mb-1">Your Email Address</label>
+                <input id="f-your-email-address" aria-invalid={fieldErrors.email || submitError ? true : undefined} aria-describedby={fieldErrors.email ? "support-email-error" : submitError ? "support-error" : undefined}
                   type="email"
                   required
                   placeholder="aiko@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-teal"
+                  className="min-h-11 w-full bg-cream-surface border border-strong rounded-xl px-4 py-2.5 text-base sm:text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
+                {fieldErrors.email && <p id="support-email-error" role="alert" className="mt-1 text-sm font-medium text-error">{fieldErrors.email}</p>}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-ink mb-1">Subject</label>
-                <input
+                <label htmlFor="f-subject" className="block text-sm font-bold text-ink mb-1">Subject</label>
+                <input id="f-subject" aria-invalid={fieldErrors.subject || submitError ? true : undefined} aria-describedby={fieldErrors.subject ? "support-subject-error" : submitError ? "support-error" : undefined}
                   type="text"
                   required
                   placeholder="e.g. Question about PayPal checkout or slot booking"
                   value={formData.subject}
                   onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-teal"
+                  className="min-h-11 w-full bg-cream-surface border border-strong rounded-xl px-4 py-2.5 text-base sm:text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
+                {fieldErrors.subject && <p id="support-subject-error" role="alert" className="mt-1 text-sm font-medium text-error">{fieldErrors.subject}</p>}
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-ink mb-1">Message</label>
-                <textarea
+                <label htmlFor="f-message" className="block text-sm font-bold text-ink mb-1">Message</label>
+                <textarea id="f-message" aria-invalid={fieldErrors.message || submitError ? true : undefined} aria-describedby={fieldErrors.message ? "support-message-error" : submitError ? "support-error" : undefined}
                   required
                   rows={4}
                   placeholder="How can we assist you today?"
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="w-full bg-cream-surface border border-divider rounded-xl px-4 py-2.5 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-teal"
+                  className="w-full bg-cream-surface border border-strong rounded-xl px-4 py-2.5 text-base sm:text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
                 />
+                {fieldErrors.message && <p id="support-message-error" role="alert" className="mt-1 text-sm font-medium text-error">{fieldErrors.message}</p>}
               </div>
 
-              <InlineError error={submitError} />
+              <InlineError id="support-error" error={submitError} />
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50"
+                className="min-h-11 w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-sm transition-all disabled:opacity-50"
               >
                 {loading ? "Submitting..." : <><Send className="w-4 h-4" /> Send Message</>}
               </button>

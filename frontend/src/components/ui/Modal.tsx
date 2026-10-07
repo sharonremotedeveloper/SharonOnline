@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useEffect, type ReactNode } from "react";
+import React, { useEffect, useRef, type ReactNode } from "react";
+import { Portal } from "./Portal";
+import { useDialog } from "../../hooks/useDialog";
 
 export interface ModalProps {
   isOpen: boolean;
@@ -19,19 +21,16 @@ export function Modal({
   children,
   maxWidth = "md",
 }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useDialog(dialogRef, isOpen, onClose);
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      window.addEventListener("keydown", handleKeyDown);
-    }
+    if (!isOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = "unset";
-      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previous;
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -43,8 +42,14 @@ export function Modal({
   }[maxWidth];
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
         className={`w-full ${maxWidthClass} bg-white rounded-xl shadow-2xl border border-divider overflow-hidden animate-in zoom-in-95 duration-200`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -52,11 +57,11 @@ export function Modal({
           <div className="px-6 py-4 border-b border-divider flex items-center justify-between">
             <div>
               {title && <h2 className="text-lg font-bold text-ink">{title}</h2>}
-              {subtitle && <p className="text-xs text-ink-muted mt-0.5">{subtitle}</p>}
+              {subtitle && <p className="text-sm text-ink-muted mt-0.5">{subtitle}</p>}
             </div>
             <button
               onClick={onClose}
-              className="text-ink-muted hover:text-ink p-1 rounded-md transition-colors"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center text-ink-muted hover:text-ink p-1 rounded-md transition-colors"
               aria-label="Close modal"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -68,5 +73,6 @@ export function Modal({
         <div className="p-6">{children}</div>
       </div>
     </div>
+    </Portal>
   );
 }

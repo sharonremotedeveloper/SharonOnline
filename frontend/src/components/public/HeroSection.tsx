@@ -1,77 +1,117 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Play, CheckCircle2, Star, Shield, Clock } from "lucide-react";
-import { Modal } from "@/components/ui/Modal";
+import { ArrowRight, CalendarClock, ShieldCheck, Ban } from "lucide-react";
+import type { FeaturedTeacher } from "@/lib/api";
+import { LessonPriceLabel } from "@/components/ui/LessonPriceLabel";
+import { DemoVideoButton } from "./DemoVideoButton";
+import { TutorPortrait } from "./TutorPortrait";
 
-export function HeroSection() {
-  const [showVideoModal, setShowVideoModal] = useState(false);
+interface HeroSectionProps {
+  tutors: FeaturedTeacher[];
+}
+
+// Set to a real video URL when one exists; until then the demo button is not shown.
+const DEMO_VIDEO_URL = process.env.NEXT_PUBLIC_DEMO_VIDEO_URL || "";
+
+export function HeroSection({ tutors }: HeroSectionProps) {
+  const shown = tutors.slice(0, 3);
 
   return (
-    <section className="bg-gradient-to-b from-teal to-teal-hover text-white pt-16 pb-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      <div className="max-w-6xl mx-auto text-center space-y-6 relative z-10">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-accent-surface">
-          <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-          <span>Live 25-Minute Synchronous English Lessons · Japan, Korea & Europe</span>
-        </div>
+    <section className="relative overflow-hidden bg-cream text-ink">
+      {/* Soft colour behind the content: warm, never heavy. Decorative only. */}
+      <div aria-hidden="true" className="pointer-events-none absolute -right-32 -top-10 h-72 w-72 rounded-full bg-sun/30 blur-3xl sm:-right-24 sm:top-4 sm:h-[28rem] sm:w-[28rem] sm:bg-sun/50" />
+      <div aria-hidden="true" className="pointer-events-none absolute -left-32 bottom-0 h-80 w-80 rounded-full bg-peach blur-3xl" />
 
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold font-serif tracking-tight text-white leading-tight">
-          Real English. <span className="text-gold-bright">Real Progress.</span>
-        </h1>
-
-        <p className="max-w-2xl mx-auto text-base sm:text-lg text-white/85 font-normal leading-relaxed">
-          Master spoken English 1-on-1 with certified native and South African tutors.
-          Designed around focused 25-minute synchronous sessions with instant Zoom access and personalized lesson memos.
-        </p>
-
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-          <Link
-            href="/tutors"
-            className="w-full sm:w-auto px-8 py-4 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl transition-all shadow-lg text-sm flex items-center justify-center gap-2"
-          >
-            Find Your Tutor <ArrowRight className="w-4 h-4" />
-          </Link>
-
-          <button
-            onClick={() => setShowVideoModal(true)}
-            className="w-full sm:w-auto px-8 py-4 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl border border-white/20 transition-all text-sm flex items-center justify-center gap-2"
-          >
-            <Play className="w-4 h-4 text-accent fill-accent" /> Watch 60-Sec Demo
-          </button>
-        </div>
-
-        {/* Feature Badges */}
-        <div className="pt-8 flex flex-wrap items-center justify-center gap-3 text-xs font-semibold text-white/80">
-          <span className="px-3.5 py-1.5 rounded-full bg-white/10 border border-white/15 flex items-center gap-1.5">
-            <Star className="w-3.5 h-3.5 text-accent fill-accent" /> 4.98 Rating (1,400+ Reviews)
-          </span>
-          <span className="px-3.5 py-1.5 rounded-full bg-white/10 border border-white/15 flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-accent" /> 25-Min Focused Slots
-          </span>
-          <span className="px-3.5 py-1.5 rounded-full bg-white/10 border border-white/15 flex items-center gap-1.5">
-            <Shield className="w-3.5 h-3.5 text-accent" /> Eskom Power Guard Resilience
-          </span>
-        </div>
-      </div>
-
-      {/* Video Modal */}
-      <Modal isOpen={showVideoModal} onClose={() => setShowVideoModal(false)} title="Sharon Online Classroom Demo">
-        <div className="space-y-4">
-          <div className="aspect-video bg-black rounded-xl overflow-hidden relative">
-            <iframe
-              src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1"
-              title="Sharon Online Demo"
-              className="w-full h-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
-          <p className="text-xs text-ink-muted">
-            Demonstration of synchronous 25-minute lesson, split-screen materials reader, and real-time tutor notes.
+      <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 pb-16 pt-12 sm:px-6 sm:pt-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14 lg:px-8 lg:pb-20 lg:pt-20">
+        <div className="space-y-6">
+          <p className="inline-flex items-center gap-2 rounded-full border border-divider bg-white px-4 py-1.5 text-sm font-semibold text-ink shadow-sm">
+            <span className="h-2 w-2 rounded-full bg-coral" aria-hidden="true" />
+            Private English lessons by video
           </p>
+
+          <h1 className="font-serif text-5xl font-extrabold leading-[1.22] tracking-tight text-ink sm:text-6xl lg:text-7xl">
+            Speak English with{" "}
+            <span className="rounded-2xl bg-sun px-3 py-0.5 [box-decoration-break:clone] [-webkit-box-decoration-break:clone]">
+              confidence.
+            </span>
+          </h1>
+
+          <p className="max-w-xl text-lg leading-relaxed text-ink/80">
+            1-on-1 lessons with friendly, certified South African tutors. Each lesson is 25 minutes. Choose a time in
+            your own time zone.
+          </p>
+
+          <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center">
+            <Link
+              href="/tutors"
+              className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-full bg-cocoa px-9 text-lg font-bold text-white shadow-lg transition-colors hover:bg-cocoa-hover sm:w-auto"
+            >
+              Find your tutor <ArrowRight className="h-5 w-5 text-sun" aria-hidden="true" />
+            </Link>
+            {DEMO_VIDEO_URL ? (
+              <DemoVideoButton src={DEMO_VIDEO_URL} />
+            ) : (
+              <Link
+                href="/how-it-works"
+                className="inline-flex min-h-[52px] items-center justify-center px-4 text-base font-semibold text-ink underline decoration-ink/30 underline-offset-4 hover:decoration-ink"
+              >
+                See how it works
+              </Link>
+            )}
+          </div>
+
+          <ul className="flex flex-wrap gap-x-6 gap-y-3 pt-3 text-base text-ink">
+            <li className="flex items-center gap-2.5 whitespace-nowrap">
+              <CalendarClock className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+              <span>
+                From <LessonPriceLabel className="font-bold" /> a lesson
+              </span>
+            </li>
+            <li className="flex items-center gap-2.5 whitespace-nowrap">
+              <ShieldCheck className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+              <span>First lesson refundable</span>
+            </li>
+            <li className="flex items-center gap-2.5 whitespace-nowrap">
+              <Ban className="h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
+              <span>No subscription</span>
+            </li>
+          </ul>
         </div>
-      </Modal>
+
+        {/* People first: real tutors from the API, never invented ones. */}
+        {shown.length > 0 ? (
+          <div aria-label="Some of our tutors" className="grid grid-cols-3 gap-3 sm:gap-4">
+            {shown.map((tutor, i) => (
+              <Link
+                key={tutor.id}
+                href={`/tutors/${tutor.slug || tutor.id}`}
+                className={`group relative block overflow-hidden rounded-3xl border-4 border-white bg-white shadow-xl ${
+                  i === 1 ? "lg:-translate-y-6" : ""
+                }`}
+              >
+                <TutorPortrait
+                  src={tutor.avatar}
+                  name={tutor.name}
+                  className="aspect-[3/4] w-full"
+                  sizes="(min-width: 1024px) 18vw, 30vw"
+                  priority={i === 0}
+                />
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2.5 pt-10 sm:p-3 sm:pt-12">
+                  <div className="text-sm font-bold leading-tight text-white sm:text-base">{tutor.name.split(" ")[0]}</div>
+                  <div className="hidden text-sm text-white/90 sm:block">South African tutor</div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-divider bg-white p-8 text-center shadow-card">
+            <p className="font-serif text-2xl font-bold text-ink">Meet your tutor</p>
+            <p className="mt-2 text-ink-muted">Browse our tutors and pick the one who suits you.</p>
+            <Link href="/tutors" className="mt-5 inline-flex min-h-[48px] items-center rounded-full bg-cocoa px-6 font-bold text-white">
+              See all tutors
+            </Link>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

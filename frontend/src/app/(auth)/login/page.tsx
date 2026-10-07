@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Lock, Mail, ArrowRight } from "lucide-react";
+import { Lock, Mail, ArrowRight, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { UserRole } from "@/types/auth";
 
@@ -19,6 +19,7 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{ username?: string; password?: string }>({});
 
   const handleLoginSuccess = (role: UserRole) => {
     // Only follow same-site relative paths ("/x"); "//evil.com", "/\evil.com" and absolute URLs would be an open redirect.
@@ -38,6 +39,15 @@ function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const missing: { username?: string; password?: string } = {};
+    if (!username.trim()) missing.username = "Enter your username or e-mail address.";
+    if (!password) missing.password = "Enter your password.";
+    setFieldErrors(missing);
+    if (missing.username || missing.password) {
+      setError("");
+      document.getElementById(missing.username ? "f-username-or-email" : "f-password")?.focus();
+      return;
+    }
     setSubmitting(true);
     setError("");
 
@@ -54,81 +64,90 @@ function LoginForm() {
   return (
     <div className="bg-white rounded-3xl p-8 max-w-md w-full border border-divider shadow-card space-y-6">
       <div className="text-center space-y-2">
-        <div className="w-12 h-12 rounded-2xl bg-teal text-gold-bright font-black text-2xl flex items-center justify-center mx-auto shadow-sm font-serif">
+        <div className="w-12 h-12 rounded-2xl bg-cocoa text-gold-bright font-black text-2xl flex items-center justify-center mx-auto shadow-sm font-serif">
           S
         </div>
         <h1 className="text-2xl font-extrabold text-ink font-serif">Sign In to Sharon Online</h1>
-        <p className="text-xs text-ink-muted">Access your 25-minute lessons, notes, and schedule</p>
+        <p className="text-sm text-ink-muted">Access your 25-minute lessons, notes, and schedule</p>
       </div>
 
       {isRegistered && (
-        <div className="p-3 bg-success/15 border border-success/30 rounded-xl text-xs text-success font-medium text-center">
+        <div className="p-3 bg-success/15 border border-success/30 rounded-xl text-sm text-success font-medium text-center">
           Account created successfully! Please sign in.
         </div>
       )}
 
       {isReset && (
-        <div role="status" className="p-3 bg-success/15 border border-success/30 rounded-xl text-xs text-success font-medium text-center">
+        <div role="status" className="p-3 bg-success/15 border border-success/30 rounded-xl text-sm text-success font-medium text-center">
           Password updated. Please sign in with your new password.
         </div>
       )}
 
       {error && (
-        <div className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-xs text-primary font-medium">
-          {error}
+        <div id="login-error" role="alert" className="flex items-start gap-2 p-3 bg-error-surface border border-error-border rounded-xl text-sm text-error font-medium">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <div className="space-y-1">
-          <label className="text-xs font-bold text-ink">Username or Email</label>
+          <label htmlFor="f-username-or-email" className="text-sm font-bold text-ink">Username or Email</label>
           <div className="relative">
             <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
-            <input
+            <input id="f-username-or-email"
               type="text"
               required
+              aria-required="true"
+              aria-invalid={fieldErrors.username || error ? true : undefined}
+              aria-describedby={fieldErrors.username ? "login-username-error" : error ? "login-error" : undefined}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="you@example.com or username"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
+              className="min-h-11 w-full pl-10 pr-4 py-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
           </div>
+          {fieldErrors.username && <p id="login-username-error" role="alert" className="text-sm font-medium text-error">{fieldErrors.username}</p>}
         </div>
 
         <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-ink">Password</label>
-            <Link href="/forgot-password" className="text-[11px] text-primary hover:underline">
+            <label htmlFor="f-password" className="text-sm font-bold text-ink">Password</label>
+            <Link href="/forgot-password" className="min-h-11 inline-flex items-center text-sm text-primary hover:underline">
               Forgot?
             </Link>
           </div>
           <div className="relative">
             <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
-            <input
+            <input id="f-password"
               type="password"
               required
+              aria-required="true"
+              aria-invalid={fieldErrors.password || error ? true : undefined}
+              aria-describedby={fieldErrors.password ? "login-password-error" : error ? "login-error" : undefined}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-divider text-xs text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-teal"
+              className="min-h-11 w-full pl-10 pr-4 py-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
             />
           </div>
+          {fieldErrors.password && <p id="login-password-error" role="alert" className="text-sm font-medium text-error">{fieldErrors.password}</p>}
         </div>
 
         <div className="pt-2">
           <button
             type="submit"
             disabled={submitting || isLoading}
-            className="w-full py-3 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+            className="min-h-11 w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {submitting ? "Signing in..." : "Sign In"} <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </form>
 
-      <div className="pt-2 text-center text-xs text-ink-muted">
+      <div className="pt-2 text-center text-sm text-ink-muted">
         Don't have an account?{" "}
-        <Link href="/register" className="text-teal font-bold hover:underline">
+        <Link href="/register" className="min-h-11 inline-flex items-center text-cocoa font-bold hover:underline">
           Create Account
         </Link>
       </div>
@@ -139,7 +158,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-      <Suspense fallback={<div className="text-xs text-ink-muted">Loading authentication...</div>}>
+      <Suspense fallback={<div className="text-sm text-ink-muted">Loading authentication...</div>}>
         <LoginForm />
       </Suspense>
     </div>

@@ -76,14 +76,14 @@ export default function TeacherDashboardPage() {
         {/* Top Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/20 text-accent-surface text-xs font-bold border border-accent/30">
-              <Award className="w-3.5 h-3.5 text-accent" />
-              <span>Verified Educator Operations Portal</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sun-soft text-ink text-sm font-bold border border-sun">
+              <Award className="w-3.5 h-3.5 text-warning" />
+              <span>Tutor workspace</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-black text-ink font-serif tracking-tight">
-              Tutor Operations Cockpit
+              Your tutor dashboard
             </h1>
-            <p className="text-xs sm:text-sm text-ink-muted">
+            <p className="text-sm sm:text-sm text-ink-muted">
               Manage your upcoming synchronous classes, submit lesson memos, and monitor Eskom Power Guard.
             </p>
           </div>
@@ -91,23 +91,23 @@ export default function TeacherDashboardPage() {
           <div className="flex flex-wrap items-center gap-2.5">
             <Link
               href="/teacher/schedule"
-              className="px-4 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-1.5 transition-colors"
+              className="min-h-11 px-4 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-1.5 transition-colors"
             >
-              <Calendar className="w-3.5 h-3.5 text-teal" />
+              <Calendar className="w-3.5 h-3.5 text-cocoa" />
               <span>Availability</span>
             </Link>
 
             <Link
               href="/teacher/power-guard"
-              className="px-4 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-1.5 transition-colors"
+              className="min-h-11 px-4 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-1.5 transition-colors"
             >
-              <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+              <Zap className="w-3.5 h-3.5 text-warning fill-warning" />
               <span>Power Guard</span>
             </Link>
 
             <Link
               href="/teacher/wallet"
-              className="px-4 py-2.5 bg-teal hover:bg-teal-hover text-white text-xs font-black rounded-xl shadow-sm flex items-center gap-1.5 transition-colors"
+              className="min-h-11 px-4 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-xl shadow-sm flex items-center gap-1.5 transition-colors"
             >
               <DollarSign className="w-3.5 h-3.5" />
               <span>{wallet ? `Wallet: R${wallet.cleared_balance_zar.toFixed(0)} ZAR` : "Wallet"}</span>
@@ -142,13 +142,13 @@ export default function TeacherDashboardPage() {
                 <div className="text-sm font-black text-ink">
                   {pendingMemo.student.full_name} — {pendingMemo.material_title || "Lesson"}
                 </div>
-                <div className="text-[11px] text-ink-muted">Lesson on {fmtWhen(pendingMemo)}</div>
+                <div className="text-xs text-ink-muted">Lesson on {fmtWhen(pendingMemo)}</div>
               </div>
             </div>
 
             <Link
               href={`/teacher/bookings/${pendingMemo.id}/memo`}
-              className="px-5 py-2.5 bg-plum hover:bg-purple-900 text-white text-xs font-black rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all shrink-0"
+              className="min-h-11 px-5 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all shrink-0"
             >
               <span>Compose Memo</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -162,13 +162,13 @@ export default function TeacherDashboardPage() {
         ) : bookingsQ.error ? null : !upcomingLesson ? (
           <div className="bg-white rounded-3xl p-8 border border-divider shadow-card text-center space-y-1">
             <h3 className="text-lg font-black text-ink font-serif">No upcoming lessons</h3>
-            <p className="text-xs text-ink-muted">Confirmed bookings will appear here once students book your slots.</p>
+            <p className="text-sm text-ink-muted">Confirmed bookings will appear here once students book your slots.</p>
           </div>
         ) : (
-          <div className="bg-gradient-to-br from-[#0B3530] via-teal to-[#082622] text-white rounded-3xl p-6 sm:p-10 shadow-card space-y-6 relative overflow-hidden">
+          <div className="bg-cocoa text-white rounded-3xl p-6 sm:p-10 shadow-card space-y-6 relative overflow-hidden">
             <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-2 text-xs font-extrabold bg-white/10 border border-white/20 px-3.5 py-1 rounded-full text-accent-surface">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="inline-flex items-center gap-2 text-xs font-extrabold bg-white/10 border border-white/20 px-3.5 py-1 rounded-full text-sun-soft">
+                <span className="w-2.5 h-2.5 rounded-full bg-sun animate-pulse"></span>
                 Next Class to Host
               </span>
               <span className="text-xs text-white/80 font-medium">Staging opens 5m before start</span>
@@ -187,13 +187,13 @@ export default function TeacherDashboardPage() {
                   )}
 
                   <span className="text-xs text-white/90 flex items-center gap-1.5 font-medium">
-                    <Clock className="w-3.5 h-3.5 text-accent" />
+                    <Clock className="w-3.5 h-3.5 text-gold-bright" />
                     {fmtWhen(upcomingLesson)}
                   </span>
                 </div>
 
                 {upcomingLesson.student.learning_goals && (
-                  <p className="text-xs text-cream/70 italic border-l-2 border-accent pl-3">
+                  <p className="text-sm text-cream/70 italic border-l-2 border-accent pl-3">
                     Focus: &ldquo;{upcomingLesson.student.learning_goals}&rdquo;
                   </p>
                 )}
@@ -202,7 +202,7 @@ export default function TeacherDashboardPage() {
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
                 <Link
                   href={`/teacher/classroom/${upcomingLesson.id}`}
-                  className="px-6 py-4 bg-accent hover:bg-amber-600 text-ink font-black rounded-2xl text-xs sm:text-sm transition-all shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01]"
+                  className="min-h-11 px-6 py-4 bg-accent hover:bg-accent-500 text-ink font-black rounded-2xl text-xs sm:text-sm transition-all shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01]"
                 >
                   <Video className="w-4 h-4" />
                   <span>Enter Classroom Staging Pad</span>
@@ -218,18 +218,18 @@ export default function TeacherDashboardPage() {
           <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
             <div className="text-xs font-bold text-ink-muted">Tutor Rating</div>
             <div className="text-2xl font-black text-ink flex items-center gap-1.5 font-serif">
-              <Star className="w-5 h-5 text-accent fill-accent" />
+              <Star className="w-5 h-5 text-star fill-star" />
               <span>&mdash;</span>
             </div>
-            <p className="text-[11px] text-ink-muted">Rating summary isn&apos;t available yet.</p>
+            <p className="text-sm text-ink-muted">Rating summary isn&apos;t available yet.</p>
           </div>
 
           <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
             <div className="text-xs font-bold text-ink-muted">Completed Lessons This Month</div>
-            <div className="text-2xl font-black text-teal font-serif">
+            <div className="text-2xl font-black text-cocoa font-serif">
               {bookingsQ.data ? `${completedThisMonth} ${completedThisMonth === 1 ? "Class" : "Classes"}` : "—"}
             </div>
-            <p className="text-[11px] text-ink-muted">
+            <p className="text-sm text-ink-muted">
               {bookingsQ.error != null ? "Couldn't load your lessons." : "Based on your bookings."}
             </p>
           </div>
@@ -240,15 +240,15 @@ export default function TeacherDashboardPage() {
               <div className="h-8 rounded bg-cream-surface animate-pulse" />
             ) : wallet ? (
               <>
-                <div className="text-2xl font-black text-emerald-800 font-serif">
+                <div className="text-2xl font-black text-success-hover font-serif">
                   R{wallet.cleared_balance_zar.toFixed(2)} ZAR
                 </div>
-                <p className="text-[11px] text-ink-muted">Ledger-cleared and awaiting an approved payout workflow.</p>
+                <p className="text-sm text-ink-muted">Cleared earnings waiting for a payout to be approved.</p>
               </>
             ) : (
               <>
                 <div className="text-2xl font-black text-ink-muted font-serif">&mdash;</div>
-                <p className="text-[11px] text-error">
+                <p className="text-sm text-error">
                   Wallet isn&apos;t available yet.{" "}
                   <button type="button" onClick={walletQ.reload} className="underline font-bold">
                     Retry
@@ -264,10 +264,10 @@ export default function TeacherDashboardPage() {
           <div className="flex items-center justify-between border-b border-divider pb-4">
             <div>
               <h3 className="text-lg font-black text-ink font-serif">Today&apos;s Class Schedule</h3>
-              <p className="text-xs text-ink-muted">All sessions synchronized across timezones</p>
+              <p className="text-sm text-ink-muted">All sessions synchronized across timezones</p>
             </div>
             {bookingsQ.data && (
-              <span className="text-xs font-bold text-teal bg-teal/10 px-3 py-1 rounded-full">
+              <span className="text-xs font-bold text-cocoa bg-cocoa/10 px-3 py-1 rounded-full">
                 {todayCount} Scheduled {todayCount === 1 ? "Lesson" : "Lessons"}
               </span>
             )}
@@ -276,15 +276,15 @@ export default function TeacherDashboardPage() {
           {bookingsQ.loading ? (
             <div className="h-16 rounded-2xl bg-cream-surface animate-pulse" />
           ) : bookingsQ.error != null ? (
-            <p className="text-xs text-error">Today&apos;s schedule couldn&apos;t be loaded.</p>
+            <p className="text-sm text-error">Today&apos;s schedule couldn&apos;t be loaded.</p>
           ) : todayLessons.length === 0 ? (
-            <p className="text-xs text-ink-muted text-center py-4">No lessons scheduled for today.</p>
+            <p className="text-sm text-ink-muted text-center py-4">No lessons scheduled for today.</p>
           ) : (
             <div className="divide-y divide-divider">
               {todayLessons.map((b, i) => (
                 <div key={b.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-2xl bg-teal/10 text-teal font-black flex items-center justify-center text-xs">
+                    <div className="w-10 h-10 rounded-2xl bg-cocoa/10 text-cocoa font-black flex items-center justify-center text-xs">
                       {b.student.full_name
                         .split(" ")
                         .map((w) => w[0])
@@ -306,7 +306,7 @@ export default function TeacherDashboardPage() {
                       href={`/teacher/classroom/${b.id}`}
                       className={
                         i === 0
-                          ? "px-3.5 py-1.5 bg-teal hover:bg-teal-hover text-white text-xs font-bold rounded-xl transition-colors"
+                          ? "px-3.5 py-1.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold rounded-xl transition-colors"
                           : "px-3.5 py-1.5 bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold rounded-xl border border-divider transition-colors"
                       }
                     >

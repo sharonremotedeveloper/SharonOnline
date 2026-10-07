@@ -200,9 +200,9 @@ export const FALLBACK_MATERIALS: MaterialDetail[] = [
     summary: "Explore emerging workplace trends, the shift to asynchronous communication, and how cross-border teams collaborate across time zones.",
     content_html: `
       <p>Over the past five years, the global employment landscape has undergone a seismic paradigm shift. What began as an emergency measure during the pandemic has evolved into an entrenched workforce preference: <strong>remote and distributed work</strong>.</p>
-      <p>Companies headquartered in financial hubs such as Tokyo, London, and New York are increasingly hiring talent irrespective of geographical borders. However, leading cross-cultural teams requires transitioning away from real-time meetings toward <span class="vocab-highlight font-bold text-teal underline" data-vocab="Asynchronous">asynchronous</span> workflows where documentation takes precedence over spontaneous office banter.</p>
-      <p>Advocates argue that asynchronous rhythms boost deep focus and overall <span class="vocab-highlight font-bold text-teal underline" data-vocab="Productivity">productivity</span>, freeing knowledge workers from constant message pings. Conversely, skeptics caution against the risk of employee alienation and reduced spontaneous innovation.</p>
-      <p>As multinational enterprises strive for the optimal <span class="vocab-highlight font-bold text-teal underline" data-vocab="Equilibrium">equilibrium</span> between in-office cohesion and flexible autonomy, digital nomad visas in countries like Spain, Japan, and South Africa have surged in popularity, signaling that location independence is here to stay.</p>
+      <p>Companies headquartered in financial hubs such as Tokyo, London, and New York are increasingly hiring talent irrespective of geographical borders. However, leading cross-cultural teams requires transitioning away from real-time meetings toward <span class="vocab-highlight font-bold text-cocoa underline" data-vocab="Asynchronous">asynchronous</span> workflows where documentation takes precedence over spontaneous office banter.</p>
+      <p>Advocates argue that asynchronous rhythms boost deep focus and overall <span class="vocab-highlight font-bold text-cocoa underline" data-vocab="Productivity">productivity</span>, freeing knowledge workers from constant message pings. Conversely, skeptics caution against the risk of employee alienation and reduced spontaneous innovation.</p>
+      <p>As multinational enterprises strive for the optimal <span class="vocab-highlight font-bold text-cocoa underline" data-vocab="Equilibrium">equilibrium</span> between in-office cohesion and flexible autonomy, digital nomad visas in countries like Spain, Japan, and South Africa have surged in popularity, signaling that location independence is here to stay.</p>
     `,
     vocabulary: [
       {
@@ -253,7 +253,7 @@ export const FALLBACK_MATERIALS: MaterialDetail[] = [
     content_html: `
       <p>Entering international commercial negotiations without a nuanced appreciation of cultural context is a recipe for diplomatic stalemate. Anthropologist Edward T. Hall famously categorized communication cultures into <em>high-context</em> and <em>low-context</em> paradigms.</p>
       <p>In low-context environments—common in Germany, the United States, and the Netherlands—messages are explicit, direct, and literal. Contracts are expected to account for every conceivable contingency. In contrast, in high-context cultures such as Japan, South Korea, and Saudi Arabia, meaning is heavily embedded within situational cues, non-verbal gestures, and long-standing interpersonal trust.</p>
-      <p>A seasoned executive must exercise acute <span class="vocab-highlight font-bold text-teal underline" data-vocab="Diplomatic">diplomatic</span> tact, recognizing that an abrupt rejection or rigid ultimatum can permanently sever relationships. Strategic <span class="vocab-highlight font-bold text-teal underline" data-vocab="Concession">concessions</span> should be framed collaboratively to ensure all parties preserve face and foster enduring enterprise partnerships.</p>
+      <p>A seasoned executive must exercise acute <span class="vocab-highlight font-bold text-cocoa underline" data-vocab="Diplomatic">diplomatic</span> tact, recognizing that an abrupt rejection or rigid ultimatum can permanently sever relationships. Strategic <span class="vocab-highlight font-bold text-cocoa underline" data-vocab="Concession">concessions</span> should be framed collaboratively to ensure all parties preserve face and foster enduring enterprise partnerships.</p>
     `,
     vocabulary: [
       {
@@ -294,7 +294,7 @@ export const FALLBACK_MATERIALS: MaterialDetail[] = [
     summary: "Share memorable travel experiences, exploring off-the-beaten-path destinations, and adapting to unexpected itineraries.",
     content_html: `
       <p>Travel is often celebrated for picturesque postcards and famous monuments, but the most unforgettable journeys frequently emerge from unforeseen detours.</p>
-      <p>Whether it is getting stranded at a rural train platform in Hokkaido or stumbling upon a family-run trattoria in Florence that is not listed in any guidebook, spontaneous discoveries leave the deepest impression. Escaping the tourist crowds requires an appetite for <span class="vocab-highlight font-bold text-teal underline" data-vocab="Serendipity">serendipity</span> and a willingness to converse with local residents.</p>
+      <p>Whether it is getting stranded at a rural train platform in Hokkaido or stumbling upon a family-run trattoria in Florence that is not listed in any guidebook, spontaneous discoveries leave the deepest impression. Escaping the tourist crowds requires an appetite for <span class="vocab-highlight font-bold text-cocoa underline" data-vocab="Serendipity">serendipity</span> and a willingness to converse with local residents.</p>
       <p>Travelers who venture off the beaten path frequently develop greater adaptability and cultural empathy, turning minor travel mishaps into lifetime stories.</p>
     `,
     vocabulary: [

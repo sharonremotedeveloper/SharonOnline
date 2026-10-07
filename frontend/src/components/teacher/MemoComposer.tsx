@@ -92,13 +92,13 @@ ${initialScratchpad}` : ""
   if (submitted) {
     return (
       <div className="bg-white rounded-3xl p-8 border border-divider shadow-card text-center space-y-6">
-        <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
+        <div className="w-16 h-16 rounded-full bg-success-surface text-success-hover flex items-center justify-center mx-auto">
           <CheckCircle2 className="w-8 h-8" />
         </div>
 
         <div className="space-y-2">
           <h3 className="text-2xl font-black text-ink font-serif">Lesson Memo Published!</h3>
-          <p className="text-xs text-ink-muted max-w-md mx-auto leading-relaxed">
+          <p className="text-sm text-ink-muted max-w-md mx-auto leading-relaxed">
             Your detailed evaluation, vocabulary bank, and pronunciation tips have been sent to{" "}
             <strong>{studentName}</strong> and added to their study portal.
           </p>
@@ -106,7 +106,7 @@ ${initialScratchpad}` : ""
 
         <div className="p-4 rounded-2xl bg-cream-surface border border-divider max-w-sm mx-auto text-xs space-y-1">
           <span className="font-bold text-ink">Smart Flashcards Activated</span>
-          <p className="text-[11px] text-ink-muted">
+          <p className="text-sm text-ink-muted">
             The {vocabList.length} vocabulary words were automatically ingested into the student&apos;s spaced repetition deck.
           </p>
         </div>
@@ -119,7 +119,7 @@ ${initialScratchpad}` : ""
       {/* Header */}
       <div className="border-b border-divider pb-6 space-y-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono font-bold text-teal bg-teal/10 px-2.5 py-0.5 rounded-full">
+          <span className="text-xs font-mono font-bold text-cocoa bg-cocoa/10 px-2.5 py-0.5 rounded-full">
             BOOKING: {bookingId}
           </span>
           <span className="text-xs font-bold text-ink-muted">Post-Lesson Memo Studio</span>
@@ -127,27 +127,27 @@ ${initialScratchpad}` : ""
         <h2 className="text-2xl font-black text-ink font-serif">
           Evaluate Session with {studentName}
         </h2>
-        <p className="text-xs text-ink-muted">
+        <p className="text-sm text-ink-muted">
           Lesson Material: <span className="font-semibold text-ink">{lessonTitle}</span>
         </p>
       </div>
 
-      <InlineError error={error} />
+      <InlineError id="memo-error" error={error} />
 
       {/* 1. Overall Feedback */}
       <div className="space-y-2">
         <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-          <Award className="w-4 h-4 text-accent" />
+          <Award className="w-4 h-4 text-cocoa" aria-hidden="true" />
           <span>Overall Feedback &amp; Speaking Fluency</span>
         </label>
-        <p className="text-[11px] text-ink-muted">
+        <p className="text-sm text-ink-muted">
           Praise strengths, evaluate conversational confidence, and summarize key conversational highlights.
         </p>
-        <textarea
+        <textarea aria-invalid={error ? true : undefined} aria-describedby={error ? "memo-error" : undefined}
           rows={4}
           value={feedbackText}
           onChange={(e) => setFeedbackText(e.target.value)}
-          className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal leading-relaxed font-sans"
+          className="w-full p-4 bg-cream-surface rounded-2xl border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa leading-relaxed font-sans"
           placeholder="Write thorough feedback for the student..."
           required
         />
@@ -156,10 +156,10 @@ ${initialScratchpad}` : ""
       {/* 2. Interactive Vocabulary Tag Builder */}
       <div className="space-y-4">
         <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-teal" />
+          <BookOpen className="w-4 h-4 text-cocoa" />
           <span>Target Vocabulary Words ({vocabList.length})</span>
         </label>
-        <p className="text-[11px] text-ink-muted">
+        <p className="text-sm text-ink-muted">
           Add newly introduced or practiced vocabulary. These will convert into spaced-repetition student flashcards.
         </p>
 
@@ -168,13 +168,13 @@ ${initialScratchpad}` : ""
           {vocabList.map((item) => (
             <div
               key={item.id}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-teal/10 border border-teal/20 text-xs font-bold text-teal shadow-2xs"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-cocoa/10 border border-cocoa/20 text-xs font-bold text-cocoa shadow-2xs"
             >
               <span>{item.word}</span>
               <button
                 type="button"
                 onClick={() => removeVocabWord(item.id)}
-                className="hover:text-red-600 transition-colors p-0.5"
+                className="hover:text-error transition-colors p-0.5"
                 title="Remove word"
               >
                 <X className="w-3.5 h-3.5" />
@@ -185,7 +185,7 @@ ${initialScratchpad}` : ""
 
         {/* Add Word Row */}
         <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
-          <input
+          <input aria-invalid={error ? true : undefined} aria-describedby={error ? "memo-error" : undefined}
             type="text"
             value={newWord}
             onChange={(e) => setNewWord(e.target.value)}
@@ -196,9 +196,9 @@ ${initialScratchpad}` : ""
               }
             }}
             placeholder="New word (e.g. Asynchronous)..."
-            className="w-full sm:w-1/3 p-2.5 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+            className="min-h-11 w-full sm:w-1/3 p-2.5 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
           />
-          <input
+          <input aria-invalid={error ? true : undefined} aria-describedby={error ? "memo-error" : undefined}
             type="text"
             value={newDef}
             onChange={(e) => setNewDef(e.target.value)}
@@ -209,12 +209,12 @@ ${initialScratchpad}` : ""
               }
             }}
             placeholder="Definition or example sentence..."
-            className="w-full sm:flex-1 p-2.5 bg-cream-surface rounded-xl border border-divider text-xs text-ink focus:outline-none focus:ring-2 focus:ring-teal/30"
+            className="min-h-11 w-full sm:flex-1 p-2.5 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
           />
           <button
             type="button"
             onClick={addVocabWord}
-            className="w-full sm:w-auto px-4 py-2.5 bg-teal hover:bg-teal-hover text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors shrink-0"
+            className="min-h-11 w-full sm:w-auto px-4 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors shrink-0"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Word</span>
@@ -225,14 +225,14 @@ ${initialScratchpad}` : ""
       {/* 3. Pronunciation & Phonetics */}
       <div className="space-y-2">
         <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-          <Volume2 className="w-4 h-4 text-teal" />
+          <Volume2 className="w-4 h-4 text-cocoa" />
           <span>Pronunciation &amp; Accent Notes</span>
         </label>
-        <textarea
+        <textarea aria-invalid={error ? true : undefined} aria-describedby={error ? "memo-error" : undefined}
           rows={3}
           value={pronunciationNotes}
           onChange={(e) => setPronunciationNotes(e.target.value)}
-          className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal leading-relaxed font-sans"
+          className="w-full p-4 bg-cream-surface rounded-2xl border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa leading-relaxed font-sans"
           placeholder="Phonetic symbols, syllable stress, or tongue placement tips..."
         />
       </div>
@@ -243,11 +243,11 @@ ${initialScratchpad}` : ""
           <FileText className="w-4 h-4 text-plum" />
           <span>Grammar Slips &amp; Corrections</span>
         </label>
-        <textarea
+        <textarea aria-invalid={error ? true : undefined} aria-describedby={error ? "memo-error" : undefined}
           rows={3}
           value={grammarNotes}
           onChange={(e) => setGrammarNotes(e.target.value)}
-          className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal leading-relaxed font-sans"
+          className="w-full p-4 bg-cream-surface rounded-2xl border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa leading-relaxed font-sans"
           placeholder="Write 'Student said' vs 'More natural native phrasing'..."
         />
       </div>
@@ -255,14 +255,14 @@ ${initialScratchpad}` : ""
       {/* 5. Homework & Follow-up */}
       <div className="space-y-2">
         <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-accent" />
+          <Sparkles className="w-4 h-4 text-cocoa" aria-hidden="true" />
           <span>Homework Assignment &amp; Next Session Objectives</span>
         </label>
-        <textarea
+        <textarea aria-invalid={error ? true : undefined} aria-describedby={error ? "memo-error" : undefined}
           rows={2}
           value={homework}
           onChange={(e) => setHomework(e.target.value)}
-          className="w-full p-4 bg-cream-surface rounded-2xl border border-divider text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal leading-relaxed font-sans"
+          className="w-full p-4 bg-cream-surface rounded-2xl border border-strong text-base sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa leading-relaxed font-sans"
           placeholder="Recommended reading or speaking drills for next class..."
         />
       </div>
@@ -272,7 +272,7 @@ ${initialScratchpad}` : ""
         <button
           type="submit"
           disabled={submitting}
-          className="px-8 py-3.5 bg-teal hover:bg-teal-hover text-white text-xs font-black rounded-2xl flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
+          className="min-h-11 px-8 py-3.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-2xl flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
         >
           <Send className="w-4 h-4" />
           <span>{submitting ? "Publishing Memo..." : "Submit Memo & Send to Student"}</span>

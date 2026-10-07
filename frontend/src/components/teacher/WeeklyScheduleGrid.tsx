@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Save, Clock, Copy, Sparkles, AlertCircle, Info } from "lucide-react";
+import { Check, Save, Clock, Copy, Sparkles, AlertCircle, Info, AlertTriangle } from "lucide-react";
 import { api } from "@/lib/api";
 import { request } from "@/lib/http";
 import {
@@ -165,7 +165,7 @@ export function WeeklyScheduleGrid() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-divider pb-6">
         <div>
           <h2 className="text-xl font-black text-ink font-serif">Weekly Recurring Teaching Matrix</h2>
-          <p className="text-xs text-ink-muted">
+          <p className="text-sm text-ink-muted">
             All slots are in your account timezone ({tutorZone}).
             Converted automatically on student booking pads.
           </p>
@@ -175,16 +175,16 @@ export function WeeklyScheduleGrid() {
           <button
             type="button"
             onClick={copyMondayToWeekdays}
-            className="px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold border border-divider flex items-center gap-1.5 transition-colors"
+            className="min-h-11 px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold border border-divider flex items-center gap-1.5 transition-colors"
           >
-            <Copy className="w-3.5 h-3.5 text-teal" />
+            <Copy className="w-3.5 h-3.5 text-cocoa" />
             <span>Copy Mon &rarr; Weekdays</span>
           </button>
 
           <button
             type="button"
             onClick={() => applyPreset("business")}
-            className="px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold border border-divider transition-colors"
+            className="min-h-11 inline-flex items-center px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold border border-divider transition-colors"
           >
             08:00 - 17:00 Preset
           </button>
@@ -192,7 +192,7 @@ export function WeeklyScheduleGrid() {
           <button
             type="button"
             onClick={() => applyPreset("evening")}
-            className="px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold border border-divider transition-colors"
+            className="min-h-11 inline-flex items-center px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink text-xs font-bold border border-divider transition-colors"
           >
             Evening Preset
           </button>
@@ -200,7 +200,7 @@ export function WeeklyScheduleGrid() {
           <button
             type="button"
             onClick={() => applyPreset("clear")}
-            className="px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink-muted hover:text-ink text-xs font-bold border border-divider transition-colors"
+            className="min-h-11 inline-flex items-center px-3 py-1.5 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink-muted hover:text-ink text-xs font-bold border border-divider transition-colors"
           >
             Clear All
           </button>
@@ -209,9 +209,9 @@ export function WeeklyScheduleGrid() {
             type="button"
             onClick={() => handleSave(false)}
             disabled={saving}
-            className="px-5 py-2 rounded-xl bg-teal hover:bg-teal-hover text-white text-xs font-black flex items-center gap-2 shadow-sm transition-all ml-auto lg:ml-2"
+            className="min-h-11 px-5 py-2 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black flex items-center gap-2 shadow-sm transition-all ml-auto lg:ml-2"
           >
-            {saved ? <Check className="w-4 h-4 text-accent" /> : <Save className="w-4 h-4" />}
+            {saved ? <Check className="w-4 h-4 text-gold-bright" /> : <Save className="w-4 h-4" />}
             <span>{saving ? "Saving..." : saved ? "Schedule Saved!" : "Save Availability"}</span>
           </button>
         </div>
@@ -219,18 +219,18 @@ export function WeeklyScheduleGrid() {
 
       <InlineError error={saveError} />
       {availability?.truncated && (
-        <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+        <p className="text-sm text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
           Only part of your saved availability could be loaded, so this grid may be incomplete. Do not save from here.
         </p>
       )}
       {availability && wouldChangeSavedWindows(availability.rows) && (
-        <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+        <p className="text-sm text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
           Some saved windows do not line up with this hourly grid (or overlap each other). Saving here replaces them with
           the blocks shown.
         </p>
       )}
       {pendingConflicts && (
-        <div role="alert" className="text-xs text-amber-900 bg-amber-50 border border-amber-300 rounded-2xl px-4 py-3 space-y-2">
+        <div role="alert" className="text-xs text-warning-hover bg-warning-surface border border-warning-border rounded-2xl px-4 py-3 space-y-2"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
           <p className="font-bold">
             Nothing was saved: {pendingConflicts.length} confirmed lesson{pendingConflicts.length === 1 ? "" : "s"} would
             fall outside your open hours.
@@ -249,14 +249,14 @@ export function WeeklyScheduleGrid() {
               type="button"
               disabled={saving}
               onClick={() => handleSave(true)}
-              className="px-3 py-1.5 rounded-xl bg-amber-600 text-white font-black"
+              className="min-h-11 inline-flex items-center px-3 py-1.5 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white font-black"
             >
               Save anyway
             </button>
             <button
               type="button"
               onClick={() => setPendingConflicts(null)}
-              className="px-3 py-1.5 rounded-xl bg-white border border-divider font-bold"
+              className="min-h-11 inline-flex items-center px-3 py-1.5 rounded-xl bg-white border border-divider font-bold"
             >
               Keep editing
             </button>
@@ -264,7 +264,7 @@ export function WeeklyScheduleGrid() {
         </div>
       )}
       {leftConflicts.length > 0 && (
-        <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+        <p className="text-sm text-warning-hover bg-warning-surface border border-warning-border rounded-xl px-3 py-2"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
           Saved. {leftConflicts.length} confirmed lesson{leftConflicts.length === 1 ? " is" : "s are"} outside your new hours but
           still booked: teach {leftConflicts.length === 1 ? "it" : "them"} or cancel from your lessons.
         </p>
@@ -273,19 +273,19 @@ export function WeeklyScheduleGrid() {
       {/* Summary Indicator */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-cream-surface border border-divider text-xs">
         <span className="font-bold text-ink flex items-center gap-1.5">
-          <Clock className="w-4 h-4 text-teal" /> Total Open Hours:
-          <span className="text-teal font-extrabold ml-1">{activeHours} hours/week</span>
+          <Clock className="w-4 h-4 text-cocoa" /> Total Open Hours:
+          <span className="text-cocoa font-extrabold ml-1">{activeHours} hours/week</span>
           <span className="text-ink-muted font-normal ml-1">({activeHours * 2} discrete 25-min slots)</span>
         </span>
 
-        <span className="text-[11px] text-ink-muted italic">
-          Click any block to toggle open/closed. Green blocks are live on the booking grid.
+        <span className="text-xs text-ink-muted italic">
+          Select a block to open or close it. Dark blocks are open for students to book.
         </span>
       </div>
 
       {/* 7-Day Matrix Table */}
-      <div className="overflow-x-auto rounded-2xl border border-divider">
-        <table className="w-full min-w-[700px] border-collapse text-xs">
+      <div className="overflow-x-auto scroll-cue rounded-2xl border border-divider">
+        <table className="w-full min-w-[700px] border-collapse text-sm">
           <thead>
             <tr className="bg-cream-surface border-b border-divider">
               <th className="py-3 px-4 font-bold text-ink-muted uppercase tracking-wider text-left w-36">
@@ -294,7 +294,7 @@ export function WeeklyScheduleGrid() {
               {DAYS.map((d) => (
                 <th key={d.id} className="py-3 px-2 font-black text-ink text-center">
                   <div>{d.label}</div>
-                  <span className="text-[10px] font-normal text-ink-muted hidden sm:inline">{d.full}</span>
+                  <span className="text-xs font-normal text-ink-muted hidden sm:inline">{d.full}</span>
                 </th>
               ))}
             </tr>
@@ -312,10 +312,10 @@ export function WeeklyScheduleGrid() {
                       <button
                         type="button"
                         onClick={() => toggleSlot(d.id, blockIdx)}
-                        className={`w-full py-2 px-1 rounded-xl text-[11px] font-bold transition-all ${
+                        className={`w-full min-h-11 min-w-11 py-2 px-1 rounded-xl text-sm font-bold transition-all ${
                           isOpen
-                            ? "bg-teal text-white shadow-xs hover:bg-teal-hover"
-                            : "bg-cream-surface text-ink-muted/60 hover:bg-cream-deep hover:text-ink border border-divider/60"
+                            ? "bg-cocoa text-white shadow-xs hover:bg-cocoa-hover"
+                            : "bg-cream-surface text-ink-muted hover:bg-cream-deep hover:text-ink border border-divider/60"
                         }`}
                       >
                         {isOpen ? "Open" : "—"}

@@ -19,13 +19,13 @@ function StatusBadge({ row }: { row: FxRateRow }) {
   const status = fxStatus(row);
   if (status === "ok") {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+      <span className="inline-flex items-center gap-1 text-xs font-black text-success-hover bg-success-surface px-2 py-0.5 rounded-full">
         <CheckCircle2 className="w-3 h-3" aria-hidden="true" /> FRESH
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-black text-white bg-rose-600 px-2 py-0.5 rounded-full">
+    <span className="inline-flex items-center gap-1 text-xs font-black text-white bg-error px-2 py-0.5 rounded-full">
       <AlertTriangle className="w-3 h-3" aria-hidden="true" /> {status === "missing" ? "MISSING" : "STALE"}
     </span>
   );
@@ -85,7 +85,7 @@ export default function AdminFxRatesPage() {
   if (loading || !data) {
     return (
       <div className="py-20 text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-12 h-12 border-4 border-cocoa border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm font-bold text-ink-muted">Loading FX rates...</p>
       </div>
     );
@@ -98,14 +98,14 @@ export default function AdminFxRatesPage() {
       <div className="flex items-center gap-3">
         <Link
           href="/admin/dashboard"
-          className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+          className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
           aria-label="Back to dashboard"
         >
           <ArrowLeft className="w-4 h-4" />
         </Link>
         <div>
           <div className="flex items-center gap-2">
-            <Coins className="w-4 h-4 text-teal" aria-hidden="true" />
+            <Coins className="w-4 h-4 text-cocoa" aria-hidden="true" />
             <span className="text-xs font-bold text-ink-muted">EUR / JPY to ZAR, maintained by hand</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-ink font-serif">FX Rates</h1>
@@ -113,7 +113,7 @@ export default function AdminFxRatesPage() {
       </div>
 
       {blocked.length > 0 && (
-        <div role="alert" className="flex items-start gap-3 rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800">
+        <div role="alert" className="flex items-start gap-3 rounded-2xl border border-error-border bg-error-surface p-4 text-sm text-error-hover">
           <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
           <div>
             <strong>{blocked.map((r) => r.currency).join(" and ")} checkout is blocked while the rate is stale or missing.</strong>{" "}
@@ -133,7 +133,7 @@ export default function AdminFxRatesPage() {
               {r.rate_to_zar === null ? "No rate set" : `R${r.rate_to_zar}`}
             </div>
             {r.rate_to_zar !== null && (
-              <p className="text-[11px] text-ink-muted">
+              <p className="text-sm text-ink-muted">
                 Source: {r.source ?? "-"} &middot; set by {r.set_by ?? "unknown"} &middot; {r.age_hours ?? "?"}h old
               </p>
             )}
@@ -151,7 +151,7 @@ export default function AdminFxRatesPage() {
       >
         <h2 className="text-base font-bold text-ink font-serif">Add a rate</h2>
         <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
-          <label className="text-xs font-bold text-ink-muted space-y-1">
+          <label className="text-sm font-bold text-ink-muted space-y-1">
             <span>Currency</span>
             <select
               value={currency}
@@ -159,7 +159,7 @@ export default function AdminFxRatesPage() {
                 setCurrency(e.target.value as FxCurrency);
                 setNeedsConfirm(null);
               }}
-              className="block w-full sm:w-32 rounded-xl border border-divider bg-white px-3 py-2 text-sm text-ink"
+              className="min-h-11 block w-full sm:w-32 rounded-xl border border-strong bg-white px-3 py-2 text-base sm:text-sm text-ink"
             >
               {FX_CURRENCIES.map((c) => (
                 <option key={c} value={c}>
@@ -168,7 +168,7 @@ export default function AdminFxRatesPage() {
               ))}
             </select>
           </label>
-          <label className="text-xs font-bold text-ink-muted space-y-1 flex-1">
+          <label className="text-sm font-bold text-ink-muted space-y-1 flex-1">
             <span>Rate (ZAR per 1 {currency})</span>
             <input
               inputMode="decimal"
@@ -180,29 +180,29 @@ export default function AdminFxRatesPage() {
               }}
               placeholder={currency === "EUR" ? "e.g. 19.85" : "e.g. 0.12"}
               aria-invalid={fieldError ? true : undefined}
-              className="block w-full rounded-xl border border-divider bg-white px-3 py-2 text-sm text-ink"
+              className="min-h-11 block w-full rounded-xl border border-strong bg-white px-3 py-2 text-base sm:text-sm text-ink"
             />
           </label>
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2.5 rounded-xl bg-teal text-white text-xs font-bold disabled:opacity-50"
+            className="min-h-11 inline-flex items-center px-5 py-2.5 rounded-xl bg-cocoa text-white text-xs font-bold disabled:opacity-50"
           >
             {saving && !needsConfirm ? "Saving..." : "Save rate"}
           </button>
         </div>
-        {fieldError && <p className="text-xs font-medium text-error">{fieldError}</p>}
+        {fieldError && <p role="alert" className="text-sm font-medium text-error">{fieldError}</p>}
         <InlineError error={saveError} />
-        {savedNote && <p className="text-xs font-bold text-emerald-800">{savedNote}</p>}
+        {savedNote && <p className="text-sm font-bold text-success-hover">{savedNote}</p>}
 
         {needsConfirm && (
-          <div role="alert" className="rounded-2xl border border-amber-300 bg-amber-50 p-4 space-y-3 text-sm text-amber-900">
+          <div role="alert" className="rounded-2xl border border-warning-border bg-warning-surface p-4 space-y-3 text-sm text-warning-hover"><AlertTriangle className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden="true" /><span className="sr-only">Warning: </span>
             <p>{needsConfirm}</p>
             <button
               type="button"
               disabled={saving}
               onClick={() => void submit(true)}
-              className="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold disabled:opacity-50"
+              className="min-h-11 inline-flex items-center px-4 py-2 rounded-xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold disabled:opacity-50"
             >
               {saving ? "Saving..." : "Confirm and save"}
             </button>
@@ -210,10 +210,10 @@ export default function AdminFxRatesPage() {
         )}
       </form>
 
-      <div className="bg-white rounded-3xl border border-divider shadow-card overflow-x-auto">
+      <div className="bg-white rounded-3xl border border-divider shadow-card overflow-x-auto scroll-cue">
         <h2 className="text-base font-bold text-ink font-serif p-6 pb-3">History (last 20)</h2>
         {data.history.length === 0 ? (
-          <p className="px-6 pb-6 text-xs text-ink-muted">No rates have been recorded yet.</p>
+          <p className="px-6 pb-6 text-sm text-ink-muted">No rates have been recorded yet.</p>
         ) : (
           <table className="w-full text-xs">
             <thead className="text-left text-ink-muted">

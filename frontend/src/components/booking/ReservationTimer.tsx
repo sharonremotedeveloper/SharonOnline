@@ -60,9 +60,9 @@ export function ReservationTimer({
       >
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <Clock className={`w-4 h-4 ${isUrgent ? "text-primary animate-pulse" : "text-teal"}`} />
-            <span className="text-xs font-bold uppercase tracking-wider">
-              {isUrgent ? "Slot Reservation Expiring Soon" : "10-Minute Slot Hold Active"}
+            <Clock className={`w-4 h-4 ${isUrgent ? "text-primary animate-pulse" : "text-cocoa"}`} />
+            <span className="text-base font-bold">
+              {isUrgent ? "Your time is about to be released" : "We are holding your time"}
             </span>
           </div>
 
@@ -75,14 +75,14 @@ export function ReservationTimer({
         <div className="w-full bg-cream-deep h-1.5 rounded-full overflow-hidden">
           <div
             className={`h-full transition-all duration-1000 ${
-              isUrgent ? "bg-primary" : "bg-teal"
+              isUrgent ? "bg-primary" : "bg-cocoa"
             }`}
             style={{ width: `${percentage}%` }}
           />
         </div>
 
-        <div className="text-[11px] text-ink-muted mt-2">
-          This 25-minute lesson is held exclusively for you in Redis. Complete checkout before the timer hits 00:00.
+        <div className="text-sm text-ink-muted mt-2">
+          This lesson time is held for you only. Please pay before the timer reaches 00:00, or it will be released.
         </div>
       </div>
 
@@ -102,7 +102,7 @@ export function ReservationTimer({
 
           <div className="space-y-1">
             <h4 className="text-lg font-bold text-ink font-serif">Your 10-Minute Hold Has Ended</h4>
-            <p className="text-xs text-ink-muted leading-relaxed">
+            <p className="text-sm text-ink-muted leading-relaxed">
               To keep slot scheduling fair for students across Japan, Korea, and Europe, held slots are automatically released back to the marketplace.
             </p>
           </div>
@@ -112,7 +112,7 @@ export function ReservationTimer({
               setShowExpiredModal(false);
               if (onRestart) onRestart();
             }}
-            className="w-full py-3 bg-teal hover:bg-teal-hover text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm"
+            className="min-h-11 w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-sm"
           >
             <RotateCcw className="w-4 h-4" /> Pick a New Slot
           </button>

@@ -34,7 +34,7 @@ export default function AdminTeachersPage() {
   if (loading) {
     return (
       <div className="py-20 text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-12 h-12 border-4 border-cocoa border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm font-bold text-ink-muted">Loading tutor roster...</p>
       </div>
     );
@@ -54,7 +54,7 @@ export default function AdminTeachersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono font-bold text-teal bg-teal/10 px-2 py-0.5 rounded-md">
+            <span className="text-xs font-mono font-bold text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-md">
               ACTIVE EDUCATORS
             </span>
             <span className="text-xs font-bold text-ink-muted">{data.count ?? tutors.length} Tutors</span>
@@ -66,7 +66,7 @@ export default function AdminTeachersPage() {
 
         <Link
           href="/admin/teachers/vetting"
-          className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 transition-colors self-start sm:self-auto"
+          className="min-h-11 px-5 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-bold rounded-xl shadow-xs flex items-center gap-2 transition-colors self-start sm:self-auto"
         >
           <span>Review Pending Auditions</span>
           <ArrowRight className="w-3.5 h-3.5" />
@@ -74,25 +74,26 @@ export default function AdminTeachersPage() {
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white p-4 rounded-3xl border border-divider shadow-xs flex items-center gap-3">
+      <div className="bg-white p-4 rounded-3xl border border-strong shadow-xs flex items-center gap-3 focus-within:outline focus-within:outline-[2.5px] focus-within:outline-offset-2 focus-within:outline-primary">
         <Search className="w-4 h-4 text-ink-muted ml-2" />
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Filter tutors by name, accent, or specialty..."
-          className="flex-1 bg-transparent text-xs sm:text-sm text-ink focus:outline-none"
+          aria-label="Filter tutors by name, accent, or specialty..."
+          className="min-h-11 flex-1 bg-transparent text-base sm:text-sm text-ink focus:outline-none"
         />
       </div>
 
       {/* Roster Table */}
       <div className="bg-white rounded-3xl border border-divider shadow-card overflow-hidden">
         {filtered.length === 0 && (
-          <p className="p-8 text-center text-xs text-ink-muted">
+          <p className="p-8 text-center text-sm text-ink-muted">
             {tutors.length === 0 ? "No tutors have been onboarded yet." : "No tutors match your filter."}
           </p>
         )}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto scroll-cue">
           <table className="w-full min-w-[700px] border-collapse text-xs">
             <thead>
               <tr className="bg-cream-surface border-b border-divider text-ink-muted uppercase font-bold tracking-wider text-left">
@@ -116,7 +117,7 @@ export default function AdminTeachersPage() {
                       />
                       <div>
                         <span className="font-extrabold text-sm text-ink block">{nameOf(tutor)}</span>
-                        <span className="text-[11px] text-ink-muted">{(tutor.bio ?? tutor.headline ?? "")}</span>
+                        <span className="text-xs text-ink-muted">{(tutor.bio ?? tutor.headline ?? "")}</span>
                       </div>
                     </div>
                   </td>
@@ -125,24 +126,24 @@ export default function AdminTeachersPage() {
 
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-1 font-bold text-ink">
-                      <Star className="w-3.5 h-3.5 text-accent fill-accent" />
+                      <Star className="w-3.5 h-3.5 text-star fill-star" />
                       <span>{tutor.rating ?? tutor.rating_avg ?? "—"}</span>
-                      <span className="text-[10px] text-ink-muted">({tutor.review_count ?? tutor.rating_count ?? 0})</span>
+                      <span className="text-xs text-ink-muted">({tutor.review_count ?? tutor.rating_count ?? 0})</span>
                     </div>
                   </td>
 
-                  <td className="py-4 px-4 font-extrabold text-teal font-serif text-sm">
-                    <LessonPriceLabel /> <span className="text-[10px] text-ink-muted font-sans">platform price</span>
+                  <td className="py-4 px-4 font-extrabold text-cocoa font-serif text-sm">
+                    <LessonPriceLabel /> <span className="text-xs text-ink-muted font-sans">platform price</span>
                   </td>
 
                   <td className="py-4 px-4">
                     {tutor.is_verified === false ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-warning-surface text-warning-hover text-xs font-bold border border-warning-border">
                         Not Verified
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
-                        <ShieldCheck className="w-3 h-3 text-emerald-600" /> Active Verified
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-success-surface text-success-hover text-xs font-bold border border-success-border">
+                        <ShieldCheck className="w-3 h-3 text-success" /> Active Verified
                       </span>
                     )}
                   </td>
@@ -152,7 +153,7 @@ export default function AdminTeachersPage() {
                       <Link
                         href={`/tutors/${tutor.slug || tutor.id}`}
                         target="_blank"
-                        className="p-2 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink-muted hover:text-ink transition-colors"
+                        className="min-w-11 justify-center min-h-11 inline-flex items-center p-2 rounded-xl bg-cream-surface hover:bg-cream-deep text-ink-muted hover:text-ink transition-colors"
                         title="View Public Profile"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -160,7 +161,7 @@ export default function AdminTeachersPage() {
 
                       <Link
                         href={`/admin/sessions/live`}
-                        className="p-2 rounded-xl bg-teal/10 hover:bg-teal/20 text-teal transition-colors"
+                        className="min-w-11 justify-center min-h-11 inline-flex items-center p-2 rounded-xl bg-cocoa/10 hover:bg-cocoa/20 text-cocoa transition-colors"
                         title="Live Activity Radar"
                       >
                         <Video className="w-3.5 h-3.5" />

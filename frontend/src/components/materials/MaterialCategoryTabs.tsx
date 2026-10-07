@@ -29,9 +29,9 @@ export function MaterialCategoryTabs({
           <button
             key={cat.value}
             onClick={() => onSelectCategory(cat.value)}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`min-h-11 flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-bold transition-all ${
               isActive
-                ? "bg-teal text-white shadow-sm"
+                ? "bg-cocoa text-white shadow-sm"
                 : "bg-cream-surface text-ink-muted hover:bg-cream-deep hover:text-ink border border-divider"
             }`}
           >

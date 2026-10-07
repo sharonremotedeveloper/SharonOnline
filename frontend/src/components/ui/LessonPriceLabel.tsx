@@ -15,7 +15,14 @@ interface LessonPriceLabelProps {
  */
 export function LessonPriceLabel({ currency = "USD", className }: LessonPriceLabelProps) {
   const { data, error, loading } = useLessonPrices();
-  if (loading) return <span className={className}>...</span>;
+  // A fixed-width placeholder keeps the layout from jumping when the price arrives.
+  if (loading) {
+    return (
+      <span className={className} role="status" aria-label="Loading price">
+        <span className="inline-block h-[1em] w-[3.5em] animate-pulse rounded bg-current opacity-15 align-middle" />
+      </span>
+    );
+  }
   if (error) return <span className={className}>Price unavailable</span>;
   const price = lessonPriceFor(data, currency);
   return <span className={className}>{price ? formatLessonPrice(price) : "Price unavailable"}</span>;

@@ -1,65 +1,68 @@
 import Link from "next/link";
-import { ShieldCheck, Heart } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
+
+const linkClass =
+  "inline-flex min-h-[44px] items-center text-base text-white/80 transition-colors hover:text-gold-bright";
 
 export function Footer() {
   return (
-    <footer className="bg-teal-hover text-white/80 text-xs border-t border-white/10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid grid-cols-1 md:grid-cols-5 gap-8">
-        <div className="md:col-span-2 space-y-4">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-xl bg-gold flex items-center justify-center font-bold text-teal text-lg font-serif">
-              S
-            </div>
-            <span className="font-extrabold text-xl tracking-tight text-white font-serif">
+    <footer className="on-dark border-t border-white/10 bg-cocoa-hover text-white/80">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-5 lg:px-8">
+        <div className="space-y-4 lg:col-span-2">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gold font-serif text-lg font-bold text-cocoa">S</span>
+            <span className="font-serif text-xl font-extrabold tracking-tight text-white">
               Sharon<span className="text-gold-bright">Online</span>
             </span>
           </div>
-          <p className="text-xs text-white/70 leading-relaxed max-w-sm">
-            Premium 1-on-1 synchronous 25-minute English learning marketplace connecting vetted South African tutors with ambitious students in East Asia and Europe.
+          <p className="max-w-sm text-base leading-relaxed text-white/80">
+            Private 25-minute English lessons by video. Certified South African tutors for learners in Asia and Europe.
           </p>
-          <div className="flex items-center gap-2 text-[11px] text-accent-surface">
-            <ShieldCheck className="w-4 h-4 text-accent" />
-            <span>POPIA (South Africa), GDPR (EU), and APPI (Japan) Certified</span>
-          </div>
+          <p className="flex max-w-sm items-start gap-2 text-sm leading-relaxed text-white/85">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-gold-bright" aria-hidden="true" />
+            <span>
+              We protect your personal data and follow the privacy laws that apply to you, including GDPR (EU), APPI
+              (Japan), PIPA (Korea) and POPIA (South Africa).{" "}
+              <Link href="/legal/privacy" className="font-semibold text-white underline underline-offset-2 hover:text-gold-bright">
+                Read how
+              </Link>
+            </span>
+          </p>
         </div>
 
-        <div>
-          <h4 className="text-white font-bold mb-3 text-xs tracking-wider uppercase font-serif">Platform</h4>
-          <ul className="space-y-2 text-xs text-white/70">
-            <li><Link href="/tutors" className="hover:text-gold-bright transition-colors">Find a Tutor</Link></li>
-            <li><Link href="/materials" className="hover:text-gold-bright transition-colors">Curriculum Catalog</Link></li>
-            <li><Link href="/pricing" className="hover:text-gold-bright transition-colors">Pricing & Credit Packs</Link></li>
-            <li><Link href="/how-it-works" className="hover:text-gold-bright transition-colors">How It Works</Link></li>
+        <nav aria-labelledby="footer-platform">
+          <h2 id="footer-platform" className="mb-2 font-serif text-lg font-bold text-white">Learn</h2>
+          <ul>
+            <li><Link href="/tutors" className={linkClass}>Find a tutor</Link></li>
+            <li><Link href="/materials" className={linkClass}>Lessons &amp; levels</Link></li>
+            <li><Link href="/pricing" className={linkClass}>Pricing</Link></li>
+            <li><Link href="/how-it-works" className={linkClass}>How it works</Link></li>
           </ul>
-        </div>
+        </nav>
 
-        <div>
-          <h4 className="text-white font-bold mb-3 text-xs tracking-wider uppercase font-serif">Safety & Careers</h4>
-          <ul className="space-y-2 text-xs text-white/70">
-            <li><Link href="/trust-safety" className="hover:text-gold-bright transition-colors">Trust & Safety</Link></li>
-            <li><Link href="/trust-safety" className="hover:text-gold-bright transition-colors">Eskom Power Guard</Link></li>
-            <li><Link href="/teach" className="hover:text-gold-bright transition-colors">Teach With Us (SA)</Link></li>
-            <li><Link href="/support" className="hover:text-gold-bright transition-colors">Support & FAQs</Link></li>
+        <nav aria-labelledby="footer-help">
+          <h2 id="footer-help" className="mb-2 font-serif text-lg font-bold text-white">Help</h2>
+          <ul>
+            <li><Link href="/support" className={linkClass}>Help &amp; FAQ</Link></li>
+            <li><Link href="/trust-safety" className={linkClass}>Trust &amp; safety</Link></li>
+            <li><Link href="/teach" className={linkClass}>Teach with us</Link></li>
           </ul>
-        </div>
+        </nav>
 
-        <div>
-          <h4 className="text-white font-bold mb-3 text-xs tracking-wider uppercase font-serif">Legal & Governance</h4>
-          <ul className="space-y-2 text-xs text-white/70">
-            <li><Link href="/legal/terms" className="hover:text-gold-bright transition-colors">Terms of Service</Link></li>
-            <li><Link href="/legal/privacy" className="hover:text-gold-bright transition-colors">Privacy & POPIA</Link></li>
-            <li><Link href="/legal/refunds" className="hover:text-gold-bright transition-colors">Refund & Escrow Policy</Link></li>
-            <li><Link href="/legal/child-safety" className="hover:text-gold-bright transition-colors">Child Safeguarding</Link></li>
-            <li><Link href="/legal/cookies" className="hover:text-gold-bright transition-colors">Cookie Policy</Link></li>
+        <nav aria-labelledby="footer-legal">
+          <h2 id="footer-legal" className="mb-2 font-serif text-lg font-bold text-white">Legal</h2>
+          <ul>
+            <li><Link href="/legal/terms" className={linkClass}>Terms of service</Link></li>
+            <li><Link href="/legal/privacy" className={linkClass}>Privacy policy</Link></li>
+            <li><Link href="/legal/refunds" className={linkClass}>Refund policy</Link></li>
+            <li><Link href="/legal/child-safety" className={linkClass}>Child safety</Link></li>
+            <li><Link href="/legal/cookies" className={linkClass}>Cookie policy</Link></li>
           </ul>
-        </div>
+        </nav>
       </div>
 
-      <div className="border-t border-white/10 py-6 px-4 text-center text-[11px] text-white/50 flex flex-col sm:flex-row items-center justify-between max-w-7xl mx-auto">
-        <div>© 2026 Sharon Online Marketplace Ltd. All rights reserved.</div>
-        <div className="flex items-center gap-1 mt-2 sm:mt-0">
-          Crafted with <Heart className="w-3 h-3 text-primary fill-primary inline" /> for Global Fluency
-        </div>
+      <div className="border-t border-white/10 px-4 py-6 text-center text-sm text-white/85">
+        © {new Date().getFullYear()} Sharon Online. All rights reserved.
       </div>
     </footer>
   );

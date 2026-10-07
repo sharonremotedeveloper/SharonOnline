@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentType } from "react";
 import Link from "next/link";
 import { Briefcase, MessageSquare, GraduationCap, Presentation, Compass, ArrowRight, Check } from "lucide-react";
 
 export interface GoalItem {
   id: string;
   label: string;
-  icon: any;
+  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   title: string;
   description: string;
   topics: string[];
@@ -20,55 +20,50 @@ const GOALS: GoalItem[] = [
     id: "work",
     label: "Business & Work",
     icon: Briefcase,
-    title: "Master Professional Workplace Communication",
-    description:
-      "Prepare for global remote work, email correspondence, cross-cultural negotiations, and executive presentations.",
-    topics: ["Email Etiquette", "Salary Negotiation", "Meeting Moderation", "Client Pitching"],
-    recommendedLevel: "B1 - C2 Intermediate to Advanced",
+    title: "Speak with confidence at work",
+    description: "Prepare for emails, meetings, calls with other countries and presentations to your team.",
+    topics: ["Email etiquette", "Salary talks", "Running meetings", "Client calls"],
+    recommendedLevel: "Levels B1 to C2",
     sampleMaterialSlug: "business-email-etiquette",
   },
   {
     id: "interview",
     label: "Job Interviews",
     icon: GraduationCap,
-    title: "Ace English Tech & Corporate Auditions",
-    description:
-      "Practice STAR method responses, self-introductions, weakness explanations, and salary expectation questions with real feedback.",
-    topics: ["STAR Method", "Self Introduction", "Behavioral Questions", "Technical Q&A"],
-    recommendedLevel: "B1 - C1 Upper Intermediate",
+    title: "Get ready for English interviews",
+    description: "Practise introducing yourself and answering common questions, and get honest feedback.",
+    topics: ["STAR method", "Self-introduction", "Tough questions", "Technical Q&A"],
+    recommendedLevel: "Levels B1 to C1",
     sampleMaterialSlug: "job-interview-mastery",
   },
   {
     id: "conversation",
     label: "Daily Conversation",
     icon: MessageSquare,
-    title: "Speak Effortlessly & Build Fluency",
-    description:
-      "Discuss daily news articles, culture, food, hobbies, and personal stories with supportive native English tutors.",
-    topics: ["Daily News", "Idioms & Phrasal Verbs", "Culture & Society", "Small Talk"],
-    recommendedLevel: "A1 - C2 All Levels",
+    title: "Talk naturally about everyday life",
+    description: "Chat about the news, food, hobbies and culture with a patient tutor who listens.",
+    topics: ["Daily news", "Idioms", "Culture", "Small talk"],
+    recommendedLevel: "All levels",
     sampleMaterialSlug: "daily-news-discussion",
   },
   {
     id: "presentation",
-    label: "Presentations & Speeches",
+    label: "Presentations",
     icon: Presentation,
-    title: "Deliver Impactful Slides & Keynotes",
-    description:
-      "Structure your arguments, smooth out pronunciation, slide transitions, and handle audience Q&A with total poise.",
-    topics: ["Slide Delivery", "Q&A Handling", "Data Articulation", "Voice Modulation"],
-    recommendedLevel: "B2 - C2 Advanced",
+    title: "Present clearly and calmly",
+    description: "Organise your ideas, improve your pronunciation and practise answering questions.",
+    topics: ["Slide delivery", "Q&A practice", "Explaining data", "Clear voice"],
+    recommendedLevel: "Levels B2 to C2",
     sampleMaterialSlug: "presentation-skills-101",
   },
   {
     id: "travel",
-    label: "Travel & Relocation",
+    label: "Travel & Moving",
     icon: Compass,
-    title: "Navigate Airports, Hotels & Social Events",
-    description:
-      "Practical conversational English for solo travel, international relocations, visa interviews, and making international friends.",
-    topics: ["Airport & Immigration", "Hotel & Dining", "Emergency Phrases", "Local Directions"],
-    recommendedLevel: "A1 - B1 Beginner to Intermediate",
+    title: "Handle travel and life abroad",
+    description: "Learn the English you need for airports, hotels, visas and meeting new people.",
+    topics: ["Airports", "Hotels & food", "Emergencies", "Directions"],
+    recommendedLevel: "Levels A1 to B1",
     sampleMaterialSlug: "travel-survival-guide",
   },
 ];
@@ -79,75 +74,83 @@ export function GoalSelector() {
   const Icon = activeGoal.icon;
 
   return (
-    <div className="bg-white rounded-2xl border border-divider shadow-card p-6 sm:p-8 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-divider pb-6">
-        <div>
-          <h3 className="text-xl font-extrabold text-ink font-serif">What is your primary learning goal?</h3>
-          <p className="text-sm text-ink-muted mt-1">
-            Select your focus to see tailored lesson topics and recommended tutors.
-          </p>
-        </div>
-
-        {/* Goal Tabs */}
-        <div className="flex flex-wrap gap-2">
-          {GOALS.map((goal) => {
-            const GoalIcon = goal.icon;
-            const isActive = goal.id === activeGoalId;
-            return (
-              <button
-                key={goal.id}
-                onClick={() => setActiveGoalId(goal.id)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                  isActive
-                    ? "bg-teal text-white shadow-sm"
-                    : "bg-cream-surface text-ink-muted hover:bg-cream-deep hover:text-ink"
-                }`}
-              >
-                <GoalIcon className="w-3.5 h-3.5" />
-                <span>{goal.label}</span>
-              </button>
-            );
-          })}
-        </div>
+    <div className="focus-cocoa overflow-hidden rounded-[2rem] bg-coral p-3 sm:p-5">
+      {/* Goal tabs: a 2/3/5 column grid, so no lone pill wraps onto its own line */}
+      <div
+        role="tablist"
+        aria-label="Choose your learning goal"
+        className="grid grid-cols-2 gap-2 pb-4 sm:grid-cols-3 lg:grid-cols-5"
+      >
+        {GOALS.map((goal) => {
+          const GoalIcon = goal.icon;
+          const isActive = goal.id === activeGoalId;
+          return (
+            <button
+              key={goal.id}
+              type="button"
+              role="tab"
+              id={`goal-tab-${goal.id}`}
+              aria-selected={isActive}
+              aria-controls="goal-panel"
+              tabIndex={isActive ? 0 : -1}
+              onClick={() => setActiveGoalId(goal.id)}
+              onKeyDown={(e) => {
+                const i = GOALS.findIndex((g) => g.id === goal.id);
+                const next =
+                  e.key === "ArrowRight" ? GOALS[(i + 1) % GOALS.length]
+                  : e.key === "ArrowLeft" ? GOALS[(i - 1 + GOALS.length) % GOALS.length]
+                  : null;
+                if (next) {
+                  e.preventDefault();
+                  setActiveGoalId(next.id);
+                  document.getElementById(`goal-tab-${next.id}`)?.focus();
+                }
+              }}
+              className={`flex min-h-[56px] items-center justify-center gap-2 rounded-full px-3 py-2 text-center text-base font-bold transition-colors ${
+                isActive ? "bg-cocoa text-white shadow-sm" : "bg-white/90 text-ink hover:bg-white"
+              } ${goal.id === "travel" ? "col-span-2 sm:col-span-1" : ""}`}
+            >
+              <GoalIcon className="h-5 w-5 shrink-0" aria-hidden={true} />
+              <span>{goal.label}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Selected Goal Card */}
-      <div className="bg-cream-surface rounded-xl p-6 border border-cream-deep grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
-        <div className="lg:col-span-2 space-y-4">
+      {/* Panel */}
+      <div
+        role="tabpanel"
+        id="goal-panel"
+        aria-labelledby={`goal-tab-${activeGoal.id}`}
+        className="grid items-center gap-8 rounded-3xl bg-white p-6 sm:p-8 lg:grid-cols-[1fr_auto]"
+      >
+        <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-teal/10 text-teal flex items-center justify-center">
-              <Icon className="w-5 h-5" />
-            </div>
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sun text-cocoa">
+              <Icon className="h-6 w-6" aria-hidden={true} />
+            </span>
             <div>
-              <span className="text-[11px] font-bold tracking-wider uppercase text-primary">
-                {activeGoal.recommendedLevel}
-              </span>
-              <h4 className="text-lg font-bold text-ink">{activeGoal.title}</h4>
+              <p className="text-sm font-bold uppercase tracking-wider text-primary">{activeGoal.recommendedLevel}</p>
+              <h3 className="font-serif text-2xl font-bold text-ink">{activeGoal.title}</h3>
             </div>
           </div>
-
-          <p className="text-sm text-ink-muted leading-relaxed">{activeGoal.description}</p>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
+          <p className="max-w-2xl text-base leading-relaxed text-ink-muted">{activeGoal.description}</p>
+          <ul className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
             {activeGoal.topics.map((topic) => (
-              <div key={topic} className="flex items-center gap-1.5 text-xs font-semibold text-ink">
-                <Check className="w-3.5 h-3.5 text-success" />
+              <li key={topic} className="flex items-center gap-2 text-base font-medium text-ink">
+                <Check className="h-4 w-4 shrink-0 text-success" aria-hidden={true} />
                 <span>{topic}</span>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-divider text-center space-y-3 shadow-card-sm">
-          <div className="text-xs text-ink-muted font-medium">Ready to start this module?</div>
-          <div className="text-sm font-bold text-ink">{activeGoal.label} Track</div>
-          <Link
-            href={`/tutors?specialty=${encodeURIComponent(activeGoal.label)}`}
-            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-xl transition-all shadow-sm"
-          >
-            Find Tutors for {activeGoal.label} <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
+        <Link
+          href={`/tutors?specialty=${encodeURIComponent(activeGoal.label)}`}
+          className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full bg-cocoa px-7 text-base font-bold text-white shadow-sm transition-colors hover:bg-cocoa-hover"
+        >
+          Find tutors for this goal <ArrowRight className="h-5 w-5" aria-hidden={true} />
+        </Link>
       </div>
     </div>
   );

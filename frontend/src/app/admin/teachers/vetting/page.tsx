@@ -200,7 +200,7 @@ export default function AdminVettingPage() {
   if (loading) {
     return (
       <div className="py-20 text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-12 h-12 border-4 border-warning border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm font-bold text-ink-muted">Loading pending tutor audition reels...</p>
       </div>
     );
@@ -225,13 +225,13 @@ export default function AdminVettingPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/admin/dashboard"
-            className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+            className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-teal bg-teal/10 px-2 py-0.5 rounded-md">
+              <span className="text-xs font-mono font-bold text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-md">
                 TUTOR VETTING &amp; RUBRIC STUDIO (T4b)
               </span>
               <span className="text-xs font-bold text-ink-muted">{applications.length} In Queue</span>
@@ -246,14 +246,14 @@ export default function AdminVettingPage() {
       <InlineError error={actionError} />
 
       {successMessage && (
-        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-950 flex items-center justify-between gap-2.5">
+        <div className="p-4 rounded-2xl bg-success-surface border border-success-border text-xs font-bold text-success-hover flex items-center justify-between gap-2.5">
           <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
             <span>{successMessage}</span>
           </div>
           <button
             onClick={() => setSuccessMessage(null)}
-            className="text-emerald-700 hover:text-emerald-900 text-xs underline"
+            className="text-success-hover hover:text-success-hover text-xs underline"
           >
             Dismiss
           </button>
@@ -262,16 +262,16 @@ export default function AdminVettingPage() {
 
       {applications.length === 0 ? (
         <div className="bg-white rounded-3xl p-12 border border-divider shadow-card text-center space-y-4">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
+          <div className="w-16 h-16 rounded-full bg-success-surface text-success-hover flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-8 h-8" />
           </div>
           <h2 className="text-xl font-black text-ink font-serif">All Tutor Applications Processed</h2>
-          <p className="text-xs text-ink-muted max-w-sm mx-auto">
+          <p className="text-sm text-ink-muted max-w-sm mx-auto">
             The applicant queue is clear. New auditions will appear here as South African educators complete registration.
           </p>
           <Link
             href="/admin/teachers"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal text-white text-xs font-bold"
+            className="min-h-11 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cocoa text-white text-xs font-bold"
           >
             <span>View Active Tutor Roster</span>
           </Link>
@@ -297,29 +297,29 @@ export default function AdminVettingPage() {
                       setActiveModal(null);
                       setActionError(null);
                     }}
-                    className={`w-full text-left p-3.5 rounded-2xl border transition-all space-y-1.5 ${
+                    className={`min-h-11 inline-flex items-center w-full text-left p-3.5 rounded-2xl border transition-all space-y-1.5 ${
                       isSelected
-                        ? "bg-teal/10 border-teal text-ink shadow-xs"
+                        ? "bg-cocoa/10 border-cocoa text-ink shadow-xs"
                         : "bg-cream-surface border-divider hover:bg-cream-deep text-ink-muted"
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-extrabold text-ink">{app.full_name}</span>
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full capitalize ${
+                        className={`text-xs font-bold px-2 py-0.5 rounded-full capitalize ${
                           status === "in_review"
-                            ? "bg-blue-100 text-blue-800"
+                            ? "bg-info-surface text-info-hover"
                             : status === "changes_requested"
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-purple-100 text-purple-800"
+                            ? "bg-warning-surface text-warning-hover"
+                            : "bg-sky-soft text-ink"
                         }`}
                       >
                         {status.replace("_", " ")}
                       </span>
                     </div>
-                    <p className="text-[11px] text-ink-muted">{app.accent}</p>
-                    <div className="flex items-center gap-2 text-[10px] text-ink-muted pt-1">
-                      <MapPin className="w-3 h-3 text-teal" />
+                    <p className="text-sm text-ink-muted">{app.accent}</p>
+                    <div className="flex items-center gap-2 text-xs text-ink-muted pt-1">
+                      <MapPin className="w-3 h-3 text-cocoa" />
                       <span className="truncate">{app.country}</span>
                     </div>
                   </button>
@@ -337,17 +337,17 @@ export default function AdminVettingPage() {
                   <div className="flex items-center gap-2">
                     <h3 className="text-2xl font-black text-ink font-serif">{selectedApp.full_name}</h3>
                     {packet?.status === "submitted" && (
-                      <span className="text-xs bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-md">
+                      <span className="text-xs bg-sky-soft text-ink font-bold px-2 py-0.5 rounded-md">
                         Awaiting Review
                       </span>
                     )}
                     {packet?.status === "in_review" && (
-                      <span className="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                      <span className="text-xs bg-info-surface text-info-hover font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
                         <Sparkles className="w-3 h-3" /> In Review
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-ink-muted">
+                  <p className="text-sm text-ink-muted">
                     {selectedApp.email} &middot; Applied on {new Date(selectedApp.applied_at).toLocaleDateString()}
                   </p>
                 </div>
@@ -359,12 +359,12 @@ export default function AdminVettingPage() {
                       size="sm"
                       onClick={handleStartReview}
                       disabled={processingAction}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      className="bg-info hover:bg-info-hover text-white"
                     >
                       <PlayCircle className="w-4 h-4" /> Start Review
                     </Button>
                   )}
-                  <span className="px-3 py-1 rounded-xl bg-teal/10 text-teal text-xs font-bold border border-teal/20">
+                  <span className="px-3 py-1 rounded-xl bg-cocoa/10 text-cocoa text-xs font-bold border border-cocoa/20">
                     {selectedApp.accent}
                   </span>
                 </div>
@@ -374,10 +374,10 @@ export default function AdminVettingPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs font-bold text-ink">
                   <span className="flex items-center gap-2">
-                    <Video className="w-4 h-4 text-teal" />
+                    <Video className="w-4 h-4 text-cocoa" />
                     <span>60-Second Pronunciation &amp; Natural Accent Reel</span>
                   </span>
-                  <span className="text-[11px] text-ink-muted font-mono">
+                  <span className="text-xs text-ink-muted font-mono">
                     {packet?.assets.find((a) => a.kind === "video_reel")?.etag || "Verified Video"}
                   </span>
                 </div>
@@ -397,43 +397,43 @@ export default function AdminVettingPage() {
                 {/* Speed Test */}
                 <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-2">
                   <span className="font-bold text-ink flex items-center gap-1.5">
-                    <Wifi className="w-4 h-4 text-teal" /> WebRTC Network Readiness
+                    <Wifi className="w-4 h-4 text-cocoa" /> WebRTC Network Readiness
                   </span>
-                  <div className="grid grid-cols-2 gap-2 pt-1 text-[11px]">
+                  <div className="grid grid-cols-2 gap-2 pt-1 text-xs">
                     <div>
-                      <span className="text-ink-muted block text-[10px]">Download:</span>
+                      <span className="text-ink-muted block text-xs">Download:</span>
                       <span className="font-mono font-bold text-ink">
                         {packet?.application?.speed_test_download_mbps || "25.0"} Mbps
                       </span>
                     </div>
                     <div>
-                      <span className="text-ink-muted block text-[10px]">Upload:</span>
+                      <span className="text-ink-muted block text-xs">Upload:</span>
                       <span className="font-mono font-bold text-ink">
                         {packet?.application?.speed_test_upload_mbps || "12.0"} Mbps
                       </span>
                     </div>
                   </div>
-                  <span className="text-emerald-800 font-bold flex items-center gap-1 text-[10px] pt-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Exceeds 10/5 Mbps Sharon SLA
+                  <span className="text-success-hover font-bold flex items-center gap-1 text-xs pt-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-success" /> Exceeds 10/5 Mbps Sharon SLA
                   </span>
                 </div>
 
                 {/* Eskom Power Backup */}
                 <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-2">
                   <span className="font-bold text-ink flex items-center gap-1.5">
-                    <BatteryCharging className="w-4 h-4 text-amber-600" /> Municipal Power Declaration
+                    <BatteryCharging className="w-4 h-4 text-warning" /> Municipal Power Declaration
                   </span>
-                  <p className="text-[11px] text-ink-muted">
+                  <p className="text-sm text-ink-muted">
                     Area: {selectedApp.eskom_area || "Western Cape"}
                   </p>
                   <div className="pt-1">
                     {packet?.application?.power_backup_confirmed || selectedApp.has_inverter ? (
-                      <span className="text-emerald-800 font-bold flex items-center gap-1 text-[11px]">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> 4+ Hour Inverter / UPS Confirmed
+                      <span className="text-success-hover font-bold flex items-center gap-1 text-xs">
+                        <ShieldCheck className="w-3.5 h-3.5 text-success" /> 4+ Hour Inverter / UPS Confirmed
                       </span>
                     ) : (
-                      <span className="text-amber-800 font-bold flex items-center gap-1 text-[11px]">
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> Backup Declared Pending Check
+                      <span className="text-warning-hover font-bold flex items-center gap-1 text-xs">
+                        <AlertTriangle className="w-3.5 h-3.5 text-warning" /> Backup Declared Pending Check
                       </span>
                     )}
                   </div>
@@ -445,14 +445,14 @@ export default function AdminVettingPage() {
                 <span className="text-xs font-bold uppercase tracking-wider text-ink-muted block">
                   Educator Statement &amp; Specialties
                 </span>
-                <p className="text-xs text-ink leading-relaxed font-sans bg-cream-surface p-4 rounded-2xl border border-divider">
+                <p className="text-sm text-ink leading-relaxed font-sans bg-cream-surface p-4 rounded-2xl border border-divider">
                   {selectedApp.bio}
                 </p>
                 <div className="flex flex-wrap gap-2 pt-1">
                   {selectedApp.specialties.map((spec, i) => (
                     <span
                       key={i}
-                      className="px-2.5 py-1 rounded-xl bg-white border border-divider text-[11px] font-bold text-ink"
+                      className="px-2.5 py-1 rounded-xl bg-white border border-divider text-xs font-bold text-ink"
                     >
                       {spec}
                     </span>
@@ -465,10 +465,10 @@ export default function AdminVettingPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-divider pb-4">
                   <div>
                     <div className="flex items-center gap-2">
-                      <Award className="w-5 h-5 text-teal" />
+                      <Award className="w-5 h-5 text-cocoa" />
                       <h4 className="text-base font-bold text-ink">4-Criterion Vetting Rubric</h4>
                     </div>
-                    <p className="text-xs text-ink-muted">
+                    <p className="text-sm text-ink-muted">
                       Score candidate from 1 (Unacceptable) to 5 (Mastery). Passing requires $\ge 3$ per criterion and total $\ge 12/20$.
                     </p>
                   </div>
@@ -478,15 +478,15 @@ export default function AdminVettingPage() {
                     <div
                       className={`px-4 py-2 rounded-2xl border font-bold text-sm flex items-center gap-2 ${
                         rubricValidation.passing
-                          ? "bg-emerald-50 text-emerald-900 border-emerald-300"
-                          : "bg-amber-50 text-amber-900 border-amber-300"
+                          ? "bg-success-surface text-success-hover border-success-border"
+                          : "bg-warning-surface text-warning-hover border-warning-border"
                       }`}
                     >
                       <span>Total: {rubricTotal} / 20</span>
                       {rubricValidation.passing ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <CheckCircle2 className="w-4 h-4 text-success" />
                       ) : (
-                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                        <AlertTriangle className="w-4 h-4 text-warning" />
                       )}
                     </div>
                   </div>
@@ -507,14 +507,14 @@ export default function AdminVettingPage() {
                         key={criterion}
                         className={`p-4 rounded-2xl border transition-all ${
                           isDeficient
-                            ? "bg-amber-50/50 border-amber-300"
+                            ? "bg-warning-surface/50 border-warning-border"
                             : "bg-white border-divider"
                         }`}
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                           <div>
                             <span className="text-xs font-bold text-ink">{meta.label}</span>
-                            <p className="text-[11px] text-ink-muted leading-tight">
+                            <p className="text-sm text-ink-muted leading-tight">
                               {meta.description}
                             </p>
                           </div>
@@ -528,9 +528,9 @@ export default function AdminVettingPage() {
                                   key={score}
                                   type="button"
                                   onClick={() => handleScoreChange(criterion, score)}
-                                  className={`w-8 h-8 rounded-xl font-bold text-xs transition-all flex items-center justify-center ${
+                                  className={`w-11 h-11 rounded-xl font-bold text-xs transition-all flex items-center justify-center ${
                                     isSelected
-                                      ? "bg-teal text-white shadow-xs scale-105"
+                                      ? "bg-cocoa text-white shadow-xs scale-105"
                                       : "bg-cream-surface border border-divider text-ink-muted hover:bg-cream-deep hover:text-ink"
                                   }`}
                                   aria-label={`Score ${score} for ${meta.label}`}
@@ -544,7 +544,7 @@ export default function AdminVettingPage() {
 
                         {/* Deficient alert */}
                         {isDeficient && (
-                          <div className="text-[10px] font-bold text-amber-700 flex items-center gap-1 pt-1">
+                          <div className="text-xs font-bold text-warning-hover flex items-center gap-1 pt-1">
                             <AlertTriangle className="w-3 h-3" /> Minimum score of 3 required for approval
                           </div>
                         )}
@@ -557,13 +557,13 @@ export default function AdminVettingPage() {
               {/* Action Buttons */}
               <div className="pt-4 border-t border-divider flex flex-wrap items-center justify-end gap-3">
                 <Button
-                  variant="quiet"
+                  variant="secondary"
                   size="md"
                   onClick={() => {
                     setActiveModal("reject");
                     setActionReason("");
                   }}
-                  className="text-rose-700 hover:bg-rose-50 border-rose-200"
+                  className="text-error-hover hover:bg-error-surface border-error-border"
                 >
                   <XCircle className="w-4 h-4" /> Reject
                 </Button>
@@ -577,7 +577,7 @@ export default function AdminVettingPage() {
                     setSelectedChanges(["video_reel"]);
                   }}
                 >
-                  <RotateCcw className="w-4 h-4 text-amber-600" /> Request Changes
+                  <RotateCcw className="w-4 h-4 text-warning" /> Request Changes
                 </Button>
 
                 <Button
@@ -588,7 +588,7 @@ export default function AdminVettingPage() {
                     setActiveModal("approve");
                     setActionReason("");
                   }}
-                  className="bg-teal hover:bg-teal/90 text-white"
+                  className="bg-cocoa hover:bg-cocoa/90 text-white"
                   title={
                     packet?.status !== "in_review"
                       ? "Must start review before approving"
@@ -619,7 +619,7 @@ export default function AdminVettingPage() {
                 {activeModal === "request_changes" && `Request Application Changes from ${selectedApp.full_name}`}
                 {activeModal === "reject" && `Reject ${selectedApp.full_name}`}
               </h3>
-              <p className="text-xs text-ink-muted mt-1">
+              <p className="text-sm text-ink-muted mt-1">
                 {activeModal === "approve" && `Final verification passing with score ${rubricTotal}/20.`}
                 {activeModal === "request_changes" && "Select the upload kinds the tutor must redo before resubmitting."}
                 {activeModal === "reject" && "Provide a clear and respectful formal reason for declining this application."}
@@ -631,7 +631,7 @@ export default function AdminVettingPage() {
               <div className="space-y-2 p-3 bg-cream-surface rounded-2xl border border-divider">
                 <span className="text-xs font-bold text-ink block mb-1">Required Items to Redo:</span>
                 {ASSET_CHANGE_OPTIONS.map((item) => (
-                  <label key={item.kind} className="flex items-center gap-2.5 text-xs text-ink cursor-pointer py-1">
+                  <label key={item.kind} className="flex items-center gap-2.5 text-sm text-ink cursor-pointer py-1">
                     <input
                       type="checkbox"
                       checked={selectedChanges.includes(item.kind)}
@@ -642,7 +642,7 @@ export default function AdminVettingPage() {
                           setSelectedChanges((prev) => prev.filter((k) => k !== item.kind));
                         }
                       }}
-                      className="rounded border-divider text-teal focus:ring-teal"
+                      className="rounded border-divider text-cocoa focus:ring-cocoa"
                     />
                     <span>{item.label}</span>
                   </label>
@@ -652,10 +652,10 @@ export default function AdminVettingPage() {
 
             {/* Reason Textarea */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-ink">
+              <label htmlFor="f-activemodal-approve-revi" className="text-sm font-bold text-ink">
                 {activeModal === "approve" ? "Reviewer Notes (Optional)" : "Feedback / Reason (Required)"}
               </label>
-              <textarea
+              <textarea id="f-activemodal-approve-revi"
                 rows={3}
                 value={actionReason}
                 onChange={(e) => setActionReason(e.target.value)}
@@ -666,14 +666,14 @@ export default function AdminVettingPage() {
                     ? "Explain what needs improvement (e.g. video audio had background echo; please re-record in quiet space)..."
                     : "Formal reason for rejection..."
                 }
-                className="w-full p-3 bg-cream-surface rounded-2xl border border-divider text-xs text-ink focus:outline-hidden focus:ring-2 focus:ring-teal/30"
+                className="w-full p-3 bg-cream-surface rounded-2xl border border-strong text-base sm:text-sm text-ink focus:outline-hidden focus:ring-2 focus:ring-cocoa/30"
               />
             </div>
 
             {/* Modal Actions */}
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-divider">
               <Button
-                variant="quiet"
+                variant="secondary"
                 size="sm"
                 disabled={processingAction}
                 onClick={() => setActiveModal(null)}
@@ -681,7 +681,7 @@ export default function AdminVettingPage() {
                 Cancel
               </Button>
               <Button
-                variant={activeModal === "reject" ? "destructive" : "primary"}
+                variant={activeModal === "reject" ? "danger" : "primary"}
                 size="sm"
                 disabled={
                   processingAction ||
@@ -689,7 +689,7 @@ export default function AdminVettingPage() {
                   (activeModal === "request_changes" && selectedChanges.length === 0)
                 }
                 onClick={handleConfirmAction}
-                className={activeModal === "approve" ? "bg-teal hover:bg-teal/90 text-white" : ""}
+                className={activeModal === "approve" ? "bg-cocoa hover:bg-cocoa/90 text-white" : ""}
               >
                 {processingAction ? "Processing..." : "Confirm & Send"}
               </Button>

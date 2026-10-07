@@ -47,8 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionError(null);
     try {
       // skipAuth: "not signed in" is a normal answer on public pages, not a reason to redirect.
-      const data = await request<{ user: AuthUser }>("/api/session/me", { skipAuth: true });
-      setUser(data.user);
+      const data = await request<{ user: AuthUser | null }>("/api/session/me", { skipAuth: true });
+      setUser(data.user ?? null);
     } catch (err) {
       setUser(null);
       if (err instanceof ApiError && err.status !== 401) setSessionError(errorMessage(err));

@@ -26,7 +26,7 @@ export function ErrorState({ error, title = "We couldn't load this", onRetry, cl
         <button
           type="button"
           onClick={onRetry}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-white text-xs font-bold hover:bg-primary-hover transition-colors"
+          className="min-h-11 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cocoa text-white text-sm font-bold hover:bg-cocoa-hover transition-colors"
         >
           <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" /> Try again
         </button>
@@ -36,13 +36,14 @@ export function ErrorState({ error, title = "We couldn't load this", onRetry, cl
 }
 
 /** Small inline banner for a failed action (save, submit...). Render only when `error` is set. */
-export function InlineError({ error, className = "" }: { error: unknown; className?: string }) {
+export function InlineError({ error, className = "", id }: { error: unknown; className?: string; id?: string }) {
   if (!error) return null;
   const message = typeof error === "string" ? error : errorMessage(error);
   return (
     <div
+      id={id}
       role="alert"
-      className={`flex items-start gap-2 bg-error/5 border border-error/30 text-error rounded-xl px-3 py-2 text-xs font-medium ${className}`}
+      className={`flex items-start gap-2 bg-error-surface border border-error-border text-error rounded-xl px-3 py-2 text-sm font-medium ${className}`}
     >
       <AlertTriangle className="w-4 h-4 shrink-0 mt-px" aria-hidden="true" />
       <span>{message}</span>

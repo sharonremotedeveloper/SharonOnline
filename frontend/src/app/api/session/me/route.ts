@@ -9,7 +9,8 @@ export const runtime = "nodejs";
 /** Current user from Django (auto-refreshing the tokens) and a re-minted session cookie carrying the fresh role. */
 export async function GET(req: NextRequest) {
   const { access, refresh } = readAuthCookies(req);
-  if (!access && !refresh) return noStore(NextResponse.json({ detail: "Not signed in." }, { status: 401 }));
+  // Anonymous visitors are a normal state, not an error: answer 200 with no user so the browser console stays clean.
+  if (!access && !refresh) return noStore(NextResponse.json({ user: null }));
 
   const out = await proxyRequest(
     { method: "GET", segments: ["auth", "me"], search: "", headers: req.headers, body: null, access, refresh, ip: requestIp(req) },

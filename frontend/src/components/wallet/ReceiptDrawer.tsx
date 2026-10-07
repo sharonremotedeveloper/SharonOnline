@@ -102,21 +102,21 @@ export function ReceiptDrawer({ isOpen, onClose }: ReceiptDrawerProps) {
           <div className="p-6 border-b border-divider flex items-start justify-between bg-cream-surface/60">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-teal/10 text-teal">
+                <div className="p-1.5 rounded-lg bg-cocoa/10 text-cocoa">
                   <FileText className="w-5 h-5" />
                 </div>
                 <h2 id="receipt-drawer-title" className="text-xl font-bold font-serif text-ink">
                   Invoices & Receipts
                 </h2>
               </div>
-              <p className="text-xs text-ink-muted">
+              <p className="text-sm text-ink-muted">
                 Official proof of purchase and tax invoices for lesson credit packages.
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-cream-deep transition-colors"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-cream-deep transition-colors"
               aria-label="Close drawer"
             >
               <X className="w-5 h-5" />
@@ -125,15 +125,15 @@ export function ReceiptDrawer({ isOpen, onClose }: ReceiptDrawerProps) {
 
           {/* Feedback Notices */}
           {actionNotice && (
-            <div className="px-6 py-2.5 bg-accent-surface/40 border-b border-divider text-xs flex items-center justify-between text-ink">
+            <div className="px-6 py-2.5 bg-accent-surface/40 border-b border-divider text-sm flex items-center justify-between text-ink">
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-teal" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-cocoa" />
                 {actionNotice}
               </span>
               <button
                 type="button"
                 onClick={() => setActionNotice(null)}
-                className="text-ink-muted hover:text-ink text-[11px]"
+                className="text-ink-muted hover:text-ink text-sm"
               >
                 Dismiss
               </button>
@@ -153,13 +153,13 @@ export function ReceiptDrawer({ isOpen, onClose }: ReceiptDrawerProps) {
                 ))}
               </div>
             ) : error ? (
-              <div className="p-6 rounded-2xl border border-amber-200 bg-amber-50 text-center space-y-3">
-                <AlertCircle className="w-8 h-8 text-amber-600 mx-auto" />
-                <p className="text-xs text-amber-900 font-medium">{error}</p>
+              <div className="p-6 rounded-2xl border border-warning-border bg-warning-surface text-center space-y-3">
+                <AlertCircle className="w-8 h-8 text-warning mx-auto" />
+                <p className="text-sm text-warning-hover font-medium">{error}</p>
                 <button
                   type="button"
                   onClick={loadReceipts}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-ink text-white text-xs font-bold hover:bg-ink-light transition-colors"
+                  className="min-h-11 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-ink text-white text-sm font-bold hover:bg-ink-light transition-colors"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>Retry</span>
@@ -172,7 +172,7 @@ export function ReceiptDrawer({ isOpen, onClose }: ReceiptDrawerProps) {
                 </div>
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-ink">No receipts issued yet</h3>
-                  <p className="text-xs text-ink-muted max-w-xs mx-auto">
+                  <p className="text-sm text-ink-muted max-w-xs mx-auto">
                     When you purchase lesson credit packages, your official tax invoices and receipts will appear here automatically.
                   </p>
                 </div>
@@ -196,26 +196,26 @@ export function ReceiptDrawer({ isOpen, onClose }: ReceiptDrawerProps) {
                     >
                       <div className="flex items-start justify-between">
                         <div>
-                          <div className="text-xs font-extrabold font-mono text-ink">
+                          <div className="text-sm font-extrabold font-mono text-ink">
                             {rcpt.receipt_number}
                           </div>
-                          <div className="text-[11px] text-ink-muted mt-0.5">
+                          <div className="text-sm text-ink-muted mt-0.5">
                             Issued on {dateStr}
                           </div>
                         </div>
-                        <span className="text-sm font-black font-serif text-teal">
+                        <span className="text-sm font-black font-serif text-cocoa">
                           {rcpt.currency} {rcpt.total_amount}
                         </span>
                       </div>
 
                       {rcpt.description && (
-                        <p className="text-xs text-ink-muted border-t border-divider/60 pt-2">
+                        <p className="text-sm text-ink-muted border-t border-divider/60 pt-2">
                           {rcpt.description}
                         </p>
                       )}
 
                       <div className="pt-2 border-t border-divider/60 flex items-center justify-between">
-                        <span className="text-[11px] text-ink-muted">
+                        <span className="text-sm text-ink-muted">
                           {rcpt.tax_amount && Number(rcpt.tax_amount) > 0
                             ? `Includes ${rcpt.currency} ${rcpt.tax_amount} VAT`
                             : "Zero-rated VAT"}
@@ -224,7 +224,7 @@ export function ReceiptDrawer({ isOpen, onClose }: ReceiptDrawerProps) {
                           type="button"
                           disabled={isDownloading}
                           onClick={() => handleDownloadPdf(rcpt)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cream-surface hover:bg-cream-deep border border-divider text-xs font-bold text-ink transition-colors disabled:opacity-50"
+                          className="min-h-11 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cream-surface hover:bg-cream-deep border border-divider text-sm font-bold text-ink transition-colors disabled:opacity-50"
                         >
                           <Download className="w-3.5 h-3.5" />
                           <span>{isDownloading ? "Downloading..." : "Download PDF"}</span>
@@ -238,8 +238,8 @@ export function ReceiptDrawer({ isOpen, onClose }: ReceiptDrawerProps) {
           </div>
 
           {/* Footer */}
-          <div className="p-4 border-t border-divider bg-cream-surface/40 flex items-center justify-between text-xs">
-            <span className="text-[11px] text-ink-muted">
+          <div className="p-4 border-t border-divider bg-cream-surface/40 flex items-center justify-between text-sm">
+            <span className="text-sm text-ink-muted">
               Sharon Online (Pty) Ltd. VAT registration
             </span>
             <button

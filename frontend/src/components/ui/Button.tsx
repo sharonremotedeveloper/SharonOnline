@@ -2,7 +2,7 @@ import React, { type ReactNode } from "react";
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
-  variant?: "primary" | "secondary" | "quiet" | "destructive" | "gold" | "teal";
+  variant?: "primary" | "secondary" | "danger" | "accent";
   size?: "sm" | "md" | "lg";
   full?: boolean;
   icon?: ReactNode;
@@ -21,27 +21,25 @@ export function Button({
   ...props
 }: ButtonProps) {
   const base =
-    "inline-flex items-center justify-center gap-2 font-medium rounded-md transition-all tracking-[0.01em] focus-visible:outline-2 focus-visible:outline-offset-2 active:translate-y-px disabled:opacity-60 disabled:cursor-not-allowed disabled:active:translate-y-0";
+    "inline-flex items-center justify-center gap-2 font-bold rounded-full transition-all tracking-[0.01em] focus-visible:outline-[2.5px] focus-visible:outline-offset-2 active:translate-y-px disabled:opacity-60 disabled:cursor-not-allowed disabled:active:translate-y-0";
 
   const sizes = {
-    sm: "px-3.5 py-1.5 text-xs min-h-[36px]",
-    md: "px-5 py-2.5 text-sm min-h-[44px]",
+    sm: "px-4 py-1.5 text-sm min-h-[44px]",
+    md: "px-6 py-2.5 text-base min-h-[48px]",
     lg: "px-7 py-3.5 text-base min-h-[52px]",
   };
 
+  // Four solid/outline styles only. Contrast: white on cocoa 12.6, ink on sun 11.28, white on error 5.93 (hover 8.34),
+  // secondary border is border-strong (4.69 on white). Hover always changes fill or border, never only the cursor.
   const variants = {
     primary:
-      "bg-primary text-white border border-primary hover:bg-primary-hover hover:border-primary-hover focus-visible:outline-primary shadow-sm",
+      "bg-cocoa text-white border border-cocoa hover:bg-cocoa-hover hover:border-cocoa-hover focus-visible:outline-primary shadow-sm",
     secondary:
-      "bg-white border border-[#D8B7A5] text-ink hover:bg-cream-surface hover:border-primary focus-visible:outline-primary",
-    quiet:
-      "bg-transparent text-ink-muted border border-divider hover:bg-cream-surface hover:text-ink focus-visible:outline-primary",
-    destructive:
-      "bg-error text-white border border-error hover:bg-[#952828] focus-visible:outline-error",
-    gold:
-      "bg-gold text-ink font-semibold border border-gold hover:bg-gold-hover focus-visible:outline-[#8A5B14]",
-    teal:
-      "bg-teal text-white border border-teal hover:bg-teal-hover focus-visible:outline-teal",
+      "bg-white border border-strong text-ink hover:bg-cream-deep hover:border-cocoa focus-visible:outline-primary",
+    danger:
+      "bg-error text-white border border-error hover:bg-error-hover hover:border-error-hover focus-visible:outline-error",
+    accent:
+      "bg-accent text-ink border border-accent hover:bg-accent-500 hover:border-accent-500 focus-visible:outline-cocoa",
   };
 
   const widthClass = full ? "w-full" : "";

@@ -50,17 +50,17 @@ export function LessonCountDownClock({
     return (
       <div className={`p-4 rounded-2xl bg-cream-surface border border-divider flex items-center justify-between gap-3 ${className}`}>
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-teal/10 text-teal flex items-center justify-center">
+          <div className="w-8 h-8 rounded-xl bg-cocoa/10 text-cocoa flex items-center justify-center">
             <Clock className="w-4 h-4" />
           </div>
           <div>
             <span className="text-xs font-bold text-ink block">Scheduled Session</span>
-            <span className="text-[11px] text-ink-muted">Lesson staging room opens 5 minutes before start</span>
+            <span className="text-xs text-ink-muted">Lesson staging room opens 5 minutes before start</span>
           </div>
         </div>
         <div className="text-right">
           <span className="text-xs uppercase tracking-wider text-ink-muted block font-semibold">Starts in</span>
-          <span className="text-sm font-extrabold text-teal">
+          <span className="text-sm font-extrabold text-cocoa">
             {hours > 0 ? `${hours}h ${mins}m` : `${mins} mins`}
           </span>
         </div>
@@ -71,19 +71,19 @@ export function LessonCountDownClock({
   // State 2: Staging window (within 5m before start)
   if (diffMs > 0 && diffMs <= 5 * 60 * 1000) {
     return (
-      <div className={`p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-3 ${className}`}>
+      <div className={`p-4 rounded-2xl bg-success-surface border border-success-border flex items-center justify-between gap-3 ${className}`}>
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center animate-pulse">
+          <div className="w-8 h-8 rounded-xl bg-success text-white flex items-center justify-center animate-pulse">
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-xs font-black text-emerald-950 block">Staging Window Active</span>
-            <span className="text-[11px] text-emerald-800">Complete your AV hardware check and join early</span>
+            <span className="text-xs font-black text-success-hover block">Staging Window Active</span>
+            <span className="text-xs text-success-hover">Complete your AV hardware check and join early</span>
           </div>
         </div>
         <div className="text-right font-mono">
-          <span className="text-[10px] uppercase tracking-wider text-emerald-700 block font-bold">Starts in</span>
-          <span className="text-lg font-black text-emerald-900">{formatTime(diffMs / 1000)}</span>
+          <span className="text-xs uppercase tracking-wider text-success-hover block font-bold">Starts in</span>
+          <span className="text-lg font-black text-success-hover">{formatTime(diffMs / 1000)}</span>
         </div>
       </div>
     );
@@ -97,20 +97,20 @@ export function LessonCountDownClock({
       <div
         className={`p-4 rounded-2xl border flex items-center justify-between gap-3 ${
           isWrapUp
-            ? "bg-amber-50 border-amber-200 text-amber-950"
-            : "bg-teal/10 border-teal/30 text-ink"
+            ? "bg-warning-surface border-warning-border text-warning-hover"
+            : "bg-cocoa/10 border-cocoa/30 text-ink"
         } ${className}`}
       >
         <div className="flex items-center gap-2.5">
           <span className="relative flex h-3 w-3">
             <span
               className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                isWrapUp ? "bg-accent" : "bg-teal"
+                isWrapUp ? "bg-accent" : "bg-cocoa"
               }`}
             />
             <span
               className={`relative inline-flex rounded-full h-3 w-3 ${
-                isWrapUp ? "bg-accent" : "bg-teal"
+                isWrapUp ? "bg-accent" : "bg-cocoa"
               }`}
             />
           </span>
@@ -118,15 +118,15 @@ export function LessonCountDownClock({
             <span className="text-xs font-black block">
               {isWrapUp ? "Session Wrap-Up Period" : "Lesson Currently In Progress"}
             </span>
-            <span className="text-[11px] opacity-80">
+            <span className="text-xs opacity-80">
               {isWrapUp ? "Tutor summarizing key notes & feedback" : "Live 25-minute synchronous classroom"}
             </span>
           </div>
         </div>
 
         <div className="text-right font-mono">
-          <span className="text-[10px] uppercase tracking-wider opacity-75 block font-bold">Time Left</span>
-          <span className={`text-lg font-black ${isWrapUp ? "text-accent" : "text-teal"}`}>
+          <span className="text-xs uppercase tracking-wider opacity-75 block font-bold">Time Left</span>
+          <span className={`text-lg font-black ${isWrapUp ? "text-gold-bright" : "text-cocoa"}`}>
             {formatTime(inProgressMs / 1000)}
           </span>
         </div>
@@ -141,7 +141,7 @@ export function LessonCountDownClock({
         <CheckCircle2 className="w-5 h-5 text-success" />
         <div>
           <span className="text-xs font-black text-ink block">Lesson Concluded</span>
-          <span className="text-[11px] text-ink-muted">25-minute synchronous session has finished</span>
+          <span className="text-xs text-ink-muted">25-minute synchronous session has finished</span>
         </div>
       </div>
       <span className="text-xs font-extrabold text-ink-muted">00:00</span>

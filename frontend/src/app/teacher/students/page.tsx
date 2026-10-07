@@ -135,7 +135,7 @@ export default function TeacherStudentsCRMPage() {
           <div className="flex items-center gap-2">
             <Link
               href="/teacher/dashboard"
-              className="p-1.5 text-ink-400 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 text-ink-400 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
             </Link>
@@ -143,18 +143,18 @@ export default function TeacherStudentsCRMPage() {
               Student Pedagogical Dossier CRM
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-ink-600 mt-1 pl-8">
+          <p className="text-sm sm:text-sm text-ink-600 mt-1 pl-8">
             Confidential tutor notes, student learning goals, recurring grammar slips, and lesson histories.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="bg-teal-50 border border-teal-200/80 px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 text-xs text-teal-900 font-medium">
-            <Lock className="w-3.5 h-3.5 text-teal-700" /> Private to Tutor
+          <div className="bg-cocoa-50 border border-cocoa-200/80 px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 text-xs text-cocoa-900 font-medium">
+            <Lock className="w-3.5 h-3.5 text-cocoa-700" /> Private to Tutor
           </div>
           <Link
             href="/teacher/dashboard"
-            className="px-4 py-2 bg-cream-100 hover:bg-cream-200 text-ink-800 text-xs font-semibold rounded-xl transition-colors"
+            className="min-h-11 inline-flex items-center px-4 py-2 bg-cream-100 hover:bg-cream-200 text-ink-800 text-xs font-semibold rounded-xl transition-colors"
           >
             Tutor Dashboard
           </Link>
@@ -164,8 +164,8 @@ export default function TeacherStudentsCRMPage() {
       <InlineError error={saveError} />
 
       {saveSuccessMsg && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl flex items-center gap-2 text-xs font-semibold animate-scale-up">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div className="bg-success-surface border border-success-border text-success-hover p-4 rounded-2xl flex items-center gap-2 text-xs font-semibold animate-scale-up">
+          <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
           <span>{saveSuccessMsg}</span>
         </div>
       )}
@@ -179,7 +179,8 @@ export default function TeacherStudentsCRMPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search students by name, country, or CEFR level..."
-            className="w-full pl-10 pr-4 py-2 bg-cream-50/50 border border-cream-200 rounded-xl text-xs sm:text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            aria-label="Search students by name, country, or CEFR level..."
+            className="min-h-11 w-full pl-10 pr-4 py-2 bg-cream-50/50 border border-strong rounded-xl text-base sm:text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
           />
         </div>
 
@@ -211,13 +212,13 @@ export default function TeacherStudentsCRMPage() {
             {/* Header: Student Bio & Metas */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-cream-100 pb-5">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-teal-100/70 border border-teal-200 text-teal-800 flex items-center justify-center font-bold text-lg">
+                <div className="w-14 h-14 rounded-2xl bg-cocoa-100/70 border border-cocoa-200 text-cocoa-800 flex items-center justify-center font-bold text-lg">
                   {student.student_name.slice(0, 2).toUpperCase()}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-black text-ink-900">{student.student_name}</h3>
-                    <span className="text-xs bg-teal-50 text-teal-800 border border-teal-200 font-bold px-2.5 py-0.5 rounded-full">
+                    <span className="text-xs bg-cocoa-50 text-cocoa-800 border border-cocoa-200 font-bold px-2.5 py-0.5 rounded-full">
                       CEFR {student.target_level}
                     </span>
                   </div>
@@ -231,11 +232,11 @@ export default function TeacherStudentsCRMPage() {
 
               <div className="flex items-center gap-3 self-start sm:self-auto text-xs">
                 <div className="bg-cream-50 border border-cream-200 px-3.5 py-1.5 rounded-xl text-center">
-                  <span className="text-ink-400 block text-[10px] uppercase font-bold">Lessons Taken</span>
+                  <span className="text-ink-400 block text-xs uppercase font-bold">Lessons Taken</span>
                   <strong className="text-ink-900 text-sm font-extrabold">{student.lessons_completed_count}</strong>
                 </div>
                 <div className="bg-cream-50 border border-cream-200 px-3.5 py-1.5 rounded-xl text-center">
-                  <span className="text-ink-400 block text-[10px] uppercase font-bold">Last Lesson</span>
+                  <span className="text-ink-400 block text-xs uppercase font-bold">Last Lesson</span>
                   <strong className="text-ink-900 text-xs font-semibold">{student.last_lesson_date}</strong>
                 </div>
               </div>
@@ -247,13 +248,13 @@ export default function TeacherStudentsCRMPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold text-ink-700 uppercase tracking-wider">
-                    <FileText className="w-4 h-4 text-teal-600" />
+                    <FileText className="w-4 h-4 text-cocoa-600" />
                     <span>Private Pedagogical Notes</span>
                   </div>
                   {editingStudentId !== student.student_id ? (
                     <button
                       onClick={() => handleStartEdit(student)}
-                      className="text-xs font-semibold text-teal-700 hover:text-teal-900 flex items-center gap-1"
+                      className="min-h-11 text-xs font-semibold text-cocoa-700 hover:text-cocoa-900 flex items-center gap-1"
                     >
                       <Edit3 className="w-3 h-3" /> Edit Notes
                     </button>
@@ -273,13 +274,13 @@ export default function TeacherStudentsCRMPage() {
                       value={draftNotes}
                       onChange={(e) => setDraftNotes(e.target.value)}
                       rows={4}
-                      className="w-full text-xs rounded-xl border border-cream-200 p-3 bg-cream-50/50 text-ink-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full text-base sm:text-sm rounded-xl border border-strong p-3 bg-cream-50/50 text-ink-900 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
                     />
                     <div className="flex justify-end">
                       <button
                         onClick={() => handleSaveNotes(student.student_id)}
                         disabled={isSaving}
-                        className="inline-flex items-center gap-1 px-4 py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs"
+                        className="min-h-11 inline-flex items-center gap-1 px-4 py-2 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs"
                       >
                         <Save className="w-3.5 h-3.5" /> Save
                       </button>
@@ -295,22 +296,22 @@ export default function TeacherStudentsCRMPage() {
               {/* Recurring Grammar & Pronunciation Slips */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-xs font-bold text-ink-700 uppercase tracking-wider">
-                  <AlertCircle className="w-4 h-4 text-amber-600" />
+                  <AlertCircle className="w-4 h-4 text-warning" />
                   <span>Recurring Grammar & Pronunciation Slips</span>
                 </div>
 
-                <div className="bg-amber-50/30 border border-amber-200/60 rounded-2xl p-4 space-y-3 min-h-[96px]">
+                <div className="bg-warning-surface/30 border border-warning-border/60 rounded-2xl p-4 space-y-3 min-h-[96px]">
                   <div className="flex flex-wrap gap-1.5">
                     {student.common_grammar_mistakes.map((slip, idx) => (
                       <span
                         key={idx}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-amber-200 text-amber-900 rounded-lg text-xs font-medium shadow-2xs"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-warning-border text-warning-hover rounded-lg text-xs font-medium shadow-2xs"
                       >
                         {slip}
                         <button
                           type="button"
                           onClick={() => handleRemoveMistake(student.student_id, idx)}
-                          className="text-amber-400 hover:text-amber-800 ml-0.5"
+                          className="inline-flex min-h-11 min-w-11 items-center justify-center -my-2 text-warning hover:text-warning-hover" aria-label={`Remove `}
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -318,13 +319,14 @@ export default function TeacherStudentsCRMPage() {
                     ))}
                   </div>
 
-                  <div className="flex items-center gap-2 pt-1 border-t border-amber-100">
+                  <div className="flex items-center gap-2 pt-1 border-t border-warning-surface">
                     <input
                       type="text"
                       value={draftMistake}
                       onChange={(e) => setDraftMistake(e.target.value)}
                       placeholder="Add recurring slip (e.g. 'Article omission')..."
-                      className="flex-1 text-xs rounded-lg border border-cream-200 px-3 py-1.5 bg-white text-ink-900 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                      aria-label="Add recurring slip (e.g. 'Article omission')..."
+                      className="min-h-11 flex-1 text-base sm:text-sm rounded-lg border border-strong px-3 py-1.5 bg-white text-ink-900 focus:outline-none focus:ring-1 focus:ring-cocoa-500"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
@@ -335,7 +337,7 @@ export default function TeacherStudentsCRMPage() {
                     <button
                       type="button"
                       onClick={() => handleAddMistake(student.student_id)}
-                      className="p-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs"
+                      className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 bg-cocoa-600 hover:bg-cocoa-700 text-white rounded-lg text-xs"
                       title="Add slip"
                     >
                       <Plus className="w-3.5 h-3.5" />

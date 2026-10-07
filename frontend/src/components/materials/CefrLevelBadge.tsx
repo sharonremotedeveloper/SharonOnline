@@ -11,17 +11,17 @@ export function CefrLevelBadge({ level, size = "md", className = "" }: CefrLevel
   const norm = level.toUpperCase();
 
   const colorStyles = {
-    A1: "bg-emerald-50 text-emerald-800 border-emerald-200",
-    A2: "bg-emerald-50 text-emerald-800 border-emerald-200",
-    B1: "bg-teal/10 text-teal border-teal/20",
-    B2: "bg-teal/15 text-teal border-teal/30",
+    A1: "bg-success-surface text-success-hover border-success-border",
+    A2: "bg-success-surface text-success-hover border-success-border",
+    B1: "bg-cocoa/10 text-cocoa border-cocoa/20",
+    B2: "bg-cocoa/15 text-cocoa border-cocoa/30",
     C1: "bg-plum/10 text-plum border-plum/20",
-    C2: "bg-amber-50 text-amber-900 border-amber-300",
+    C2: "bg-warning-surface text-warning-hover border-warning-border",
   }[norm] || "bg-cream-surface text-ink-muted border-divider";
 
   const sizeStyles = {
-    sm: "px-2 py-0.5 text-[10px]",
-    md: "px-2.5 py-1 text-xs",
+    sm: "px-2 py-0.5 text-sm",
+    md: "px-2.5 py-1 text-sm",
     lg: "px-3.5 py-1.5 text-sm font-black",
   }[size];
 

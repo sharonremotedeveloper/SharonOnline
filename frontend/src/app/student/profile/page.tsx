@@ -108,8 +108,8 @@ export default function StudentProfilePage() {
   if (isLoading) {
     return (
       <div className="max-w-2xl mx-auto py-20 text-center space-y-3">
-        <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-xs text-ink-500">Loading student profile...</p>
+        <div className="w-8 h-8 border-2 border-cocoa-600 border-t-transparent rounded-full animate-spin mx-auto" />
+        <p className="text-sm text-ink-500">Loading student profile...</p>
       </div>
     );
   }
@@ -134,7 +134,7 @@ export default function StudentProfilePage() {
           <div className="flex items-center gap-2">
             <Link
               href="/student/dashboard"
-              className="p-1.5 text-ink-400 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-1.5 text-ink-400 hover:text-ink-900 hover:bg-cream-100 rounded-xl transition-colors"
             >
               <ChevronLeft className="w-5 h-5" />
             </Link>
@@ -142,77 +142,77 @@ export default function StudentProfilePage() {
               Learning Profile & Timezone
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-ink-600 mt-1 pl-8">
+          <p className="text-sm sm:text-sm text-ink-600 mt-1 pl-8">
             Manage your local timezone for seamless scheduling and customize your target CEFR language goals.
           </p>
         </div>
       </div>
 
       {savedSuccess && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl flex items-center gap-3 text-xs font-semibold animate-scale-up">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+        <div className="bg-success-surface border border-success-border text-success-hover p-4 rounded-2xl flex items-center gap-3 text-sm font-semibold animate-scale-up">
+          <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
           <span>Profile updated! Your scheduled lessons and memos will reflect your new preferences.</span>
         </div>
       )}
 
-      <InlineError error={saveError} />
+      <InlineError id="profile-error" error={saveError} />
 
       {/* Profile Form */}
       <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-cream-200 shadow-sm overflow-hidden">
         <div className="p-6 sm:p-8 space-y-6">
           <h2 className="text-base font-bold text-ink-900 border-b border-cream-100 pb-3 flex items-center gap-2">
-            <User className="w-4 h-4 text-teal-600" />
+            <User className="w-4 h-4 text-cocoa-600" />
             <span>Personal Information</span>
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label htmlFor="f-full-name" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Full Name
               </label>
-              <input
+              <input aria-invalid={saveError ? true : undefined} aria-describedby={saveError ? "profile-error" : undefined} id="f-full-name"
                 type="text"
                 value={formData.full_name}
                 onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="min-h-11 w-full text-base sm:text-sm rounded-xl border border-strong p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
                 required
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label htmlFor="f-email-address" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Email Address
               </label>
-              <input
+              <input aria-invalid={saveError ? true : undefined} aria-describedby={saveError ? "profile-error" : undefined} id="f-email-address"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="min-h-11 w-full text-base sm:text-sm rounded-xl border border-strong p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
                 required
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label htmlFor="f-country-of-residence" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Country of Residence
               </label>
-              <input
+              <input aria-invalid={saveError ? true : undefined} aria-describedby={saveError ? "profile-error" : undefined} id="f-country-of-residence"
                 type="text"
                 value={formData.country}
                 onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="min-h-11 w-full text-base sm:text-sm rounded-xl border border-strong p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
                 required
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label htmlFor="f-local-timezone-iana" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Local Timezone (IANA)
               </label>
-              <select
+              <select aria-invalid={saveError ? true : undefined} aria-describedby={saveError ? "profile-error" : undefined} id="f-local-timezone-iana"
                 value={formData.timezone}
                 onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="min-h-11 w-full text-base sm:text-sm rounded-xl border border-strong p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
               >
                 {TIMEZONES.map((tz) => (
                   <option key={tz.value} value={tz.value}>
@@ -224,19 +224,19 @@ export default function StudentProfilePage() {
           </div>
 
           <h2 className="text-base font-bold text-ink-900 border-b border-cream-100 pb-3 pt-4 flex items-center gap-2">
-            <Target className="w-4 h-4 text-accent-600" />
+            <Target className="w-4 h-4 text-star" />
             <span>Curriculum & Learning Goals</span>
           </h2>
 
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label htmlFor="f-target-cefr-proficiency" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Target CEFR Proficiency
               </label>
-              <select
+              <select aria-invalid={saveError ? true : undefined} aria-describedby={saveError ? "profile-error" : undefined} id="f-target-cefr-proficiency"
                 value={formData.target_level}
                 onChange={(e) => setFormData({ ...formData, target_level: e.target.value })}
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="min-h-11 w-full text-base sm:text-sm rounded-xl border border-strong p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
               >
                 {CEFR_LEVELS.map((lvl) => (
                   <option key={lvl.value} value={lvl.value}>
@@ -247,17 +247,17 @@ export default function StudentProfilePage() {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
+              <label htmlFor="f-primary-learning-objecti" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Primary Learning Objectives & Pedagogical Notes
               </label>
-              <textarea
+              <textarea aria-invalid={saveError ? true : undefined} aria-describedby={saveError ? "profile-error" : undefined} id="f-primary-learning-objecti"
                 value={formData.learning_goals}
                 onChange={(e) => setFormData({ ...formData, learning_goals: e.target.value })}
                 rows={4}
                 placeholder="Describe your current English challenges, professional speaking requirements, or specific areas you want tutors to emphasize..."
-                className="w-full text-sm rounded-xl border border-cream-200 p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full text-base sm:text-sm rounded-xl border border-strong p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
               />
-              <p className="text-xs text-ink-400 mt-1">
+              <p className="text-sm text-ink-400 mt-1">
                 Your booked tutors can view your target CEFR and learning objectives before each lesson to tailor material selection.
               </p>
             </div>
@@ -266,14 +266,14 @@ export default function StudentProfilePage() {
 
         {/* Footer */}
         <div className="p-6 bg-cream-50 border-t border-cream-200 flex items-center justify-between">
-          <span className="text-xs text-ink-500">
+          <span className="text-sm text-ink-500">
             Account ID: <strong className="font-mono text-ink-700">{profile.id}</strong>
           </span>
 
           <button
             type="submit"
             disabled={isSaving}
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+            className="min-h-11 inline-flex items-center gap-2 px-6 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
           >
             {isSaving ? (
               <>Saving...</>

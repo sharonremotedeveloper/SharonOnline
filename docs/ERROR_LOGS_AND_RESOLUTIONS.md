@@ -647,3 +647,9 @@ def configure_test_settings(settings):
 - **Root cause:** the scripted restoration inserted the two newline escape characters literally instead of as line breaks.
 - **Resolution:** replaced the literal escape with real source newlines while preserving the original admin layout.
 - **Verification:** lint, API type check, and production build passed after the fix.
+
+### ERR-444: Codex repair worktree backend tests could not start
+- **Observed:** the focused pytest command failed before collection because `backend/venv/Scripts/python.exe` points to the missing `C:\Users\AnesuMetaBox\AppData\Local\Programs\Python\Python312\python.exe`; the bundled workspace Python did not have pytest installed.
+- **Root cause:** the isolated worktree inherited a broken local virtual-environment interpreter reference from an unrelated checkout.
+- **Resolution:** created a fresh isolated `backend/.venv-codex` from the bundled Python 3.12.14 runtime and installed the declared development requirements. The broken `backend/venv` was preserved untouched.
+- **Verification:** focused repair suite, broader focused suite, OpenAPI contract suite, Django checks, migration drift check, and Ruff all pass. Full local execution reached 3,381 passing tests; Q0 nested-Git and native PostgreSQL-driver checks remain blocked by Windows application-control policy.

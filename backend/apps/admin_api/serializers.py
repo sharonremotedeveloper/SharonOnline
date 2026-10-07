@@ -104,8 +104,10 @@ class LiveSessionRadarSerializer(serializers.ModelSerializer):
 
     def get_elapsed_minutes(self, obj):
         from django.utils import timezone
-        diff = timezone.now() - obj.start_time_utc
-        return max(0, int(diff.total_seconds() // 60))
+        now = timezone.now()
+        elapsed = (now - obj.start_time_utc).total_seconds() // 60
+        lesson_minutes = (obj.end_time_utc - obj.start_time_utc).total_seconds() // 60
+        return max(0, min(int(elapsed), int(lesson_minutes)))
 
     def get_student_joined_at(self, obj):
         audit = obj.attendance_audits.filter(participant_email=obj.student.email).first()

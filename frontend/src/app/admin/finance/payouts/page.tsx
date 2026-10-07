@@ -52,7 +52,7 @@ export default function AdminPayoutsPage() {
   if (loading) {
     return (
       <div className="py-20 text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-12 h-12 border-4 border-cocoa border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm font-bold text-ink-muted">Loading South African EFT batch orchestrator...</p>
       </div>
     );
@@ -77,13 +77,13 @@ export default function AdminPayoutsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/admin/dashboard"
-            className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+            className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+              <span className="text-xs font-mono font-bold text-success-hover bg-success-surface px-2 py-0.5 rounded-md">
                 ACB / EFT ORCHESTRATOR
               </span>
               <span className="text-xs font-bold text-ink-muted">Preview of what is owed now</span>
@@ -100,25 +100,25 @@ export default function AdminPayoutsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
           <span className="text-xs font-bold text-ink-muted">Total Batch Settlement</span>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-800 font-serif">
+          <div className="text-2xl sm:text-3xl font-black text-success-hover font-serif">
             R{groupMoney(totalPayoutZar)} ZAR
           </div>
-          <p className="text-[11px] text-ink-muted">Across {batch.length} tutor{batch.length === 1 ? "" : "s"}</p>
+          <p className="text-sm text-ink-muted">Across {batch.length} tutor{batch.length === 1 ? "" : "s"}</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
           <span className="text-xs font-bold text-ink-muted">Banking Rail</span>
-          <div className="text-2xl sm:text-3xl font-black text-teal font-serif flex items-center gap-2">
+          <div className="text-2xl sm:text-3xl font-black text-cocoa font-serif flex items-center gap-2">
             <Building2 className="w-6 h-6" />
             <span>SARB ACB</span>
           </div>
-          <p className="text-[11px] text-ink-muted">Direct South African EFT inter-bank clearing</p>
+          <p className="text-sm text-ink-muted">Direct South African EFT inter-bank clearing</p>
         </div>
 
         <div className="bg-white p-6 rounded-3xl border border-divider shadow-card space-y-1">
           <span className="text-xs font-bold text-ink-muted">Settlement Schedule</span>
           <div className="text-2xl sm:text-3xl font-black text-ink font-serif">Manual</div>
-          <p className="text-[11px] text-ink-muted">A person creates, approves and confirms every run</p>
+          <p className="text-sm text-ink-muted">A person creates, approves and confirms every run</p>
         </div>
       </div>
 
@@ -129,15 +129,15 @@ export default function AdminPayoutsPage() {
         <div className="p-6 border-b border-divider flex items-center justify-between">
           <div>
             <h3 className="text-lg font-black text-ink font-serif">Owed now (preview)</h3>
-            <p className="text-xs text-ink-muted">Cleared balances of tutors with a bank account. Create a payout run above to pay them.</p>
+            <p className="text-sm text-ink-muted">Cleared balances of tutors with a bank account. Create a payout run above to pay them.</p>
           </div>
           <span className="text-xs font-bold text-ink-muted">{batch.length} Accounts Queued</span>
         </div>
 
         {batch.length === 0 ? (
-          <p className="p-8 text-center text-xs text-ink-muted">No cleared balances are waiting for payout.</p>
+          <p className="p-8 text-center text-sm text-ink-muted">No cleared balances are waiting for payout.</p>
         ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto scroll-cue">
           <table className="w-full min-w-[750px] border-collapse text-xs">
             <thead>
               <tr className="bg-cream-surface border-b border-divider text-ink-muted uppercase font-bold tracking-wider text-left">
@@ -155,20 +155,20 @@ export default function AdminPayoutsPage() {
                 <tr key={b.id} className="hover:bg-cream-surface/40 transition-colors">
                   <td className="py-4 px-6 font-extrabold text-ink">{b.teacher_name}</td>
                   <td className="py-4 px-4 font-semibold text-ink-muted">{b.bank_name}</td>
-                  <td className="py-4 px-4 font-mono font-bold text-teal">{b.branch_code}</td>
+                  <td className="py-4 px-4 font-mono font-bold text-cocoa">{b.branch_code}</td>
                   <td className="py-4 px-4 font-mono text-ink-muted">{b.account_number_masked}</td>
                   <td className="py-4 px-4 font-bold text-ink">{b.cleared_lessons_count} Lessons</td>
-                  <td className="py-4 px-4 font-black text-emerald-800 font-serif text-sm">
+                  <td className="py-4 px-4 font-black text-success-hover font-serif text-sm">
                     R{b.payout_amount_zar}
                   </td>
                   <td className="py-4 px-6">
                     {b.status === "processed" ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Settled
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-success-surface text-success-hover text-xs font-bold border border-success-border">
+                        <CheckCircle2 className="w-3 h-3 text-success" /> Settled
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200">
-                        <Clock className="w-3 h-3 text-amber-600" /> Ready for EFT
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-warning-surface text-warning-hover text-xs font-bold border border-warning-border">
+                        <Clock className="w-3 h-3 text-warning" /> Ready for EFT
                       </span>
                     )}
                   </td>

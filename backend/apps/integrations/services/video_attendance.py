@@ -70,8 +70,12 @@ def parse_video_time(raw, fallback: datetime) -> datetime:
         return fallback
 
 
-def _minutes(join: Optional[datetime], leave: Optional[datetime]) -> int:
-    if not (join and leave) or leave < join:
+def _minutes(join: Optional[datetime], leave: Optional[datetime], *, lower=None, upper=None) -> int:
+    if not join:
+        return 0
+    join = max(join, lower) if lower else join
+    leave = min(leave, upper) if leave and upper else leave
+    if not leave or leave < join:
         return 0
     return int((leave - join).total_seconds() // 60)
 
@@ -98,7 +102,10 @@ def _fill_video_row(
         row.zoom_user_id = user_id[:64]
     if event_id and event_id not in row.event_ids:
         row.event_ids = [*row.event_ids, event_id]
-    row.total_minutes = _minutes(row.join_time_utc, row.leave_time_utc)
+    row.total_minutes = _minutes(
+        row.join_time_utc,
+        row.leave_time_utc,
+    )
     row.save()
 
 

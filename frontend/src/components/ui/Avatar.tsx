@@ -31,14 +31,14 @@ export function Avatar({ src, name, alt, size = "md", className = "" }: AvatarPr
       <img
         src={src}
         alt={displayName}
-        className={`${sizeClasses} rounded-full object-cover border border-[#D8B7A5] ${className}`}
+        className={`${sizeClasses} rounded-full object-cover border border-divider ${className}`}
       />
     );
   }
 
   return (
     <div
-      className={`${sizeClasses} rounded-full bg-cream-deep text-ink flex items-center justify-center font-medium border border-[#D8B7A5] ${className}`}
+      className={`${sizeClasses} rounded-full bg-cream-deep text-ink flex items-center justify-center font-medium border border-divider ${className}`}
       aria-label={displayName}
     >
       {getInitials(displayName)}

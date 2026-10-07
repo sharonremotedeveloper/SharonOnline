@@ -1,31 +1,35 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --font-dm-sans: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-lora: 'Lora', Georgia, serif;
+/* Fonts are self-hosted through next/font (see app/layout.tsx), which sets --font-dm-sans and --font-lora. */
+
+html.cookie-bar-open {
+  scroll-padding-bottom: 9rem;
+}
+
+html.cookie-bar-open body {
+  padding-bottom: 9rem;
 }
 
 html {
-  font-family: var(--font-dm-sans);
+  font-family: var(--font-dm-sans), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: #FFF8F2;
   color: #2D2521;
   line-height: 1.6;
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background-color: #FFF8F2;
   color: #2D2521;
-  font-family: var(--font-dm-sans);
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
 }
 
 button, input, select, textarea {
@@ -37,14 +41,29 @@ button {
 }
 
 :focus-visible {
-  outline: 2px solid #A94332;
+  outline: 2.5px solid #C2410C; /* 2px nominal; 2.5px so engines that snap to device pixels never render under 2px */
   outline-offset: 3px;
   border-radius: 5px;
+}
+
+/* On sun, coral and sky blocks the orange ring is too faint (3.9 / 1.8 / 3.4): use cocoa there (9.5 / 4.5 / 8.2). */
+.focus-cocoa :focus-visible {
+  outline-color: #4A2C1A;
+}
+
+/* On the dark header, hero and footer the orange ring is too faint: use yellow there. */
+.on-dark :focus-visible {
+  outline-color: #FFDE3D;
 }
 
 ::selection {
   background: #F3C995;
   color: #2D2521;
+}
+
+/* Balanced headings avoid one-word orphan lines in every language. */
+h1, h2, h3 {
+  text-wrap: balance;
 }
 
 /* Custom subtle scrollbar */
@@ -73,4 +92,30 @@ button {
 
 .card-shadow-sm {
   box-shadow: 0 1px 4px rgba(45, 37, 33, 0.07);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Horizontal scroll cue: soft edge shadows appear only on the side that still has content to scroll to. */
+.scroll-cue {
+  background-image:
+    linear-gradient(to right, #fff 30%, rgba(255, 255, 255, 0)),
+    linear-gradient(to left, #fff 30%, rgba(255, 255, 255, 0)),
+    linear-gradient(to right, rgba(74, 44, 26, 0.28), rgba(74, 44, 26, 0)),
+    linear-gradient(to left, rgba(74, 44, 26, 0.28), rgba(74, 44, 26, 0));
+  background-position: left center, right center, left center, right center;
+  background-size: 2.5rem 100%, 2.5rem 100%, 0.9rem 100%, 0.9rem 100%;
+  background-repeat: no-repeat;
+  background-attachment: local, local, scroll, scroll;
 }

@@ -34,7 +34,7 @@ export function InteractiveWordTooltip({ vocab, children }: InteractiveWordToolt
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="font-bold text-teal underline decoration-teal/40 decoration-2 underline-offset-4 hover:decoration-teal hover:bg-teal/10 px-1 rounded transition-colors cursor-pointer"
+        className="min-h-11 inline-flex items-center font-bold text-cocoa underline decoration-cocoa/40 decoration-2 underline-offset-4 hover:decoration-cocoa hover:bg-cocoa/10 px-1 rounded transition-colors cursor-pointer"
       >
         {children || vocab.word}
       </button>
@@ -47,8 +47,8 @@ export function InteractiveWordTooltip({ vocab, children }: InteractiveWordToolt
           <span className="flex items-start justify-between gap-2 border-b border-divider pb-2 block">
             <span>
               <span className="text-sm font-extrabold text-ink font-serif block">{vocab.word}</span>
-              <span className="text-[11px] text-ink-muted block">
-                {vocab.phonetic} · <em className="text-teal">{vocab.part_of_speech}</em>
+              <span className="text-sm text-ink-muted block">
+                {vocab.phonetic} · <em className="text-cocoa">{vocab.part_of_speech}</em>
               </span>
             </span>
 
@@ -57,7 +57,7 @@ export function InteractiveWordTooltip({ vocab, children }: InteractiveWordToolt
                 type="button"
                 onClick={handleSpeak}
                 title="Hear Pronunciation"
-                className="p-1 rounded-lg bg-cream-surface hover:bg-cream-deep text-ink-muted hover:text-ink transition-colors"
+                className="min-w-11 justify-center min-h-11 inline-flex items-center p-1 rounded-lg bg-cream-surface hover:bg-cream-deep text-ink-muted hover:text-ink transition-colors"
               >
                 <Volume2 className="w-3.5 h-3.5" />
               </button>
@@ -66,7 +66,7 @@ export function InteractiveWordTooltip({ vocab, children }: InteractiveWordToolt
                 type="button"
                 onClick={handleSaveToBank}
                 title="Save to My Vocab Bank"
-                className={`p-1 rounded-lg transition-colors ${
+                className={`min-h-11 inline-flex items-center p-1 rounded-lg transition-colors ${
                   saved
                     ? "bg-success text-white"
                     : "bg-cream-surface hover:bg-cream-deep text-ink-muted hover:text-ink"
@@ -77,16 +77,16 @@ export function InteractiveWordTooltip({ vocab, children }: InteractiveWordToolt
             </span>
           </span>
 
-          <span className="text-xs text-ink leading-relaxed block">{vocab.definition}</span>
+          <span className="text-sm text-ink leading-relaxed block">{vocab.definition}</span>
 
           {vocab.example_sentence && (
-            <span className="p-2 rounded-xl bg-cream-surface border border-cream-deep text-[11px] text-ink-muted italic leading-snug block">
+            <span className="p-2 rounded-xl bg-cream-surface border border-cream-deep text-sm text-ink-muted italic leading-snug block">
               "{vocab.example_sentence}"
             </span>
           )}
 
           {saved && (
-            <span className="text-[10px] font-bold text-success flex items-center gap-1 block">
+            <span className="text-sm font-bold text-success flex items-center gap-1 block">
               <Sparkles className="w-3 h-3" /> Saved to Student Study Bank
             </span>
           )}

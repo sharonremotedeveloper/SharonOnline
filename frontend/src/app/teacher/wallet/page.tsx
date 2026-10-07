@@ -26,8 +26,8 @@ export default function TeacherWalletPage() {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center py-20">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-teal border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm font-bold text-ink-muted">Loading earnings and payout ledger...</p>
+          <div className="w-12 h-12 border-4 border-cocoa border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm font-bold text-ink-muted">Loading your earnings...</p>
         </div>
       </div>
     );
@@ -39,7 +39,7 @@ export default function TeacherWalletPage() {
         <div className="max-w-xl mx-auto px-4 space-y-4">
           <ErrorState error={error ?? "No wallet data returned."} title="We couldn't load your earnings wallet" onRetry={reload} />
           <div className="text-center">
-            <Link href="/teacher/dashboard" className="text-xs font-bold text-teal hover:underline">
+            <Link href="/teacher/dashboard" className="min-h-11 inline-flex items-center text-sm font-bold text-cocoa hover:underline">
               Return to dashboard
             </Link>
           </div>
@@ -56,13 +56,13 @@ export default function TeacherWalletPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/teacher/dashboard"
-              className="p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+              className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                <span className="text-xs font-mono font-bold text-success-hover bg-success-surface px-2 py-0.5 rounded-md">
                   ZAR CLEARING LEDGER
                 </span>
                 <span className="text-xs font-bold text-ink-muted">Tutor Financial Center</span>
@@ -77,9 +77,9 @@ export default function TeacherWalletPage() {
             <StatementButton />
             <Link
               href="/teacher/wallet/payout-settings"
-              className="px-5 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-2 transition-all"
+              className="min-h-11 px-5 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-2 transition-all"
             >
-              <Building2 className="w-4 h-4 text-teal" />
+              <Building2 className="w-4 h-4 text-cocoa" />
               <span>Manage EFT Payout Bank</span>
               <ArrowRight className="w-3.5 h-3.5 text-ink-muted" />
             </Link>
@@ -92,7 +92,7 @@ export default function TeacherWalletPage() {
         {/* Registered Payout Bank Summary */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-teal/10 text-teal flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-cocoa/10 text-cocoa flex items-center justify-center shrink-0">
               <Building2 className="w-6 h-6" />
             </div>
             <div className="space-y-1">
@@ -104,7 +104,7 @@ export default function TeacherWalletPage() {
                   <h3 className="text-lg font-black text-ink font-serif">
                     {wallet.payout_bank_account.bank_name} · {wallet.payout_bank_account.account_number_masked}
                   </h3>
-                  <p className="text-xs text-ink-muted">
+                  <p className="text-sm text-ink-muted">
                     Branch Code: <span className="font-mono font-bold text-ink">{wallet.payout_bank_account.branch_code}</span> ·{" "}
                     Account Type: <span className="capitalize">{wallet.payout_bank_account.account_type}</span>
                   </p>
@@ -112,7 +112,7 @@ export default function TeacherWalletPage() {
               ) : (
                 <>
                   <h3 className="text-lg font-black text-ink font-serif">No payout account on file</h3>
-                  <p className="text-xs text-ink-muted">Add your bank details to receive payouts.</p>
+                  <p className="text-sm text-ink-muted">Add your bank details to receive payouts.</p>
                 </>
               )}
             </div>
@@ -120,8 +120,8 @@ export default function TeacherWalletPage() {
 
           {wallet.payout_bank_account && (
             <div className="flex items-center gap-3">
-              <span className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span className="text-xs text-success-hover bg-success-surface border border-success-border px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-success" />
                 <span>Account Configured</span>
               </span>
             </div>
@@ -132,16 +132,16 @@ export default function TeacherWalletPage() {
         <div className="bg-white rounded-3xl border border-divider shadow-card p-6 sm:p-8 space-y-6">
           <div className="flex items-center justify-between border-b border-divider pb-4">
             <div>
-              <h3 className="text-lg font-black text-ink font-serif">Lesson Clearing Ledger</h3>
-              <p className="text-xs text-ink-muted">Transparent breakdown of gross USD fees and net ZAR settlement</p>
+              <h3 className="text-lg font-black text-ink font-serif">Lesson earnings history</h3>
+              <p className="text-sm text-ink-muted">Transparent breakdown of gross USD fees and net ZAR settlement</p>
             </div>
             <span className="text-xs font-bold text-ink-muted">Showing {wallet.transactions.length} entries</span>
           </div>
 
           {wallet.transactions.length === 0 ? (
-            <p className="text-xs text-ink-muted text-center py-6">No transactions yet.</p>
+            <p className="text-sm text-ink-muted text-center py-6">No transactions yet.</p>
           ) : (
-          <div className="overflow-x-auto rounded-2xl border border-divider">
+          <div className="overflow-x-auto scroll-cue rounded-2xl border border-divider">
             <table className="w-full min-w-[700px] border-collapse text-xs">
               <thead>
                 <tr className="bg-cream-surface border-b border-divider text-ink-muted uppercase font-bold tracking-wider text-left">
@@ -157,7 +157,7 @@ export default function TeacherWalletPage() {
                 {wallet.transactions.map((tx) => (
                   <tr key={tx.id} className="hover:bg-cream-surface/40 transition-colors">
                     <td className="py-3 px-4 font-medium text-ink-muted">{tx.date}</td>
-                    <td className="py-3 px-4 font-mono font-bold text-teal">{tx.booking_ref}</td>
+                    <td className="py-3 px-4 font-mono font-bold text-cocoa">{tx.booking_ref}</td>
                     <td className="py-3 px-4 font-bold text-ink">{tx.student_name}</td>
                     <td className="py-3 px-4 font-medium text-ink-muted">{tx.gross_amount.toFixed(2)} {tx.currency}</td>
                     <td className="py-3 px-4 font-extrabold text-ink font-serif text-sm">
@@ -165,16 +165,16 @@ export default function TeacherWalletPage() {
                     </td>
                     <td className="py-3 px-4">
                       {tx.status === "cleared" ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-bold border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Cleared
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-success-surface text-success-hover text-xs font-bold border border-success-border">
+                          <CheckCircle2 className="w-3 h-3 text-success" /> Cleared
                         </span>
                       ) : tx.status === "pending" ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200">
-                          <Clock className="w-3 h-3 text-amber-600" /> In 24h Escrow
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-warning-surface text-warning-hover text-xs font-bold border border-warning-border">
+                          <Clock className="w-3 h-3 text-warning" /> Held for 24 hours
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal/10 text-teal text-[10px] font-bold border border-teal/20">
-                          <CheckCircle2 className="w-3 h-3 text-teal" /> Paid to Bank
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-cocoa/10 text-cocoa text-xs font-bold border border-cocoa/20">
+                          <CheckCircle2 className="w-3 h-3 text-cocoa" /> Paid to Bank
                         </span>
                       )}
                     </td>

@@ -51,14 +51,14 @@ export function TutorReviewList({ ratingAvg, ratingCount, reviews = DEFAULT_REVI
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b border-divider pb-6">
         <div className="space-y-1">
           <h3 className="text-xl font-extrabold text-ink font-serif">Verified Student Reviews</h3>
-          <p className="text-xs text-ink-muted">All reviews are from students who completed a 25-minute lesson</p>
+          <p className="text-sm text-ink-muted">All reviews are from students who completed a 25-minute lesson</p>
         </div>
 
         <div className="flex items-center gap-4 bg-cream-surface p-4 rounded-2xl border border-cream-deep">
-          <div className="text-3xl font-extrabold text-teal font-serif">{ratingAvg.toFixed(2)}</div>
+          <div className="text-3xl font-extrabold text-cocoa font-serif">{ratingAvg.toFixed(2)}</div>
           <div>
             <StarRating rating={ratingAvg} size="md" />
-            <div className="text-xs text-ink-muted font-medium mt-0.5">Based on {ratingCount} ratings</div>
+            <div className="text-sm text-ink-muted font-medium mt-0.5">Based on {ratingCount} ratings</div>
           </div>
         </div>
       </div>
@@ -70,20 +70,20 @@ export function TutorReviewList({ ratingAvg, ratingCount, reviews = DEFAULT_REVI
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-base">{rev.student_flag}</span>
-                <span className="text-xs font-bold text-ink">{rev.student_name}</span>
-                <span className="inline-flex items-center gap-1 text-[10px] text-success font-semibold">
+                <span className="text-sm font-bold text-ink">{rev.student_name}</span>
+                <span className="inline-flex items-center gap-1 text-sm text-success font-semibold">
                   <CheckCircle2 className="w-3 h-3" /> Verified Lesson
                 </span>
               </div>
-              <span className="text-[11px] text-ink-muted">{rev.date}</span>
+              <span className="text-sm text-ink-muted">{rev.date}</span>
             </div>
 
             <div className="flex items-center gap-2">
               <StarRating rating={rev.rating} size="sm" />
-              <span className="text-[11px] font-bold text-primary">Topic: {rev.lesson_topic}</span>
+              <span className="text-sm font-bold text-primary">Topic: {rev.lesson_topic}</span>
             </div>
 
-            <p className="text-xs text-ink-muted leading-relaxed pt-1">{rev.comment}</p>
+            <p className="text-sm text-ink-muted leading-relaxed pt-1">{rev.comment}</p>
           </div>
         ))}
       </div>

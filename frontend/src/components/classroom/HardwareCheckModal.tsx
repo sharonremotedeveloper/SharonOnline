@@ -190,14 +190,14 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
         <div className="p-6 bg-cream-surface border-b border-divider flex items-center justify-between">
           <div className="space-y-1">
             <h3 className="text-xl font-black text-ink font-serif">Hardware AV Readiness Check</h3>
-            <p className="text-xs text-ink-muted">Test your webcam, microphone, and speakers before entering the Zoom lesson</p>
+            <p className="text-sm text-ink-muted">Test your webcam, microphone, and speakers before entering the Zoom lesson</p>
           </div>
           <button
             onClick={() => {
               stopMedia();
               onClose();
             }}
-            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-white transition-colors"
+            className="min-w-11 justify-center min-h-11 inline-flex items-center p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-white transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -209,7 +209,7 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-bold text-ink">
               <span className="flex items-center gap-2">
-                <Camera className="w-4 h-4 text-teal" />
+                <Camera className="w-4 h-4 text-cocoa" />
                 <span>Webcam Video Feed</span>
               </span>
               {hasCamera === true ? (
@@ -217,7 +217,7 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
                   <CheckCircle2 className="w-3.5 h-3.5" /> Working
                 </span>
               ) : hasCamera === false ? (
-                <span className="text-amber-600 flex items-center gap-1 font-bold">
+                <span className="text-warning flex items-center gap-1 font-bold">
                   <AlertTriangle className="w-3.5 h-3.5" /> Camera Inactive
                 </span>
               ) : (
@@ -235,8 +235,8 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
               />
               {hasCamera !== true && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-cream/70 bg-ink/80 space-y-2">
-                  <Camera className="w-8 h-8 text-cream/40" />
-                  <p className="text-xs font-medium">
+                  <Camera className="w-8 h-8 text-cream/75" />
+                  <p className="text-sm font-medium">
                     {errorMsg ? "Camera access unavailable or blocked" : "Webcam preview active or awaiting permission"}
                   </p>
                 </div>
@@ -248,10 +248,10 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
           <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-3">
             <div className="flex items-center justify-between text-xs font-bold text-ink">
               <span className="flex items-center gap-2">
-                <Mic className="w-4 h-4 text-teal" />
+                <Mic className="w-4 h-4 text-cocoa" />
                 <span>Microphone Input Level</span>
               </span>
-              <span className="text-[11px] text-ink-muted">Speak to test bar</span>
+              <span className="text-xs text-ink-muted">Speak to test bar</span>
             </div>
 
             <div className="flex items-center gap-1.5 h-4 bg-white p-1 rounded-lg border border-divider">
@@ -279,34 +279,34 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="p-4 rounded-2xl bg-cream-surface border border-divider flex flex-col justify-between space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-ink">
-                <Volume2 className="w-4 h-4 text-teal" />
+                <Volume2 className="w-4 h-4 text-cocoa" />
                 <span>Speaker Output</span>
               </div>
               <button
                 type="button"
                 onClick={playTestChime}
-                className="w-full py-2 px-3 rounded-xl bg-white hover:bg-cream-deep border border-divider text-xs font-bold text-ink flex items-center justify-center gap-2 transition-colors shadow-xs"
+                className="min-h-11 w-full py-2 px-3 rounded-xl bg-white hover:bg-cream-deep border border-divider text-xs font-bold text-ink flex items-center justify-center gap-2 transition-colors shadow-xs"
               >
-                <Play className="w-3.5 h-3.5 text-teal" />
+                <Play className="w-3.5 h-3.5 text-cocoa" />
                 <span>{speakerTested ? "Play Sound Again" : "Play Test Chime"}</span>
               </button>
             </div>
 
             <div className="p-4 rounded-2xl bg-cream-surface border border-divider flex flex-col justify-between space-y-3">
               <div className="flex items-center gap-2 text-xs font-bold text-ink">
-                <Wifi className="w-4 h-4 text-teal" />
+                <Wifi className="w-4 h-4 text-cocoa" />
                 <span>Network Stability</span>
               </div>
               <div className="flex items-center justify-between text-xs bg-white p-2 rounded-xl border border-divider font-bold">
                 <span className="text-ink">Network Latency</span>
                 {isMeasuringPing ? (
-                  <span className="text-ink-muted text-[11px] animate-pulse">Measuring...</span>
+                  <span className="text-ink-muted text-xs animate-pulse">Measuring...</span>
                 ) : pingMs !== null ? (
-                  <span className={pingMs < 100 ? "text-success" : pingMs < 250 ? "text-amber-600" : "text-rose-500"}>
+                  <span className={pingMs < 100 ? "text-success" : pingMs < 250 ? "text-warning" : "text-error"}>
                     {pingMs} ms ({pingMs < 100 ? "Excellent" : pingMs < 250 ? "Good" : "High Latency"})
                   </span>
                 ) : (
-                  <span className="text-ink-muted text-[11px]">Unavailable</span>
+                  <span className="text-ink-muted text-xs">Unavailable</span>
                 )}
               </div>
             </div>
@@ -326,7 +326,7 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
           <button
             type="button"
             onClick={handleFinish}
-            className="px-6 py-2.5 rounded-2xl bg-teal hover:bg-teal-hover text-white text-xs font-extrabold flex items-center gap-2 transition-all shadow-md"
+            className="min-h-11 px-6 py-2.5 rounded-2xl bg-cocoa hover:bg-cocoa-hover text-white text-xs font-extrabold flex items-center gap-2 transition-all shadow-md"
           >
             <CheckCircle2 className="w-4 h-4" />
             <span>Ready for Lesson</span>
