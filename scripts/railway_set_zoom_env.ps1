@@ -20,6 +20,7 @@ foreach ($svc in $Services) {
   foreach ($n in $names) {
     if (-not $vals[$n]) { throw "$n missing in .env" }
     railway variables --service $svc --environment $Environment --skip-deploys --set "$n=$($vals[$n])" | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "railway failed setting $n on $svc (exit $LASTEXITCODE); nothing further was set. Run `railway link` in this folder first." }
   }
   "$svc : $($names.Count) variables set (no deploy triggered)"
 }
