@@ -295,6 +295,10 @@ ZOOM_HOST_LINK_OPEN_MINUTES_BEFORE = int(os.environ.get('ZOOM_HOST_LINK_OPEN_MIN
 # --- Zoom Video SDK (In-Platform Classroom Engine - Decision D-9) ---
 ZOOM_VIDEO_SDK_KEY = os.environ.get('ZOOM_VIDEO_SDK_KEY', '')
 ZOOM_VIDEO_SDK_SECRET = os.environ.get('ZOOM_VIDEO_SDK_SECRET', '')
+# Video SDK *REST* API (session probe, V4): Zoom accepts only a JWT signed with the app's separate "API credentials"
+# (`iss` claim). The SDK key/secret above sign client join tokens and are rejected there (verified live 2026-10-08).
+ZOOM_VIDEO_SDK_API_KEY = os.environ.get('ZOOM_VIDEO_SDK_API_KEY', '')
+ZOOM_VIDEO_SDK_API_SECRET = os.environ.get('ZOOM_VIDEO_SDK_API_SECRET', '')
 ZOOM_VIDEO_SDK_SESSION_VALID_SECONDS = int(os.environ.get('ZOOM_VIDEO_SDK_SESSION_VALID_SECONDS', '7200'))
 ZOOM_VIDEO_SDK_OPEN_MINUTES_BEFORE = int(os.environ.get('ZOOM_VIDEO_SDK_OPEN_MINUTES_BEFORE', '15'))
 ZOOM_VIDEO_SDK_WEBHOOK_SECRET = os.environ.get('ZOOM_VIDEO_SDK_WEBHOOK_SECRET', '') or ZOOM_WEBHOOK_SECRET_TOKEN

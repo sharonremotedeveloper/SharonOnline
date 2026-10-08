@@ -27,6 +27,8 @@ SAMPLE_SECRET = 'test_video_sdk_secret_36chars_abcdef1234'
 def video_sdk_settings(settings):
     settings.ZOOM_VIDEO_SDK_KEY = SAMPLE_KEY
     settings.ZOOM_VIDEO_SDK_SECRET = SAMPLE_SECRET
+    settings.ZOOM_VIDEO_SDK_API_KEY = 'api_key_for_rest_probe'
+    settings.ZOOM_VIDEO_SDK_API_SECRET = 'api_secret_for_rest_probe_36chars_abcd'
     settings.ZOOM_HTTP_MAX_ATTEMPTS = 2
     settings.ZOOM_HTTP_TIMEOUT_SECONDS = 2
     return settings
@@ -57,6 +59,19 @@ class TestVideoSessionProbe:
         settings.ZOOM_VIDEO_SDK_KEY = ''
         settings.ZOOM_VIDEO_SDK_SECRET = ''
         assert probe_session(confirmed_booking) == UNKNOWN
+
+    def test_missing_rest_api_credentials_return_unknown_without_calling_zoom(self, video_sdk_settings, confirmed_booking):
+        video_sdk_settings.ZOOM_VIDEO_SDK_API_KEY = ''
+        with mock.patch('apps.bookings.services.video_session_probe.requests.get') as get:
+            assert probe_session(confirmed_booking) == UNKNOWN
+        get.assert_not_called()
+
+    def test_rest_jwt_is_signed_with_the_api_credentials_and_carries_iss(self, video_sdk_settings):
+        import jwt as pyjwt
+        from apps.bookings.services.video_session_probe import _generate_api_jwt
+        decoded = pyjwt.decode(_generate_api_jwt(), 'api_secret_for_rest_probe_36chars_abcd', algorithms=['HS256'])
+        assert decoded['iss'] == 'api_key_for_rest_probe'
+        assert 'app_key' not in decoded
 
     def test_booking_without_teacher_user_returns_unknown(self, video_sdk_settings):
         booking = mock.Mock(teacher=None)

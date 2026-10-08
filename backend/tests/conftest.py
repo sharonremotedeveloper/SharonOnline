@@ -97,12 +97,16 @@ def no_video_sdk_credentials(settings):
     lesson is provisioned and judged, see tests/test_v4_attendance_contract.py). Tests opt in with `video_sdk_on`."""
     settings.ZOOM_VIDEO_SDK_KEY = ''
     settings.ZOOM_VIDEO_SDK_SECRET = ''
+    settings.ZOOM_VIDEO_SDK_API_KEY = ''
+    settings.ZOOM_VIDEO_SDK_API_SECRET = ''
 
 
 @pytest.fixture
 def video_sdk_on(settings):
     settings.ZOOM_VIDEO_SDK_KEY = 'k' * 32
     settings.ZOOM_VIDEO_SDK_SECRET = 's' * 32
+    settings.ZOOM_VIDEO_SDK_API_KEY = 'a' * 22
+    settings.ZOOM_VIDEO_SDK_API_SECRET = 'b' * 36
     return settings
 
 
