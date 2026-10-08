@@ -6,6 +6,7 @@ import { Footer } from "../components/Footer";
 import { AuthProvider } from "@/context/AuthContext";
 import { VerifyEmailBanner } from "@/components/account/VerifyEmailBanner";
 import { CookieBanner } from "@/components/legal/CookieBanner";
+import { SITE_URL } from "@/lib/siteUrl";
 
 // Self-hosted by next/font: no render-blocking @import and no visitor IP sent to Google (GDPR).
 const dmSans = DM_Sans({ subsets: ["latin"], variable: "--font-dm-sans", display: "swap" });
@@ -16,7 +17,7 @@ const DESCRIPTION =
   "Speak English with confidence. Private 25-minute video lessons with certified, friendly South African tutors. Pick a time in your own time zone. First lesson refundable.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"),
+  metadataBase: new URL(SITE_URL),
   title: TITLE,
   description: DESCRIPTION,
   applicationName: "Sharon Online",

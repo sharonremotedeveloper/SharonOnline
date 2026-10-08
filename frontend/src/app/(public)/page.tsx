@@ -12,8 +12,8 @@ import { VettingSteps } from "@/components/public/VettingSteps";
 import { FaqSection, FAQS } from "@/components/public/FaqSection";
 import { fetchFeaturedTutors } from "@/lib/api";
 import { LessonPriceLabel } from "@/components/ui/LessonPriceLabel";
+import { SITE_URL } from "@/lib/siteUrl";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 // Only facts that are true of the product. No rating or review count appears here unless it comes from real data.
 const structuredData = [
