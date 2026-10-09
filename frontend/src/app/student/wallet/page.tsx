@@ -21,6 +21,7 @@ import { CurrencySwitcher } from "@/components/public/CurrencySwitcher";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
 import { PayPalButtonsWrapper } from "@/components/booking/PayPalButtonsWrapper";
+import { PAYMENTS_ENABLED } from "@/lib/paymentsEnabled";
 import type { OutcomeView } from "@/lib/paypalOutcome";
 import { rememberPendingPayFast } from "@/lib/pendingPayment";
 import { ReceiptsList } from "@/components/student/ReceiptsList";
@@ -193,6 +194,11 @@ export default function StudentWalletPage() {
       )}
 
       {/* Top-Up Bundle Packs Grid */}
+      {!PAYMENTS_ENABLED ? (
+        <p className="text-sm text-ink-muted bg-cream-surface border border-divider rounded-xl px-4 py-3">
+        Payments are switched off in this test environment. Lessons are booked with lesson credits.
+        </p>
+      ) : (
       <div className="space-y-4">
         <div className="space-y-1">
           <h2 className="text-xl font-extrabold text-ink font-serif">Top Up Lesson Packs</h2>
@@ -284,6 +290,7 @@ export default function StudentWalletPage() {
           })}
         </div>
       </div>
+      )}
 
       {/* Credit packs on the account */}
       {wallet && (

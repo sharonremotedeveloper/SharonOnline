@@ -460,6 +460,10 @@ PAYPAL_CAPTURE_CONFIRMS = _env_bool('PAYPAL_CAPTURE_CONFIRMS', True)
 FX_RATE_MAX_AGE_HOURS = int(os.environ.get('FX_RATE_MAX_AGE_HOURS', '24'))
 # D-1: retail lesson prices are platform-set per currency in payments.LessonPrice (Task 10.1); no FX setting here.
 
+# False refuses gateway checkout and PayPal capture (503 payments_disabled); lesson credits can still be redeemed. For
+# deployed test environments that do not exercise payments. The frontend mirrors it with NEXT_PUBLIC_PAYMENTS_ENABLED.
+PAYMENTS_ENABLED = _env_bool('PAYMENTS_ENABLED', True)
+
 PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', '')
 PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', '')
 PAYPAL_MODE = os.environ.get('PAYPAL_MODE', 'sandbox')

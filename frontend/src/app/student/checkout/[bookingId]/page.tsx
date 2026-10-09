@@ -28,6 +28,7 @@ import { useLessonPrices } from "@/hooks/useLessonPrices";
 import { ReservationTimer } from "@/components/booking/ReservationTimer";
 import { PayFastForm } from "@/components/booking/PayFastForm";
 import { PayPalButtonsWrapper } from "@/components/booking/PayPalButtonsWrapper";
+import { PAYMENTS_ENABLED } from "@/lib/paymentsEnabled";
 import type { OutcomeView } from "@/lib/paypalOutcome";
 import { rememberPendingPayFast } from "@/lib/pendingPayment";
 import { creditsLabel } from "@/lib/rating";
@@ -97,7 +98,7 @@ export default function StudentCheckoutPage() {
 
   // Default to the card gateway when the student has no credits to redeem.
   useEffect(() => {
-    if (!hasCredits) setActiveGateway((g) => (g === "credit" ? "paypal" : g));
+    if (!hasCredits && PAYMENTS_ENABLED) setActiveGateway((g) => (g === "credit" ? "paypal" : g));
   }, [hasCredits]);
 
   const handleHoldExpired = useCallback(() => {
@@ -296,6 +297,7 @@ export default function StudentCheckoutPage() {
             </div>
 
             {/* Gateway Selector Tabs */}
+            {PAYMENTS_ENABLED && (
             <div className={`grid ${hasCredits ? "grid-cols-3" : "grid-cols-2"} gap-2 p-1.5 bg-cream-surface rounded-2xl border border-divider`}>
               {hasCredits && (
               <button
@@ -337,6 +339,10 @@ export default function StudentCheckoutPage() {
                 <span>🇿🇦 PayFast (ZAR)</span>
               </button>
             </div>
+            )}
+            {!PAYMENTS_ENABLED && (<p className="text-sm text-ink-muted bg-cream-surface border border-divider rounded-xl px-4 py-3">
+            Payments are switched off in this test environment. Lessons are booked with lesson credits.
+            </p>)}
 
             {/* Path A: Credit Redemption */}
             {hasCredits && activeGateway === "credit" && (
@@ -401,7 +407,7 @@ export default function StudentCheckoutPage() {
             )}
 
             {/* Path B1: PayPal International */}
-            {activeGateway === "paypal" && !underReview && !slotLost && (
+            {PAYMENTS_ENABLED && activeGateway === "paypal" && !underReview && !slotLost && (
               <PayPalButtonsWrapper
                 target={{ kind: "booking", bookingId }}
                 currency={paypalCurrency ?? "USD"}
@@ -414,7 +420,7 @@ export default function StudentCheckoutPage() {
             )}
 
             {/* Path B2: PayFast ZAR */}
-            {activeGateway === "payfast" && (
+            {PAYMENTS_ENABLED && activeGateway === "payfast" && (
               <PayFastForm
                 amountLabel={activeGateway === "payfast" ? amountLabel : null}
                 bookingReference={booking.booking_reference}

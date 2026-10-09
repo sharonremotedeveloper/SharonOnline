@@ -82,6 +82,11 @@ def _bind_gateway_reference(tx: PaymentTransaction, gateway_reference: str, raw_
     return True
 
 
+def payments_disabled_response():
+    return Response({"error": "Payments are disabled in this environment.", "code": "payments_disabled"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class CheckoutInitializeView(APIView):
     """
@@ -93,6 +98,8 @@ class CheckoutInitializeView(APIView):
     throttle_scope = 'checkout'
 
     def post(self, request):
+        if not settings.PAYMENTS_ENABLED:
+            return payments_disabled_response()
         if not isinstance(request.data, dict):
             return Response({"error": "JSON object expected."}, status=status.HTTP_400_BAD_REQUEST)
         gateway = request.data.get('gateway', 'paypal')
@@ -433,6 +440,8 @@ class PayPalCaptureView(APIView):
         }, status=http)
 
     def post(self, request):
+        if not settings.PAYMENTS_ENABLED:
+            return payments_disabled_response()
         order_id = request.data.get('order_id') if isinstance(request.data, dict) else None
         if not order_id or not isinstance(order_id, str):
             return Response({"error": "order_id is required."}, status=status.HTTP_400_BAD_REQUEST)
