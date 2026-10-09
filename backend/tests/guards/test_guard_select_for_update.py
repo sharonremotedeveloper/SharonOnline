@@ -15,7 +15,6 @@ from guards._scan import APPS, parents, parse, ratchet_errors, scan, src
 
 # Baseline 2026-10-04: {file: number of select_for_update() + select_related() chains without of=('self',)}.
 ALLOWLIST = {
-    'integrations/views.py': 1,
     'payments/services/credits.py': 3,
     'payments/services/grace.py': 3,
     'payments/services/webhook_handler.py': 2,

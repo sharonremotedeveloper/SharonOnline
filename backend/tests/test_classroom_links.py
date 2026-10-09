@@ -1,4 +1,4 @@
-"""The one function that builds a lesson's join link (Phase 11/12 seam 1): the in-browser classroom, never a Zoom URL."""
+"""The one function that builds a lesson's join link (Phase 11/12 seam 1): the in-browser classroom page."""
 import pytest
 
 import factories as f
@@ -15,11 +15,11 @@ class TestClassroomLinks:
         assert classroom_url(booking, 'student') == f'https://app.example.com/student/classroom/{booking.id}'
         assert classroom_url(booking, 'teacher') == f'https://app.example.com/teacher/classroom/{booking.id}'
 
-    def test_link_never_contains_a_zoom_url(self, settings):
+    def test_link_is_built_from_the_frontend_base_url_only(self, settings):
         settings.FRONTEND_BASE_URL = 'https://app.example.com'
-        booking = f.make_booking(zoom_join_url='https://zoom.us/j/123', zoom_start_url='https://zoom.us/s/123')
+        booking = f.make_booking()
         for role in ('student', 'teacher'):
-            assert 'zoom' not in classroom_url(booking, role)
+            assert classroom_url(booking, role).startswith('https://app.example.com/')
 
     def test_unknown_role_is_refused(self):
         with pytest.raises(ValueError):

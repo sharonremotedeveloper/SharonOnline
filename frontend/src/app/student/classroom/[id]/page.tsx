@@ -20,7 +20,6 @@ import { api } from "@/lib/api";
 import { BookingDetail } from "@/types/booking";
 import { MaterialDetail } from "@/types/material";
 import { HardwareCheckModal } from "@/components/classroom/HardwareCheckModal";
-import { ZoomLauncherButton } from "@/components/classroom/ZoomLauncherButton";
 import { DailyClassroom } from "@/components/classroom/DailyClassroom";
 import { LessonCountDownClock } from "@/components/classroom/LessonCountDownClock";
 import { EskomReportButton } from "@/components/classroom/EskomReportButton";
@@ -217,11 +216,6 @@ export default function StudentClassroomPage() {
                 isHost={false}
                 partnerName={booking.teacher.full_name}
                 partnerAvatar={booking.teacher.avatar_url || undefined}
-                legacyJoinUrl={
-                  booking.zoom_meeting_id && (booking.zoom_join_url || booking.zoom_url)
-                    ? ((booking.zoom_join_url || booking.zoom_url) as string)
-                    : undefined
-                }
               />
               {materialError ? <InlineError error={materialError} /> : null}
             </div>

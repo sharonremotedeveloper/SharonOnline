@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { fetchVideoSessionToken, videoSessionProblem } from "./videoSdk";
+import { fetchVideoSessionToken, videoSessionProblem } from "./classroomSession";
 import { ApiError } from "./http";
 
 const realFetch = globalThis.fetch;
@@ -37,8 +37,6 @@ describe("fetchVideoSessionToken", () => {
         JSON.stringify({
           token: "jwt-token-xyz-1234567890",
           session_name: "lesson-b-1",
-          role_type: 1,
-          user_identity: "user-101",
           user_name: "Jane Tutor",
           expires_at: 1790000000,
         }),
@@ -54,8 +52,6 @@ describe("fetchVideoSessionToken", () => {
     assert.equal(capturedMethod, "GET");
     assert.equal(tokenData.token, "jwt-token-xyz-1234567890");
     assert.equal(tokenData.session_name, "lesson-b-1");
-    assert.equal(tokenData.role_type, 1);
-    assert.equal(tokenData.user_identity, "user-101");
     assert.equal(tokenData.user_name, "Jane Tutor");
   });
 
@@ -65,8 +61,6 @@ describe("fetchVideoSessionToken", () => {
         JSON.stringify({
           token: "daily-meeting-token-jwt",
           session_name: "sharon-lesson-room-1",
-          role_type: 1,
-          user_identity: "user-42",
           user_name: "Teacher Sharon",
           expires_at: 1790005000,
           room_url: "https://sharon-online.daily.co/sharon-lesson-room-1",
@@ -90,8 +84,6 @@ describe("fetchVideoSessionToken", () => {
         JSON.stringify({
           token: "jwt-token",
           session_name: "lesson-test",
-          role_type: 0,
-          user_identity: "202",
           user_name: "Student",
           expires_at: 1790000000,
         }),

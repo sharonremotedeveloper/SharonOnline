@@ -104,12 +104,12 @@ def slot_unavailable_reason(booking, now=None) -> str:
 
 
 def finish_confirmed_booking(booking) -> None:
-    """After a booking was confirmed: free the temporary Redis hold and queue Zoom / GCal / e-mail on commit."""
+    """After a booking was confirmed: free the temporary Redis hold and queue room / GCal / e-mail on commit."""
     # Release the temporary Redis lock now that it's permanently confirmed in PostgreSQL
     release_slot_lock(str(booking.teacher_id), booking.start_time_utc.isoformat(), str(booking.student_id),
                       token=booking.slot_lock_token or None)
 
-    # Trigger background fulfillment (Zoom, GCal, Resend) only AFTER the commit, so the worker can never
+    # Trigger background fulfillment (Daily room, GCal, Resend) only AFTER the commit, so the worker can never
     # observe the booking still PENDING_PAYMENT, and a rolled-back payment never queues a task.
     booking_id_str = str(booking.id)
     transaction.on_commit(lambda: dispatch_fulfillment(booking_id_str))

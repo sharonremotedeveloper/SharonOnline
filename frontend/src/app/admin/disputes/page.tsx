@@ -210,30 +210,30 @@ export default function AdminDisputesPage() {
                   </p>
                 </div>
 
-                {/* 3. Authoritative Zoom Webhook Telemetry */}
+                {/* 3. Authoritative Classroom Telemetry */}
                 <div className="p-4 rounded-2xl bg-cocoa text-cream border border-white/10 space-y-2">
                   <div className="flex items-center gap-2 font-bold text-gold-bright">
                     <Radio className="w-4 h-4" />
-                    <span>Zoom Server Dwell Logs</span>
+                    <span>Classroom Dwell Logs</span>
                   </div>
                   <div className="space-y-1.5 text-xs font-mono">
                     <div className="flex justify-between">
                       <span className="text-cream/75">Student Dwell:</span>
-                      <strong className="text-white">{c.zoom_telemetry.student_dwell_minutes} mins</strong>
+                      <strong className="text-white">{c.attendance_telemetry.student_dwell_minutes} mins</strong>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-cream/75">Tutor Dwell:</span>
-                      <strong className="text-white">{c.zoom_telemetry.teacher_dwell_minutes} mins</strong>
+                      <strong className="text-white">{c.attendance_telemetry.teacher_dwell_minutes} mins</strong>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-cream/75">Audio Connected:</span>
-                      <strong className={c.zoom_telemetry.call_connected ? "text-sky" : "text-coral-soft"}>
-                        {c.zoom_telemetry.call_connected ? "Yes" : "Failed / Dropped"}
+                      <strong className={c.attendance_telemetry.call_connected ? "text-sky" : "text-coral-soft"}>
+                        {c.attendance_telemetry.call_connected ? "Yes" : "Failed / Dropped"}
                       </strong>
                     </div>
-                    {c.zoom_telemetry.interrupted_reason && (
+                    {c.attendance_telemetry.interrupted_reason && (
                       <p className="text-sm text-sun-soft pt-1 border-t border-white/10">
-                        {c.zoom_telemetry.interrupted_reason}
+                        {c.attendance_telemetry.interrupted_reason}
                       </p>
                     )}
                   </div>

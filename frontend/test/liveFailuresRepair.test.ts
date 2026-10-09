@@ -141,7 +141,6 @@ describe("Live Failures Repair Suite (F-01 through F-08)", () => {
       material_cefr: "B2",
       material_slug: "freetalk-discussion",
       status: "pending_payment",
-      zoom_url: "",
       memo: null,
       review: null,
     };
@@ -238,7 +237,6 @@ describe("Live Failures Repair Suite (F-01 through F-08)", () => {
         booking_ref: "BK-001",
         teacher_name: "Naledi",
         student_name: "Aiko",
-        zoom_meeting_id: "123456",
         material_title: "Daily News",
         elapsed_minutes: 15,
         start_time_utc: "2026-10-06T15:00:00Z",

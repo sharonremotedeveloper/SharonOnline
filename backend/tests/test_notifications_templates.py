@@ -79,7 +79,7 @@ def test_admin_alert_lists_ids_escaped(hostile_lesson):
     admin = f.make_admin()
     kind = registry.get('admin_alert')
     rendered = kind.render(admin, {'alert': 'fulfilment_failed', 'booking_id': str(booking.pk),
-                                   'step': '<i>zoom</i>'}, None)
+                                   'step': '<i>room</i>'}, None)
     assert str(booking.pk) in rendered.text and str(booking.pk) in rendered.html
     assert '<i>' not in rendered.html and '&lt;i&gt;' in rendered.html
     assert rendered.subject.startswith('[Sharon admin]')
@@ -87,5 +87,5 @@ def test_admin_alert_lists_ids_escaped(hostile_lesson):
 
 def test_admin_alert_codes_have_titles():
     from apps.notifications.builtin_kinds import ALERT_TITLES
-    assert {'fulfilment_failed', 'fulfilment_needs_attention', 'orphaned_zoom_meeting', 'orphaned_calendar_event',
+    assert {'fulfilment_failed', 'fulfilment_needs_attention', 'orphaned_calendar_event',
             'lesson_disputed_without_verdict', 'notification_failed'} <= set(ALERT_TITLES)

@@ -186,17 +186,16 @@ def _bonus(booking, funding):
 
 
 def _after_commit(booking, *, unpaid: bool):
-    """Outside the money transaction: free the hold / Zoom room / calendar event, tell the student."""
-    from apps.integrations.tasks import cleanup_gcal_event, cleanup_zoom_meeting, send_cancellation_emails
-    booking_id, meeting_id = str(booking.id), booking.zoom_meeting_id
+    """Outside the money transaction: free the hold / Daily room / calendar event, tell the student."""
+    from apps.integrations.tasks import cleanup_daily_room, cleanup_gcal_event, send_cancellation_emails
+    booking_id = str(booking.id)
     gcal = (str(booking.teacher.user_id), booking.teacher_gcal_event_id)
     lock = (str(booking.teacher_id), booking.start_time_utc.isoformat(), str(booking.student_id), booking.slot_lock_token or None)
 
     def run():
         if unpaid:
             release_slot_lock(*lock[:3], token=lock[3])
-        if meeting_id:
-            cleanup_zoom_meeting.delay(meeting_id)
+        cleanup_daily_room.delay(f'lesson-{booking_id}')
         if gcal[1]:
             cleanup_gcal_event.delay(*gcal)
         send_cancellation_emails.delay(booking_id, 'admin_unpaid' if unpaid else 'admin')

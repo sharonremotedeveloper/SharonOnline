@@ -706,3 +706,9 @@ def configure_test_settings(settings):
 - **Root cause:** Legacy or non-standard availability windows required confirmation before replacement.
 - **Resolution:** Verified `wouldChangeSavedWindows` confirmation prompts and atomic conflict resolution modals (`pendingConflicts` / `leftConflicts`) in `WeeklyScheduleGrid.tsx`.
 - **Verification:** Unit tests passed; `npm test` and build passed.
+
+### ERR-511: A rescheduled lesson's Daily room was deleted or kept its old expiry (found while porting the F0 tests in D5)
+- **Observed:** reschedule dispatched `cleanup_daily_room` and `dispatch_booking_fulfillment` as two concurrent tasks for the same deterministic room name (`lesson-<booking id>`).
+- **Root cause:** `DailyClient.ensure_room` reused an existing room as it was, with the OLD `nbf`/`exp`. Either the cleanup deleted the room right after fulfilment reused it (no room), or the room kept the old slot's window and Daily rejected joins for the new time.
+- **Resolution:** `ensure_room` now moves an existing room's window in place (`POST /rooms/<name>` with the new `nbf`/`exp`) and reschedule no longer deletes the room (cancellation still does). Tests: `test_daily_room_lifecycle.py`, `test_f0_fulfilment_probe.py::TestRescheduleReprovisions`.
+- **Verification:** backend 3,242 passed; ruff clean; `makemigrations --check` clean.

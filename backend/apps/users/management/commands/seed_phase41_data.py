@@ -147,8 +147,6 @@ class Command(BaseCommand):
                     "end_time_utc": now + timedelta(minutes=13),
                     "material": material_b2,
                     "status": Booking.Status.IN_PROGRESS,
-                    "zoom_meeting_id": "987 654 3210",
-                    "zoom_join_url": "https://zoom.us/j/9876543210?pwd=ESL_CLASS_ROOM"
                 }
             )
             AttendanceAudit.objects.get_or_create(
@@ -188,7 +186,7 @@ class Command(BaseCommand):
                 defaults={
                     "student": student_marco,
                     "teacher": tutor_naledi,
-                    "student_statement": "Tutor did not join the Zoom call for the first 15 minutes. When she joined, audio was stuttering heavily.",
+                    "student_statement": "Tutor did not join the classroom for the first 15 minutes. When she joined, audio was stuttering heavily.",
                     "teacher_statement": "I was present in the meeting on time. The student had an incorrect meeting password cached in their browser.",
                     "status": DisputeCase.Status.OPEN
                 }

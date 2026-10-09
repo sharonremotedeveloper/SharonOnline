@@ -33,16 +33,6 @@ class Booking(models.Model):
     start_time_utc = models.DateTimeField(db_index=True)
     end_time_utc = models.DateTimeField()
 
-    # Video Conferencing details (provisioned via Zoom Server-to-Server API)
-    zoom_meeting_id = models.CharField(max_length=64, blank=True)
-    zoom_join_url = models.URLField(max_length=512, blank=True)
-    # DEPRECATED (Slice Z1): the host link embeds an expiring ZAK. No longer written (0015 blanked old values); the tutor
-    # fetches a fresh one from GET /bookings/<id>/host-link/. Kept one release for the API contract, then dropped.
-    zoom_start_url = models.URLField(max_length=1024, blank=True)
-    zoom_password = models.CharField(max_length=32, blank=True)
-    # Zoom user the meeting was created under (HostPicker, Slice Z1). Null = no meeting / created before Z1 (= 'me').
-    zoom_host_user_id = models.CharField(max_length=64, null=True, blank=True)
-
     # Google Calendar reference
     teacher_gcal_event_id = models.CharField(max_length=255, blank=True)
 
@@ -104,30 +94,6 @@ class BookingReschedule(models.Model):
         ordering = ['created_at']
 
 
-class HostLinkIssue(models.Model):
-    """
-    Slice Z1 (QA #3): staff (not the tutor) was handed the Zoom HOST link of a lesson. Whoever opens the host link is the
-    meeting's host, and the attendance rule credits the host as the TUTOR, so a staff-hosted lesson would otherwise show the
-    absent tutor as present. The row is the audit trail (who, when) and an open hold: escrow is not released
-    (`payments.services.settlement.attendance_verified_for_release`) until an admin reviews it (`reviewed_at`).
-    Written only by `services.host_link.fresh_host_link`; reviewed only by `review_host_link_issues`.
-    """
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='host_link_issues')
-    issued_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='+')
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
-    reviewed_at = models.DateTimeField(null=True, blank=True)
-    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
-                                    related_name='+')
-
-    class Meta:
-        ordering = ['-created_at']
-        indexes = [models.Index(fields=['booking', 'reviewed_at'])]
-
-    def __str__(self):
-        return f"Host link for {self.booking_id} issued to staff {self.issued_by_id}"
-
-
 class LessonMemo(models.Model):
     """
     Submitted by the teacher post-class: contains grammar notes, vocabulary bank entries, and homework.
@@ -157,10 +123,7 @@ class AttendanceAudit(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='attendance_audits')
     participant_email = models.EmailField()
-    zoom_user_id = models.CharField(max_length=64, blank=True, db_index=True)
     participant_id = models.CharField(max_length=128, blank=True, db_index=True)
-    registrant_id = models.CharField(max_length=128, blank=True, db_index=True)
-    host_id = models.CharField(max_length=128, blank=True, db_index=True)
     event_ids = models.JSONField(default=list, blank=True)
     classification = models.CharField(
         max_length=16, choices=Classification.choices, default=Classification.UNKNOWN, db_index=True)
@@ -168,17 +131,17 @@ class AttendanceAudit(models.Model):
     leave_time_utc = models.DateTimeField(null=True, blank=True)
     total_minutes = models.PositiveIntegerField(default=0)
     raw_payload = models.JSONField(default=dict, blank=True)
-    # How the participant was identified (integrations/services/attendance.py): host, account_email, email,
-    # meeting_started, or unmatched. `participant_email` is an account e-mail ONLY for identified teacher/student rows;
+    # How the participant was identified (integrations/views.py, Daily webhook): `daily`, or `probe` for presence-API
+    # evidence. `participant_email` is an account e-mail ONLY for identified teacher/student rows;
     # unmatched participants are kept (evidence) with an empty e-mail so nothing downstream can count them.
     identity = models.CharField(max_length=24, blank=True)
-    zoom_session_id = models.CharField(max_length=96, blank=True)   # one Zoom join session; makes webhook retries idempotent
+    session_id = models.CharField(max_length=96, blank=True)   # one join session; makes webhook retries idempotent
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-join_time_utc']
         constraints = [
-            models.UniqueConstraint(fields=['booking', 'zoom_session_id'], condition=~models.Q(zoom_session_id=''),
+            models.UniqueConstraint(fields=['booking', 'session_id'], condition=~models.Q(session_id=''),
                                     name='uniq_attendance_session_per_booking'),
         ]
         indexes = [models.Index(fields=['created_at', 'id'], name='attendance_created_id_idx')]

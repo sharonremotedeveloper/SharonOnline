@@ -1,7 +1,5 @@
 from django.contrib import admin
-from django.core.exceptions import PermissionDenied
-from .models import AttendanceAudit, Booking, BookingStatusChange, HostLinkIssue, LessonMemo
-from .services.host_link import ReviewRefused, can_review, review_host_link_issues
+from .models import AttendanceAudit, Booking, BookingStatusChange, LessonMemo
 
 class LessonMemoInline(admin.StackedInline):
     model = LessonMemo
@@ -21,9 +19,9 @@ class StatusChangeInline(admin.TabularInline):
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
-    list_display = ('id', 'teacher', 'student', 'status', 'start_time_utc', 'zoom_meeting_id', 'created_at')
+    list_display = ('id', 'teacher', 'student', 'status', 'start_time_utc', 'created_at')
     list_filter = ('status', 'start_time_utc')
-    search_fields = ('teacher__user__username', 'student__username', 'zoom_meeting_id')
+    search_fields = ('teacher__user__username', 'student__username')
     # `status` is changed only through services.state_machine.transition_booking (validated + audited), never by form edit.
     readonly_fields = ('status', 'student_rating', 'student_review', 'student_review_tags', 'reviewed_at', 'created_at', 'updated_at')
     inlines = [LessonMemoInline, StatusChangeInline]
@@ -34,44 +32,12 @@ class LessonMemoAdmin(admin.ModelAdmin):
     search_fields = ('teacher__user__username', 'student__username', 'feedback_text')
 
 
-@admin.register(HostLinkIssue)
-class HostLinkIssueAdmin(admin.ModelAdmin):
-    """Staff-hosted lessons waiting for an attendance review (escrow is held until reviewed). Read-only audit rows."""
-    list_display = ('booking', 'issued_by', 'created_at', 'reviewed_at', 'reviewed_by')
-    list_filter = (('reviewed_at', admin.EmptyFieldListFilter),)
-    search_fields = ('booking__id',)
-    readonly_fields = ('booking', 'issued_by', 'created_at', 'reviewed_at', 'reviewed_by')
-    actions = ['mark_reviewed']
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-    def has_review_permission(self, request):
-        """Same predicate as the sibling money admins (fulfilment re-queue, notification re-send), and the one that decides who
-        may obtain a staff host link at all."""
-        return can_review(request.user)
-
-    @admin.action(description='Mark reviewed (the tutor\'s attendance was checked; releases the escrow hold)',
-                  permissions=['review'])
-    def mark_reviewed(self, request, queryset):
-        if not self.has_review_permission(request):
-            raise PermissionDenied
-        try:
-            count = review_host_link_issues(queryset, request.user)
-        except ReviewRefused:
-            raise PermissionDenied from None     # incl. reviewing a link issued to yourself (unless superuser)
-        self.message_user(request, f'{count} host-link audit row(s) marked reviewed.')
-
-
 @admin.register(AttendanceAudit)
 class AttendanceAuditAdmin(admin.ModelAdmin):
-    list_display = ('booking', 'classification', 'participant_email', 'participant_id', 'registrant_id',
+    list_display = ('booking', 'classification', 'participant_email', 'participant_id',
                     'join_time_utc', 'leave_time_utc', 'total_minutes')
     list_filter = ('classification', 'identity')
-    search_fields = ('booking__id', 'participant_email', 'participant_id', 'registrant_id', 'host_id')
+    search_fields = ('booking__id', 'participant_email', 'participant_id')
     readonly_fields = tuple(field.name for field in AttendanceAudit._meta.fields)
 
     def has_add_permission(self, request):

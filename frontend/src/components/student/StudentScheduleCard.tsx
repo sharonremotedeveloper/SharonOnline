@@ -20,12 +20,12 @@ export interface StudentScheduleCardProps {
   now: number | null;
 }
 
-export function calendarUrl(lesson: StudentLessonItem): string {
+export function calendarUrl(lesson: StudentLessonItem, origin = ""): string {
   const start = new Date(lesson.start_time_utc).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
   const end = new Date(lesson.end_time_utc).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
     `Sharon Online lesson with ${lesson.teacher.name}`
-  )}&dates=${start}/${end}&details=${encodeURIComponent(lesson.zoom_url || "Join from Sharon Online")}`;
+  )}&dates=${start}/${end}&details=${encodeURIComponent(origin ? `Join your classroom: ${origin}/student/classroom/${lesson.id}` : "Join from Sharon Online")}`;
 }
 
 export function canEnterClassroom(lesson: StudentLessonItem, nowMs: number | null): boolean {
@@ -177,7 +177,7 @@ export function StudentScheduleCard({ lesson, now }: StudentScheduleCardProps) {
           {/* Confirmed & Upcoming -> Google Calendar Sync */}
           {isConfirmed && !isPast && (
             <a
-              href={calendarUrl(lesson)}
+              href={calendarUrl(lesson, typeof window === "undefined" ? "" : window.location.origin)}
               target="_blank"
               rel="noreferrer"
               className="min-h-11 inline-flex items-center gap-2 rounded-xl border border-divider px-4 py-2.5 text-sm font-bold text-ink hover:bg-cream-surface transition-colors"

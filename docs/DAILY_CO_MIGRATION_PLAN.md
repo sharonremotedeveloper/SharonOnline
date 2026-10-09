@@ -114,4 +114,4 @@ sequenceDiagram
 | **D2** | Token Endpoint & Probe | Update `video-token/` endpoint and $T+10\text{m}$ room presence probe. |
 | **D3** | Frontend Daily Classroom | Replace `VideoSdkClassroom.tsx` with Daily Prebuilt integration. |
 | **D4** | Webhooks & Telemetry | Daily webhook receiver writing to `AttendanceAudit`. |
-| **D5** | Deprecation Cleanup | Remove stale Zoom packages, test suites, and database columns. |
+| **D5** | Deprecation Cleanup | **DONE 2026-10-10.** Zoom is gone from code: the Meetings client, host-link flow, Video SDK token/probe/webhooks and `@zoom/videosdk` are deleted; `Booking.zoom_*`, `HostLinkIssue` and the Zoom attendance columns are dropped (migrations `bookings/0018`, `payments/0026`); the T+10 probe now reads Daily presence (V4 rule kept). Only historical migrations and these docs still name Zoom. |

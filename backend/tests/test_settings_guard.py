@@ -16,7 +16,6 @@ GOOD = {
     'DJANGO_ALLOWED_HOSTS': 'api.sharonesl.com',
     'CORS_ALLOWED_ORIGINS': 'https://sharonesl.com',
     'CSRF_TRUSTED_ORIGINS': 'https://sharonesl.com,https://api.sharonesl.com',
-    'ZOOM_WEBHOOK_SECRET_TOKEN': 'zoom-secret',
     'ESKOMSEPUSH_API_KEY': 'eskom-provider-key',
     'THROTTLE_NUM_PROXIES': '1',
     'FRONTEND_BASE_URL': 'https://sharonesl.com',
@@ -31,8 +30,6 @@ GOOD = {
     'DAILY_API_KEY': 'daily-live-api-key-test-value-0123456789',
     'DAILY_DOMAIN': 'sharonesl.daily.co',
     'DAILY_WEBHOOK_SECRET': 'daily-webhook-secret-base64-at-least-16-chars',
-    # Slice Z1: legacy Zoom credentials retained during transition
-    'ZOOM_ACCOUNT_ID': 'zoom-account', 'ZOOM_CLIENT_ID': 'zoom-client', 'ZOOM_CLIENT_SECRET': 'zoom-secret-value',
 }
 
 
@@ -57,7 +54,6 @@ def test_valid_env_passes():
     ('CORS_ALLOWED_ORIGINS', 'http://sharonesl.com'),
     ('CSRF_TRUSTED_ORIGINS', ''),
     ('CSRF_TRUSTED_ORIGINS', 'https://127.0.0.1:3000'),
-    ('ZOOM_WEBHOOK_SECRET_TOKEN', ''),
     ('ESKOMSEPUSH_API_KEY', ''),
     ('PAYOUT_DATA_KEYS', '{}'),
     ('PAYOUT_DATA_ACTIVE_KEY', ''),
@@ -77,15 +73,6 @@ def test_unsafe_env_rejected(key, value):
     env[key] = value
     with pytest.raises(ImproperlyConfigured):
         validate_production_settings(env)
-
-
-@pytest.mark.django_db
-def test_zoom_webhook_fails_closed_without_secret(settings):
-    from apps.integrations.zoom import zoom_client
-    settings.ZOOM_WEBHOOK_SECRET_TOKEN = ''
-    ok, reason = zoom_client.verify_webhook_signature(
-        {'HTTP_X_ZM_SIGNATURE': 'v0=abc', 'HTTP_X_ZM_REQUEST_TIMESTAMP': '1'}, b'{}')
-    assert not ok
 
 
 @pytest.mark.parametrize('extra', [
@@ -233,39 +220,6 @@ def test_env_example_documents_both_refund_settings():
     assert 'apps.payments.services.refund_gateways.RoutingRefundGateway' in example
 
 
-def test_zoom_video_sdk_passes_with_32_plus_char_secret():
-    env = dict(GOOD)
-    for k in ('ZOOM_ACCOUNT_ID', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET'):
-        del env[k]
-    env['ZOOM_VIDEO_SDK_KEY'] = 'test-video-sdk-key-1234567890'
-    env['ZOOM_VIDEO_SDK_SECRET'] = 'x' * 32
-    validate_production_settings(env)
-
-
-def test_zoom_video_sdk_rejects_secret_shorter_than_32_chars():
-    env = dict(GOOD)
-    env['ZOOM_VIDEO_SDK_KEY'] = 'test-video-sdk-key-1234567890'
-    env['ZOOM_VIDEO_SDK_SECRET'] = 'short-18-byte-key!'
-    with pytest.raises(ImproperlyConfigured, match='ZOOM_VIDEO_SDK_SECRET must be at least 32 characters'):
-        validate_production_settings(env)
-
-
-def test_zoom_video_sdk_rejects_key_without_secret():
-    env = dict(GOOD)
-    env['ZOOM_VIDEO_SDK_KEY'] = 'test-video-sdk-key'
-    env['ZOOM_VIDEO_SDK_SECRET'] = ''
-    with pytest.raises(ImproperlyConfigured, match='ZOOM_VIDEO_SDK_SECRET must be set'):
-        validate_production_settings(env)
-
-
-def test_zoom_video_sdk_rejects_secret_without_key():
-    env = dict(GOOD)
-    env['ZOOM_VIDEO_SDK_KEY'] = ''
-    env['ZOOM_VIDEO_SDK_SECRET'] = 'x' * 32
-    with pytest.raises(ImproperlyConfigured, match='ZOOM_VIDEO_SDK_KEY must be set'):
-        validate_production_settings(env)
-
-
 # ==============================================================================
 # Daily.co Video Conferencing Settings Guard Tests (Decision D-14 / Requirement R4)
 # ==============================================================================
@@ -331,16 +285,6 @@ def test_valid_daily_settings_pass():
 def test_valid_daily_domain_variants_pass(domain):
     """Both subdomains and fully-qualified Daily domains pass validation cleanly."""
     env = dict(GOOD, DAILY_DOMAIN=domain)
-    validate_production_settings(env)
-
-
-def test_daily_boots_without_legacy_zoom_credentials():
-    """Daily credentials alone are sufficient for production boot once Zoom is removed."""
-    env = dict(GOOD)
-    for zoom_key in ('ZOOM_ACCOUNT_ID', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET',
-                     'ZOOM_WEBHOOK_SECRET_TOKEN', 'ZOOM_VIDEO_SDK_KEY', 'ZOOM_VIDEO_SDK_SECRET'):
-        env.pop(zoom_key, None)
-    # When Zoom boot guard is decoupled, this must pass without errors
     validate_production_settings(env)
 
 

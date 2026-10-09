@@ -184,8 +184,7 @@ import type { CreditPackPrice, LessonPrice } from "@/lib/prices";
 import type { FxCurrency, FxRateRow, FxRatesResponse } from "@/lib/fx";
 import type { CaptureResponse } from "@/lib/paypalOutcome";
 import { adminRefundQuery, type AdminRefund, type AdminRefundPage, type AdminRefundParams } from "@/lib/adminRefunds";
-import { fetchHostLink } from "@/lib/hostLink";
-import { fetchVideoSessionToken } from "@/lib/videoSdk";
+import { fetchVideoSessionToken } from "@/lib/classroomSession";
 
 export const FALLBACK_MATERIALS: MaterialDetail[] = [
   {
@@ -562,10 +561,7 @@ export const api = {
     };
   },
 
-  /** Slice Z1: a FRESH Zoom host start link for the tutor of this lesson (never stored; throws ApiError, see lib/hostLink.ts). */
-  /** Slice Z1 (Legacy S2S fallback): a FRESH Zoom host start link. */
-  getHostLink: fetchHostLink,
-  /** Sprint Slice V2 (Zoom Video SDK): live session token for embedded classroom. */
+  /** Daily.co meeting token for the embedded classroom (GET /bookings/<id>/video-token/). */
   getVideoToken: fetchVideoSessionToken,
 
   async getBooking(bookingId: string): Promise<BookingDetail> {
@@ -608,11 +604,6 @@ export const api = {
       viewer_timezone: "Asia/Tokyo (JST)",
       status: "confirmed",
       lock_expires_at: new Date(Date.now() + 540000).toISOString(),
-      zoom_url: "https://zoom.us/j/9876543210?pwd=ESL_CLASS_ROOM",
-      zoom_password: "SHARON_ONLINE",
-      zoom_meeting_id: "987 654 3210",
-      zoom_join_url: "https://zoom.us/j/9876543210?pwd=ESL_CLASS_ROOM",
-      zoom_start_url: "https://zoom.us/s/9876543210?zak=ESL_TEACHER_HOST_TOKEN",
       material_slug: "remote-work-trends",
       material_title: "Global Remote Work & Digital Nomads",
       student_rating: null,
@@ -898,7 +889,7 @@ export const api = {
     return {
       gmv_today_usd: "1240.00",
       gmv_month_usd: "34850.00",
-      active_zoom_sessions_count: 6,
+      active_sessions_count: 6,
       open_disputes_count: 2,
       pending_vetting_count: 3,
       escrow_liability_usd: "4890.00",
@@ -991,7 +982,6 @@ export const api = {
         elapsed_minutes: 12,
         student_joined_at: new Date(Date.now() - 12 * 60000).toISOString(),
         teacher_joined_at: new Date(Date.now() - 13 * 60000).toISOString(),
-        zoom_meeting_id: "987 654 3210",
         status: "active",
       },
       {
@@ -1004,7 +994,6 @@ export const api = {
         elapsed_minutes: 22,
         student_joined_at: new Date(Date.now() - 21 * 60000).toISOString(),
         teacher_joined_at: new Date(Date.now() - 23 * 60000).toISOString(),
-        zoom_meeting_id: "987 654 3211",
         status: "wrap_up",
       },
       {
@@ -1016,7 +1005,6 @@ export const api = {
         start_time_utc: new Date(Date.now() + 3 * 60000).toISOString(),
         elapsed_minutes: 0,
         teacher_joined_at: new Date(Date.now() - 1 * 60000).toISOString(),
-        zoom_meeting_id: "987 654 3212",
         status: "staging",
       },
     ];
@@ -1035,9 +1023,9 @@ export const api = {
         lesson_date: "2026-09-29 14:00 SAST",
         amount_usd: "8.00",
         amount_zar: "150.00",
-        student_statement: "Tutor did not join the Zoom call for the first 15 minutes. When she joined, audio was stuttering heavily.",
+        student_statement: "Tutor did not join the classroom for the first 15 minutes. When she joined, audio was stuttering heavily.",
         teacher_statement: "I was present in the meeting at 14:00. The student had incorrect meeting password cached in their browser. I stayed online until 14:25.",
-        zoom_telemetry: {
+        attendance_telemetry: {
           student_dwell_minutes: 10,
           teacher_dwell_minutes: 25,
           call_connected: true,
@@ -1055,7 +1043,7 @@ export const api = {
         amount_zar: "150.00",
         student_statement: "Session disconnected abruptly at minute 8 due to tutor load shedding.",
         teacher_statement: "Our substation tripped under Stage 4 load shedding. Battery inverter kicked in after 4 minutes, but fiber node remained dead.",
-        zoom_telemetry: {
+        attendance_telemetry: {
           student_dwell_minutes: 8,
           teacher_dwell_minutes: 8,
           call_connected: false,
@@ -1212,7 +1200,6 @@ export const studentApi = {
         material_cefr: "B2",
         material_slug: "ai-workplace-b2",
         status: "confirmed",
-        zoom_url: "https://zoom.us/j/8839201948",
       },
       {
         id: "les-102",

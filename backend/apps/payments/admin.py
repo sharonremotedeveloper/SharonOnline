@@ -117,10 +117,10 @@ class LedgerEntryAdmin(admin.ModelAdmin):
 
 @admin.register(FulfillmentDispatch)
 class FulfillmentDispatchAdmin(admin.ModelAdmin):
-    """Lesson provisioning (Zoom room, tutor calendar, confirmation e-mail). Read-only; FAILED rows can be re-queued."""
-    list_display = ('booking', 'status', 'attempts', 'zoom_state', 'calendar_state', 'email_state', 'last_error',
+    """Lesson provisioning (classroom room, tutor calendar, confirmation e-mail). Read-only; FAILED rows can be re-queued."""
+    list_display = ('booking', 'status', 'attempts', 'room_state', 'calendar_state', 'email_state', 'last_error',
                     'next_retry_at', 'updated_at')
-    list_filter = ('status', 'zoom_state', 'calendar_state', 'email_state')
+    list_filter = ('status', 'room_state', 'calendar_state', 'email_state')
     search_fields = ('booking__id',)
     readonly_fields = [f.name for f in FulfillmentDispatch._meta.fields]
     actions = ['requeue_failed']

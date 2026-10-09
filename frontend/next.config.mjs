@@ -17,7 +17,7 @@ const nextConfig = {
     const noReferrer = [{ key: 'Referrer-Policy', value: 'no-referrer' }, { key: 'Cache-Control', value: 'no-store' }];
     // Baseline hardening for every page. The camera and microphone stay allowed for our own origin because the
     // in-browser classroom needs them. A Content-Security-Policy is deliberately not set here yet: it needs a
-    // nonce and a test pass against the Zoom Video SDK, PayPal and PayFast first.
+    // nonce and a test pass against Daily, PayPal and PayFast first.
     const baseline = [
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'X-Frame-Options', value: 'DENY' },

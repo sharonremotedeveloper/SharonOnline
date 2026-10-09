@@ -26,10 +26,11 @@ def test_environment_settings(settings):
     # Same for e-mail (slice N1c): a developer .env with a real RESEND_API_KEY must never make a test send real mail.
     # Console mode hands every message to Django's test mail backend (`django.core.mail.outbox`).
     settings.EMAIL_BACKEND_MODE = 'console'
-    # --- Slice Z1: same for Zoom: credentials now come from settings, so a developer .env must never make a test call Zoom.
-    # Tests that need credentials use `fake_zoom` (or set them explicitly).
-    settings.ZOOM_ACCOUNT_ID = settings.ZOOM_CLIENT_ID = settings.ZOOM_CLIENT_SECRET = ''
-    # --- end Z1
+    # A developer .env must never make a test call Daily: default to simulated rooms (no key). Tests that need the
+    # HTTP contract use `fake_daily`; tests of an unconfigured Daily blank DAILY_DOMAIN.
+    settings.DAILY_API_KEY = ''
+    settings.DAILY_DOMAIN = 'test.daily.co'
+    settings.DAILY_SIMULATE_WITHOUT_CREDENTIALS = True
     settings.CELERY_TASK_EAGER_PROPAGATES = True
     settings.CELERY_BROKER_URL = 'memory://'
     settings.CELERY_RESULT_BACKEND = 'cache+memory://'
@@ -89,25 +90,6 @@ def admin_user(db):
         timezone="Africa/Johannesburg"
     )
 
-
-
-@pytest.fixture(autouse=True)
-def no_video_sdk_credentials(settings):
-    """A developer's real Zoom Video SDK credentials in .env must not switch tests onto the SDK path (it changes how a
-    lesson is provisioned and judged, see tests/test_v4_attendance_contract.py). Tests opt in with `video_sdk_on`."""
-    settings.ZOOM_VIDEO_SDK_KEY = ''
-    settings.ZOOM_VIDEO_SDK_SECRET = ''
-    settings.ZOOM_VIDEO_SDK_API_KEY = ''
-    settings.ZOOM_VIDEO_SDK_API_SECRET = ''
-
-
-@pytest.fixture
-def video_sdk_on(settings):
-    settings.ZOOM_VIDEO_SDK_KEY = 'k' * 32
-    settings.ZOOM_VIDEO_SDK_SECRET = 's' * 32
-    settings.ZOOM_VIDEO_SDK_API_KEY = 'a' * 22
-    settings.ZOOM_VIDEO_SDK_API_SECRET = 'b' * 36
-    return settings
 
 
 @pytest.fixture(autouse=True)
@@ -177,8 +159,8 @@ def fake_resend(monkeypatch):
 
 
 @pytest.fixture
-def fake_zoom(monkeypatch):
-    return fakes.FakeZoom().install(monkeypatch)
+def fake_daily(monkeypatch):
+    return fakes.FakeDaily().install(monkeypatch)
 
 
 @pytest.fixture
@@ -212,18 +194,3 @@ def resend(settings, monkeypatch):
 
     monkeypatch.setattr(svc.requests, 'post', fake_post)
     return state
-
-
-@pytest.fixture
-def zoom_never_held(monkeypatch):
-    """Zoom reports no past instance for the lesson's meeting: together with a `waiting` status the tutor never opened it.
-    (Slice F0: `waiting` alone is not proof, a scheduled meeting reverts to `waiting` after it ends.)"""
-    from apps.integrations.zoom import zoom_client
-    monkeypatch.setattr(zoom_client, 'get_past_instances', lambda meeting_id: [])
-
-
-@pytest.fixture
-def simulated_zoom(settings):
-    """Explicit opt-in to the local simulated Zoom rooms (no credentials): needs both the local flag and DEBUG (Slice F0 C1)."""
-    settings.DEBUG = True
-    settings.ZOOM_SIMULATE_WITHOUT_CREDENTIALS = True

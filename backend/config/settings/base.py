@@ -10,8 +10,6 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-dev-key-change
 
 DEBUG = False
 
-# Zoom webhook HMAC secret. Never derived from SECRET_KEY; production requires it explicitly.
-ZOOM_WEBHOOK_SECRET_TOKEN = os.environ.get('ZOOM_WEBHOOK_SECRET_TOKEN', '')
 CSRF_TRUSTED_ORIGINS = [
     o.strip() for o in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',') if o.strip()
 ]
@@ -159,8 +157,6 @@ REST_FRAMEWORK = {
         'application': '120/hour',            # slice T5a: tutor application funnel
         'training': '120/hour',               # slice T6: tutor onboarding training
         'admin_teacher_review': '300/hour',   # slice T1b: staff review actions + admin cancel of a suspended tutor's lessons
-        'zoom_host_link': '30/hour',
-        'zoom_video_token': '120/hour',       # Slice Z1: fresh Zoom host link when the classroom opens (one Zoom call each)
         'daily_video_token': '120/hour',      # Daily.co video token provisioning (Decision D-14 / R4)
         'sar_export': '10/hour',              # GDPR/POPIA SAR export
     },
@@ -271,7 +267,7 @@ VETTING_REQUIRED_ASSET_KINDS = tuple(k.strip() for k in os.environ.get('VETTING_
 # Bonus credits a student gets when staff cancel a suspended tutor's lesson (on top of the full refund). PROVISIONAL 0.
 ADMIN_CANCEL_BONUS_CREDITS = int(os.environ.get('ADMIN_CANCEL_BONUS_CREDITS', '0'))
 # ---- end T1b ----
-# Lesson fulfilment (Zoom room, tutor calendar, confirmation e-mail) and the T+10 Zoom probe (Slice F0, docs/ZOOM_ATTENDANCE.md).
+# Lesson fulfilment (Daily room, tutor calendar, confirmation e-mail) and the T+10 room probe (Slice F0).
 FULFILLMENT_MAX_ATTEMPTS = int(os.environ.get('FULFILLMENT_MAX_ATTEMPTS', '5'))        # then terminal FAILED + admin alert
 FULFILLMENT_LEASE_SECONDS = int(os.environ.get('FULFILLMENT_LEASE_SECONDS', '600'))    # a RUNNING claim older than this is reclaimable
 FULFILLMENT_RETRY_SECONDS = int(os.environ.get('FULFILLMENT_RETRY_SECONDS', '30'))     # first retry delay (doubles, jittered)
@@ -294,36 +290,10 @@ DAILY_ROOM_OPEN_MINUTES_BEFORE = int(os.environ.get('DAILY_ROOM_OPEN_MINUTES_BEF
 # Simulated Daily rooms without live credentials (local.py enables this for offline dev/tests)
 DAILY_SIMULATE_WITHOUT_CREDENTIALS = os.environ.get('DAILY_SIMULATE_WITHOUT_CREDENTIALS', 'false').lower() in ('1', 'true', 'yes')
 
-# ==============================================================================
-# DEPRECATED: Legacy Zoom Settings (Retained for Test Suite & Migration Fallback)
-# ==============================================================================
-# Simulated Zoom rooms without credentials: never in production (only config/settings/local.py turns this on).
-ZOOM_SIMULATE_WITHOUT_CREDENTIALS = False
-ATTENDANCE_PROBE_BUDGET_SECONDS = int(os.environ.get('ATTENDANCE_PROBE_BUDGET_SECONDS', '25'))  # wall clock for Zoom probes per T+10 run (beat lock TTL 50 s)
-# --- Slice Z1: Zoom Server-to-Server OAuth client (docs/ZOOM_ATTENDANCE.md "Client contract"). Production refuses to boot
-# without the three credentials (config/settings/guard.py); app code reads these settings, never the environment.
-ZOOM_ACCOUNT_ID = os.environ.get('ZOOM_ACCOUNT_ID', '')
-ZOOM_CLIENT_ID = os.environ.get('ZOOM_CLIENT_ID', '')
-ZOOM_CLIENT_SECRET = os.environ.get('ZOOM_CLIENT_SECRET', '')
-# Host every lesson meeting is created under (HostPicker default). 'me' = the account that owns the S2S app. A single host
-# means concurrent lessons collide on one licence: LAUNCH BLOCKER pending D-9 (host pool).
-ZOOM_HOST_USER_ID = os.environ.get('ZOOM_HOST_USER_ID', 'me')
-ZOOM_HTTP_TIMEOUT_SECONDS = int(os.environ.get('ZOOM_HTTP_TIMEOUT_SECONDS', '10'))        # every Zoom request
-ZOOM_HTTP_MAX_ATTEMPTS = int(os.environ.get('ZOOM_HTTP_MAX_ATTEMPTS', '3'))              # tries per call for 429 / 5xx
-ZOOM_RETRY_AFTER_CAP_SECONDS = int(os.environ.get('ZOOM_RETRY_AFTER_CAP_SECONDS', '10'))  # longer Retry-After: give up, hand it on
-ZOOM_TOKEN_WAIT_SECONDS = int(os.environ.get('ZOOM_TOKEN_WAIT_SECONDS', '5'))            # single-flight waiters poll this long
-ZOOM_HOST_LINK_OPEN_MINUTES_BEFORE = int(os.environ.get('ZOOM_HOST_LINK_OPEN_MINUTES_BEFORE', '15'))  # host link issued from this long before the start until the lesson ends
-# --- Zoom Video SDK (In-Platform Classroom Engine - Decision D-9) ---
-ZOOM_VIDEO_SDK_KEY = os.environ.get('ZOOM_VIDEO_SDK_KEY', '')
-ZOOM_VIDEO_SDK_SECRET = os.environ.get('ZOOM_VIDEO_SDK_SECRET', '')
-# Video SDK *REST* API (session probe, V4): Zoom accepts only a JWT signed with the app's separate "API credentials"
-# (`iss` claim). The SDK key/secret above sign client join tokens and are rejected there (verified live 2026-10-08).
-ZOOM_VIDEO_SDK_API_KEY = os.environ.get('ZOOM_VIDEO_SDK_API_KEY', '')
-ZOOM_VIDEO_SDK_API_SECRET = os.environ.get('ZOOM_VIDEO_SDK_API_SECRET', '')
-ZOOM_VIDEO_SDK_SESSION_VALID_SECONDS = int(os.environ.get('ZOOM_VIDEO_SDK_SESSION_VALID_SECONDS', '7200'))
-ZOOM_VIDEO_SDK_OPEN_MINUTES_BEFORE = int(os.environ.get('ZOOM_VIDEO_SDK_OPEN_MINUTES_BEFORE', '15'))
-ZOOM_VIDEO_SDK_WEBHOOK_SECRET = os.environ.get('ZOOM_VIDEO_SDK_WEBHOOK_SECRET', '') or ZOOM_WEBHOOK_SECRET_TOKEN
-# --- end Z1
+# Simulated external services (R2, Google Calendar, presigned uploads) without credentials: never in production
+# (only config/settings/local.py turns this on).
+SIMULATE_WITHOUT_CREDENTIALS = False
+ATTENDANCE_PROBE_BUDGET_SECONDS = int(os.environ.get('ATTENDANCE_PROBE_BUDGET_SECONDS', '25'))  # wall clock for room probes per T+10 run (beat lock TTL 50 s)
 # Dotted path of the object that talks to PayPal / PayFast to return money (Task 10.7). The default moves no money: requests
 # wait for a person (sandbox / dev / CI). Production selects the routing backend through the environment, and
 # scripts/check_deploy.py fails a production check while this is still the manual backend.

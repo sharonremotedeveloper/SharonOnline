@@ -34,7 +34,7 @@ def _bucket(private=False):
 
 def _client_or_fail(operation):
     client = get_r2_client()
-    local_mode = getattr(settings, 'DEBUG', False) or getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False)
+    local_mode = getattr(settings, 'DEBUG', False) or getattr(settings, 'SIMULATE_WITHOUT_CREDENTIALS', False)
     if client is None and not local_mode:
         raise RuntimeError(f'Cloudflare R2 is unavailable for {operation}.')
     return client
@@ -66,7 +66,7 @@ def generate_presigned_download_url(object_key: str, expires_in: int = 900, *, p
         return url
     except Exception as e:
         logger.error(f"Failed to generate presigned R2 download URL for {object_key}: {e}")
-        if not (getattr(settings, 'DEBUG', False) or getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False)):
+        if not (getattr(settings, 'DEBUG', False) or getattr(settings, 'SIMULATE_WITHOUT_CREDENTIALS', False)):
             raise RuntimeError('Cloudflare R2 refused the download URL.') from e
         media_url = getattr(settings, 'MEDIA_URL', '/media/')
         return f"{media_url.rstrip('/')}/{object_key.lstrip('/')}"
@@ -109,7 +109,7 @@ def generate_presigned_upload_url(object_key: str, content_type: str = None, exp
         }
     except Exception as e:
         logger.error(f"Failed to generate presigned R2 upload URL for {object_key}: {e}")
-        if not (getattr(settings, 'DEBUG', False) or getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False)):
+        if not (getattr(settings, 'DEBUG', False) or getattr(settings, 'SIMULATE_WITHOUT_CREDENTIALS', False)):
             raise RuntimeError('Cloudflare R2 refused the upload URL.') from e
         return {
             'upload_url': f"/api/v1/upload/{object_key}",

@@ -2,7 +2,7 @@
 No-network guard for the test suite (Q0). Installed by the autouse `no_network` fixture in conftest.py.
 
 Blocks `socket.socket.connect` / `connect_ex` and `socket.getaddrinfo` for anything that is not local, so no test can reach
-Zoom, Resend, Google, PayPal, PayFast or R2 by accident (use the fakes in tests/fakes.py instead). Allowed:
+Daily, Resend, Google, PayPal, PayFast or R2 by accident (use the fakes in tests/fakes.py instead). Allowed:
   * Unix sockets, localhost / 127.0.0.0/8 / ::1 (the Postgres and Redis CI jobs use 127.0.0.1);
   * the hosts named in DATABASE_URL / REDIS_URL / REDIS_TEST_URL (e.g. `db` / `redis` under docker compose), plus the
     addresses they resolve to.

@@ -1,7 +1,7 @@
 """
 Pending-payment grace bookings (Task 10.2 slice E + failure runbook G, plan section 2).
 
-A grace booking is a lesson confirmed (Zoom link issued) while PayPal still reports the capture PENDING. Policy
+A grace booking is a lesson confirmed (classroom ready) while PayPal still reports the capture PENDING. Policy
 (docs/PHASE_10_2_PAYPAL_ORDERS_PLAN.md P-1..P-8):
   * one open grace booking per student account AND per PayPal payer (payer id, falling back to payer e-mail);
   * only for merchant-side reasons (our PayPal account settings) and the buyer-side risk-based reasons PENDING_REVIEW and
@@ -296,13 +296,12 @@ def _apply_to_booking(tx, booking, now) -> str:
         transition_booking(booking, S.CANCELLED, actor='system:payment_failed', reason='grace_payment_failed',
                            update_fields=('cancelled_at', 'cancel_reason'))
         refunds.void_deferred_refunds(booking)
-        meeting_id, booking_pk = booking.zoom_meeting_id, str(booking.id)
+        booking_pk = str(booking.id)
         gcal = (str(booking.teacher.user_id), booking.teacher_gcal_event_id)
 
         def tidy():
-            from apps.integrations.tasks import cleanup_gcal_event, cleanup_zoom_meeting, send_cancellation_emails
-            if meeting_id:
-                cleanup_zoom_meeting.delay(meeting_id)
+            from apps.integrations.tasks import cleanup_daily_room, cleanup_gcal_event, send_cancellation_emails
+            cleanup_daily_room.delay(f'lesson-{booking_pk}')
             if gcal[1]:
                 cleanup_gcal_event.delay(*gcal)
             send_cancellation_emails.delay(booking_pk, 'payment_failed')

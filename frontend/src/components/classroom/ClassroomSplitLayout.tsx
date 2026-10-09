@@ -73,7 +73,7 @@ export function ClassroomSplitLayout({
 
       {/* Main Dual Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Left Pane: Zoom Video & Staging Cockpit */}
+        {/* Left Pane: Video & Staging Cockpit */}
         <div
           className={`${
             viewMode === "video_focus"

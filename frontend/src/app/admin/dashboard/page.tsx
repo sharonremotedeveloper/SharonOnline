@@ -52,7 +52,7 @@ export default function AdminDashboardPage() {
             Executive Command Center
           </h1>
           <p className="text-sm sm:text-sm text-ink-muted mt-1">
-            Real-time multi-currency telemetry, live Zoom classroom radar, and tutor audition pipeline.
+            Real-time multi-currency telemetry, live classroom radar, and tutor audition pipeline.
           </p>
         </div>
 
@@ -60,13 +60,13 @@ export default function AdminDashboardPage() {
           <Link
             href="/admin/sessions/live"
             className={`min-h-11 px-4 py-2 text-sm font-black rounded-xl shadow-xs flex items-center gap-2 transition-colors ${
-              telemetry.active_zoom_sessions_count > 0
+              telemetry.active_sessions_count > 0
                 ? "bg-cocoa hover:bg-cocoa-hover text-white"
                 : "bg-white border border-strong text-ink hover:bg-cream-deep"
             }`}
           >
             <Radio className="w-4 h-4" />
-            <span>{telemetry.active_zoom_sessions_count} Live Sessions Active</span>
+            <span>{telemetry.active_sessions_count} Live Sessions Active</span>
           </Link>
         </div>
       </div>
@@ -147,7 +147,7 @@ export default function AdminDashboardPage() {
             {telemetry.open_disputes_count} Open Cases
           </div>
           <p className="text-sm text-ink-muted">
-            Awaiting admin arbitration against Zoom logs
+            Awaiting admin arbitration against attendance logs
           </p>
         </div>
       </div>
@@ -183,7 +183,7 @@ export default function AdminDashboardPage() {
             </div>
             <h3 className="text-lg font-black text-ink font-serif">Dispute Arbitration</h3>
             <p className="text-sm text-ink-muted leading-relaxed">
-              Inspect student complaints side-by-side with tutor statements and authoritative Zoom webhook dwell-time logs. Execute 1-click refunds.
+              Inspect student complaints side-by-side with tutor statements and authoritative classroom dwell-time logs. Execute 1-click refunds.
             </p>
           </div>
 

@@ -9,6 +9,7 @@ from django.core.cache import cache
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.db import transaction
+from apps.bookings.services.classroom_links import classroom_url
 from apps.common import clock
 from apps.common.crypto import decrypt_integration_secret, encrypt_integration_secret
 from apps.teachers.services.schedule import InvalidTeacherTimezone, boundary_utc, teacher_zone
@@ -66,7 +67,7 @@ def consume_oauth_state(user, state):
     cache.delete(f'gcal:oauth:{state}')
     if updated != 1:
         # Compatibility for pre-migration local fixtures only; production state is DB-backed.
-        local_mode = settings.DEBUG or getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False)
+        local_mode = settings.DEBUG or getattr(settings, 'SIMULATE_WITHOUT_CREDENTIALS', False)
         cached_owner = cached_owner if local_mode else None
         if str(cached_owner) != str(user.pk):
             raise ValueError('Invalid or expired Google OAuth state.')
@@ -236,16 +237,14 @@ def _access_token(user):
             logger.exception('Google Calendar token refresh failed for user %s', user.pk)
         return None
     # Local/test fixtures may still use the pre-G1 field; production never reads it.
-    local_mode = settings.DEBUG or getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False)
+    local_mode = settings.DEBUG or getattr(settings, 'SIMULATE_WITHOUT_CREDENTIALS', False)
     legacy = getattr(user, 'google_calendar_token', None) or {}
     return legacy.get('access_token') if local_mode and isinstance(legacy, dict) else None
 
 def _lesson_event_body(booking) -> dict:
     return {
         "summary": f"Sharon ESL: Lesson with {booking.student.first_name or booking.student.username}",
-        # Join link only (Slice Z1): the host link expires; the tutor opens the classroom page for a fresh one.
-        "description": f"25-minute lesson.\n\nZoom join link: {booking.zoom_join_url}\n"
-                       f"Start the lesson as host from your Sharon ESL classroom page.",
+        "description": f"25-minute lesson.\n\nOpen your classroom: {classroom_url(booking, 'teacher')}",
         "start": {"dateTime": booking.start_time_utc.isoformat(), "timeZone": "UTC"},
         "end": {"dateTime": booking.end_time_utc.isoformat(), "timeZone": "UTC"},
         "extendedProperties": {"private": {OWN_EVENT_MARKER: str(booking.id)}},

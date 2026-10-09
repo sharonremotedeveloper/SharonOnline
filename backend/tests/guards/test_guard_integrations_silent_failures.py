@@ -2,7 +2,7 @@
 Guard (e): `apps/integrations/` never fails silently.
 
 Two shapes hide provider failures: an exception handler whose whole body is `pass`, and `return ""` (an empty string that
-callers cannot tell apart from "no data"; e.g. a failed Zoom OAuth used to fall back to a fabricated meeting). Slices F0/Z1/
+callers cannot tell apart from "no data"; e.g. a failed provider auth used to fall back to a fabricated room). Slices F0/Z1/
 N1c/G1 replace them with typed errors.
 
 How to shrink: raise a typed error (or return an explicit result object) instead, then lower the file's count here.
@@ -15,7 +15,7 @@ INTEGRATIONS = APPS / 'integrations'
 # Baseline 2026-10-04: {file (relative to apps/): number of silent failures}. Only ever lower these numbers.
 ALLOWLIST = {
     'integrations/google_calendar.py': 1,         # explicit "not connected" result (G1 rewrites)
-}                                                 # zoom.py: 0 since Z1 (no-credentials token call raises)
+}
 
 
 def silent_failures(path):

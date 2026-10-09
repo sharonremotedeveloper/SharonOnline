@@ -312,7 +312,7 @@ export default function MaterialReaderPage() {
                   Practice this material live with Sharon
                 </h3>
                 <p className="text-sm text-cream/80 leading-relaxed font-sans">
-                  Book a 25-minute synchronous Zoom lesson. Get real-time pronunciation corrections and natural
+                  Book a 25-minute synchronous video lesson. Get real-time pronunciation corrections and natural
                   conversation feedback.
                 </p>
               </div>

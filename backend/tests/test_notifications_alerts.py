@@ -7,8 +7,7 @@ from django.test import TestCase
 
 import factories as f
 from apps.bookings.models import Booking
-from apps.integrations.tasks import cleanup_gcal_event, cleanup_zoom_meeting, dispatch_booking_fulfillment
-from apps.integrations.zoom import ZoomError, zoom_client
+from apps.integrations.tasks import cleanup_gcal_event, dispatch_booking_fulfillment
 from apps.notifications import alerts
 from apps.notifications.alerts import alert_staff, staff_recipients
 from apps.notifications.models import Notification
@@ -58,11 +57,11 @@ class TestAlertStaff:
         settings.ADMIN_ALERT_RECIPIENTS = []
         a1, a2 = f.make_admin(), f.make_admin()
         assert alert_staff('fulfilment_failed', key='admin:fulfilment-failed:b1:t1',
-                           payload={'booking_id': 'b1', 'step': 'zoom'}) == 2
+                           payload={'booking_id': 'b1', 'step': 'room'}) == 2
         keys = set(Notification.objects.values_list('idempotency_key', flat=True))
         assert keys == {f'admin:fulfilment-failed:b1:t1:{a1.pk}', f'admin:fulfilment-failed:b1:t1:{a2.pk}'}
         n = alerts_for(a1).get()
-        assert n.payload == {'alert': 'fulfilment_failed', 'booking_id': 'b1', 'step': 'zoom'}
+        assert n.payload == {'alert': 'fulfilment_failed', 'booking_id': 'b1', 'step': 'room'}
         assert n.email_state == Notification.EmailState.PENDING
 
     def test_repeat_is_deduplicated(self):
@@ -105,12 +104,12 @@ class TestAlertStaff:
 # ====================================================================== F0 sites
 @pytest.mark.django_db
 class TestF0SitesAlertStaff:
-    def test_fulfilment_terminal_failure(self, teacher_user, student_user, settings, caplog):
+    def test_fulfilment_terminal_failure(self, teacher_user, student_user, settings, caplog, fake_daily):
         admin = f.make_admin()
         settings.FULFILLMENT_MAX_ATTEMPTS = 1
         b = lesson(teacher_user, student_user, -1, status=S.CONFIRMED)
-        with mock.patch.object(zoom_client, 'create_meeting', side_effect=ZoomError('down')), \
-                caplog.at_level(logging.ERROR):
+        fake_daily.fail_next('room_create', 500)
+        with caplog.at_level(logging.ERROR):
             dispatch_booking_fulfillment(str(b.id))
         assert FulfillmentDispatch.objects.get(booking=b).status == FD.FAILED
         assert f'FULFILMENT FAILED booking={b.id}' in caplog.text          # the log line stays (ids only)
@@ -118,27 +117,15 @@ class TestF0SitesAlertStaff:
         assert n.payload['alert'] == 'fulfilment_failed' and n.payload['booking_id'] == str(b.id)
         assert n.idempotency_key.startswith(f'admin:fulfilment-failed:{b.id}:')
 
-    def test_fulfilment_needs_attention_at_the_cap_before_the_lesson(self, teacher_user, student_user, settings):
+    def test_fulfilment_needs_attention_at_the_cap_before_the_lesson(self, teacher_user, student_user, settings, fake_daily):
         admin = f.make_admin()
         settings.FULFILLMENT_MAX_ATTEMPTS = 1
         b = lesson(teacher_user, student_user, 600, status=S.CONFIRMED)
-        with mock.patch.object(zoom_client, 'create_meeting', side_effect=ZoomError('down')), \
-                mock.patch.object(dispatch_booking_fulfillment, 'apply_async'):
+        fake_daily.fail_next('room_create', 500)
+        with mock.patch.object(dispatch_booking_fulfillment, 'apply_async'):
             dispatch_booking_fulfillment(str(b.id))
         assert FulfillmentDispatch.objects.get(booking=b).status == FD.RETRYABLE
         assert alerts_for(admin).get().payload['alert'] == 'fulfilment_needs_attention'
-
-    def test_orphaned_zoom_meeting_when_the_broker_is_down(self, monkeypatch):
-        from apps.bookings.services import fulfillment
-        admin = f.make_admin()
-
-        def down(*args):
-            raise ConnectionError('broker')
-
-        monkeypatch.setattr(cleanup_zoom_meeting, 'delay', down)
-        fulfillment._delete_orphan('999000111', 'b-orphan')
-        n = alerts_for(admin).get()
-        assert n.payload == {'alert': 'orphaned_zoom_meeting', 'meeting_id': '999000111', 'booking_id': 'b-orphan'}
 
     def test_orphaned_calendar_event_when_the_broker_is_down(self, teacher_user, student_user, monkeypatch):
         from apps.bookings.services import fulfillment
@@ -159,7 +146,7 @@ class TestF0SitesAlertStaff:
         admin = f.make_admin()
         b = lesson(teacher_user, student_user, -12, status=S.CONFIRMED)
         with caplog.at_level(logging.ERROR):
-            dispute_without_verdict(b, 'no attendance verdict before the lesson ended: no Zoom meeting provisioned')
+            dispute_without_verdict(b, 'no attendance verdict before the lesson ended: room evidence insufficient')
         assert 'Lesson disputed without an attendance verdict' in caplog.text
         n = alerts_for(admin).get()
         assert n.payload == {'alert': 'lesson_disputed_without_verdict', 'booking_id': str(b.id)}

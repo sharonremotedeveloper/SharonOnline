@@ -60,8 +60,8 @@ class AdminTelemetryView(APIView):
         gmv_today = money_str(gmv_today, 'USD')
         gmv_month = money_str(gmv_month, 'USD')
 
-        # Active Zoom sessions (within +/- 30 minutes of now)
-        active_zoom = Booking.objects.filter(
+        # Active classroom sessions (within +/- 30 minutes of now)
+        active_sessions = Booking.objects.filter(
             status__in=[Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS],
             start_time_utc__lte=now + timedelta(minutes=15),
             end_time_utc__gte=now - timedelta(minutes=30)
@@ -94,7 +94,7 @@ class AdminTelemetryView(APIView):
         data = {
             'gmv_today_usd': gmv_today,
             'gmv_month_usd': gmv_month,
-            'active_zoom_sessions_count': active_zoom,
+            'active_sessions_count': active_sessions,
             'open_disputes_count': open_disputes,
             'pending_vetting_count': pending_vetting,
             'escrow_liability_usd': escrow_usd,
@@ -224,7 +224,7 @@ class ResolveDisputeView(APIView):
                                  'code': 'payment_not_collected'}, status=status.HTTP_409_CONFLICT)
 
             # A lesson whose money already left escrow (e.g. a tutor no-show that was refunded, then disputed when the tutor's
-            # late Zoom event arrived) cannot also be paid out to the tutor: the student is already whole.
+            # late attendance event arrived) cannot also be paid out to the tutor: the student is already whole.
             if resolution != DisputeCase.Resolution.FULL_REFUND_STUDENT and is_settled(booking):
                 return Response({'error': 'The money for this lesson was already refunded or settled, so it cannot be released to the tutor '
                                           'from here. Resolve it as a full refund (no further money moves) or take it to finance.',

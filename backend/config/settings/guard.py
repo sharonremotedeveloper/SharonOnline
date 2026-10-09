@@ -12,8 +12,6 @@ _DEFAULT_REFUND_BACKEND = 'apps.payments.services.refunds.ManualSandboxRefundGat
 _ROUTING_REFUND_BACKEND = 'apps.payments.services.refund_gateways.RoutingRefundGateway'
 _LOCAL_HOSTS = {'localhost', '127.0.0.1', '0.0.0.0', 'backend', '::1'}
 DAILY_CREDENTIAL_SETTINGS = ('DAILY_API_KEY', 'DAILY_DOMAIN', 'DAILY_WEBHOOK_SECRET')
-ZOOM_CREDENTIAL_SETTINGS = ('ZOOM_ACCOUNT_ID', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET')
-ZOOM_VIDEO_SDK_SETTINGS = ('ZOOM_VIDEO_SDK_KEY', 'ZOOM_VIDEO_SDK_SECRET')
 
 
 def _is_local_origin(origin: str) -> bool:
@@ -88,32 +86,6 @@ def validate_production_settings(env=os.environ):
     elif len(daily_webhook_secret) < 16:
         errors.append('DAILY_WEBHOOK_SECRET must be at least 16 characters')
 
-    # Legacy Zoom configuration (retained for backward compatibility during transition)
-    video_sdk_key = (env.get('ZOOM_VIDEO_SDK_KEY') or '').strip()
-    video_sdk_secret = (env.get('ZOOM_VIDEO_SDK_SECRET') or '').strip()
-    if video_sdk_key and not video_sdk_secret:
-        errors.append('ZOOM_VIDEO_SDK_SECRET must be set when ZOOM_VIDEO_SDK_KEY is configured')
-    if video_sdk_secret and not video_sdk_key:
-        errors.append('ZOOM_VIDEO_SDK_KEY must be set when ZOOM_VIDEO_SDK_SECRET is configured')
-    if video_sdk_secret and len(video_sdk_secret) < 32:
-        errors.append('ZOOM_VIDEO_SDK_SECRET must be at least 32 characters')
-
-    # Zoom settings validation for legacy test suites:
-    # If Zoom credentials are actively configured in the environment, ensure they are complete.
-    # When Daily credentials are provided alone (without legacy Zoom settings), Zoom is not required.
-    has_zoom_settings = any(
-        bool((env.get(name) or '').strip())
-        for name in (*ZOOM_CREDENTIAL_SETTINGS, 'ZOOM_VIDEO_SDK_KEY', 'ZOOM_VIDEO_SDK_SECRET', 'ZOOM_WEBHOOK_SECRET_TOKEN')
-    )
-    if has_zoom_settings:
-        if not env.get('ZOOM_WEBHOOK_SECRET_TOKEN'):
-            errors.append('ZOOM_WEBHOOK_SECRET_TOKEN must be set')
-        has_video_sdk = bool(video_sdk_key and video_sdk_secret and len(video_sdk_secret) >= 32)
-        has_s2s = all(bool((env.get(name) or '').strip()) for name in ZOOM_CREDENTIAL_SETTINGS)
-        if not (has_video_sdk or has_s2s):
-            for name in ZOOM_CREDENTIAL_SETTINGS:     # Slice Z1; scripts/check_deploy.py reports the same names
-                if not (env.get(name) or '').strip():
-                    errors.append(f'{name} must be set: without Zoom credentials no lesson room can be created or probed')
     if not env.get('ESKOMSEPUSH_API_KEY'):
         errors.append('ESKOMSEPUSH_API_KEY must be set so Power Guard never fabricates provider status')
 

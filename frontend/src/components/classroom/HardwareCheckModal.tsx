@@ -190,7 +190,7 @@ export function HardwareCheckModal({ isOpen, onClose, onComplete }: HardwareChec
         <div className="p-6 bg-cream-surface border-b border-divider flex items-center justify-between">
           <div className="space-y-1">
             <h3 className="text-xl font-black text-ink font-serif">Hardware AV Readiness Check</h3>
-            <p className="text-sm text-ink-muted">Test your webcam, microphone, and speakers before entering the Zoom lesson</p>
+            <p className="text-sm text-ink-muted">Test your webcam, microphone, and speakers before entering the lesson</p>
           </div>
           <button
             onClick={() => {

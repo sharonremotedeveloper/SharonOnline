@@ -65,7 +65,8 @@ export default function BookingConfirmedPage() {
   const startTime = booking.start_time_utc.replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   const endTime = booking.end_time_utc.replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   const gcalTitle = encodeURIComponent(`Sharon Online: 25-Min Lesson with ${booking.teacher.full_name}`);
-  const gcalDetails = encodeURIComponent(`1-on-1 English Lesson. Zoom Room: ${booking.zoom_url || "Link in dashboard"}`);
+  const classroomLink = `${window.location.origin}/student/classroom/${booking.id}`;
+  const gcalDetails = encodeURIComponent(`1-on-1 English Lesson. Classroom: ${classroomLink}`);
   const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${gcalTitle}&dates=${startTime}/${endTime}&details=${gcalDetails}`;
 
   // ICS file generator trigger
@@ -76,10 +77,10 @@ export default function BookingConfirmedPage() {
       "PRODID:-//Sharon Online//ESL Platform//EN",
       "BEGIN:VEVENT",
       `SUMMARY:English Lesson with ${booking.teacher.full_name}`,
-      `DESCRIPTION:Join Zoom Classroom: ${booking.zoom_url || "link available in your student dashboard"}`,
+      `DESCRIPTION:Join your classroom: ${classroomLink}`,
       `DTSTART:${startTime}`,
       `DTEND:${endTime}`,
-      `LOCATION:Online Zoom Room`,
+      `LOCATION:Online classroom`,
       "STATUS:CONFIRMED",
       "END:VEVENT",
       "END:VCALENDAR",
@@ -151,7 +152,7 @@ export default function BookingConfirmedPage() {
           </div>
         </div>
 
-        {/* 1-Click Zoom Link Preview */}
+        {/* 1-Click Classroom Link */}
         <div className="p-5 rounded-2xl bg-cocoa text-white flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">

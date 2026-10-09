@@ -1,4 +1,4 @@
-"""R1: minimize sensitive Zoom attendance payload retention without deleting verdicts."""
+"""R1: minimize sensitive attendance payload retention without deleting verdicts."""
 
 from datetime import timedelta
 from django.db.models import Q

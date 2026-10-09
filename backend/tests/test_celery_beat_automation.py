@@ -23,7 +23,7 @@ from apps.payments.tasks import (
     reconcile_pending_transactions_task,
 )
 from apps.integrations.tasks import sync_eskom_stages_task
-from apps.integrations.zoom import zoom_client
+from test_f0_fulfilment_probe import open_room, student_joined
 from apps.common.locks import distributed_task_lock
 
 
@@ -306,7 +306,7 @@ class TestCeleryBeatAutomation:
         booking.refresh_from_db()
         assert booking.tutor_late_alert_sent is True
 
-    def test_audit_attendance_t10_teacher_no_show(self, teacher_user, student_user, zoom_never_held):
+    def test_audit_attendance_t10_teacher_no_show(self, teacher_user, student_user, fake_daily):
         """
         At T+10m past start time, absent teacher triggers TEACHER_NO_SHOW,
         reliability strike, and 2 credits (refund + bonus) for student.
@@ -321,8 +321,9 @@ class TestCeleryBeatAutomation:
             start_time_utc=start_time,
             end_time_utc=end_time,
             status=Booking.Status.CONFIRMED,
-            zoom_meeting_id='98765432101',    # a lesson without a room is disputed, never a no-show (Slice F0)
         )
+        student_joined(booking)                        # no student join = no evidence the room was open: never a no-show (V4)
+        open_room(fake_daily, booking, student_user.id)
         tx = PaymentTransaction.objects.create(
             booking=booking,
             gateway=PaymentTransaction.Gateway.PAYFAST,
@@ -336,9 +337,8 @@ class TestCeleryBeatAutomation:
         teacher_user.sla_strikes = 0
         teacher_user.save()
 
-        # Zoom positively reports the room never started (only then is the tutor scored absent)
-        with patch.object(zoom_client, 'get_meeting_status', return_value={'status': 'waiting', 'participant_count': 0}):
-            res = audit_attendance_and_noshows_task()
+        # Daily positively reports the tutor is not in the room the student joined (only then is the tutor scored absent)
+        res = audit_attendance_and_noshows_task()
         assert res["teacher_no_shows"] >= 1
 
         booking.refresh_from_db()

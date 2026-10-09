@@ -1531,51 +1531,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/CancelPreview'
           description: ''
-  /api/v1/bookings/{booking_id}/host-link/:
-    get:
-      operationId: v1_bookings_host_link_retrieve
-      parameters:
-      - in: path
-        name: booking_id
-        schema:
-          type: string
-          format: uuid
-        required: true
-      tags:
-      - v1
-      security:
-      - jwtAuth: []
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HostLink'
-          description: ''
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorCode'
-          description: ''
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorCode'
-          description: ''
-        '409':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorCode'
-          description: ''
-        '502':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorCode'
-          description: ''
   /api/v1/bookings/{booking_id}/memo/:
     post:
       operationId: v1_bookings_memo_create
@@ -1765,7 +1720,7 @@ paths:
     get:
       operationId: v1_bookings_video_token_retrieve
       description: Retrieve an ephemeral video token to enter the live in-browser
-        classroom (Daily.co or legacy Video SDK).
+        classroom (Daily.co).
       parameters:
       - in: path
         name: booking_id
@@ -3884,23 +3839,6 @@ components:
           type: string
           nullable: true
           readOnly: true
-        zoom_url:
-          type: string
-          readOnly: true
-        zoom_join_url:
-          type: string
-          readOnly: true
-        zoom_start_url:
-          type: string
-          description: 'DEPRECATED (Slice Z1): always empty. The host link expires;
-            fetch a fresh one from GET /api/v1/bookings/{id}/host-link/.'
-          readOnly: true
-        zoom_meeting_id:
-          type: string
-          readOnly: true
-        zoom_password:
-          type: string
-          readOnly: true
         student_rating:
           type: integer
           readOnly: true
@@ -3955,11 +3893,6 @@ components:
       - student_rating
       - teacher
       - viewer_timezone
-      - zoom_join_url
-      - zoom_meeting_id
-      - zoom_password
-      - zoom_start_url
-      - zoom_url
     BookingStatusEnum:
       enum:
       - pending_payment
@@ -4387,19 +4320,6 @@ components:
           type: boolean
         error:
           type: string
-    HostLink:
-      type: object
-      properties:
-        meeting_id:
-          type: string
-        start_url:
-          type: string
-          format: uri
-          description: Fresh Zoom host start link (expiring ZAK). Open it at once;
-            never store it.
-      required:
-      - meeting_id
-      - start_url
     Incomplete:
       type: object
       properties:
@@ -6985,7 +6905,7 @@ components:
       properties:
         token:
           type: string
-          description: JWT session token for Daily.co or Video SDK
+          description: Daily.co meeting token
         room_url:
           type: string
           description: Daily.co room URL
@@ -6994,13 +6914,7 @@ components:
           description: True for host/owner (tutor/staff), False for participant
         session_name:
           type: string
-          description: Session topic / room name
-        role_type:
-          type: integer
-          description: 1 for Host (tutor), 0 for Participant (student)
-        user_identity:
-          type: string
-          description: Unique user ID
+          description: Room name
         user_name:
           type: string
           description: Display name of participant

@@ -142,9 +142,9 @@ class TestTransitionBooking:
 
     def test_extra_columns_are_saved_in_the_same_write(self, teacher_user, student_user):
         booking = make_booking(teacher_user, student_user, status=S.CONFIRMED)
-        booking.zoom_meeting_id = '123'
-        transition_booking(booking, S.IN_PROGRESS, actor='system:test', update_fields=['zoom_meeting_id'])
-        assert Booking.objects.get(pk=booking.pk).zoom_meeting_id == '123'
+        booking.reminder_1h_sent = True
+        transition_booking(booking, S.IN_PROGRESS, actor='system:test', update_fields=['reminder_1h_sent'])
+        assert Booking.objects.get(pk=booking.pk).reminder_1h_sent is True
 
 
 # ------------------------------------------------------------------ the call sites

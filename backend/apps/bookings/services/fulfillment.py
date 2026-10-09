@@ -9,12 +9,12 @@ One `payments.FulfillmentDispatch` row per booking. The protocol:
   (`reset_for_reprovision`), which silently revokes the claim; the stale worker then stops and keeps nothing.
 * The booking is re-read under its row lock and must still be CONFIRMED (a cancelled lesson is never provisioned); booking
   writes use `update_fields` only, so a stale instance can never overwrite a cancellation or any other column.
-* The Zoom HTTP call runs outside the row lock. A meeting created for a lesson that was cancelled or moved meanwhile, or whose
-  save failed, is deleted again (`cleanup_zoom_meeting`): no orphaned rooms.
+* The Daily HTTP call runs outside the row lock. The room name is deterministic (`lesson-<booking id>`) and every room
+  carries an expiry, so a retry or a lesson cancelled meanwhile leaves no orphan.
 * Each step ends `done`, `skipped` (nothing to do, e.g. no Google Calendar connected) or `failed`. A failed step makes the
   dispatch RETRYABLE (`next_retry_at`, honouring a provider `retry_after_seconds`) until FULFILLMENT_MAX_ATTEMPTS, then
   terminal FAILED with an admin alert. A permanent e-mail failure (`classify_failure`) is terminal at once. Finished steps
-  are never repeated on a retry (no second Zoom room).
+  are never repeated on a retry.
 """
 import logging
 import random
@@ -29,10 +29,7 @@ from django.utils import timezone
 from apps.bookings.models import Booking
 from apps.integrations.email import send_booking_confirmation_email
 from apps.integrations.google_calendar import sync_booking_to_teacher_gcal
-from apps.bookings.services.video_provider import uses_video_sdk
-from apps.integrations.services.daily import DailyClient, is_daily_configured
-from apps.integrations.zoom import zoom_client
-from apps.integrations.zoom_hosts import host_picker
+from apps.integrations.services.daily import DailyClient, DailyConfigError, is_daily_configured
 from apps.notifications.alerts import alert_staff
 from apps.payments.models import FulfillmentDispatch
 
@@ -43,9 +40,7 @@ St = FulfillmentDispatch.StepState
 CLAIMABLE = (D.PENDING, D.QUEUED)            # + RETRYABLE once due (_due_retry_q) + stale RUNNING
 REQUEUEABLE = (D.PENDING, D.QUEUED, D.ABANDONED)
 FINISHED_STEP = (St.DONE, St.SKIPPED)
-STEP_FLAGS = {'zoom': 'zoom_completed', 'calendar': 'calendar_completed', 'email': 'email_completed'}
-# No zoom_start_url (Slice Z1): the host link expires and is fetched fresh by the host-link endpoint, never stored.
-ZOOM_FIELDS = ['zoom_meeting_id', 'zoom_join_url', 'zoom_password', 'zoom_host_user_id', 'updated_at']
+STEP_FLAGS = {'room': 'room_completed', 'calendar': 'calendar_completed', 'email': 'email_completed'}
 
 
 class ClaimRevoked(Exception):
@@ -135,8 +130,8 @@ def reset_for_reprovision(booking) -> None:
     Clearing the claim token revokes any run still working on the old time."""
     FulfillmentDispatch.objects.update_or_create(booking=booking, defaults=dict(
         status=D.QUEUED, attempts=0, last_error='', next_retry_at=None, claim_token='', claimed_at=None,
-        zoom_state=St.PENDING, calendar_state=St.PENDING, email_state=St.PENDING,
-        zoom_completed=False, calendar_completed=False, email_completed=False))
+        room_state=St.PENDING, calendar_state=St.PENDING, email_state=St.PENDING,
+        room_completed=False, calendar_completed=False, email_completed=False))
 
 
 def run_fulfillment(booking_id, *, now=None) -> str:
@@ -150,9 +145,9 @@ def run_fulfillment(booking_id, *, now=None) -> str:
         logger.info('Fulfilment not claimed (another run holds or finished it): booking=%s', booking_id)
         return 'not_claimed'
     dispatch = FulfillmentDispatch.objects.get(booking_id=booking_id)
-    step = 'zoom'
+    step = 'room'
     try:
-        for step, run_step in (('zoom', _zoom_step), ('calendar', _calendar_step), ('email', _email_step)):
+        for step, run_step in (('room', _room_step), ('calendar', _calendar_step), ('email', _email_step)):
             if getattr(dispatch, f'{step}_state') not in FINISHED_STEP:
                 run_step(booking_id, token, now)
     except ClaimRevoked:
@@ -178,10 +173,10 @@ def classify_failure(exc) -> tuple[bool, int | None]:
     Adapter for the e-mail contract of slice N1c, written so it works before and after that merge: N1c raises
     `EmailDeliveryError` carrying `.result` (an EmailResult: status sent|retryable|failed|in_flight, retry_after_seconds) and a
     subclass `EmailPermanentError` (status `failed`: 422/403/not configured). Permanence is read from `.result.status`, so no
-    class that may not exist yet is imported. Every other exception (Zoom, Google, database, broker) is transient."""
+    class that may not exist yet is imported. Every other exception (Daily, Google, database, broker) is transient."""
     result = getattr(exc, 'result', None)
     if result is None:
-        # Slice Z1: a Zoom 429 whose Retry-After exceeded the client's inline cap carries it on the ZoomError.
+        # A provider error may carry a Retry-After on `retry_after_seconds`.
         retry_after = getattr(exc, 'retry_after_seconds', None)
         return False, (int(retry_after) if isinstance(retry_after, int) and retry_after > 0 else None)
     if getattr(result, 'status', None) == 'failed':
@@ -257,72 +252,18 @@ def _require_live(booking, token):
     return booking
 
 
-def _delete_orphan(meeting_id, booking_id) -> None:
-    from apps.integrations.tasks import cleanup_zoom_meeting
-    logger.warning('Deleting Zoom meeting created for booking=%s that was not kept: meeting=%s', booking_id, meeting_id)
-    try:
-        cleanup_zoom_meeting.delay(meeting_id)
-    except Exception as exc:    # broker down: a human must delete it; never hide that
-        logger.error('[ADMIN ALERT] ORPHANED ZOOM MEETING meeting=%s booking=%s error=%s',
-                     meeting_id, booking_id, type(exc).__name__)
-        alert_staff('orphaned_zoom_meeting', key=f'admin:orphaned-zoom-meeting:{meeting_id}',
-                    payload={'meeting_id': str(meeting_id), 'booking_id': str(booking_id)})
-
-
-def _zoom_step(booking_id, token, now) -> None:
+def _room_step(booking_id, token, now) -> None:
+    """Provision the lesson's Daily room. Idempotent by room name; the provider call runs outside the booking row lock."""
     with transaction.atomic():
         booking = _locked_confirmed(booking_id, token)
-        if is_daily_configured():
-            room_name = f'lesson-{booking.id}'
-            nbf = int((booking.start_time_utc - timedelta(minutes=settings.DAILY_ROOM_OPEN_MINUTES_BEFORE)).timestamp())
-            exp = int((booking.end_time_utc + timedelta(minutes=settings.DAILY_ROOM_VALID_AFTER_END_MINUTES)).timestamp())
-        else:
-            room_name = nbf = exp = None
-        if booking.zoom_meeting_id:
-            _set_step(booking_id, token, 'zoom', St.DONE, now)       # a room exists: reuse it, never build a second one
-            return
-        if room_name is not None:
-            # Keep provider I/O out of the booking/dispatch row lock. The
-            # deterministic name makes retries safe if the worker is reclaimed.
-            pass
-        if room_name is None and uses_video_sdk(booking):
-            _set_step(booking_id, token, 'zoom', St.SKIPPED, now)    # Video SDK lesson: the classroom needs no Meetings room
-            return
-    if room_name is not None:
-        DailyClient().ensure_room(room_name, nbf, exp)
-        _set_step(booking_id, token, 'zoom', St.DONE, now)
-        return
-    student, tutor = booking.student, booking.teacher.user
-    # Any earlier attempt (a failed step, OR a worker that died after Zoom built the room and was reclaimed: attempts > 1)
-    # may have left a meeting behind: look for it before creating another (Z1, QA #2).
-    retried = FulfillmentDispatch.objects.filter(booking_id=booking_id).filter(
-        Q(attempts__gt=1) | Q(zoom_state=St.FAILED)).exists()
-    data = zoom_client.create_meeting(        # outside the row lock
-        topic=f"Sharon ESL: {student.first_name or student.username} with {tutor.first_name or tutor.username}",
-        start_time_iso=booking.start_time_utc.strftime('%Y-%m-%dT%H:%M:%SZ'), duration_minutes=25,
-        booking_id=str(booking_id), host_user_id=host_picker.pick_host(booking), search_first=retried)
-    _store_meeting(booking_id, token, data, now)
-
-
-def _store_meeting(booking_id, token, data, now) -> None:
-    """Keep the new room only if the lesson is still ours, still confirmed and has no room yet; otherwise delete it."""
-    meeting_id, stored, wrote = str(data['meeting_id']), False, False
-    try:
-        with transaction.atomic():
-            booking = _locked_confirmed(booking_id, token)
-            if not booking.zoom_meeting_id:
-                booking.zoom_meeting_id, booking.zoom_join_url = meeting_id, data['join_url']
-                booking.zoom_password = data.get('password', '')
-                booking.zoom_host_user_id = data.get('host_user_id') or 'me'
-                booking.save(update_fields=ZOOM_FIELDS)
-                wrote = True
-            _set_step(booking_id, token, 'zoom', St.DONE, now)
-        stored = wrote
-        if stored:
-            logger.info('Zoom meeting provisioned: booking=%s meeting=%s', booking_id, meeting_id)
-    finally:
-        if not stored:
-            _delete_orphan(meeting_id, booking_id)
+        room_name = f'lesson-{booking.id}'
+        nbf = int((booking.start_time_utc - timedelta(minutes=settings.DAILY_ROOM_OPEN_MINUTES_BEFORE)).timestamp())
+        exp = int((booking.end_time_utc + timedelta(minutes=settings.DAILY_ROOM_VALID_AFTER_END_MINUTES)).timestamp())
+    if not is_daily_configured():
+        raise DailyConfigError('Daily.co is not configured: no classroom room can be provisioned.')
+    DailyClient().ensure_room(room_name, nbf, exp)
+    _set_step(booking_id, token, 'room', St.DONE, now)
+    logger.info('Daily room provisioned: booking=%s room=%s', booking_id, room_name)
 
 
 def _live_booking(booking_id, token):
@@ -333,7 +274,7 @@ def _calendar_step(booking_id, token, now) -> None:
     booking = _live_booking(booking_id, token)
     from apps.integrations.models import CalendarCredential
     connected = CalendarCredential.objects.filter(user=booking.teacher.user, revoked_at__isnull=True).exists()
-    local_mode = settings.DEBUG or getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False)
+    local_mode = settings.DEBUG or getattr(settings, 'SIMULATE_WITHOUT_CREDENTIALS', False)
     legacy_connected = local_mode and isinstance(booking.teacher.user.google_calendar_token, dict) \
         and bool(booking.teacher.user.google_calendar_token.get('access_token'))
     if not connected and not legacy_connected:
@@ -346,7 +287,7 @@ def _calendar_step(booking_id, token, now) -> None:
 
 
 def _store_event(booking_id, token, event_id, tutor_user_id, now, previous='') -> None:
-    """Same fence as `_store_meeting`: keep the event only for a still-confirmed lesson we still own whose stored event is still
+    """Keep the event only for a still-confirmed lesson we still own whose stored event is still
     the one this step started from (`previous`: empty for a new lesson, the old id for a rescheduled one, whose event was updated
     in place or, if the tutor deleted it, replaced)."""
     from apps.integrations.tasks import cleanup_gcal_event

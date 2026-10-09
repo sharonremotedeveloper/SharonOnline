@@ -31,8 +31,6 @@ from apps.integrations.serializers import (
     GoogleCalendarCallbackSerializer,
 )
 from apps.users.permissions import IsTeacher
-from .services import attendance, video_attendance
-from .zoom import zoom_client
 from .google_calendar import oauth_authorization_url, exchange_oauth_code, disconnect_calendar, oauth_state_user, consume_oauth_state
 
 logger = logging.getLogger(__name__)
@@ -127,91 +125,6 @@ class GoogleCalendarDisconnectView(APIView):
     def post(self, request):
         disconnect_calendar(request.user)
         return Response({'connected': False}, status=status.HTTP_200_OK)
-
-
-@extend_schema(exclude=True)  # machine-to-machine webhook, not part of the client API
-class ZoomWebhookReceiverView(APIView):
-    """
-    Task 6.1 & 6.2: High-reliability Zoom Webhook Ingestion Receiver
-    with HMAC-SHA256 signature verification, URL validation challenge handshakes,
-    and Late Webhook Concurrency Guards.
-    """
-    permission_classes = [AllowAny]
-    authentication_classes = []
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'webhook'
-
-    def post(self, request, *args, **kwargs):
-        # 1. Parse JSON payload
-        try:
-            payload_data = json.loads(request.body.decode('utf-8'))
-        except (ValueError, UnicodeDecodeError) as e:
-            logger.error(f"[ZOOM WEBHOOK] Malformed JSON payload: {e}")
-            return Response({"error": "Malformed JSON payload"}, status=status.HTTP_400_BAD_REQUEST)
-
-        event = payload_data.get('event')
-        event_id = str(payload_data.get('event_id') or payload_data.get('id') or '')[:128]
-
-        # 2. Zoom Endpoint URL Validation Handshake (Challenge-Response CRC)
-        if event == 'endpoint.url_validation':
-            plain_token = payload_data.get('payload', {}).get('plainToken', '')
-            if not plain_token:
-                return Response({"error": "Missing plainToken in URL validation challenge"}, status=status.HTTP_400_BAD_REQUEST)
-            crc_response = zoom_client.generate_url_validation_response(plain_token)
-            logger.info("[ZOOM WEBHOOK] Handshake challenge responded successfully.")
-            return Response(crc_response, status=status.HTTP_200_OK)
-
-        # 3. HMAC-SHA256 Signature Verification & Replay Attack Defense
-        # Inspect Django request.META for HTTP headers
-        headers_dict = {
-            'x-zm-signature': request.META.get('HTTP_X_ZM_SIGNATURE', request.headers.get('x-zm-signature', '')),
-            'x-zm-request-timestamp': request.META.get('HTTP_X_ZM_REQUEST_TIMESTAMP', request.headers.get('x-zm-request-timestamp', ''))
-        }
-
-        is_valid, reason = zoom_client.verify_webhook_signature(headers_dict, request.body)
-        if not is_valid:
-            logger.warning(f"[ZOOM WEBHOOK] Unauthorized request rejected: {reason}")
-            return Response({"error": reason}, status=status.HTTP_401_UNAUTHORIZED)
-
-        # 4. Extract the meeting object. Zoom's shape is not guaranteed, so anything odd is acknowledged and ignored.
-        payload = payload_data.get('payload')
-        meeting_obj = payload.get('object') if isinstance(payload, dict) else None
-        if not isinstance(meeting_obj, dict) or not meeting_obj.get('id'):
-            logger.info(f"[ZOOM WEBHOOK] Event {event} skipped: no usable meeting object.")
-            return Response({"status": "skipped", "reason": "No meeting id"}, status=status.HTTP_200_OK)
-
-        meeting_id = str(meeting_obj['id']).strip()
-        participant = meeting_obj.get('participant')
-
-        # 5. Process under transactional row lock (Concurrency Guard Pillar 2). Who the participant is and what the
-        #    event means is decided in services/attendance.py (docs/ZOOM_ATTENDANCE.md).
-        with transaction.atomic():
-            booking = (
-                Booking.objects.select_for_update()
-                .filter(zoom_meeting_id=meeting_id)
-                .select_related('teacher__user', 'student')
-                .first()
-            )
-            if not booking:
-                logger.warning(f"[ZOOM WEBHOOK] Received event {event} for unrecognized meeting_id: {meeting_id}")
-                return Response({"status": "ignored", "reason": "Booking not found"}, status=status.HTTP_200_OK)
-
-            now = timezone.now()
-            if event in ('meeting.participant_joined', 'meeting.participant_left'):
-                if not isinstance(participant, dict) or not participant:
-                    return Response({"status": "skipped", "reason": "No participant"}, status=status.HTTP_200_OK)
-                handler = attendance.on_participant_joined if event == 'meeting.participant_joined' else attendance.on_participant_left
-                handler(booking, meeting_obj, participant, now, event_id=event_id)
-            elif event == 'meeting.started':
-                attendance.on_meeting_started(booking, meeting_obj, now, event_id=event_id)
-            elif event == 'meeting.ended':
-                attendance.on_meeting_ended(booking, meeting_obj, now, event_id=event_id)
-
-        return Response({
-            "status": "success",
-            "event": event,
-            "meeting_id": meeting_id
-        }, status=status.HTTP_200_OK)
 
 
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
@@ -327,7 +240,7 @@ class PresignedUploadURLView(APIView):
             if size <= 0 or size > max_bytes:
                 return Response({"error": f"size must be between 1 and {max_bytes} bytes."}, status=status.HTTP_400_BAD_REQUEST)
             private = key.startswith('incoming/') or key.startswith('private/')
-            local_mode = settings.DEBUG or getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False)
+            local_mode = settings.DEBUG or getattr(settings, 'SIMULATE_WITHOUT_CREDENTIALS', False)
             if private and not local_mode and not getattr(settings, 'CLOUDFLARE_R2_PRIVATE_BUCKET_NAME', ''):
                 return Response({'error': 'Private asset storage is not configured.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
             if private and not local_mode:
@@ -356,150 +269,6 @@ class PresignedUploadURLView(APIView):
 
 
 R2PresignedUrlView = PresignedUploadURLView
-
-
-@extend_schema(exclude=True)  # machine-to-machine webhook, not part of the client API
-class VideoSdkWebhookReceiverView(APIView):
-    """Zoom Video SDK Webhook Ingestion Receiver (Slice V4).
-
-    Validates URL validation challenge handshakes (plainToken -> encryptedToken) and
-    timing-safe HMAC-SHA256 signatures before ingesting attendance telemetry.
-    """
-    permission_classes = [AllowAny]
-    authentication_classes = []
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'webhook'
-
-    @staticmethod
-    def get_webhook_secret() -> str:
-        return (
-            getattr(settings, 'ZOOM_VIDEO_SDK_WEBHOOK_SECRET', '')
-            or getattr(settings, 'ZOOM_WEBHOOK_SECRET_TOKEN', '')
-            or ''
-        )
-
-    def verify_signature(self, headers: dict, raw_body: bytes) -> tuple[bool, str]:
-        zm_signature = headers.get('x-zm-signature') or headers.get('HTTP_X_ZM_SIGNATURE', '')
-        zm_timestamp = headers.get('x-zm-request-timestamp') or headers.get('HTTP_X_ZM_REQUEST_TIMESTAMP', '')
-
-        if not zm_signature or not zm_timestamp:
-            return False, "Missing Zoom webhook signature or timestamp headers"
-
-        try:
-            timestamp_int = int(zm_timestamp)
-        except (ValueError, TypeError):
-            return False, "Invalid timestamp format in Zoom webhook header"
-
-        if abs(int(time.time()) - timestamp_int) > 300:
-            return False, "Request timestamp out of allowable window (replay guard)"
-
-        secret = self.get_webhook_secret()
-        if not secret:
-            logger.error("[VIDEO_SDK_WEBHOOK] Webhook secret is not configured; rejecting webhook")
-            return False, "Zoom webhook secret not configured"
-
-        body_str = raw_body.decode('utf-8', errors='replace')
-        message = f"v0:{zm_timestamp}:{body_str}"
-        computed_hash = hmac.new(secret.encode('utf-8'), message.encode('utf-8'), hashlib.sha256).hexdigest()
-        expected_signature = f"v0={computed_hash}"
-
-        if not hmac.compare_digest(expected_signature, zm_signature):
-            return False, "Invalid HMAC signature"
-
-        return True, "Valid"
-
-    def _handle_url_validation(self, payload_data: dict) -> Response:
-        plain_token = payload_data.get('payload', {}).get('plainToken', '')
-        if not plain_token:
-            return Response({"error": "Missing plainToken in URL validation challenge"}, status=status.HTTP_400_BAD_REQUEST)
-        secret = self.get_webhook_secret()
-        encrypted_token = hmac.new(secret.encode('utf-8'), plain_token.encode('utf-8'), hashlib.sha256).hexdigest()
-        logger.info("[VIDEO_SDK_WEBHOOK] Handshake challenge responded successfully.")
-        return Response({"plainToken": plain_token, "encryptedToken": encrypted_token}, status=status.HTTP_200_OK)
-
-    def _parse_session_booking(self, payload_data: dict):
-        payload = payload_data.get('payload') or {}
-        session_obj = payload.get('object') if isinstance(payload, dict) else {}
-        if not isinstance(session_obj, dict):
-            return None, None, Response({"status": "skipped", "reason": "No usable session object"}, status=status.HTTP_200_OK)
-
-        topic = str(
-            session_obj.get('session_name')
-            or session_obj.get('topic')
-            or session_obj.get('session_topic')
-            or ''
-        ).strip()
-        if not topic.startswith('lesson-'):
-            return None, None, Response({"status": "skipped", "reason": "Not a lesson topic"}, status=status.HTTP_200_OK)
-
-        booking_id_str = topic[len('lesson-'):]
-        try:
-            booking_uuid = uuid.UUID(booking_id_str)
-        except (ValueError, TypeError):
-            return None, None, Response({"status": "skipped", "reason": "Invalid booking ID in topic"}, status=status.HTTP_200_OK)
-
-        return booking_uuid, session_obj, None
-
-    def _dispatch_telemetry(self, event: str, booking: Booking, session_obj: dict, event_id: str, now) -> None:
-        if event in ('session.user_joined', 'session.participant_joined', 'postsession.user_joined'):
-            video_attendance.on_video_user_joined(booking, session_obj, now, event_id=event_id)
-        elif event in ('session.user_left', 'session.participant_left', 'postsession.user_left'):
-            video_attendance.on_video_user_left(booking, session_obj, now, event_id=event_id)
-        elif event == 'session.started':
-            video_attendance.on_video_session_started(booking, session_obj, now, event_id=event_id)
-        elif event == 'session.ended':
-            video_attendance.on_video_session_ended(booking, session_obj, now, event_id=event_id)
-
-    def post(self, request, *args, **kwargs):
-        # 1. Parse JSON payload
-        try:
-            payload_data = json.loads(request.body.decode('utf-8'))
-        except (ValueError, UnicodeDecodeError) as e:
-            logger.error(f"[VIDEO_SDK_WEBHOOK] Malformed JSON payload: {e}")
-            return Response({"error": "Malformed JSON payload"}, status=status.HTTP_400_BAD_REQUEST)
-
-        event = payload_data.get('event')
-        event_id = str(payload_data.get('event_id') or payload_data.get('id') or '')[:128]
-
-        # 2. URL Validation Challenge Handshake
-        if event == 'endpoint.url_validation':
-            return self._handle_url_validation(payload_data)
-
-        # 3. Signature verification
-        headers_dict = {
-            'x-zm-signature': request.META.get('HTTP_X_ZM_SIGNATURE', request.headers.get('x-zm-signature', '')),
-            'x-zm-request-timestamp': request.META.get('HTTP_X_ZM_REQUEST_TIMESTAMP', request.headers.get('x-zm-request-timestamp', ''))
-        }
-        is_valid, reason = self.verify_signature(headers_dict, request.body)
-        if not is_valid:
-            logger.warning(f"[VIDEO_SDK_WEBHOOK] Unauthorized request rejected: {reason}")
-            return Response({"error": reason}, status=status.HTTP_401_UNAUTHORIZED)
-
-        # 4. Extract session topic/booking
-        booking_uuid, session_obj, skip_response = self._parse_session_booking(payload_data)
-        if skip_response:
-            return skip_response
-
-        # 5. Row-locked atomic processing
-        with transaction.atomic():
-            booking = (
-                Booking.objects.select_for_update(of=('self',))
-                .filter(id=booking_uuid)
-                .select_related('teacher__user', 'student')
-                .first()
-            )
-            if not booking:
-                logger.warning(f"[VIDEO_SDK_WEBHOOK] Booking {booking_uuid} not found")
-                return Response({"status": "ignored", "reason": "Booking not found"}, status=status.HTTP_200_OK)
-
-            now = timezone.now()
-            self._dispatch_telemetry(event, booking, session_obj, event_id, now)
-
-        return Response({
-            "status": "success",
-            "event": event,
-            "booking_id": str(booking_uuid),
-        }, status=status.HTTP_200_OK)
 
 
 @extend_schema(exclude=True)  # machine-to-machine webhook, not part of the client API
@@ -645,7 +414,7 @@ class DailyWebhookReceiverView(APIView):
         audit_row = AttendanceAudit.objects.filter(
             booking=booking,
             participant_id=user_id,
-            zoom_session_id=f"daily-{session_id}"[:96],
+            session_id=f"daily-{session_id}"[:96],
         ).first()
         if not audit_row:
             audit_row = AttendanceAudit(
@@ -654,7 +423,7 @@ class DailyWebhookReceiverView(APIView):
                 participant_id=user_id,
                 classification=role,
                 identity='daily',
-                zoom_session_id=f"daily-{session_id}"[:96],
+                session_id=f"daily-{session_id}"[:96],
                 join_time_utc=join_time,
                 event_ids=[event_id] if event_id else [],
             )
@@ -685,7 +454,7 @@ class DailyWebhookReceiverView(APIView):
         audit_row = AttendanceAudit.objects.filter(
             booking=booking,
             participant_id=user_id,
-            zoom_session_id=f"daily-{session_id}"[:96],
+            session_id=f"daily-{session_id}"[:96],
         ).first()
         if not audit_row:
             audit_row = AttendanceAudit(
@@ -694,7 +463,7 @@ class DailyWebhookReceiverView(APIView):
                 participant_id=user_id,
                 classification=role,
                 identity='daily',
-                zoom_session_id=f"daily-{session_id}"[:96],
+                session_id=f"daily-{session_id}"[:96],
                 leave_time_utc=leave_time,
                 event_ids=[event_id] if event_id else [],
             )

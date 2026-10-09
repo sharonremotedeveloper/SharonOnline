@@ -26,7 +26,7 @@ ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
     S.PENDING_PAYMENT: frozenset({S.CONFIRMED, S.CANCELLED, S.DISPUTED}),
     # Paid and scheduled.
     S.CONFIRMED: frozenset({
-        S.IN_PROGRESS,              # someone joined (Zoom webhook / active probe)
+        S.IN_PROGRESS,              # someone joined (Daily webhook / room probe)
         S.TEACHER_NO_SHOW, S.STUDENT_NO_SHOW,   # T+10m adjudication
         S.INTERRUPTED_POWER,        # outage reported
         S.CANCELLED_BY_STUDENT,     # student cancelled more than STUDENT_FREE_CANCEL_HOURS out: refunded
@@ -38,7 +38,7 @@ ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
     }),
     S.IN_PROGRESS: frozenset({
         S.COMPLETED_PENDING_MEMO, S.DISPUTED, S.INTERRUPTED_POWER,
-        S.STUDENT_NO_SHOW,          # active Zoom probe revived a "teacher absent" case, but the student never joined
+        S.STUDENT_NO_SHOW,          # room probe revived a "teacher absent" case, but the student never joined
     }),
     # Adjudicated absences can be overturned by late attendance telemetry -> admin arbitration.
     S.TEACHER_NO_SHOW: frozenset({S.DISPUTED}),

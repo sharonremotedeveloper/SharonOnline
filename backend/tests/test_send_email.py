@@ -301,7 +301,6 @@ def fake_booking(**overrides):
         student=SimpleNamespace(first_name='<script>alert(1)</script>', username='stu', email=ADDRESS),
         teacher=SimpleNamespace(user=SimpleNamespace(first_name='Thandi & "Co"', username='tutor')),
         start_time_utc=start, end_time_utc=start + timedelta(minutes=25),
-        zoom_join_url='https://zoom.us/j/123?pwd=a&b=c', zoom_password='pw',
     )
     values.update(overrides)
     return SimpleNamespace(**values)
@@ -323,12 +322,14 @@ class TestBookingConfirmation:
         legacy.send_booking_confirmation_email(fake_booking(reschedule_count=2))
         assert resend.calls[0].headers['Idempotency-Key'].endswith(':2:student')
 
-    def test_names_and_links_are_escaped(self, resend):
-        legacy.send_booking_confirmation_email(fake_booking())
+    def test_names_and_links_are_escaped(self, resend, settings):
+        settings.FRONTEND_BASE_URL = 'https://sharonesl.com'
+        booking = fake_booking()
+        legacy.send_booking_confirmation_email(booking)
         html = resend.calls[0].json['html']
         assert '<script>' not in html and '&lt;script&gt;' in html
         assert 'Thandi &amp; &quot;Co&quot;' in html
-        assert 'href="https://zoom.us/j/123?pwd=a&amp;b=c"' in html
+        assert f'href="https://sharonesl.com/student/classroom/{booking.id}"' in html
         assert resend.calls[0].json['text']
 
     @pytest.mark.parametrize('status', [409, 429, 500, 422])

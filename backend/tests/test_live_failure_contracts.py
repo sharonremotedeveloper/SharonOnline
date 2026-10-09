@@ -6,7 +6,6 @@ from django.utils import timezone
 from apps.admin_api.serializers import LiveSessionRadarSerializer
 from apps.bookings.models import Booking
 from apps.integrations.services.attendance import credited_attendance_minutes
-from apps.integrations.services.video_attendance import _minutes as video_minutes
 from apps.materials.models import Material
 from apps.materials.serializers import MaterialDetailSerializer, MaterialListSerializer
 from apps.srs.serializers import StudentLessonItemSerializer
@@ -71,12 +70,6 @@ class TestStudentLessonContract:
 
 
 class TestAttendanceBounds:
-    def test_video_minutes_cannot_exceed_the_lesson_window(self):
-        start = datetime(2026, 1, 5, 9, 0, tzinfo=dt_timezone.utc)
-        end = start + timedelta(minutes=25)
-
-        assert video_minutes(start - timedelta(hours=19), end + timedelta(hours=19), lower=start, upper=end) == 25
-
     def test_credited_attendance_caps_legacy_minutes_to_the_lesson_window(self):
         tutor = f.make_teacher_profile()
         student = f.make_student()

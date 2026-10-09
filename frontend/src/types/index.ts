@@ -85,8 +85,6 @@ export interface Booking {
   status: BookingStatus;
   start_time_utc: string;
   end_time_utc: string;
-  zoom_url?: string;
-  zoom_password?: string;
   student_rating?: number;
   student_review?: string;
   memo?: LessonMemo;

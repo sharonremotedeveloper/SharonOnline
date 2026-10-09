@@ -75,7 +75,7 @@ def commit_asset(teacher, *, actor, kind, quarantine_key, expected_etag='', _cop
         raise ValueError('Assets cannot be submitted in the current tutor status.')
 
     private = _private(kind)
-    local_mode = getattr(settings, 'DEBUG', False) or getattr(settings, 'ZOOM_SIMULATE_WITHOUT_CREDENTIALS', False)
+    local_mode = getattr(settings, 'DEBUG', False) or getattr(settings, 'SIMULATE_WITHOUT_CREDENTIALS', False)
     if private and not local_mode and not getattr(settings, 'CLOUDFLARE_R2_PRIVATE_BUCKET_NAME', ''):
         raise RuntimeError('A separate private R2 bucket is required for vetting assets.')
     metadata = r2_client.head_object(quarantine_key, private=True)

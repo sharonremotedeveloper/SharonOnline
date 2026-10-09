@@ -14,8 +14,7 @@ def booking(teacher_user, student_user):
     start = timezone.now() + timedelta(days=2)
     return Booking.objects.create(
         teacher=teacher_user, student=student_user, start_time_utc=start, end_time_utc=start + timedelta(minutes=25),
-        status=Booking.Status.CONFIRMED, zoom_meeting_id='123456789', zoom_password='pw',
-        zoom_join_url='https://zoom.example/j/123', zoom_start_url='https://zoom.example/s/123?zak=HOSTTOKEN')
+        status=Booking.Status.CONFIRMED)
 
 
 def _get(user, booking, query=''):
@@ -31,25 +30,11 @@ class TestBookingDetailContract:
         assert res.status_code == 200
         d = res.data
         for key in ('booking_reference', 'price_usd', 'price_zar', 'lock_expires_at', 'local_date', 'local_start_time',
-                    'local_end_time', 'viewer_timezone', 'zoom_join_url', 'zoom_meeting_id', 'zoom_password',
-                    'material_slug', 'material_title'):
+                    'local_end_time', 'viewer_timezone', 'material_slug', 'material_title'):
             assert key in d, key
         assert d['booking_reference'].startswith('BK-')
         assert d['price_usd'] == '9.00' and d['price_zar'] == '162.00'
         assert d['student']['full_name'] and d['teacher']['full_name']
-        assert d['zoom_join_url'] == 'https://zoom.example/j/123'
-
-    def test_host_start_link_is_never_sent_to_the_student(self, booking, student_user):
-        d = _get(student_user, booking).data
-        assert d['zoom_start_url'] == ''
-        assert 'HOSTTOKEN' not in str(d)
-        assert d['zoom_url'] == 'https://zoom.example/j/123'
-
-    def test_tutor_detail_never_carries_a_stored_host_link(self, booking, teacher_user):
-        # Slice Z1: the host link (ZAK) expires; the tutor fetches a fresh one from GET /bookings/<id>/host-link/.
-        d = _get(teacher_user.user, booking).data
-        assert d['zoom_start_url'] == '' and 'HOSTTOKEN' not in str(d)
-        assert d['zoom_url'] == 'https://zoom.example/j/123'
 
     def test_student_contact_details_are_not_shared_with_the_tutor(self, booking, teacher_user, student_user):
         assert 'email' not in _get(teacher_user.user, booking).data['student']

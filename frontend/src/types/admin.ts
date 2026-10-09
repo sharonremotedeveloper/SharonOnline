@@ -3,7 +3,7 @@ import type { components } from "./api.generated";
 export interface AdminTelemetry {
   gmv_today_usd: string;
   gmv_month_usd: string;
-  active_zoom_sessions_count: number;
+  active_sessions_count: number;
   open_disputes_count: number;
   pending_vetting_count: number;
   escrow_liability_usd: string;
@@ -39,7 +39,6 @@ export interface LiveSessionRadarItem {
   elapsed_minutes: number;
   student_joined_at?: string;
   teacher_joined_at?: string;
-  zoom_meeting_id: string;
   status: "active" | "staging" | "wrap_up";
 }
 
@@ -53,7 +52,7 @@ export interface DisputeCase {
   amount_zar: string;
   student_statement: string;
   teacher_statement: string;
-  zoom_telemetry: {
+  attendance_telemetry: {
     student_dwell_minutes: number;
     teacher_dwell_minutes: number;
     call_connected: boolean;

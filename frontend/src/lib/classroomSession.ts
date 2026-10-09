@@ -1,7 +1,6 @@
 /**
- * Zoom Video SDK client session helper (Sprint Slice V3).
- * Fetches ephemeral session JWT tokens from GET /api/v1/bookings/<id>/video-token/
- * for in-browser embedded video sessions.
+ * Classroom session helper: fetches the ephemeral Daily.co meeting token from GET /api/v1/bookings/<id>/video-token/
+ * for the in-browser classroom.
  */
 import { ApiError, request } from "./http";
 import { errorCode } from "./bookings";
@@ -9,8 +8,6 @@ import { errorCode } from "./bookings";
 export interface VideoSessionToken {
   token: string;
   session_name: string;
-  role_type: number; // 1 for host (tutor), 0 for participant (student)
-  user_identity: string;
   user_name: string;
   expires_at: number;
   room_url?: string;

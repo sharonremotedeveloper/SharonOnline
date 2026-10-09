@@ -10,7 +10,7 @@ from apps.common.money import money_str
 class AdminTelemetrySerializer(serializers.Serializer):
     gmv_today_usd = serializers.FloatField()
     gmv_month_usd = serializers.FloatField()
-    active_zoom_sessions_count = serializers.IntegerField()
+    active_sessions_count = serializers.IntegerField()
     open_disputes_count = serializers.IntegerField()
     pending_vetting_count = serializers.IntegerField()
     escrow_liability_usd = serializers.FloatField()
@@ -87,7 +87,7 @@ class LiveSessionRadarSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'booking_ref', 'teacher_name', 'student_name',
             'material_title', 'start_time_utc', 'elapsed_minutes',
-            'student_joined_at', 'teacher_joined_at', 'zoom_meeting_id', 'status'
+            'student_joined_at', 'teacher_joined_at', 'status'
         ]
 
     def get_booking_ref(self, obj):
@@ -125,7 +125,7 @@ class DisputeCaseSerializer(serializers.ModelSerializer):
     lesson_date = serializers.SerializerMethodField()
     amount_usd = serializers.SerializerMethodField()
     amount_zar = serializers.SerializerMethodField()
-    zoom_telemetry = serializers.SerializerMethodField()
+    attendance_telemetry = serializers.SerializerMethodField()
 
     class Meta:
         model = DisputeCase
@@ -133,7 +133,7 @@ class DisputeCaseSerializer(serializers.ModelSerializer):
             'id', 'booking_ref', 'student_name', 'teacher_name',
             'lesson_date', 'amount_usd', 'amount_zar',
             'student_statement', 'teacher_statement',
-            'zoom_telemetry', 'status', 'resolution', 'admin_notes'
+            'attendance_telemetry', 'status', 'resolution', 'admin_notes'
         ]
 
     def get_booking_ref(self, obj):
@@ -154,7 +154,7 @@ class DisputeCaseSerializer(serializers.ModelSerializer):
     def get_amount_zar(self, obj):
         return money_str(lesson_price('ZAR'), 'ZAR')
 
-    def get_zoom_telemetry(self, obj):
+    def get_attendance_telemetry(self, obj):
         student_audit = obj.booking.attendance_audits.filter(participant_email=obj.student.email).first()
         teacher_audit = obj.booking.attendance_audits.filter(participant_email=obj.teacher.user.email).first()
         return {

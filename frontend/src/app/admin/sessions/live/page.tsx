@@ -89,7 +89,7 @@ export default function AdminLiveSessionsPage() {
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-error"></span>
               </span>
               <span className="text-xs font-mono font-bold text-error uppercase tracking-wider">
-                LIVE ZOOM RADAR
+                LIVE CLASSROOM RADAR
               </span>
               <span className="text-xs font-bold text-ink-muted">· {sessions.length} Active Classes</span>
             </div>
@@ -255,7 +255,6 @@ export default function AdminLiveSessionsPage() {
 
               {/* Meeting ID & Telemetry Action */}
               <div className="flex items-center justify-between text-xs pt-2 border-t border-divider">
-                <span className="text-ink-muted font-mono">Zoom ID: {sess.zoom_meeting_id}</span>
                 <span className="text-cocoa font-bold flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5" /> S2S Webhook Monitored
                 </span>

@@ -19,11 +19,11 @@ def test_outbound_connect_is_blocked():
 
 def test_dns_for_remote_hosts_is_blocked():
     with pytest.raises(network_guard.NetworkBlocked):
-        socket.getaddrinfo('api.zoom.us', 443)
+        socket.getaddrinfo('api.daily.co', 443)
     with pytest.raises(network_guard.NetworkBlocked):
-        socket.gethostbyname('api.zoom.us')
+        socket.gethostbyname('api.daily.co')
     with pytest.raises(network_guard.NetworkBlocked):
-        socket.gethostbyname_ex('api.zoom.us')
+        socket.gethostbyname_ex('api.daily.co')
     assert len(network_guard.consume()) == 3
 
 

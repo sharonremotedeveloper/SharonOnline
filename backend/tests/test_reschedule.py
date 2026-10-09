@@ -42,19 +42,17 @@ def resched(user, booking, new_start):
 
 @pytest.fixture(autouse=True)
 def no_background_work():
-    with mock.patch('apps.bookings.services.rescheduling.cleanup_zoom_meeting') as zoom, \
-         mock.patch('apps.bookings.services.rescheduling.dispatch_booking_fulfillment') as fulfil:
-        yield zoom, fulfil
+    with mock.patch('apps.bookings.services.rescheduling.dispatch_booking_fulfillment') as fulfil:
+        yield fulfil
 
 
 @pytest.mark.django_db
 class TestHappyPath:
-    def test_moves_the_same_booking_and_keeps_the_money_where_it_is(self, tutor, student_user, no_background_work):
-        zoom, fulfil = no_background_work
+    def test_moves_the_same_booking_and_keeps_the_money_where_it_is(self, tutor, student_user):
         b = captured(tutor, student_user, 30 * H)
         old_start, txs = b.start_time_utc, set(PaymentTransaction.objects.filter(booking=b).values_list('pk', 'status'))
         ledger_before = LedgerEntry.objects.count()
-        Booking.objects.filter(pk=b.pk).update(zoom_meeting_id='111', reminder_24h_sent=True, reminder_1h_sent=True,
+        Booking.objects.filter(pk=b.pk).update(reminder_24h_sent=True, reminder_1h_sent=True,
                                                reminder_10m_sent=True, tutor_late_alert_sent=True)
         new = open_slots(tutor)[5]
         res = resched(student_user, b, new)
@@ -67,16 +65,13 @@ class TestHappyPath:
         row = BookingReschedule.objects.get(booking=b)
         assert (row.old_start_time_utc, row.new_start_time_utc) == (old_start, new) and row.actor == f'user:{student_user.username}'
 
-    def test_the_zoom_room_is_replaced(self, tutor, student_user, no_background_work):
-        zoom, fulfil = no_background_work
+    def test_the_room_is_re_provisioned_and_the_calendar_event_kept(self, tutor, student_user, no_background_work):
+        fulfil = no_background_work
         b = captured(tutor, student_user, 30 * H)
-        Booking.objects.filter(pk=b.pk).update(zoom_meeting_id='111', zoom_join_url='https://zoom.us/j/111', zoom_start_url='https://zoom.us/s/111',
-                                               zoom_password='pw', teacher_gcal_event_id='evt-1')
+        Booking.objects.filter(pk=b.pk).update(teacher_gcal_event_id='evt-1')
         with pytest_django_on_commit():
             resched(student_user, b, open_slots(tutor)[5])
         b.refresh_from_db()
-        assert (b.zoom_meeting_id, b.zoom_join_url, b.zoom_start_url, b.zoom_password) == ('', '', '', '')
-        zoom.delay.assert_called_once_with('111')
         assert b.teacher_gcal_event_id == 'evt-1'      # the calendar event is kept and updated in place, never deleted
         fulfil.delay.assert_called_once_with(str(b.id))
 

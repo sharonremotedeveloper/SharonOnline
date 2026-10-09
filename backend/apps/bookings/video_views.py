@@ -12,12 +12,6 @@ from apps.integrations.services.daily import (
     DailyTimingError,
     generate_daily_token,
     is_daily_configured,
-)
-from apps.integrations.services.video_sdk import (
-    VideoSdkConfigError,
-    VideoSdkTimingError,
-    generate_video_sdk_token,
-    is_video_sdk_configured,
     resolve_role_for_booking,
 )
 
@@ -25,12 +19,10 @@ from .models import Booking
 
 
 class VideoTokenSerializer(serializers.Serializer):
-    token = serializers.CharField(help_text='JWT session token for Daily.co or Video SDK')
+    token = serializers.CharField(help_text='Daily.co meeting token')
     room_url = serializers.CharField(required=False, allow_blank=True, help_text='Daily.co room URL')
     is_owner = serializers.BooleanField(required=False, help_text='True for host/owner (tutor/staff), False for participant')
-    session_name = serializers.CharField(required=False, allow_blank=True, help_text='Session topic / room name')
-    role_type = serializers.IntegerField(required=False, help_text='1 for Host (tutor), 0 for Participant (student)')
-    user_identity = serializers.CharField(required=False, allow_blank=True, help_text='Unique user ID')
+    session_name = serializers.CharField(required=False, allow_blank=True, help_text='Room name')
     user_name = serializers.CharField(help_text='Display name of participant')
     expires_at = serializers.IntegerField(required=False, help_text='Epoch expiration timestamp')
 
@@ -54,19 +46,12 @@ CLASSROOM_STATUSES = {Booking.Status.CONFIRMED, Booking.Status.IN_PROGRESS}
         409: ErrorCodeSerializer,
         503: ErrorCodeSerializer,
     },
-    description="Retrieve an ephemeral video token to enter the live in-browser classroom (Daily.co or legacy Video SDK)."
+    description="Retrieve an ephemeral video token to enter the live in-browser classroom (Daily.co)."
 )
 class BookingVideoTokenView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
     throttle_classes = (ScopedRateThrottle,)
     throttle_scope = 'daily_video_token'
-
-    def get_throttles(self):
-        if not is_daily_configured() and is_video_sdk_configured():
-            self.throttle_scope = 'zoom_video_token'
-        else:
-            self.throttle_scope = 'daily_video_token'
-        return super().get_throttles()
 
     def _issue_daily_token(self, booking, user):
         try:
@@ -90,32 +75,6 @@ class BookingVideoTokenView(APIView):
             )
         except DailyConfigError:
             return None
-
-    def _issue_zoom_token(self, booking, user):
-        try:
-            token_data = generate_video_sdk_token(
-                booking=booking,
-                user=user,
-                enforce_window=True,
-            )
-            response = Response(VideoTokenSerializer(token_data).data)
-            response['Cache-Control'] = 'no-store'
-            return response
-        except VideoSdkTimingError as exc:
-            return Response(
-                {'error': str(exc), 'code': 'outside_lesson_window'},
-                status=status.HTTP_409_CONFLICT,
-            )
-        except VideoSdkConfigError:
-            return Response(
-                {'error': 'Video classroom service is not configured.', 'code': 'video_unconfigured'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-        except PermissionDenied as exc:
-            return Response(
-                {'error': str(exc), 'code': 'forbidden'},
-                status=status.HTTP_403_FORBIDDEN,
-            )
 
     def get(self, request, booking_id):
         try:
@@ -148,15 +107,10 @@ class BookingVideoTokenView(APIView):
                 status=status.HTTP_409_CONFLICT,
             )
 
-        # Primary provider: Daily.co WebRTC (Decision D-14)
         if is_daily_configured():
             daily_response = self._issue_daily_token(booking, request.user)
             if daily_response is not None:
                 return daily_response
-
-        # Fallback provider: Zoom Video SDK (Legacy fallback)
-        if is_video_sdk_configured():
-            return self._issue_zoom_token(booking, request.user)
 
         return Response(
             {'error': 'Video classroom service is not configured.', 'code': 'video_unconfigured'},

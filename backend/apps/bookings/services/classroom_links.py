@@ -1,7 +1,7 @@
-"""The single place that builds a lesson's join link (Video SDK direction, D-9).
+"""The single place that builds a lesson's join link (Daily.co classroom, D-14).
 
-Mails, reminders, calendar events and the frontend all use this; none may use `zoom_join_url`/`zoom_start_url`
-(legacy Meetings fields, retired in slice V5). Links come from FRONTEND_BASE_URL, never from request data.
+Mails, reminders, calendar events and the frontend all use this; none may build their own
+link. Links come from FRONTEND_BASE_URL, never from request data.
 """
 from django.conf import settings
 

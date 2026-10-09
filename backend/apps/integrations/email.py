@@ -8,6 +8,7 @@ import logging
 
 from icalendar import Calendar, Event
 
+from apps.bookings.services.classroom_links import classroom_url
 from .services import email as email_service
 from .services.email import Attachment, render_html
 
@@ -57,8 +58,9 @@ def generate_ics_content(booking) -> bytes:
     event.add('summary', f"English Lesson: {booking.student.first_name or booking.student.username} & {booking.teacher.user.first_name or booking.teacher.user.username}")
     event.add('dtstart', booking.start_time_utc)
     event.add('dtend', booking.end_time_utc)
-    event.add('description', f"Your 25-minute 1-on-1 English lesson on Sharon ESL.\n\nJoin Zoom Link: {booking.zoom_join_url}\nMeeting Password: {booking.zoom_password}")
-    event.add('location', booking.zoom_join_url)
+    join_url = classroom_url(booking, 'student')
+    event.add('description', f"Your 25-minute 1-on-1 English lesson on Sharon ESL.\n\nJoin your classroom: {join_url}")
+    event.add('location', join_url)
     event.add('status', 'CONFIRMED')
 
     cal.add_component(event)
@@ -71,7 +73,7 @@ _CONFIRMATION_HTML = (
     '<p>Your 25-minute lesson with <strong>{tutor}</strong> is locked in.</p>'
     '<p><strong>Time:</strong> {when}</p>'
     '<p><a href="{join_url}" style="background-color: #0D4440; color: white; padding: 10px 20px; '
-    'text-decoration: none; border-radius: 6px;">Launch Classroom (Zoom)</a></p>'
+    'text-decoration: none; border-radius: 6px;">Launch Classroom</a></p>'
     "<p>We've attached your calendar invite (.ics). See you in class!</p>"
 )
 
@@ -86,7 +88,7 @@ def build_booking_confirmation(booking):
     when = booking.start_time_utc.strftime('%Y-%m-%d %H:%M UTC')
     student = booking.student.first_name or booking.student.username
     tutor = booking.teacher.user.first_name or booking.teacher.user.username
-    join_url = booking.zoom_join_url or ''
+    join_url = classroom_url(booking, 'student')
     subject = f'Confirmed: Your English Lesson on Sharon ESL ({when})'
     html = render_html(_CONFIRMATION_HTML, student=student, tutor=tutor, when=when, join_url=join_url)
     text = (f'Hi {student},\n\nYour 25-minute lesson with {tutor} is locked in.\nTime: {when}\n'

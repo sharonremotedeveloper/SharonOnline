@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import React from "react";
 import { renderToString } from "react-dom/server";
 import { DailyClassroom } from "../components/classroom/DailyClassroom";
-import { videoSessionProblem } from "./videoSdk";
+import { videoSessionProblem } from "./classroomSession";
 import { ApiError } from "./http";
 
 const realFetch = globalThis.fetch;
@@ -35,8 +35,6 @@ describe("DailyClassroom component", () => {
     assert.ok(html.includes("Enter Classroom"));
     assert.ok(html.includes("In-Browser Classroom Stage"));
     assert.ok(html.includes("Daily.co"));
-    // Legacy Zoom app launcher should NOT appear when legacyJoinUrl is omitted
-    assert.ok(!html.includes("Launch in Zoom App"));
   });
 
   it("renders tutor pre-join staging with Open Classroom as Host button", () => {
@@ -51,21 +49,6 @@ describe("DailyClassroom component", () => {
     assert.ok(html.includes("Sam Student"));
     assert.ok(html.includes("Open Classroom as Host"));
     assert.ok(!html.includes("Enter Classroom"));
-  });
-
-  it("renders legacy Zoom app button when legacyJoinUrl is provided as fallback", () => {
-    const legacyUrl = "https://zoom.us/j/9876543210?pwd=testpassword";
-    const html = renderToString(
-      React.createElement(DailyClassroom, {
-        bookingId: "booking-legacy-daily-1",
-        isHost: false,
-        partnerName: "Jane Tutor",
-        legacyJoinUrl: legacyUrl,
-      })
-    );
-
-    assert.ok(html.includes("Launch in Zoom App"));
-    assert.ok(html.includes(legacyUrl));
   });
 
   it("formats the 'too early' outside-lesson-window error with 15-minute guidance", () => {

@@ -1,6 +1,6 @@
 """
 Q0: shared fakes (tests/fakes.py) driven through the REAL integration code, so later slices can rely on them matching the
-providers' HTTP contracts: Resend, Zoom (S2S OAuth + meetings), Google Calendar (events + freebusy + token) and an R2 stub.
+providers' HTTP contracts: Resend, Daily.co (rooms, tokens, presence), Google Calendar (events + freebusy + token) and an R2 stub.
 """
 from datetime import timedelta
 
@@ -11,7 +11,7 @@ from django.utils import timezone
 from apps.integrations.services import email as email_module      # the only module that calls Resend (N1c)
 from apps.integrations.email import EmailDeliveryError, send_booking_confirmation_email, send_email
 from apps.integrations.google_calendar import delete_teacher_gcal_event, sync_booking_to_teacher_gcal
-from apps.integrations.zoom import ZoomError, zoom_client
+from apps.integrations.services.daily import DailyApiError, DailyClient
 from apps.common import r2_client
 import factories as f
 
@@ -57,52 +57,45 @@ def test_fakes_insist_on_a_timeout(fake_resend):
         email_module.requests.post('https://api.resend.com/emails', json={})
 
 
-# ------------------------------------------------------------------ Zoom
-def test_fake_zoom_create_status_delete(fake_zoom):
-    meeting = zoom_client.create_meeting('Lesson', '2026-11-01T10:00:00Z', 25)
-    assert meeting['join_url'].startswith('https://') and meeting['meeting_id'] in fake_zoom.meetings
-    assert fake_zoom.token_requests == 1
-    assert zoom_client.get_meeting_status(meeting['meeting_id'])['status'] == 'waiting'     # not_started
-    fake_zoom.set_status(meeting['meeting_id'], 'started')
-    assert zoom_client.get_meeting_status(meeting['meeting_id'])['status'] == 'started'
-    fake_zoom.set_status(meeting['meeting_id'], 'error')
-    with pytest.raises(ZoomError):                        # since F0 a non-200 raises (the probe reads it as unknown)
-        zoom_client.get_meeting_status(meeting['meeting_id'])
-    assert zoom_client.delete_meeting(meeting['meeting_id']) is True
-    assert meeting['meeting_id'] not in fake_zoom.meetings
-    assert zoom_client.delete_meeting(meeting['meeting_id']) is True                       # 404 counts as deleted
+# ------------------------------------------------------------------ Daily.co
+def test_fake_daily_room_lifecycle(fake_daily):
+    client = DailyClient()
+    room = client.ensure_room('lesson-1', 100, 200)
+    assert room['name'] == 'lesson-1' and fake_daily.created == ['lesson-1']
+    assert client.ensure_room('lesson-1', 100, 200) == room and fake_daily.created == ['lesson-1']     # reused as is
+    moved = client.ensure_room('lesson-1', 300, 400)                                                  # window moves, same room
+    assert moved['config']['exp'] == 400 and fake_daily.updated == ['lesson-1'] and fake_daily.created == ['lesson-1']
+    assert client.delete_room('lesson-1') is True and 'lesson-1' not in fake_daily.rooms
+    assert client.delete_room('lesson-1') is True                                                     # 404 counts as deleted
 
 
-def test_fake_zoom_tri_state_is_validated(fake_zoom):
-    with pytest.raises(ValueError):
-        fake_zoom.set_status('1', 'finished')
+def test_fake_daily_tokens_and_presence(fake_daily):
+    client = DailyClient()
+    client.ensure_room('lesson-2', 1, 2)
+    token = client.create_meeting_token('lesson-2', 'u1', 'User One', True, 1, 2)
+    assert token.startswith('fake-daily-token-') and fake_daily.tokens[0]['user_id'] == 'u1' and fake_daily.tokens[0]['is_owner'] is True
+    assert client.get_room_presence('lesson-2') == ('ok', [])
+    fake_daily.set_presence('lesson-2', ['u1', 'u2'])
+    state, roster = client.get_room_presence('lesson-2')
+    assert state == 'ok' and [p['userId'] for p in roster] == ['u1', 'u2']
+    assert client.get_room_presence('missing') == ('not_found', [])
 
 
-def test_fake_zoom_failures(fake_zoom, settings):
-    # Since Z1 a 4xx other than 401/429 is final at once, and 429 / 5xx are retried up to ZOOM_HTTP_MAX_ATTEMPTS.
-    fake_zoom.fail_next('create', 400)
-    with pytest.raises(ZoomError, match='400'):
-        zoom_client.create_meeting('Lesson', '2026-11-01T10:00:00Z')
-    for _ in range(settings.ZOOM_HTTP_MAX_ATTEMPTS):
-        fake_zoom.fail_next('delete', 500)
-    meeting = zoom_client.create_meeting('Lesson', '2026-11-01T10:00:00Z')
-    with pytest.raises(ZoomError, match='500'):
-        zoom_client.delete_meeting(meeting['meeting_id'])
-    assert fake_zoom.created[0]['settings']['waiting_room'] is True
+def test_fake_daily_failures(fake_daily):
+    client = DailyClient()
+    fake_daily.fail_next('room_create', 500)
+    with pytest.raises(DailyApiError, match='500'):
+        client.ensure_room('lesson-3', 1, 2)
+    fake_daily.fail_next('presence', 429)
+    assert client.get_room_presence('lesson-3')[0] == 'rate_limited'
+    fake_daily.fail_next('token', 401)
+    with pytest.raises(DailyApiError, match='401'):
+        client.create_meeting_token('lesson-3', 'u1', 'User', False, 1, 2)
 
 
-def test_fake_zoom_rate_limit_timeout_and_token_rotation(fake_zoom):
-    fake_zoom.rate_limit_next('create', retry_after=1)
-    meeting = zoom_client.create_meeting('Lesson', '2026-11-01T10:00:00Z')
-    assert fake_zoom.sleeps == [1]
-    fake_zoom.rotate_token()
-    assert zoom_client.get_meeting_status(meeting['meeting_id'])['status'] == 'waiting'
-    assert fake_zoom.token_requests == 2
-    fake_zoom.timeout_next('get')
-    with pytest.raises(ZoomError):
-        zoom_client.get_meeting_status(meeting['meeting_id'])
-    first, second = zoom_client.get_start_url(meeting['meeting_id']), zoom_client.get_start_url(meeting['meeting_id'])
-    assert first != second and 'zak=' in first
+def test_fake_daily_is_what_the_app_gets(fake_daily):
+    from apps.integrations.services.daily import is_daily_configured
+    assert is_daily_configured() and DailyClient().api_key == 'fake-daily-live-key'
 
 
 # ------------------------------------------------------------------ Google Calendar

@@ -15,7 +15,6 @@ from rest_framework.test import APIRequestFactory, force_authenticate
 from apps.bookings.views import ReportOutageView
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures('simulated_zoom')        # the lifecycle runs fulfilment against the local simulated Zoom room
 def test_full_e2e_booking_and_post_lesson_lifecycle():
     """
     End-to-end critical path test:
@@ -24,7 +23,7 @@ def test_full_e2e_booking_and_post_lesson_lifecycle():
     3. Redlock 10-minute pessimistic hold reservation.
     4. Booking creation & state transition to PENDING_PAYMENT.
     5. Payment gateway webhook processing with idempotency verification.
-    6. Celery async fulfillment: Zoom S2S OAuth meeting generation.
+    6. Celery async fulfillment: the Daily classroom room (simulated without credentials).
     7. Classroom progression (CONFIRMED -> IN_PROGRESS -> COMPLETED).
     8. Post-lesson memo composition with vocabulary bank entries.
     9. 5-star student rubric review submission & teacher average re-calculation.
@@ -121,14 +120,14 @@ def test_full_e2e_booking_and_post_lesson_lifecycle():
     # Release lock after successful payment
     release_slot_lock(str(tutor_profile.id), slot_utc_str, str(student_user.id))
 
-    # 6. Celery Async Task: Zoom Meeting Provisioning
+    # 6. Celery Async Task: classroom room provisioning
     fulfillment_result = dispatch_booking_fulfillment(str(booking.id))
     assert fulfillment_result is True
 
+    from apps.payments.models import FulfillmentDispatch
+    dispatch = FulfillmentDispatch.objects.get(booking=booking)
+    assert dispatch.room_state == FulfillmentDispatch.StepState.DONE
     booking.refresh_from_db()
-    assert booking.zoom_meeting_id != ""
-    assert "zoom.us" in booking.zoom_join_url
-    assert booking.zoom_start_url == ""          # Slice Z1: the expiring host link is fetched fresh, never stored
 
     # 7. Classroom Progression: Lesson in Progress -> Completed
     booking.status = Booking.Status.IN_PROGRESS

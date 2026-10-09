@@ -33,7 +33,6 @@ def is_pii_name(identifier):
     return bool(words) and (words[-1] in PII_WORDS or tuple(words[-2:]) in PII_PAIRS)
 # Baseline 2026-10-04: {file: number of logging calls with PII}. Only ever lower these numbers.
 ALLOWLIST = {
-    'integrations/services/attendance.py': 2,     # Zoom participant e-mail in attendance logs
 }
 
 
@@ -157,7 +156,7 @@ def test_detector_ignores_ids_and_error_types(tmp_path):
     ok.write_text(
         "logger.info('booking=%s', booking.id)\n"
         "logger.error(f'failed for {booking.pk}: {type(exc).__name__}')\n"
-        "logger.warning('Zoom OAuth token request failed')\n"          # the word is in the literal text, not interpolated
+        "logger.warning('Provider token request failed')\n"          # the word is in the literal text, not interpolated
         "print(f'{user.email}')\n",
         encoding='utf-8')
     assert pii_log_calls(ok) == []

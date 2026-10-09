@@ -5,7 +5,6 @@ from django.db.models import Q
 from django.utils import timezone
 from apps.bookings.models import Booking
 from apps.payments.models import FulfillmentDispatch
-from .zoom import zoom_client
 from .services.eskom import EskomProviderError, EskomQuotaError, eskom_client
 import logging
 
@@ -35,7 +34,7 @@ def retry_fulfillment_dispatches_task():
 
 @shared_task(name='apps.integrations.tasks.dispatch_booking_fulfillment')
 def dispatch_booking_fulfillment(booking_id: str):
-    """Zoom room, tutor calendar event and confirmation e-mail for a confirmed lesson (claim protocol in
+    """Daily room, tutor calendar event and confirmation e-mail for a confirmed lesson (claim protocol in
     bookings/services/fulfillment.py). Failures are retried by `retry_fulfillment_dispatches_task`, not by Celery."""
     from apps.bookings.services.fulfillment import run_fulfillment
     return run_fulfillment(str(booking_id)) == 'succeeded'
@@ -215,16 +214,6 @@ def sync_tutor_busy_task(tutor_id: str) -> str:
 
     tutor = TeacherProfile.objects.select_related('user').filter(pk=tutor_id).first()
     return refresh_busy_hint(tutor) if tutor else 'not_found'
-
-
-@shared_task(bind=True, max_retries=3, default_retry_delay=120, name='apps.integrations.tasks.cleanup_zoom_meeting')
-def cleanup_zoom_meeting(self, meeting_id: str):
-    """Free a Zoom room whose lesson was cancelled or moved. Retried; a persistent failure is logged for a human."""
-    try:
-        return zoom_client.delete_meeting(meeting_id)
-    except Exception as exc:
-        logger.error(f"Could not delete Zoom meeting {meeting_id}: {exc}")
-        raise self.retry(exc=exc)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=120, name='apps.integrations.tasks.cleanup_daily_room')

@@ -14,12 +14,24 @@ def client():
 
 @override_settings(DAILY_API_KEY='real-test-key', DAILY_DOMAIN='example.daily.co')
 def test_ensure_room_reuses_existing_room(client):
-    existing = {'name': 'lesson-1', 'url': 'https://example.daily.co/lesson-1'}
+    existing = {'name': 'lesson-1', 'url': 'https://example.daily.co/lesson-1', 'config': {'nbf': 100, 'exp': 200}}
     with patch('apps.integrations.services.daily.requests.get', return_value=Mock(status_code=200, json=lambda: existing)) as get:
         with patch('apps.integrations.services.daily.requests.post') as post:
             assert client.ensure_room('lesson-1', 100, 200) == existing
             get.assert_called_once()
             post.assert_not_called()
+
+
+@override_settings(DAILY_API_KEY='real-test-key', DAILY_DOMAIN='example.daily.co')
+def test_ensure_room_moves_the_window_of_an_existing_room(client):
+    # A rescheduled lesson keeps its deterministic room name: the open window moves, the room is neither reused stale nor deleted.
+    existing = {'name': 'lesson-1', 'config': {'nbf': 100, 'exp': 200}}
+    moved = {'name': 'lesson-1', 'config': {'nbf': 300, 'exp': 400}}
+    with patch('apps.integrations.services.daily.requests.get', return_value=Mock(status_code=200, json=lambda: existing)):
+        with patch('apps.integrations.services.daily.requests.post', return_value=Mock(status_code=200, json=lambda: moved)) as post:
+            assert client.ensure_room('lesson-1', 300, 400) == moved
+            assert post.call_args.args[0].endswith('/rooms/lesson-1')
+            assert post.call_args.kwargs['json'] == {'properties': {'nbf': 300, 'exp': 400}}
 
 
 @override_settings(DAILY_API_KEY='real-test-key', DAILY_DOMAIN='example.daily.co')

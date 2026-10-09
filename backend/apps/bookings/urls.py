@@ -1,5 +1,4 @@
 from django.urls import path
-from .host_link_views import BookingHostLinkView
 from .video_views import BookingVideoTokenView
 from .views import (
     TeacherSlotsView,
@@ -27,6 +26,5 @@ urlpatterns = [
     path('<uuid:booking_id>/cancel-preview/', CancelPreviewView.as_view(), name='booking-cancel-preview'),
     path('<uuid:booking_id>/reschedule/', RescheduleBookingView.as_view(), name='booking-reschedule'),
     path('<uuid:booking_id>/redeem-credit/', RedeemCreditView.as_view(), name='booking-redeem-credit'),
-    path('<uuid:booking_id>/host-link/', BookingHostLinkView.as_view(), name='booking-host-link'),   # Slice Z1 (Legacy)
     path('<uuid:booking_id>/video-token/', BookingVideoTokenView.as_view(), name='booking-video-token'),   # Slice V2 (Video SDK)
 ]

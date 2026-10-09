@@ -180,9 +180,9 @@ def cancel_booking(booking_id, user, *, reason: str = '', acknowledge_forfeit: b
             if plan.strike:
                 add_strike(booking.teacher, plan.strike, booking=booking)
 
-            meeting_id, booking_pk = booking.zoom_meeting_id, str(booking.id)
+            booking_pk = str(booking.id)
             gcal = (str(booking.teacher.user_id), booking.teacher_gcal_event_id)
-            transaction.on_commit(lambda: _after_cancel(booking_pk, meeting_id, party, gcal))
+            transaction.on_commit(lambda: _after_cancel(booking_pk, party, gcal))
 
     if missing_funding:
         raise CancelError(409, 'funding_unavailable', 'We could not find the payment for this lesson, so it cannot be cancelled '
@@ -190,11 +190,9 @@ def cancel_booking(booking_id, user, *, reason: str = '', acknowledge_forfeit: b
     return {'outcome': plan.outcome, 'status': booking.status, 'message': plan.message}
 
 
-def _after_cancel(booking_id: str, meeting_id: str, cancelled_by: str, gcal: tuple):
-    """Best-effort tidy-up outside the money transaction: free the Zoom room and calendar slot, tell the other person."""
-    from apps.integrations.tasks import cleanup_daily_room, cleanup_gcal_event, cleanup_zoom_meeting, send_cancellation_emails
-    if meeting_id:
-        cleanup_zoom_meeting.delay(meeting_id)
+def _after_cancel(booking_id: str, cancelled_by: str, gcal: tuple):
+    """Best-effort tidy-up outside the money transaction: free the Daily room and calendar slot, tell the other person."""
+    from apps.integrations.tasks import cleanup_daily_room, cleanup_gcal_event, send_cancellation_emails
     cleanup_daily_room.delay(f'lesson-{booking_id}')
     if gcal[1]:
         cleanup_gcal_event.delay(*gcal)

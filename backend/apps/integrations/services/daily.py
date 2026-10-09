@@ -45,11 +45,7 @@ def is_daily_configured() -> bool:
     domain = getattr(settings, 'DAILY_DOMAIN', '') or ''
     if key.strip() and domain.strip():
         return True
-    if getattr(settings, 'DAILY_SIMULATE_WITHOUT_CREDENTIALS', False):
-        zoom_key = getattr(settings, 'ZOOM_VIDEO_SDK_KEY', '') or ''
-        if not zoom_key.strip() and domain.strip():
-            return True
-    return False
+    return bool(getattr(settings, 'DAILY_SIMULATE_WITHOUT_CREDENTIALS', False) and domain.strip())
 
 
 def get_daily_domain() -> str:
@@ -140,7 +136,7 @@ class DailyClient:
         """Create a private, time-bounded room once and safely reuse it on retries."""
         existing = self.get_room(room_name)
         if existing is not None:
-            return existing
+            return self._sync_room_window(existing, room_name, nbf, exp)
         if self._should_simulate() and not self._is_mocked(requests.post):
             return {'name': room_name, 'url': f'https://{self.domain}/{room_name}', 'simulated': True}
 
@@ -178,6 +174,28 @@ class DailyClient:
                 return existing
         logger.warning('[DAILY_CLIENT] Room creation returned status %s', response.status_code)
         raise DailyApiError(f'Daily room creation error: status {response.status_code}')
+
+    def _sync_room_window(self, room: Dict[str, Any], room_name: str, nbf: int, exp: int) -> Dict[str, Any]:
+        """A rescheduled lesson keeps its deterministic room name: move the room's open window instead of reusing a stale one."""
+        config = room.get('config') or {}
+        if room.get('simulated') or (config.get('nbf') == nbf and config.get('exp') == exp):
+            return room
+        try:
+            response = requests.post(
+                f'{self.api_base_url}/rooms/{room_name}',
+                headers=self._headers(),
+                json={'properties': {'nbf': nbf, 'exp': exp}},
+                timeout=8,
+            )
+        except requests.RequestException as exc:
+            raise DailyApiError('Daily room update failed.') from exc
+        if response.status_code != 200:
+            logger.warning('[DAILY_CLIENT] Room update returned status %s', response.status_code)
+            raise DailyApiError(f'Daily room update error: status {response.status_code}')
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise DailyApiError('Daily room update returned invalid JSON.') from exc
 
     def delete_room(self, room_name: str) -> bool:
         """Delete a lesson room; a missing room is already clean."""
@@ -251,11 +269,10 @@ class DailyClient:
     def get_room_presence(self, room_name: str) -> Tuple[str, List[Dict[str, Any]]]:
         """Query Daily REST presence API for live room roster.
 
-        Returns (status_label, roster_list) where status_label in ('ok', 'not_found', 'rate_limited', 'error').
+        Returns (status_label, roster_list) where status_label in ('ok', 'simulated', 'not_found', 'rate_limited', 'error').
         """
-        is_mocked = hasattr(requests.get, 'mock_calls') or hasattr(requests.get, 'assert_called')
-        if (self.simulate or not self.api_key or self.api_key.startswith('test-') or self.api_key.startswith('local-')) and not is_mocked:
-            return ('ok', [])
+        if self._should_simulate():
+            return ('simulated', [])    # no real roster: never an answer the no-show check may act on
 
         url = f"{self.api_base_url}/rooms/{room_name}/presence"
         try:
@@ -353,9 +370,6 @@ def generate_daily_token(
         'token': token,
         'user_name': full_name,
         'is_owner': is_owner,
-        # Backwards compatibility fields for any legacy consumers
         'session_name': room_name,
-        'role_type': 1 if is_owner else 0,
-        'user_identity': str(user.id),
         'expires_at': exp_ts,
     }

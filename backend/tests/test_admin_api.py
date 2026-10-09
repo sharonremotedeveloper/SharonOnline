@@ -33,7 +33,7 @@ def test_admin_telemetry_access_control(admin_user, student_user):
     data = res.json()
     assert 'gmv_today_usd' in data
     assert 'gmv_month_usd' in data
-    assert 'active_zoom_sessions_count' in data
+    assert 'active_sessions_count' in data
     assert 'open_disputes_count' in data
     assert 'pending_vetting_count' in data
     assert 'escrow_liability_usd' in data
@@ -254,7 +254,7 @@ def test_dispute_resolution_full_refund_and_release_tutor(admin_user, teacher_us
     )
     res2 = client.post(
         f'/api/v1/admin/disputes/{disp2.id}/resolve/',
-        {"resolution": "release_tutor", "admin_notes": "Class was fully completed per Zoom telemetry"},
+        {"resolution": "release_tutor", "admin_notes": "Class was fully completed per attendance telemetry"},
         format='json'
     )
     assert res2.status_code == 200

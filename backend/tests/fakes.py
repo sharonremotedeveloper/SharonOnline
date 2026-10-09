@@ -2,17 +2,11 @@
 Shared provider fakes (Q0). Each one answers at the HTTP / SDK boundary, so the real integration code (request building,
 status handling, error mapping) runs in the test; only the provider is fake. Use the pytest fixtures in conftest.py:
 
-    def test_x(fake_resend, fake_zoom, fake_google, fake_r2): ...
+    def test_x(fake_resend, fake_daily, fake_google, fake_r2): ...
 
 * FakeResend  - POST https://api.resend.com/emails. `.sent` (payloads), `.fail_with(status)`, `.fail_with_network_error()`.
-* FakeZoom    - S2S OAuth token + create / get / list / patch / delete meeting. Meeting state is tri-state
-                `started | not_started | error` (`.set_status(id, state)`): Zoom reports `started` / `waiting`, `error`
-                answers HTTP 500. `.fail_next(op, status)` for create/get/list/delete/update/token,
-                `.rate_limit_next(op, retry_after)` (429 + Retry-After), `.timeout_next(op, created=False)` (a
-                ReadTimeout; `created=True` builds the meeting first, like a response lost on the way back),
-                `.rotate_token()` (Zoom revokes the current token: the next API call answers 401). Every GET of a meeting
-                returns a NEW `start_url` (`zak=fake-zak-<n>`), so tests can prove a host link was fetched fresh.
-                `.sleeps` records the client's back-off waits (installed in place of `time.sleep`).
+* FakeDaily   - rooms (get / create / update / delete), meeting tokens and the presence roster (`.set_presence(room, [user ids])`).
+                `.fail_next(op, status)` for room_get / room_create / room_delete / token / presence.
 * FakeGoogle  - Calendar v3 events insert / patch / put / delete (410 once deleted), freeBusy, and the OAuth token
                 endpoint (`.revoke()` -> `invalid_grant`). `.add_busy(start, end)`, `.fail_next(op, status)`.
 * FakeR2      - a boto3 S3 client stub: put/head/get (Range, IfMatch)/copy (CopySourceIfMatch)/delete/presign, with real
@@ -33,8 +27,6 @@ from urllib.parse import urlparse
 
 import requests
 from botocore.exceptions import ClientError
-
-ZOOM_STATES = ('started', 'not_started', 'error')
 
 
 # ------------------------------------------------------------------ HTTP plumbing
@@ -153,136 +145,102 @@ class FakeResend:
         return self
 
 
-# ------------------------------------------------------------------ Zoom
-class FakeZoom(_FailureQueue):
-    TOKEN_URL = 'https://zoom.us/oauth/token'
-    API = 'https://api.zoom.us/v2'
+# ------------------------------------------------------------------ Daily.co
+class FakeDaily(_FailureQueue):
+    """Daily.co REST: rooms (get / create / delete), meeting tokens and the room presence roster.
+
+    `.rooms` maps room name -> room JSON; `.set_presence(room, [user ids])` is who is in the room right now (the roster
+    carries `userId`, the id the token was issued with). `.fail_next(op, status)` for room_get / room_create / room_delete /
+    token / presence; `.created` lists room names in creation order, `.updated` those whose open window moved (proves a retry never builds a second room).
+    """
+    API = 'https://api.daily.co/v1'
 
     def __init__(self):
         super().__init__()
-        self.requests = []
-        self.meetings = {}
+        self.rooms = {}
         self.created = []
-        self.token_requests = 0
-        self.access_token = 'fake-zoom-access-token'
-        self.expires_in = 3599
-        self.sleeps = []
-        self._tokens = itertools.count(2)
-        self._zaks = itertools.count(1)
-        self._ids = itertools.count(81000000001)
-        self._special = {}
+        self.updated = []
+        self.requests = []
+        self.tokens = []
+        self._presence = {}
+        self._token_ids = itertools.count(1)
 
-    def rotate_token(self):
-        """Zoom revokes the token it issued last: the client's cached token now answers 401 until it fetches a new one."""
-        self.access_token = f'fake-zoom-access-token-{next(self._tokens)}'
+    def set_presence(self, room_name, user_ids):
+        self._presence[room_name] = [{'id': f'session-{i}', 'userId': str(u), 'userName': f'user {u}'}
+                                     for i, u in enumerate(user_ids, 1)]
 
-    def rate_limit_next(self, op, retry_after=None, times=1):
-        headers = {} if retry_after is None else {'Retry-After': str(retry_after)}
-        self._special.setdefault(op, []).extend([('429', headers)] * times)
-
-    def timeout_next(self, op, created=False, times=1):
-        self._special.setdefault(op, []).extend([('timeout', created)] * times)
-
-    def _pop_special(self, op):
-        queue = self._special.get(op)
-        return queue.pop(0) if queue else None
-
-    def set_status(self, meeting_id, state):
-        if state not in ZOOM_STATES:
-            raise ValueError(f'Zoom fake state must be one of {ZOOM_STATES}, not {state!r}')
-        self.meetings.setdefault(str(meeting_id), {'id': int(meeting_id) if str(meeting_id).isdigit() else meeting_id})
-        self.meetings[str(meeting_id)]['state'] = state
-
-    def _failure(self, op):
+    def _failed(self, op):
         failure = self.pop(op)
-        if failure:
-            status, body = failure
-            return FakeResponse(status, body or {'code': status, 'message': f'fake Zoom {op} failure'})
-        return None
-
-    def _special_response(self, op, build=None):
-        special = self._pop_special(op)
-        if special is None:
+        if failure is None:
             return None
-        kind, arg = special
-        if kind == '429':
-            return FakeResponse(429, {'code': 429, 'message': 'You have reached the maximum per-second rate limit.'},
-                                headers=arg)
-        if arg and build is not None:          # timeout AFTER Zoom did the work: the response is lost on the way back
-            build()
-        raise requests.ReadTimeout(f'fake Zoom {op} timed out')
+        status, body = failure
+        return FakeResponse(status, body or {'error': 'fake-daily-error', 'info': f'fake Daily {op} failure'})
 
     def handle(self, req):
         self.requests.append(req)
-        if req.url.startswith(self.TOKEN_URL):
-            self.token_requests += 1
-            return (self._special_response('token') or self._failure('token')
-                    or FakeResponse(200, {'access_token': self.access_token, 'token_type': 'bearer',
-                                          'expires_in': self.expires_in}))
-        if req.headers.get('Authorization') != f'Bearer {self.access_token}':
-            return FakeResponse(401, {'code': 124, 'message': 'Invalid access token.'})
-        path = urlparse(req.url).path.removeprefix('/v2')
-        created = re.fullmatch(r'/users/([^/]+)/meetings', path)
-        if created and req.method == 'POST':
-            host, body = created.group(1), req.json or {}
-            return (self._special_response('create', lambda: self._create(host, body))
-                    or self._failure('create') or self._create(host, body))
-        if created and req.method == 'GET':
-            return self._special_response('list') or self._failure('list') or self._list(created.group(1), req.params or {})
-        one = re.fullmatch(r'/meetings/([^/]+)', path)
-        if not one:
+        path = req.url[len(self.API):] if req.url.startswith(self.API) else _unexpected(req)
+        if req.method == 'POST' and path == '/rooms':
+            return self._failed('room_create') or self._create_room(req.json or {})
+        if req.method == 'POST' and path == '/meeting-tokens':
+            return self._failed('token') or self._token(req.json or {})
+        match = re.fullmatch(r'/rooms/([^/]+)(/presence)?', path)
+        if not match:
             _unexpected(req)
-        meeting_id = one.group(1)
-        op = {'GET': 'get', 'DELETE': 'delete', 'PATCH': 'update'}.get(req.method)
-        if op is None:
-            _unexpected(req)
-        failure = self._special_response(op) or self._failure(op)
-        if failure:
-            return failure
-        meeting = self.meetings.get(meeting_id)
-        if meeting is None:
-            return FakeResponse(404, {'code': 3001, 'message': 'Meeting does not exist.'})
-        if op == 'delete':
-            del self.meetings[meeting_id]
-            return FakeResponse(204)
-        if op == 'update':
-            meeting.update(req.json or {})
-            return FakeResponse(204)
-        if meeting.get('state') == 'error':
-            return FakeResponse(500, {'code': 500, 'message': 'fake Zoom internal error'})
-        return FakeResponse(200, {**meeting, 'status': 'started' if meeting.get('state') == 'started' else 'waiting',
-                                  'start_url': f'https://zoom.us/s/{meeting_id}?zak=fake-zak-{next(self._zaks)}'})
+        name, presence = match.group(1), bool(match.group(2))
+        if req.method == 'GET' and presence:
+            return self._failed('presence') or self._presence_response(name)
+        if req.method == 'GET':
+            return self._failed('room_get') or self._get_room(name)
+        if req.method == 'POST' and not presence:
+            return self._failed('room_update') or self._update_room(name, req.json or {})
+        if req.method == 'DELETE' and not presence:
+            return self._failed('room_delete') or self._delete_room(name)
+        _unexpected(req)
 
-    def _create(self, host, body):
-        meeting_id = next(self._ids)
-        meeting = {'id': meeting_id, 'host_id': host, 'topic': body.get('topic'), 'start_time': body.get('start_time'),
-                   'duration': body.get('duration'), 'agenda': body.get('agenda', ''), 'settings': body.get('settings', {}),
-                   'state': 'not_started', 'join_url': f'https://zoom.us/j/{meeting_id}?pwd=fake',
-                   'start_url': f'https://zoom.us/s/{meeting_id}?zak=fake-zak-0', 'password': 'fake123'}
-        self.meetings[str(meeting_id)] = meeting
-        self.created.append(body)
-        return FakeResponse(201, meeting)
+    def _create_room(self, body):
+        name = body['name']
+        if name in self.rooms:
+            return FakeResponse(409, {'error': 'invalid-request-error', 'info': 'room already exists'})
+        room = {'name': name, 'url': f'https://fake.daily.co/{name}', 'privacy': body.get('privacy', 'public'),
+                'config': body.get('properties', {})}
+        self.rooms[name] = room
+        self.created.append(name)
+        return FakeResponse(200, room)
 
-    def _list(self, host, params):
-        """`GET /users/{host}/meetings` (upcoming): summaries only (no start_url / password), paged by `page_size`."""
-        mine = [m for m in self.meetings.values() if m.get('host_id') == host]
-        size = int(params.get('page_size') or 30)
-        start = int(params.get('next_page_token') or 0)
-        page = mine[start:start + size]
-        token = str(start + size) if start + size < len(mine) else ''
-        return FakeResponse(200, {'page_size': size, 'total_records': len(mine), 'next_page_token': token,
-                                  'meetings': [{'id': m['id'], 'topic': m.get('topic'), 'start_time': m.get('start_time'),
-                                                'agenda': m.get('agenda', ''), 'join_url': m['join_url']} for m in page]})
+    def _update_room(self, name, body):
+        if name not in self.rooms:
+            return FakeResponse(404, {'error': 'not-found'})
+        self.rooms[name]['config'].update(body.get('properties', {}))
+        self.updated.append(name)
+        return FakeResponse(200, self.rooms[name])
+
+    def _get_room(self, name):
+        if name not in self.rooms:
+            return FakeResponse(404, {'error': 'not-found', 'info': f'room {name} not found'})
+        return FakeResponse(200, self.rooms[name])
+
+    def _delete_room(self, name):
+        if self.rooms.pop(name, None) is None:
+            return FakeResponse(404, {'error': 'not-found'})
+        self._presence.pop(name, None)
+        return FakeResponse(200, {'deleted': True, 'name': name})
+
+    def _presence_response(self, name):
+        if name not in self.rooms:
+            return FakeResponse(404, {'error': 'not-found'})
+        roster = self._presence.get(name, [])
+        return FakeResponse(200, {'total_count': len(roster), 'data': roster})
+
+    def _token(self, body):
+        self.tokens.append(body.get('properties', {}))
+        return FakeResponse(200, {'token': f'fake-daily-token-{next(self._token_ids)}'})
 
     def install(self, monkeypatch):
-        """Credentials come from Django settings since Z1 (no environment reads in app code); back-off waits are recorded,
-        never slept."""
         from django.conf import settings
-        for name in ('ZOOM_ACCOUNT_ID', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET'):
-            monkeypatch.setattr(settings, name, f'fake-{name.lower()}', raising=False)
-        monkeypatch.setattr('apps.integrations.zoom.requests', FakeRequestsModule(self.handle))
-        monkeypatch.setattr('apps.integrations.zoom._sleep', self.sleeps.append)
-        monkeypatch.setattr('apps.integrations.zoom_auth._sleep', self.sleeps.append)
+        monkeypatch.setattr(settings, 'DAILY_API_KEY', 'fake-daily-live-key', raising=False)
+        monkeypatch.setattr(settings, 'DAILY_DOMAIN', 'fake.daily.co', raising=False)
+        monkeypatch.setattr(settings, 'DAILY_SIMULATE_WITHOUT_CREDENTIALS', False, raising=False)
+        monkeypatch.setattr('apps.integrations.services.daily.requests', FakeRequestsModule(self.handle))
         return self
 
 

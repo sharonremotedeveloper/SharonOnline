@@ -85,11 +85,11 @@ def audit_attendance_and_noshows_task():
     Periodic task running every 60s:
     1. At T+5m: Evaluates teacher presence. If tutor hasn't joined, flags an alert.
     2. At T+10m: Adjudicates no-show conditions (services/attendance_probe.py):
-       - Teacher absent and Zoom says the room never started: TEACHER_NO_SHOW, 100% refund + 1 bonus credit, strike.
-       - Zoom status unknown: deferred to the next run; no meeting id at all: DISPUTED (never a no-show).
+       - Teacher absent, student present and Daily says the tutor is not in the room: TEACHER_NO_SHOW, 100% refund + 1 bonus credit, strike.
+       - Room status unknown: deferred to the next run; still unresolved at the lesson end: DISPUTED (never a no-show).
        - Student absent (tutor present): Sets STUDENT_NO_SHOW, tutor gets full lesson fee, student credit forfeited.
     3. At T+25m+: Verifies lesson completion based on attendance minutes (>=20m).
-    The Zoom HTTP probes run first, holding no database lock and no task lock (bounded by ATTENDANCE_PROBE_BUDGET_SECONDS).
+    The Daily presence probes run first, holding no database lock and no task lock (bounded by ATTENDANCE_PROBE_BUDGET_SECONDS).
     """
     now = timezone.now()
     return _audit_attendance_locked(now, probe_t10_candidates(now))
@@ -160,7 +160,7 @@ def _close_ended_lessons(now, results):
                     f"Booking {booking.id} verified with {teacher_minutes}m attendance -> COMPLETED_PENDING_MEMO."
                 )
             elif booking.status == Booking.Status.CONFIRMED:
-                # Never adjudicated (no meeting, or the Zoom probe stayed unknown): a human decides, nobody is scored.
+                # Never adjudicated (the room probe stayed unknown): a human decides, nobody is scored.
                 dispute_without_verdict(booking, end_of_window_reason(booking))
             else:
                 # Less than 20 minutes without prior excused power outage report
@@ -179,7 +179,7 @@ def dispatch_pre_lesson_reminders_task():
     Dispatches automated pre-lesson reminders across 3 key time windows:
     1. T-24h Window: Calendar checklist and timezone verification.
     2. T-1h Window: WebRTC hardware AV preview test reminder.
-    3. T-10m Window: High-priority lesson staging reminder with 1-click Zoom link.
+    3. T-10m Window: High-priority lesson staging reminder with 1-click classroom link.
     """
     now = timezone.now()
     dispatched = {"reminders_24h": 0, "reminders_1h": 0, "reminders_10m": 0}
@@ -240,7 +240,7 @@ def dispatch_pre_lesson_reminders_task():
                payload={'booking_id': str(booking.id)}, booking=booking)
         notify(booking.teacher.user, 'reminder_10m', key=booking_key('reminder:10m', booking, 'teacher'),
                payload={'booking_id': str(booking.id)}, booking=booking)
-        logger.info(f"Dispatched T-10m Zoom launch reminder for booking {booking.id}")
+        logger.info(f"Dispatched T-10m classroom reminder for booking {booking.id}")
 
     return dispatched
 

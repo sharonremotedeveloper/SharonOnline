@@ -221,9 +221,9 @@ class TestNotify:
     def test_payload_accepts_ids_and_converts_uuids(self, kinds, no_delivery):
         bid = uuid.uuid4()
         n = notify(f.make_student(), 'optional_both', key='k:14',
-                   payload={'booking_id': bid, 'attempts': 3, 'permanent': True, 'step': 'zoom', 'none': None})
+                   payload={'booking_id': bid, 'attempts': 3, 'permanent': True, 'step': 'room', 'none': None})
         n.refresh_from_db()
-        assert n.payload == {'booking_id': str(bid), 'attempts': 3, 'permanent': True, 'step': 'zoom', 'none': None}
+        assert n.payload == {'booking_id': str(bid), 'attempts': 3, 'permanent': True, 'step': 'room', 'none': None}
 
     @pytest.mark.parametrize('key', ['', 'has space', 'line\nbreak', 'x' * 201, 'café'])
     def test_key_must_be_a_safe_header_value(self, kinds, no_delivery, key):

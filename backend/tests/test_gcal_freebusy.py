@@ -114,13 +114,13 @@ class TestBusyHint:
 class TestOwnLessonsAreNotBusy:
     def test_events_we_created_carry_a_private_marker(self, tutor, fake_google):
         connect(tutor)
-        booking = f.make_booking(teacher=tutor, start=at(9, 30), status='confirmed', zoom_join_url='https://zoom.example/j/1')
+        booking = f.make_booking(teacher=tutor, start=at(9, 30), status='confirmed')
         event_id = google_calendar.sync_booking_to_teacher_gcal(booking)
         assert fake_google.events[event_id]['extendedProperties']['private']['sharon_booking_id'] == str(booking.id)
 
     def test_a_lesson_event_does_not_hide_its_own_slot_it_shows_as_booked(self, tutor, fake_google):
         connect(tutor)
-        booking = f.make_booking(teacher=tutor, start=at(9, 30), status='confirmed', zoom_join_url='https://zoom.example/j/1')
+        booking = f.make_booking(teacher=tutor, start=at(9, 30), status='confirmed')
         google_calendar.sync_booking_to_teacher_gcal(booking)
         refresh(tutor)
         assert cache.get(f'gcal:busy:{tutor.id}') == []
@@ -129,7 +129,7 @@ class TestOwnLessonsAreNotBusy:
 
     def test_an_external_event_next_to_a_lesson_event_still_counts(self, tutor, fake_google):
         connect(tutor)
-        booking = f.make_booking(teacher=tutor, start=at(9, 30), status='confirmed', zoom_join_url='https://zoom.example/j/1')
+        booking = f.make_booking(teacher=tutor, start=at(9, 30), status='confirmed')
         google_calendar.sync_booking_to_teacher_gcal(booking)
         fake_google.add_external_event(at(10, 0), at(10, 25))
         refresh(tutor)
@@ -234,7 +234,7 @@ class TestRescheduleKeepsTheEvent:
     """G2 follow-up: a moved lesson updates the same Google event (the id, the tutor's notes and invitations survive)."""
 
     def _booking(self, tutor, start):
-        return f.make_booking(teacher=tutor, start=start, status='confirmed', zoom_join_url='https://zoom.example/j/1')
+        return f.make_booking(teacher=tutor, start=start, status='confirmed')
 
     def test_a_booking_with_an_event_updates_it_in_place(self, tutor, fake_google):
         connect(tutor)
@@ -242,11 +242,10 @@ class TestRescheduleKeepsTheEvent:
         event_id = google_calendar.sync_booking_to_teacher_gcal(booking)
         booking.teacher_gcal_event_id = event_id
         booking.start_time_utc, booking.end_time_utc = at(10, 0), at(10, 25)
-        booking.zoom_join_url = 'https://zoom.example/j/2'
         assert google_calendar.sync_booking_to_teacher_gcal(booking) == event_id
         assert list(fake_google.events) == [event_id]
         event = fake_google.events[event_id]
-        assert event['start']['dateTime'] == at(10, 0).isoformat() and 'j/2' in event['description']
+        assert event['start']['dateTime'] == at(10, 0).isoformat() and f'/teacher/classroom/{booking.id}' in event['description']
 
     def test_an_event_the_tutor_deleted_is_recreated_with_a_new_id(self, tutor, fake_google):
         connect(tutor)

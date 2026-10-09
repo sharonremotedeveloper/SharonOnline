@@ -21,7 +21,7 @@ import {
   X,
   Wifi,
 } from "lucide-react";
-import { fetchVideoSessionToken, videoSessionProblem, VideoSessionProblem } from "../../lib/videoSdk";
+import { fetchVideoSessionToken, videoSessionProblem, VideoSessionProblem } from "../../lib/classroomSession";
 
 interface DailyClassroomProps {
   bookingId: string;
@@ -29,7 +29,6 @@ interface DailyClassroomProps {
   partnerName: string;
   partnerAvatar?: string;
   onLeave?: () => void;
-  legacyJoinUrl?: string;
 }
 
 export function DailyClassroom({
@@ -38,7 +37,6 @@ export function DailyClassroom({
   partnerName,
   partnerAvatar,
   onLeave,
-  legacyJoinUrl,
 }: DailyClassroomProps) {
   const [joined, setJoined] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -335,18 +333,6 @@ export function DailyClassroom({
               <span>Camera &amp; mic permissions will be requested upon entry.</span>
             </div>
 
-            {/* Optional Legacy Zoom App Fallback */}
-            {legacyJoinUrl && (
-              <a
-                href={legacyJoinUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="min-h-12 px-4 py-3 rounded-2xl border border-divider hover:bg-cream-surface text-ink-muted hover:text-ink text-xs font-bold transition-all flex items-center justify-center gap-1.5"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>Launch in Zoom App</span>
-              </a>
-            )}
           </div>
         </div>
       )}

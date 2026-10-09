@@ -81,7 +81,7 @@ def create_daily_audit_row(booking, user_id, role, email, session_id, join_time,
         participant_id=str(user_id),
         classification=role,
         identity='daily',
-        zoom_session_id=f"daily-{session_id}"[:96],
+        session_id=f"daily-{session_id}"[:96],
         join_time_utc=join_time,
         leave_time_utc=leave_time,
         total_minutes=min(25, duration_mins),
@@ -381,7 +381,7 @@ class TestTier1FeatureCoverage:
         assert row.classification == TEACHER
         assert row.participant_email == live_booking.teacher.user.email
         assert row.identity == 'daily'
-        assert row.zoom_session_id.startswith('daily-')
+        assert row.session_id.startswith('daily-')
 
     def test_t1_classification_student_recorded(self, live_booking):
         now = timezone.now()
@@ -420,7 +420,7 @@ class TestTier1FeatureCoverage:
             session_id='abc-xyz-123',
             join_time=timezone.now(),
         )
-        assert row.zoom_session_id == 'daily-abc-xyz-123'
+        assert row.session_id == 'daily-abc-xyz-123'
 
     def test_t1_idempotent_duplicate_events(self, live_booking):
         now = timezone.now()
@@ -433,7 +433,7 @@ class TestTier1FeatureCoverage:
             join_time=now,
             event_id='evt_duplicate_test',
         )
-        assert AttendanceAudit.objects.filter(booking=live_booking, zoom_session_id='daily-sess_unique_1').count() == 1
+        assert AttendanceAudit.objects.filter(booking=live_booking, session_id='daily-sess_unique_1').count() == 1
 
 
 # ===========================================================================

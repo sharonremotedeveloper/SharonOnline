@@ -103,9 +103,6 @@ class BookingDetailSerializer(serializers.ModelSerializer):
     memo = LessonMemoSerializer(read_only=True, allow_null=True)
     # Conditionally omitted outside staff responses, so it cannot be required in the public contract.
     student_review = serializers.CharField(required=False)
-    zoom_url = serializers.SerializerMethodField()
-    zoom_join_url = serializers.SerializerMethodField()
-    zoom_start_url = serializers.SerializerMethodField()
     booking_reference = serializers.SerializerMethodField()
     price_usd = serializers.SerializerMethodField()
     price_zar = serializers.SerializerMethodField()
@@ -123,7 +120,6 @@ class BookingDetailSerializer(serializers.ModelSerializer):
             'id', 'booking_reference', 'teacher', 'student', 'material', 'material_slug', 'material_title', 'status',
             'start_time_utc', 'end_time_utc', 'local_date', 'local_start_time', 'local_end_time', 'viewer_timezone',
             'price_usd', 'price_zar', 'lock_expires_at',
-            'zoom_url', 'zoom_join_url', 'zoom_start_url', 'zoom_meeting_id', 'zoom_password',
             'student_rating', 'student_review', 'memo', 'created_at',
             'cancelled_at', 'reschedule_count', 'original_start_time_utc',
         )
@@ -140,21 +136,6 @@ class BookingDetailSerializer(serializers.ModelSerializer):
     def _viewer(self):
         request = self.context.get('request')
         return getattr(request, 'user', None) if request else None
-
-    def get_zoom_url(self, obj) -> str:
-        viewer = self._viewer()
-        if not viewer or not viewer.is_authenticated:
-            return ""
-        # Slice Z1: the join URL for everyone; the tutor's host link comes fresh from GET /bookings/<id>/host-link/.
-        return obj.zoom_join_url
-
-    def get_zoom_join_url(self, obj) -> str:
-        return obj.zoom_join_url if self._viewer() and self._viewer().is_authenticated else ""
-
-    @extend_schema_field(serializers.CharField(help_text='DEPRECATED (Slice Z1): always empty. The host link expires; '
-                                                         'fetch a fresh one from GET /api/v1/bookings/{id}/host-link/.'))
-    def get_zoom_start_url(self, obj) -> str:
-        return ""
 
     def get_booking_reference(self, obj) -> str:
         return f"BK-{str(obj.id).split('-')[0].upper()}"

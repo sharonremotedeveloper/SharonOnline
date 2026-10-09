@@ -10,9 +10,8 @@ SAMPLE_LESSON_NOTICE = 'sample_lesson_notice'
 
 # Staff alert codes -> title. The payload carries ids and short codes only; the renderer lists them.
 ALERT_TITLES = {
-    'fulfilment_failed': 'Lesson fulfilment failed (no Zoom room / calendar / confirmation)',
+    'fulfilment_failed': 'Lesson fulfilment failed (no classroom / calendar / confirmation)',
     'fulfilment_needs_attention': 'Lesson fulfilment still failing at the attempt cap',
-    'orphaned_zoom_meeting': 'Orphaned Zoom meeting must be deleted by hand',
     'orphaned_calendar_event': 'Orphaned tutor calendar event must be deleted by hand',
     'lesson_disputed_without_verdict': 'Lesson disputed without an attendance verdict',
     'notification_failed': 'A notification e-mail could not be delivered',
@@ -35,7 +34,7 @@ def _render_admin_alert(user, payload, booking):
 
 
 def _example_admin_alert(booking):
-    return {'alert': 'fulfilment_failed', 'booking_id': str(booking.pk), 'step': 'zoom'}
+    return {'alert': 'fulfilment_failed', 'booking_id': str(booking.pk), 'step': 'room'}
 
 
 def _render_sample(user, payload, booking):

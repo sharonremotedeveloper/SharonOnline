@@ -1,17 +1,17 @@
 """
-T+10 attendance adjudication with a tri-state Zoom probe (Slice F0; docs/ZOOM_ATTENDANCE.md, docs/SETTLEMENT_PATHS.md).
+T+10 attendance adjudication with a tri-state room probe (Slice F0, V4 contract; docs/SETTLEMENT_PATHS.md).
 
 A teacher no-show refunds the student, grants a bonus credit and strikes the tutor, so it must only follow positive evidence
 that the room was open and the tutor never came:
 
-* `probe_meeting` answers `started | not_started | unknown`. Only Zoom's own `waiting` is `not_started`; a non-200, a
-  timeout, an auth failure, any exception or an unexpected payload is `unknown`.
-* `unknown` defers: nothing changes, the next beat run (60 s) probes again until the lesson window ends; a lesson still
-  without a verdict at its end goes to DISPUTED (`dispute_without_verdict`), never to a no-show.
-* A lesson with no Zoom meeting id cannot have been attended, so it is never scored a no-show: DISPUTED + an open
-  DisputeCase at T+10 instead.
+* `probe_room` asks Daily's presence API who is in the lesson room and answers `started | not_started | unknown`. Only a
+  clear answer from Daily is `started` (the tutor is in the room) or `not_started` (the roster is readable and the tutor is
+  not in it). A non-200, a timeout, an unconfigured or simulated client, a missing room or any exception is `unknown`.
+* A tutor no-show needs BOTH the student's own join (evidence that the room was open) AND `not_started`. Anything less
+  defers: nothing changes, the next beat run (60 s) probes again until the lesson window ends; a lesson still without a
+  verdict at its end goes to DISPUTED (`dispute_without_verdict`), never to a no-show.
 * `probe_t10_candidates` does the HTTP calls with no database lock and no task lock held, bounded by
-  ATTENDANCE_PROBE_BUDGET_SECONDS. `adjudicate_t10` then locks each booking, re-checks its status and meeting id, and applies.
+  ATTENDANCE_PROBE_BUDGET_SECONDS. `adjudicate_t10` then locks each booking, re-checks its status and applies.
 """
 import logging
 import time
@@ -22,11 +22,9 @@ from django.db import transaction
 
 from apps.admin_api.models import DisputeCase
 from apps.bookings.models import AttendanceAudit, Booking
-from apps.bookings.services import video_session_probe
 from apps.bookings.services.state_machine import transition_booking
-from apps.bookings.services.video_provider import uses_video_sdk
 from apps.integrations.services.attendance import STUDENT, TEACHER, present_with_disconnect_grace
-from apps.integrations.zoom import zoom_client
+from apps.integrations.services.daily import DailyClient, is_daily_configured
 from apps.notifications.alerts import alert_staff
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.funding import funding_for_settlement
@@ -38,52 +36,29 @@ logger = logging.getLogger(__name__)
 S = Booking.Status
 STARTED, NOT_STARTED, UNKNOWN = 'started', 'not_started', 'unknown'
 ACTOR = 'system:attendance_audit'
-SDK_SESSION = 'video_sdk'
+ROOM = 'room'
 LIVE = (S.CONFIRMED, S.IN_PROGRESS)
 
 
-def probe_meeting(meeting_id: str) -> str:
-    """Ask Zoom whether the meeting is running. Anything but a clear answer is UNKNOWN (defer), never 'absent'."""
-    try:
-        payload = zoom_client.get_meeting_status(meeting_id)
-    except Exception as exc:    # timeout / auth / HTTP / parse failure: we do not know, so we must not judge
-        logger.warning('Zoom probe failed: meeting=%s error=%s', meeting_id, type(exc).__name__)
+def probe_room(booking) -> str:
+    """Ask Daily whether the tutor is in the lesson room. Anything but a clear answer is UNKNOWN (defer), never 'absent'."""
+    teacher_user = getattr(getattr(booking, 'teacher', None), 'user', None)
+    if teacher_user is None or not is_daily_configured():
         return UNKNOWN
-    status = payload.get('status') if isinstance(payload, dict) else None
-    if status == 'started':
-        return STARTED
-    if status == 'waiting':
-        return _never_held(meeting_id)
-    logger.warning('Zoom probe inconclusive: meeting=%s', meeting_id)
-    return UNKNOWN
+    state, roster = DailyClient().get_room_presence(f'lesson-{booking.id}')
+    if state != 'ok':
+        return UNKNOWN
+    tutor_id = str(teacher_user.id).lower()
+    in_room = any(str(p.get('userId') or p.get('user_id') or '').lower() == tutor_id for p in roster if isinstance(p, dict))
+    return STARTED if in_room else NOT_STARTED
 
 
-def probe_video_session(booking) -> str:
-    """Video SDK lessons (slice V4): same tri-state as `probe_meeting`; a non-answer is UNKNOWN."""
-    answer = video_session_probe.probe_session(booking)
-    return answer if answer in (STARTED, NOT_STARTED) else UNKNOWN
-
-
-def _safe_video_probe(booking) -> str:
+def _safe_probe(booking) -> str:
     try:
-        return probe_video_session(booking)
+        return probe_room(booking)
     except Exception as exc:    # timeout / auth / HTTP / parse failure: no clear answer, no verdict
-        logger.warning('Video SDK probe failed: booking=%s error=%s', booking.id, type(exc).__name__)
+        logger.warning('Room probe failed: booking=%s error=%s', booking.id, type(exc).__name__)
         return UNKNOWN
-
-
-def _never_held(meeting_id: str) -> str:
-    """A scheduled (type 2) meeting reverts to `waiting` after it ends, so `waiting` alone does not prove the tutor never
-    came: only `waiting` AND no past instance is NOT_STARTED. An unclear past-instance answer is UNKNOWN."""
-    try:
-        instances = zoom_client.get_past_instances(meeting_id)
-    except Exception as exc:    # same rule as the status call: no clear answer, no verdict
-        logger.warning('Zoom past-instance check failed: meeting=%s error=%s', meeting_id, type(exc).__name__)
-        return UNKNOWN
-    if instances:
-        logger.warning('Zoom meeting already held (past instance) though now waiting: meeting=%s', meeting_id)
-        return UNKNOWN
-    return NOT_STARTED
 
 
 def _t10_candidates(now):
@@ -92,7 +67,7 @@ def _t10_candidates(now):
 
 
 def probe_t10_candidates(now) -> dict:
-    """Phase 1, no locks held: probe every confirmed lesson past T+10 whose tutor has not been seen. {booking_id: (meeting, result)}"""
+    """Phase 1, no locks held: probe every confirmed lesson past T+10 whose tutor has not been seen. {booking_id: (ROOM, result)}"""
     deadline = time.monotonic() + settings.ATTENDANCE_PROBE_BUDGET_SECONDS
     probes = {}
     for booking in _t10_candidates(now):
@@ -100,18 +75,14 @@ def probe_t10_candidates(now) -> dict:
             continue
         if present_with_disconnect_grace(booking, TEACHER, now):
             continue
-        if uses_video_sdk(booking):
-            # A tutor no-show needs the student's own join as evidence that the room was open (V4 contract).
-            if present_with_disconnect_grace(booking, STUDENT, now):
-                probes[booking.id] = (SDK_SESSION, _safe_video_probe(booking))
-            continue
-        if not booking.zoom_meeting_id:
+        # A tutor no-show needs the student's own join as evidence that the room was open (V4 contract).
+        if not present_with_disconnect_grace(booking, STUDENT, now):
             continue
         if time.monotonic() >= deadline:
-            logger.warning('Zoom probe budget exhausted, deferring: booking=%s', booking.id)
-            probes[booking.id] = (booking.zoom_meeting_id, UNKNOWN)
+            logger.warning('Room probe budget exhausted, deferring: booking=%s', booking.id)
+            probes[booking.id] = (ROOM, UNKNOWN)
             continue
-        probes[booking.id] = (booking.zoom_meeting_id, probe_meeting(booking.zoom_meeting_id))
+        probes[booking.id] = (ROOM, _safe_probe(booking))
     return probes
 
 
@@ -131,26 +102,8 @@ def _verdict(booking, probe, now, results) -> None:
     student_present = present_with_disconnect_grace(booking, STUDENT, now)
     if booking.status == S.IN_PROGRESS and not teacher_present:
         return    # inconsistent data (room open, no tutor record): the end-of-lesson check disputes it
-    if not teacher_present and uses_video_sdk(booking):
-        _sdk_verdict(booking, probe, student_present, results)
-        return
     if not teacher_present:
-        if not booking.zoom_meeting_id:
-            dispute_without_verdict(booking, 'no Zoom meeting provisioned: no no-show verdict is possible')
-            results['disputed_without_verdict'] = results.get('disputed_without_verdict', 0) + 1
-            return
-        outcome = probe[1] if probe and probe[0] == booking.zoom_meeting_id else UNKNOWN
-        if outcome == UNKNOWN:
-            logger.warning('No-show verdict deferred (Zoom status unknown): booking=%s', booking.id)
-            results['probe_deferred'] = results.get('probe_deferred', 0) + 1
-            return
-        if outcome == NOT_STARTED:
-            apply_teacher_no_show(booking)
-            results['teacher_no_shows'] += 1
-            return
-        _record_probe_presence(booking)
-        # The tutor is known only from the probe: the attendance webhooks may have been lost, so missing student rows are
-        # no evidence of a student absence. No student no-show; the lesson-end check decides (review M2).
+        _room_verdict(booking, probe, student_present, results)
         return
     if not student_present:
         transition_booking(booking, S.STUDENT_NO_SHOW, actor=ACTOR, reason='student absent at T+10m, teacher present')
@@ -163,10 +116,10 @@ def _verdict(booking, probe, now, results) -> None:
         logger.info('[NO-SHOW] Student absent at T+10m: booking=%s', booking.id)
 
 
-def _sdk_verdict(booking, probe, student_present, results) -> None:
-    """Tutor absent at T+10 on a Video SDK lesson. A no-show needs BOTH the student's join and the SDK's own word that no
-    tutor session started; anything less defers, and the lesson-end check disputes it (V4 contract, F0 semantics)."""
-    outcome = probe[1] if probe and probe[0] == SDK_SESSION else UNKNOWN
+def _room_verdict(booking, probe, student_present, results) -> None:
+    """Tutor absent at T+10. A no-show needs BOTH the student's join and Daily's own word that the tutor is not in the room;
+    anything less defers, and the lesson-end check disputes it (V4 contract, F0 semantics)."""
+    outcome = probe[1] if probe and probe[0] == ROOM else UNKNOWN
     if outcome == STARTED:
         _record_probe_presence(booking)
         return
@@ -174,20 +127,20 @@ def _sdk_verdict(booking, probe, student_present, results) -> None:
         apply_teacher_no_show(booking)
         results['teacher_no_shows'] += 1
         return
-    logger.warning('No-show verdict deferred (Video SDK evidence insufficient): booking=%s', booking.id)
+    logger.warning('No-show verdict deferred (room evidence insufficient): booking=%s', booking.id)
     results['probe_deferred'] = results.get('probe_deferred', 0) + 1
 
 
 def _record_probe_presence(booking) -> None:
-    """Zoom says the room is running: the tutor (host link) is in, so no tutor no-show."""
+    """Daily says the tutor is in the room, but no join webhook arrived: record that evidence and start the lesson."""
     AttendanceAudit.objects.get_or_create(
-        booking=booking, zoom_session_id='active_zoom_probe',
+        booking=booking, session_id='active_room_probe',
         defaults={'participant_email': booking.teacher.user.email, 'classification': AttendanceAudit.Classification.TEACHER,
-                  'identity': 'active_zoom_probe', 'join_time_utc': booking.start_time_utc,
-                  'raw_payload': {'source': 'active_zoom_probe'}})
-    transition_booking(booking, S.IN_PROGRESS, actor='system:zoom_probe',
-                       reason='active Zoom meeting detected before no-show verdict')
-    logger.warning('[ACTIVE ZOOM PROBE GUARD] Active meeting detected, no-show prevented: booking=%s', booking.id)
+                  'identity': 'probe', 'join_time_utc': booking.start_time_utc,
+                  'raw_payload': {'source': 'active_room_probe'}})
+    transition_booking(booking, S.IN_PROGRESS, actor='system:room_probe',
+                       reason='tutor present in the room (presence probe) before no-show verdict')
+    logger.warning('[ACTIVE ROOM PROBE GUARD] Tutor present in room, no-show prevented: booking=%s', booking.id)
 
 
 def apply_teacher_no_show(booking) -> None:
@@ -197,7 +150,7 @@ def apply_teacher_no_show(booking) -> None:
     from apps.payments.services.ledger_service import record_compensation_entry
     from apps.payments.services.refunds import request_refund
 
-    transition_booking(booking, S.TEACHER_NO_SHOW, actor=ACTOR, reason='teacher absent at T+10m (Zoom room not started)')
+    transition_booking(booking, S.TEACHER_NO_SHOW, actor=ACTOR, reason='teacher absent at T+10m (classroom not entered)')
     add_strike(booking.teacher, TeacherStrike.Kind.NO_SHOW, booking=booking)
     funding = funding_for_settlement(booking, context='teacher_no_show_restitution')
     if funding is None:
@@ -219,18 +172,14 @@ def apply_teacher_no_show(booking) -> None:
 
 def end_of_window_reason(booking) -> str:
     """Why a lesson that is still CONFIRMED at its end never got a verdict (it is disputed, never scored)."""
-    if uses_video_sdk(booking):
-        return 'no attendance verdict before the lesson ended: Video SDK evidence insufficient'
-    if not booking.zoom_meeting_id:
-        return 'no attendance verdict before the lesson ended: no Zoom meeting provisioned'
-    return 'no attendance verdict before the lesson ended: Zoom probe unresolved'
+    return 'no attendance verdict before the lesson ended: room evidence insufficient'
 
 
 def dispute_without_verdict(booking, reason: str) -> None:
     """Human-visible state for a lesson we cannot judge: DISPUTED + an open DisputeCase. No refund, strike or credit."""
     result = transition_booking(booking, S.DISPUTED, actor=ACTOR, reason=reason)
     note = (f'{reason}. No attendance verdict was possible (Slice F0). Nothing was refunded, credited or struck: '
-            'decide from the attendance records and the Zoom account.')
+            'decide from the attendance records and the Daily room.')
     case, created = DisputeCase.objects.select_for_update().get_or_create(booking=booking, defaults={
         'student': booking.student, 'teacher': booking.teacher, 'status': DisputeCase.Status.OPEN,
         'student_statement': f'Automated: {reason}.', 'teacher_statement': '', 'admin_notes': note})

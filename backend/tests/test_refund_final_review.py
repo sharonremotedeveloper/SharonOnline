@@ -97,13 +97,12 @@ def test_the_test_environment_pins_the_manual_refund_backend(settings):
 
 GOOD = {
     'DJANGO_SECRET_KEY': 'x' * 60, 'DJANGO_ALLOWED_HOSTS': 'api.sharonesl.com', 'CORS_ALLOWED_ORIGINS': 'https://sharonesl.com',
-    'CSRF_TRUSTED_ORIGINS': 'https://sharonesl.com,https://api.sharonesl.com', 'ZOOM_WEBHOOK_SECRET_TOKEN': 'zoom-secret',
+    'CSRF_TRUSTED_ORIGINS': 'https://sharonesl.com,https://api.sharonesl.com',
     'ESKOMSEPUSH_API_KEY': 'eskom-provider-key', 'THROTTLE_NUM_PROXIES': '1', 'FRONTEND_BASE_URL': 'https://sharonesl.com',
     'RESEND_API_KEY': 're_live_abcdefghijklmnop', 'PAYOUT_DATA_KEYS': json.dumps({'v1': Fernet.generate_key().decode()}),
     'PAYOUT_DATA_ACTIVE_KEY': 'v1', 'INTEGRATION_DATA_KEYS': json.dumps({'v1': Fernet.generate_key().decode()}),
     'INTEGRATION_DATA_ACTIVE_KEY': 'v1', 'CLOUDFLARE_R2_PRIVATE_BUCKET_NAME': 'esl-private',
     'REFUND_GATEWAY_BACKEND': 'apps.payments.services.refund_gateways.RoutingRefundGateway',
-    'ZOOM_ACCOUNT_ID': 'zoom-account', 'ZOOM_CLIENT_ID': 'zoom-client', 'ZOOM_CLIENT_SECRET': 'zoom-secret-value',  # Z1
     # Daily.co video conferencing credentials (M1 / Requirement R4)
     'DAILY_API_KEY': 'daily-live-api-key-test-value-0123456789',
     'DAILY_DOMAIN': 'sharonesl.daily.co',

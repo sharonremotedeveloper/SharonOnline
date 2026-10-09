@@ -299,7 +299,7 @@ class TestStrikes:
 # ------------------------------------------------------------------ a refunded lesson that is later disputed
 @pytest.mark.django_db
 class TestDisputeAfterRefund:
-    """A tutor no-show is refunded; the tutor's late Zoom event then flips it to DISPUTED. The money has already left escrow."""
+    """A tutor no-show is refunded; the tutor's late join event then flips it to DISPUTED. The money has already left escrow."""
 
     def setup_dispute(self, teacher_user, student_user):
         from apps.admin_api.models import DisputeCase

@@ -1,12 +1,12 @@
-subject: [Sharon admin] Lesson fulfilment failed (no Zoom room / calendar / confirmation)
-title: Lesson fulfilment failed (no Zoom room / calendar / confirmation)
+subject: [Sharon admin] Lesson fulfilment failed (no classroom / calendar / confirmation)
+title: Lesson fulfilment failed (no classroom / calendar / confirmation)
 --- body
 booking_id: 00000000-0000-4000-8000-0000000000b1
-step: zoom
+step: room
 --- text
-Lesson fulfilment failed (no Zoom room / calendar / confirmation)
+Lesson fulfilment failed (no classroom / calendar / confirmation)
 booking_id: 00000000-0000-4000-8000-0000000000b1
-step: zoom
+step: room
 Alert code: fulfilment_failed. See docs/RUNBOOK_NOTIFICATIONS.md.
 --- html
-<p>Lesson fulfilment failed (no Zoom room / calendar / confirmation)</p><ul><li>booking_id: <code>00000000-0000-4000-8000-0000000000b1</code></li><li>step: <code>zoom</code></li></ul><p>Alert code: <code>fulfilment_failed</code>. See docs/RUNBOOK_NOTIFICATIONS.md.</p>
+<p>Lesson fulfilment failed (no classroom / calendar / confirmation)</p><ul><li>booking_id: <code>00000000-0000-4000-8000-0000000000b1</code></li><li>step: <code>room</code></li></ul><p>Alert code: <code>fulfilment_failed</code>. See docs/RUNBOOK_NOTIFICATIONS.md.</p>

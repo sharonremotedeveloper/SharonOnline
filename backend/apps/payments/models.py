@@ -520,10 +520,10 @@ class FulfillmentDispatch(models.Model):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
     attempts = models.PositiveIntegerField(default=0)
     # Per-step truth (Slice F0). The *_completed booleans are a legacy mirror (True when the step is done or skipped).
-    zoom_state = models.CharField(max_length=10, choices=StepState.choices, default=StepState.PENDING)
+    room_state = models.CharField(max_length=10, choices=StepState.choices, default=StepState.PENDING)
     calendar_state = models.CharField(max_length=10, choices=StepState.choices, default=StepState.PENDING)
     email_state = models.CharField(max_length=10, choices=StepState.choices, default=StepState.PENDING)
-    zoom_completed = models.BooleanField(default=False)
+    room_completed = models.BooleanField(default=False)
     calendar_completed = models.BooleanField(default=False)
     email_completed = models.BooleanField(default=False)
     # Compare-and-swap claim: the worker that set RUNNING owns the row while claim_token matches and the lease is fresh.

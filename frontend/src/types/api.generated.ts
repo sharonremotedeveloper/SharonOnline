@@ -742,22 +742,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/bookings/{booking_id}/host-link/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["v1_bookings_host_link_retrieve"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/bookings/{booking_id}/memo/": {
         parameters: {
             query?: never;
@@ -865,7 +849,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Retrieve an ephemeral video token to enter the live in-browser classroom (Daily.co or legacy Video SDK). */
+        /** @description Retrieve an ephemeral video token to enter the live in-browser classroom (Daily.co). */
         get: operations["v1_bookings_video_token_retrieve"];
         put?: never;
         post?: never;
@@ -2031,12 +2015,6 @@ export interface components {
             readonly price_usd: string;
             readonly price_zar: string;
             readonly lock_expires_at: string | null;
-            readonly zoom_url: string;
-            readonly zoom_join_url: string;
-            /** @description DEPRECATED (Slice Z1): always empty. The host link expires; fetch a fresh one from GET /api/v1/bookings/{id}/host-link/. */
-            readonly zoom_start_url: string;
-            readonly zoom_meeting_id: string;
-            readonly zoom_password: string;
             /** @description 1 to 5 star rating */
             readonly student_rating: number | null;
             student_review?: string;
@@ -2242,14 +2220,6 @@ export interface components {
         GoogleCalendarCallbackResponse: {
             connected?: boolean;
             error?: string;
-        };
-        HostLink: {
-            meeting_id: string;
-            /**
-             * Format: uri
-             * @description Fresh Zoom host start link (expiring ZAK). Open it at once; never store it.
-             */
-            start_url: string;
         };
         Incomplete: {
             error: string;
@@ -3330,18 +3300,14 @@ export interface components {
          */
         UserTypeEnum: "student" | "teacher" | "other";
         VideoToken: {
-            /** @description JWT session token for Daily.co or Video SDK */
+            /** @description Daily.co meeting token */
             token: string;
             /** @description Daily.co room URL */
             room_url?: string;
             /** @description True for host/owner (tutor/staff), False for participant */
             is_owner?: boolean;
-            /** @description Session topic / room name */
+            /** @description Room name */
             session_name?: string;
-            /** @description 1 for Host (tutor), 0 for Participant (student) */
-            role_type?: number;
-            /** @description Unique user ID */
-            user_identity?: string;
             /** @description Display name of participant */
             user_name: string;
             /** @description Epoch expiration timestamp */
@@ -4856,59 +4822,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CancelPreview"];
-                };
-            };
-        };
-    };
-    v1_bookings_host_link_retrieve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                booking_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HostLink"];
-                };
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorCode"];
-                };
-            };
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorCode"];
-                };
-            };
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorCode"];
-                };
-            };
-            502: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorCode"];
                 };
             };
         };

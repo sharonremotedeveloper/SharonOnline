@@ -27,7 +27,6 @@ class StudentLessonItemSerializer(serializers.ModelSerializer):
     material_title = serializers.SerializerMethodField()
     material_cefr = serializers.SerializerMethodField()
     material_slug = serializers.SerializerMethodField()
-    zoom_url = serializers.CharField(source='zoom_join_url', allow_blank=True)
     memo = serializers.SerializerMethodField()
     review = serializers.SerializerMethodField()
 
@@ -38,7 +37,7 @@ class StudentLessonItemSerializer(serializers.ModelSerializer):
             'start_time_utc', 'end_time_utc',
             'local_date', 'local_start_time', 'local_end_time',
             'viewer_timezone', 'material_title', 'material_cefr',
-            'material_slug', 'status', 'zoom_url', 'memo', 'review'
+            'material_slug', 'status', 'memo', 'review'
         ]
 
     def get_booking_reference(self, obj):

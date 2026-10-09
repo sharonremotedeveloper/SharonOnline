@@ -20,7 +20,6 @@ export interface StudentLessonItem {
   material_cefr: string;
   material_slug?: string;
   status: BookingStatus;
-  zoom_url?: string;
   memo?: {
     id: string;
     feedback_text: string;

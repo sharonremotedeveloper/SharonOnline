@@ -22,7 +22,6 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { BookingDetail } from "@/types/booking";
 import { MaterialDetail } from "@/types/material";
 import { HardwareCheckModal } from "@/components/classroom/HardwareCheckModal";
-import { ZoomLauncherButton } from "@/components/classroom/ZoomLauncherButton";
 import { DailyClassroom } from "@/components/classroom/DailyClassroom";
 import { LessonCountDownClock } from "@/components/classroom/LessonCountDownClock";
 import { EskomReportButton } from "@/components/classroom/EskomReportButton";
@@ -234,11 +233,6 @@ export default function TeacherClassroomPage() {
                 bookingId={booking.id}
                 isHost={true}
                 partnerName={booking.student.full_name}
-                legacyJoinUrl={
-                  booking.zoom_meeting_id
-                    ? `/api/proxy/bookings/${booking.id}/host-link/`
-                    : undefined
-                }
               />
               {materialError != null && (
                 <p className="text-sm text-error">Lesson material could not be loaded.</p>

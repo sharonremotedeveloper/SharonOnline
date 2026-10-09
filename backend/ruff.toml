@@ -74,4 +74,3 @@ max-complexity = 12
 "tests/test_settlement_paths.py" = ["F401"]
 "tests/test_srs_flashcards.py" = ["F401"]
 "tests/test_webhook_events.py" = ["F811"]
-"tests/test_zoom_webhooks.py" = ["F401", "F841"]

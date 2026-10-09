@@ -98,7 +98,7 @@ class TestOpenApiSchema:
 
     def test_webhooks_are_not_published_but_client_endpoints_are(self, tmp_path):
         text = _schema_text(tmp_path)
-        assert '/webhook' not in text and '/zoom/' not in text.lower().split('paths:')[1].split('components:')[0]
+        assert '/webhook' not in text and '/daily/' not in text.lower().split('paths:')[1].split('components:')[0]
         for path in ('/api/v1/auth/me/', '/api/v1/payments/credits/', '/api/v1/auth/password-reset/', '/api/v1/bookings/reserve/'):
             assert path in text, path
 
