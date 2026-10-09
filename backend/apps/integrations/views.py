@@ -547,6 +547,19 @@ class DailyWebhookReceiverView(APIView):
             return False, "Daily webhook secret not configured"
 
         message = f"{timestamp_int}.".encode('utf-8') + raw_body
+        expected_signatures = self._expected_signatures(secret, message)
+        received_signatures = self._received_signatures(signature)
+        if not any(
+            hmac.compare_digest(expected, received)
+            for expected in expected_signatures
+            for received in received_signatures
+        ):
+            return False, "Invalid HMAC signature"
+
+        return True, "Valid"
+
+    @staticmethod
+    def _expected_signatures(secret: str, message: bytes) -> set:
         key_candidates = [secret.encode('utf-8')]
         try:
             decoded_secret = base64.b64decode(secret, validate=True)
@@ -565,23 +578,20 @@ class DailyWebhookReceiverView(APIView):
                 f'v1={base64.b64encode(expected_digest).decode("utf-8")}',
                 f'v1={expected_digest.hex()}',
             })
+        return expected_signatures
+
+    @staticmethod
+    def _received_signatures(signature: str) -> set:
         received_signatures = {signature}
         # Daily integrations in the wild have used both a standalone
         # signature header and a timestamp/signature envelope. Accept either
-        # without weakening the timestamp replay check above.
+        # without weakening the timestamp replay check in `verify_signature`.
         if ',' in signature or ' ' in signature:
             for part in signature.replace(' ', ',').split(','):
                 key, _, value = part.partition('=')
                 if key in {'v1', 'sig', 'signature'} and value:
                     received_signatures.add(value.strip())
-        if not any(
-            hmac.compare_digest(expected, received)
-            for expected in expected_signatures
-            for received in received_signatures
-        ):
-            return False, "Invalid HMAC signature"
-
-        return True, "Valid"
+        return received_signatures
 
     @staticmethod
     def _resolve_participant(booking, user_id: str) -> tuple[str, str]:

@@ -237,7 +237,7 @@ def cleanup_daily_room(self, room_name: str):
         return DailyClient().delete_room(room_name)
     except Exception as exc:
         logger.error('Could not delete Daily room %s: %s', room_name, type(exc).__name__)
-        raise self.retry(exc=exc)
+        raise self.retry(exc=exc) from exc
 
 
 def _cancellation_recipients(booking, cancelled_by: str):
