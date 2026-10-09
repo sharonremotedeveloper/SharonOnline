@@ -75,8 +75,9 @@ Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done.
 - [x] **D-5** (tutor T+10, student T+10, 5 min grace) No-show thresholds (tutor T+5 vs T+10), late-warning and disconnect-grace behaviour.
 - [x] **D-6** (decided 2026-10-03, see `CANCELLATION_AND_REFUNDS.md`; 30-day expiry on purchased packs, zero outage pay and breakage accounting still to confirm) Refund + cancellation policy (>2h free? late-cancel tutor compensation? reschedule rules; gateway refund vs wallet credit; credit expiry period).
 - [ ] **D-7** Credit bundles: sizes/discounts, subscriptions in MVP or not.
-- [ ] **D-8** Recording policy (record or not, retention 7 days?, consent flow).
-- [ ] **D-9** Zoom licensing model (per-tutor hosts / licence count / alternative hosts).
+- [x] **D-8** Recording policy (lessons unrecorded in MVP per Sharon sign-off).
+- [x] **D-9** (superseded by D-14) Zoom licensing model: Zoom Video SDK adopted 2026-10-05, then superseded by D-14.
+- [x] **D-14** (decided 2026-10-08) **Daily.co Transition**: embedded WebRTC via Daily Prebuilt / Call Object, superseding Zoom Video SDK. Eliminates raw canvas rendering, COOP/COEP payment conflicts, and quarterly client deprecations. See `DAILY_CO_MIGRATION_PLAN.md`.
 - [x] **D-13** Auth provider: **Django + simplejwt stays** (decided by Anesu 2026-10-02; Clerk and Neon Auth considered and declined for now). Keeps identity data in our own Postgres (simpler POPIA/GDPR/APPI). Phase 8 and Tasks 7.7, 8.4-8.6 stand as written. Hedge: keep all token verification behind one DRF authentication class so a provider swap later is localised. Because we own auth, Task 7.8 permission-matrix/IDOR tests and Task 13.3 CI are mandatory, not optional; add a scheduled `flushexpiredtokens` Celery beat job and an admin runbook for lockout / lost-2FA / email-change support requests.
 - [ ] **D-10** Stack choices: backend host (Railway vs Render), frontend host (Vercel vs Cloudflare Pages), domain (`sharonesl.com` vs `sharon-esl.com`), whether Neon Auth/Functions/Storage are used at all (current answer: no, Django JWT + R2).
 - [ ] **D-11** Tutor employment model and vetting process (who interviews, background checks, SA ID verification).
@@ -149,12 +150,12 @@ Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done.
 
 **Goal:** every external integration real, observable, and failing loudly. Depends on 9.x; needs D-8, D-9. *Check `TOOL_ACCESS_AND_ACCOUNTS.md` and verify each account before use.*
 
-- [ ] **Task 12.1 (M, ARCH)** *(F0 + Z1 done 2026-10-05 except the D-9 host strategy, which stays open: single host = launch blocker; real Zoom unverified)* Zoom client: no fake meetings when unconfigured in production (raise); explicit error handling/429 backoff; cache the S2S access token; fix `create_meeting` returning `None`; implement D-9 host strategy (per-tutor users or alternative hosts) so concurrent lessons don't collide.
+- [ ] **Task 12.1 (M, ARCH)** *(Daily.co Migration Slices D1-D5 per Decision D-14)* Daily.co client & token service: issue ephemeral tokens (`POST /v1/meeting-tokens`) scoped to `lesson-<id>`, `DAILY_API_KEY` in settings, $T+10\text{m}$ room presence probe (`GET /v1/rooms/<name>/presence`), webhook receiver ingesting `participant.joined` / `participant.left` into `AttendanceAudit`.
 - [ ] **Task 12.2 (M, ARCH)** Notification system: `Notification` model (in-app) + email dispatch; real T-24h/T-1h/T-10m reminders, teacher late-alert, memo SLA warning, apology credit email, tutor booking notification, Eskom shield alert. Resend failures retried with backoff and surfaced; HTML-escape names.
 - [ ] **Task 12.3 (M, ARCH)** Resend: domain verification (SPF/DKIM) once D-10 domain is chosen; delivery webhook; production refuses `re_dev` mock key.
 - [ ] **Task 12.4 (L, ARCH)** **G1 OAuth foundation implemented locally** (encrypted credentials, state, connect/callback/disconnect, refresh, legacy-token wipe); **G2 done 2026-10-06** (`docs/slices/G2.md`: events.list busy hint on the public listing only, fan-out per tutor, fails open); event-id-preserving reschedule and provider verification remain.
 - [ ] **Task 12.5 (M, ARCH)** EskomSePush client, quota-aware durable cache, tutor area mapping, real four-hour warning logic, status endpoint, and tutor-only backup PATCH are complete in Batch 7. Remaining: apply provider outage windows to unreserved public-search slot projection after product approval of the booking policy.
-- [ ] **Task 12.6 (M, CODEX)** Frontend Zoom join: gate by `LessonCountDownClock` window, use backend-provided join/start URLs only, remove `window.confirm` hack and simulated latency; decide Meeting SDK embed vs deep link.
+- [ ] **Task 12.6 (M, CODEX/ANTIGRAVITY)** Frontend Daily.co classroom: mount Daily Prebuilt inside `ClassroomSplitLayout`, gate by `LessonCountDownClock` window, use backend-provided room URL and token, retire raw canvas rendering in `VideoSdkClassroom.tsx`.
 - [ ] **Task 12.7 (M, CODEX)** In-app notification centre + polling (SSE/WebSocket later), notification preferences.
 - [x] **Task 12.8 (S, ARCH)** Support inquiries: durable `POST /auth/inquiries/`, admin inbox, throttling, and retryable support-team notification; `/support` now reaches a real persisted workflow. *(Batch 5)*
 - [ ] **Task 12.9 (M, ARCH)** **R1 90-day attendance telemetry purge implemented locally**; recording purge remains deferred because D-8 excludes recordings from the MVP.
@@ -233,7 +234,7 @@ Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done.
 | Non-USD treated as USD in escrow | 10.5 |
 | Fake payout batch / fake telemetry | 11.8, 15.4 |
 | No TeacherProfile on tutor register; no apply flow | 11.1, 11.2 |
-| Fake Zoom meetings; single host collision | 12.1 |
+| Legacy Zoom meeting collision / canvas rendering (D-14 Daily.co migration) | 12.1, 12.6 |
 | Reminders only log | 12.2 |
 | GCal no OAuth/refresh; Eskom hardcoded | 12.4, 12.5 |
 | Dev-only Dockerfiles, no CI, no Sentry | 13.1, 13.3, 13.4 |

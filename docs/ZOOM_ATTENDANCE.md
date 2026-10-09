@@ -1,10 +1,11 @@
 # Zoom attendance mapping (Task 9.8)
 
 > [!IMPORTANT]
-> **ARCHITECTURAL UPDATE (2026-10-05): ZOOM VIDEO SDK ADOPTED — ZOOM MEETINGS S2S LABELED STALE / DEPRECATED**
-> On 2026-10-05, the project officially resolved Decision **D-9** by approving the transition to **Zoom Video SDK** for embedded, in-browser classrooms.
-> The legacy Zoom Meetings Server-to-Server (S2S) architecture described below (including `HostPicker`, single/pooled host license juggling, desktop Zoom app launching, and `zoommtg://` URLs) is **STALE / DEPRECATED** and will be superseded by the in-browser Video SDK architecture.
-> See full roadmap and implementation design in [`ZOOM_VIDEO_SDK_MIGRATION_PLAN.md`](./ZOOM_VIDEO_SDK_MIGRATION_PLAN.md).
+> **ARCHITECTURAL UPDATE (2026-10-08): DAILY.CO TRANSITION (DECISION D-14)**
+> On 2026-10-08, the project approved Decision **D-14** transitioning from Zoom Video SDK to **Daily.co** embedded WebRTC classrooms.
+> The legacy Zoom Meetings Server-to-Server (S2S) architecture and the intermediate Zoom Video SDK canvas architecture are **SUPERSEDED**.
+> Daily.co webhooks (`participant.joined`, `participant.left`) and room presence probes feed directly into the existing `AttendanceAudit` table, preserving the 20-minute dwell time requirement and T+10 no-show rules described below without requiring raw canvas rendering.
+> See [`DAILY_CO_MIGRATION_PLAN.md`](./DAILY_CO_MIGRATION_PLAN.md).
 
 Attendance decides no-show verdicts (T+10), the 20-minute completion rule, escrow release and disputes, and all of it
 reads `AttendanceAudit.classification`. So the rule is: **only an explicit `teacher` or `student` classification counts;

@@ -48,7 +48,7 @@ Before writing or modifying any code in `Project-files/`, every AI agent **MUST*
 ### 1. Branching Strategy (GitFlow)
 - **`main`**: Production-ready, stable releases only.
 - **`develop`**: Active integration branch where verified features and sprint items land.
-- **`feature/*` or `fix/*`**: Task-specific branches created by AI agents and developers for individual features (e.g. `feature/jwt-auth`, `fix/redis-ttl`, `feature/zoom-oauth`).
+- **`feature/*` or `fix/*`**: Task-specific branches created by AI agents and developers for individual features (e.g. `feature/jwt-auth`, `fix/redis-ttl`, `feature/daily-webrtc`).
 
 ### 2. Commit Message Standards
 - Use **descriptive, free-form commit messages** clearly explaining what was added, updated, or fixed.

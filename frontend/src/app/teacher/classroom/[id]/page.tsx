@@ -23,7 +23,7 @@ import { BookingDetail } from "@/types/booking";
 import { MaterialDetail } from "@/types/material";
 import { HardwareCheckModal } from "@/components/classroom/HardwareCheckModal";
 import { ZoomLauncherButton } from "@/components/classroom/ZoomLauncherButton";
-import { VideoSdkClassroom } from "@/components/classroom/VideoSdkClassroom";
+import { DailyClassroom } from "@/components/classroom/DailyClassroom";
 import { LessonCountDownClock } from "@/components/classroom/LessonCountDownClock";
 import { EskomReportButton } from "@/components/classroom/EskomReportButton";
 import { ClassroomSplitLayout } from "@/components/classroom/ClassroomSplitLayout";
@@ -228,9 +228,9 @@ export default function TeacherClassroomPage() {
               </div>
             </div>
 
-            {/* In-Browser Synchronous Video Stage (Zoom Video SDK) */}
+            {/* In-Browser Synchronous Video Stage (Daily.co WebRTC) */}
             <div className="space-y-3">
-              <VideoSdkClassroom
+              <DailyClassroom
                 bookingId={booking.id}
                 isHost={true}
                 partnerName={booking.student.full_name}

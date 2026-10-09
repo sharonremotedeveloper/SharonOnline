@@ -25,11 +25,16 @@ DATABASE_URL=postgresql://esl_user:password@localhost:5432/esl_db
 # Cache & Distributed Locks (Upstash Serverless in Staging/Prod)
 REDIS_URL=redis://localhost:6379/0
 
-# Zoom Server-to-Server OAuth API
-ZOOM_ACCOUNT_ID=your_zoom_account_id
-ZOOM_CLIENT_ID=your_zoom_client_id
-ZOOM_CLIENT_SECRET=your_zoom_client_secret
-ZOOM_WEBHOOK_SECRET_TOKEN=your_zoom_webhook_secret
+# Video Infrastructure (Daily.co - Decision D-14)
+DAILY_API_KEY=your_daily_api_key
+DAILY_DOMAIN=sharonesl.daily.co
+DAILY_WEBHOOK_SECRET=your_daily_webhook_secret
+
+# Legacy Zoom Credentials (Superseded by D-14 Daily.co)
+# ZOOM_ACCOUNT_ID=your_zoom_account_id
+# ZOOM_CLIENT_ID=your_zoom_client_id
+# ZOOM_CLIENT_SECRET=your_zoom_client_secret
+# ZOOM_WEBHOOK_SECRET_TOKEN=your_zoom_webhook_secret
 
 # Payments API Credentials
 PAYFAST_MERCHANT_ID=10000100

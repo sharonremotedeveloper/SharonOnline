@@ -1,10 +1,15 @@
 # Zoom Video SDK Architectural Migration Plan
 
 **Document ID:** `PLAN-2026-ZOOM-V-SDK`  
-**Status:** Approved Architectural Decision (Decision **D-9** Resolved)  
-**Date:** October 05, 2026  
+**Status:** **SUPERSEDED** by Decision **D-14** (Transition to Daily.co — see `DAILY_CO_MIGRATION_PLAN.md`)  
+**Date:** October 05, 2026 (Superseded: October 08, 2026)  
 **Architect:** Lead Architect & Orchestrator  
 **Applicability:** Antigravity (Gemini), Claude Code, Codex, Human Engineering Lead (Anesu MUPESA)
+
+> [!NOTE]
+> **SUPERSEDED NOTICE (2026-10-08):**
+> Per Decision **D-14**, this plan and the `@zoom/videosdk` implementation have been superseded by the **Daily.co** migration plan (`DAILY_CO_MIGRATION_PLAN.md`). Daily.co provides standard WebRTC without requiring raw HTML5 canvas rendering or conflicting with payment gateway COOP/COEP headers.
+
 
 ---
 

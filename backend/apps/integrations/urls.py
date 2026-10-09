@@ -1,11 +1,13 @@
 from django.urls import path
 from .views import (EskomStatusView, ZoomWebhookReceiverView, VideoSdkWebhookReceiverView,
+                    DailyWebhookReceiverView,
                     PresignedUploadURLView, R2PresignedUrlView,
                     GoogleCalendarConnectView, GoogleCalendarCallbackView, GoogleCalendarDisconnectView)
 
 app_name = 'integrations'
 
 urlpatterns = [
+    path('daily/webhooks/', DailyWebhookReceiverView.as_view(), name='daily-webhooks'),
     path('zoom/webhook/', ZoomWebhookReceiverView.as_view(), name='zoom-webhook'),
     path('video-sdk/webhooks/', VideoSdkWebhookReceiverView.as_view(), name='video-sdk-webhooks'),
     path('video-sdk/webhook/', VideoSdkWebhookReceiverView.as_view(), name='video-sdk-webhook'),

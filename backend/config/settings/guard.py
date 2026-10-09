@@ -11,6 +11,7 @@ SANDBOX_PAYFAST_MERCHANT_ID = '10000100'
 _DEFAULT_REFUND_BACKEND = 'apps.payments.services.refunds.ManualSandboxRefundGateway'    # what settings/base.py uses when the env is unset
 _ROUTING_REFUND_BACKEND = 'apps.payments.services.refund_gateways.RoutingRefundGateway'
 _LOCAL_HOSTS = {'localhost', '127.0.0.1', '0.0.0.0', 'backend', '::1'}
+DAILY_CREDENTIAL_SETTINGS = ('DAILY_API_KEY', 'DAILY_DOMAIN', 'DAILY_WEBHOOK_SECRET')
 ZOOM_CREDENTIAL_SETTINGS = ('ZOOM_ACCOUNT_ID', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET')
 ZOOM_VIDEO_SDK_SETTINGS = ('ZOOM_VIDEO_SDK_KEY', 'ZOOM_VIDEO_SDK_SECRET')
 
@@ -66,8 +67,28 @@ def validate_production_settings(env=os.environ):
         errors.append(f"EMAIL_BACKEND_MODE must be 'resend' in production (got {email_mode!r}); "
                       f"'console' only prints e-mails and is for local development and tests")
 
-    if not env.get('ZOOM_WEBHOOK_SECRET_TOKEN'):
-        errors.append('ZOOM_WEBHOOK_SECRET_TOKEN must be set')
+    # Daily.co Video Conferencing Integration (Requirement R4 / Decision D-14)
+    daily_api_key = (env.get('DAILY_API_KEY') or '').strip()
+    if not daily_api_key:
+        errors.append('DAILY_API_KEY must be set: without it Daily.co meeting rooms and tokens cannot be provisioned')
+
+    daily_domain = (env.get('DAILY_DOMAIN') or '').strip()
+    if not daily_domain:
+        errors.append('DAILY_DOMAIN must be set (e.g. sharonesl.daily.co)')
+    elif (daily_domain.lower() in _LOCAL_HOSTS
+          or daily_domain.lower().startswith('localhost')
+          or daily_domain.lower().endswith('.localhost')
+          or '.localhost' in daily_domain.lower()
+          or _is_local_origin(daily_domain)):
+        errors.append('DAILY_DOMAIN must not be localhost')
+
+    daily_webhook_secret = (env.get('DAILY_WEBHOOK_SECRET') or '').strip()
+    if not daily_webhook_secret:
+        errors.append('DAILY_WEBHOOK_SECRET must be set for Daily webhook signature verification')
+    elif len(daily_webhook_secret) < 16:
+        errors.append('DAILY_WEBHOOK_SECRET must be at least 16 characters')
+
+    # Legacy Zoom configuration (retained for backward compatibility during transition)
     video_sdk_key = (env.get('ZOOM_VIDEO_SDK_KEY') or '').strip()
     video_sdk_secret = (env.get('ZOOM_VIDEO_SDK_SECRET') or '').strip()
     if video_sdk_key and not video_sdk_secret:
@@ -77,12 +98,22 @@ def validate_production_settings(env=os.environ):
     if video_sdk_secret and len(video_sdk_secret) < 32:
         errors.append('ZOOM_VIDEO_SDK_SECRET must be at least 32 characters')
 
-    has_video_sdk = bool(video_sdk_key and video_sdk_secret and len(video_sdk_secret) >= 32)
-    has_s2s = all(bool((env.get(name) or '').strip()) for name in ZOOM_CREDENTIAL_SETTINGS)
-    if not (has_video_sdk or has_s2s):
-        for name in ZOOM_CREDENTIAL_SETTINGS:     # Slice Z1; scripts/check_deploy.py reports the same names
-            if not (env.get(name) or '').strip():
-                errors.append(f'{name} must be set: without Zoom credentials no lesson room can be created or probed')
+    # Zoom settings validation for legacy test suites:
+    # If Zoom credentials are actively configured in the environment, ensure they are complete.
+    # When Daily credentials are provided alone (without legacy Zoom settings), Zoom is not required.
+    has_zoom_settings = any(
+        bool((env.get(name) or '').strip())
+        for name in (*ZOOM_CREDENTIAL_SETTINGS, 'ZOOM_VIDEO_SDK_KEY', 'ZOOM_VIDEO_SDK_SECRET', 'ZOOM_WEBHOOK_SECRET_TOKEN')
+    )
+    if has_zoom_settings:
+        if not env.get('ZOOM_WEBHOOK_SECRET_TOKEN'):
+            errors.append('ZOOM_WEBHOOK_SECRET_TOKEN must be set')
+        has_video_sdk = bool(video_sdk_key and video_sdk_secret and len(video_sdk_secret) >= 32)
+        has_s2s = all(bool((env.get(name) or '').strip()) for name in ZOOM_CREDENTIAL_SETTINGS)
+        if not (has_video_sdk or has_s2s):
+            for name in ZOOM_CREDENTIAL_SETTINGS:     # Slice Z1; scripts/check_deploy.py reports the same names
+                if not (env.get(name) or '').strip():
+                    errors.append(f'{name} must be set: without Zoom credentials no lesson room can be created or probed')
     if not env.get('ESKOMSEPUSH_API_KEY'):
         errors.append('ESKOMSEPUSH_API_KEY must be set so Power Guard never fabricates provider status')
 

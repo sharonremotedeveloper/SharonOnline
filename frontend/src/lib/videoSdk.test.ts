@@ -59,6 +59,29 @@ describe("fetchVideoSessionToken", () => {
     assert.equal(tokenData.user_name, "Jane Tutor");
   });
 
+  it("handles Daily.co token response carrying room_url and is_owner", async () => {
+    globalThis.fetch = (async () => {
+      return new Response(
+        JSON.stringify({
+          token: "daily-meeting-token-jwt",
+          session_name: "sharon-lesson-room-1",
+          role_type: 1,
+          user_identity: "user-42",
+          user_name: "Teacher Sharon",
+          expires_at: 1790005000,
+          room_url: "https://sharon-online.daily.co/sharon-lesson-room-1",
+          is_owner: true,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } }
+      );
+    }) as typeof fetch;
+
+    const data = await fetchVideoSessionToken("b-daily-1");
+    assert.equal(data.room_url, "https://sharon-online.daily.co/sharon-lesson-room-1");
+    assert.equal(data.is_owner, true);
+    assert.equal(data.session_name, "sharon-lesson-room-1");
+  });
+
   it("safely URL-encodes booking IDs containing special characters", async () => {
     let capturedUrl = "";
     globalThis.fetch = (async (input: any) => {

@@ -4,6 +4,11 @@ import os
 
 DEBUG = True
 
+DAILY_API_KEY = os.environ.get('DAILY_API_KEY', '')
+DAILY_DOMAIN = os.environ.get('DAILY_DOMAIN', '')
+DAILY_WEBHOOK_SECRET = os.environ.get('DAILY_WEBHOOK_SECRET', '')
+DAILY_SIMULATE_WITHOUT_CREDENTIALS = os.environ.get('DAILY_SIMULATE_WITHOUT_CREDENTIALS', 'false').lower() in ('1', 'true', 'yes')
+
 # Dev-only constant so local webhook tests/tools can sign payloads. Production refuses to boot without a real one.
 ZOOM_WEBHOOK_SECRET_TOKEN = os.environ.get('ZOOM_WEBHOOK_SECRET_TOKEN') or 'local-dev-zoom-webhook-secret'
 # Without Zoom credentials, local/test runs get simulated rooms and a simulated 'waiting' status. Production (base) never does.

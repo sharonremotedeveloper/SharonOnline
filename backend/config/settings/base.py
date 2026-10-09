@@ -161,6 +161,7 @@ REST_FRAMEWORK = {
         'admin_teacher_review': '300/hour',   # slice T1b: staff review actions + admin cancel of a suspended tutor's lessons
         'zoom_host_link': '30/hour',
         'zoom_video_token': '120/hour',       # Slice Z1: fresh Zoom host link when the classroom opens (one Zoom call each)
+        'daily_video_token': '120/hour',      # Daily.co video token provisioning (Decision D-14 / R4)
         'sar_export': '10/hour',              # GDPR/POPIA SAR export
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
@@ -276,6 +277,26 @@ FULFILLMENT_LEASE_SECONDS = int(os.environ.get('FULFILLMENT_LEASE_SECONDS', '600
 FULFILLMENT_RETRY_SECONDS = int(os.environ.get('FULFILLMENT_RETRY_SECONDS', '30'))     # first retry delay (doubles, jittered)
 FULFILLMENT_QUEUED_STALE_SECONDS = int(os.environ.get('FULFILLMENT_QUEUED_STALE_SECONDS', '120'))  # QUEUED/PENDING this old = lost message
 FULFILLMENT_RETRY_MAX_SECONDS = int(os.environ.get('FULFILLMENT_RETRY_MAX_SECONDS', '1800'))      # backoff cap
+# ==============================================================================
+# Daily.co Video Conferencing Integration (Decision D-14 / Requirement R4)
+# ==============================================================================
+# Production refuses to boot without DAILY_API_KEY, DAILY_DOMAIN, and DAILY_WEBHOOK_SECRET
+# (validated in config/settings/guard.py).
+DAILY_API_KEY = os.environ.get('DAILY_API_KEY', '')
+DAILY_DOMAIN = os.environ.get('DAILY_DOMAIN', '')  # e.g. "sharonesl.daily.co" or "sharonesl"
+DAILY_WEBHOOK_SECRET = os.environ.get('DAILY_WEBHOOK_SECRET', '')
+DAILY_API_BASE_URL = os.environ.get('DAILY_API_BASE_URL', 'https://api.daily.co/v1')
+
+# Lesson classroom room and ephemeral token timing windows (Decision D-8 / R1)
+DAILY_ROOM_VALID_AFTER_END_MINUTES = int(os.environ.get('DAILY_ROOM_VALID_AFTER_END_MINUTES', '30'))
+DAILY_ROOM_OPEN_MINUTES_BEFORE = int(os.environ.get('DAILY_ROOM_OPEN_MINUTES_BEFORE', '15'))
+
+# Simulated Daily rooms without live credentials (local.py enables this for offline dev/tests)
+DAILY_SIMULATE_WITHOUT_CREDENTIALS = os.environ.get('DAILY_SIMULATE_WITHOUT_CREDENTIALS', 'false').lower() in ('1', 'true', 'yes')
+
+# ==============================================================================
+# DEPRECATED: Legacy Zoom Settings (Retained for Test Suite & Migration Fallback)
+# ==============================================================================
 # Simulated Zoom rooms without credentials: never in production (only config/settings/local.py turns this on).
 ZOOM_SIMULATE_WITHOUT_CREDENTIALS = False
 ATTENDANCE_PROBE_BUDGET_SECONDS = int(os.environ.get('ATTENDANCE_PROBE_BUDGET_SECONDS', '25'))  # wall clock for Zoom probes per T+10 run (beat lock TTL 50 s)
@@ -295,6 +316,10 @@ ZOOM_HOST_LINK_OPEN_MINUTES_BEFORE = int(os.environ.get('ZOOM_HOST_LINK_OPEN_MIN
 # --- Zoom Video SDK (In-Platform Classroom Engine - Decision D-9) ---
 ZOOM_VIDEO_SDK_KEY = os.environ.get('ZOOM_VIDEO_SDK_KEY', '')
 ZOOM_VIDEO_SDK_SECRET = os.environ.get('ZOOM_VIDEO_SDK_SECRET', '')
+# Video SDK *REST* API (session probe, V4): Zoom accepts only a JWT signed with the app's separate "API credentials"
+# (`iss` claim). The SDK key/secret above sign client join tokens and are rejected there (verified live 2026-10-08).
+ZOOM_VIDEO_SDK_API_KEY = os.environ.get('ZOOM_VIDEO_SDK_API_KEY', '')
+ZOOM_VIDEO_SDK_API_SECRET = os.environ.get('ZOOM_VIDEO_SDK_API_SECRET', '')
 ZOOM_VIDEO_SDK_SESSION_VALID_SECONDS = int(os.environ.get('ZOOM_VIDEO_SDK_SESSION_VALID_SECONDS', '7200'))
 ZOOM_VIDEO_SDK_OPEN_MINUTES_BEFORE = int(os.environ.get('ZOOM_VIDEO_SDK_OPEN_MINUTES_BEFORE', '15'))
 ZOOM_VIDEO_SDK_WEBHOOK_SECRET = os.environ.get('ZOOM_VIDEO_SDK_WEBHOOK_SECRET', '') or ZOOM_WEBHOOK_SECRET_TOKEN

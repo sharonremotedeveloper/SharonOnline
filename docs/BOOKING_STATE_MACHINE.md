@@ -27,7 +27,7 @@ stateDiagram-v2
     pending_payment --> disputed: DEF-501 (slot gone)
     cancelled --> confirmed: late payment, slot still free
     cancelled --> disputed: late payment, slot gone
-    confirmed --> in_progress: someone joined / Zoom probe
+    confirmed --> in_progress: someone joined / Daily.co probe
     confirmed --> teacher_no_show: T+10m teacher absent
     confirmed --> student_no_show: T+10m student absent
     confirmed --> interrupted_power: outage reported
@@ -61,7 +61,7 @@ stateDiagram-v2
 | :--- | :--- |
 | pending -> confirmed / disputed; cancelled -> confirmed / disputed | `payments/services/webhook_handler.py` (verified gateway webhooks) |
 | pending -> cancelled | `bookings.tasks.purge_expired_reservations_task` |
-| confirmed -> in_progress, no-show -> disputed | `integrations/views.py` Zoom webhook; `audit_attendance_and_noshows_task` (active probe) |
+| confirmed -> in_progress, no-show -> disputed | `integrations/views/daily_webhooks.py` Daily.co webhook; `audit_attendance_and_noshows_task` (active probe) |
 | confirmed/in_progress -> no-show / completed_pending_memo / disputed | `audit_attendance_and_noshows_task` |
 | confirmed -> interrupted_power | `ReportOutageView` (the lesson's tutor or staff only) |
 | pending_payment -> confirmed (reason `grace_pending_capture`) | `payments/services/grace.py::confirm_grace_booking`, a PayPal capture still PENDING that passed the grace policy (money not yet received; funding `gateway_pending`) |

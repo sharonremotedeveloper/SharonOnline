@@ -13,6 +13,8 @@ export interface VideoSessionToken {
   user_identity: string;
   user_name: string;
   expires_at: number;
+  room_url?: string;
+  is_owner?: boolean;
 }
 
 export async function fetchVideoSessionToken(bookingId: string): Promise<VideoSessionToken> {

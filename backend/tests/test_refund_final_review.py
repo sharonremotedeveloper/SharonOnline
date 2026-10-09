@@ -104,6 +104,10 @@ GOOD = {
     'INTEGRATION_DATA_ACTIVE_KEY': 'v1', 'CLOUDFLARE_R2_PRIVATE_BUCKET_NAME': 'esl-private',
     'REFUND_GATEWAY_BACKEND': 'apps.payments.services.refund_gateways.RoutingRefundGateway',
     'ZOOM_ACCOUNT_ID': 'zoom-account', 'ZOOM_CLIENT_ID': 'zoom-client', 'ZOOM_CLIENT_SECRET': 'zoom-secret-value',  # Z1
+    # Daily.co video conferencing credentials (M1 / Requirement R4)
+    'DAILY_API_KEY': 'daily-live-api-key-test-value-0123456789',
+    'DAILY_DOMAIN': 'sharonesl.daily.co',
+    'DAILY_WEBHOOK_SECRET': 'daily-webhook-secret-at-least-16-chars',
 }
 
 

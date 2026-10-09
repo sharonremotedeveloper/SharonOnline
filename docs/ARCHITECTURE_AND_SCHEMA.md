@@ -20,7 +20,7 @@
     └── [ Redis 7 Cache & Broker (Upstash Serverless / Docker Redis) ]
             ├── Distributed 10-Minute Booking Reservation Locks (Redlock)
             └── Celery Background Task Queue
-                    ├── Zoom Server-to-Server OAuth Meeting Creation
+                    ├── Daily.co Room & Meeting Token Provisioning (Decision D-14)
                     ├── Google Calendar v3 Event Injection
                     ├── Resend Email API (.ics calendar attachments)
                     └── Webhook Reconciliation & Ingestion Engine
@@ -98,7 +98,7 @@
 - `class_type`: CharField Enum (`individual` [25 min], `group` [max 6])
 - `status`: CharField Enum (`pending_payment`, `confirmed`, `in_progress`, `completed`, `cancelled_student`, `cancelled_teacher`, `disputed`)
 - `start_time_utc` / `end_time_utc`: DateTimeField (Stored strictly in UTC)
-- `zoom_meeting_id` / `zoom_join_url` / `zoom_start_url` / `zoom_password`: CharField / URLField
+- `video_session_name` / `room_url` (Daily.co session identifiers; legacy `zoom_meeting_id` deprecated): CharField / URLField
 - `teacher_gcal_event_id`: CharField
 - **Database Constraint**:  
   `UniqueConstraint(fields=['teacher', 'start_time_utc'], condition=Q(status__in=['confirmed', 'in_progress', 'completed']))`
@@ -117,7 +117,7 @@
 - `booking`: ForeignKey (`Booking`)
 - `participant_email`: EmailField
 - `join_time_utc` / `leave_time_utc`: DateTimeField
-- `total_minutes`: PositiveIntegerField (Ingested from Zoom Webhooks `meeting.participant_joined` and `meeting.participant_left`)
+- `total_minutes`: PositiveIntegerField (Ingested from Daily.co Webhooks `participant.joined` and `participant.left`)
 
 ---
 

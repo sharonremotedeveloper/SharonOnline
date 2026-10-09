@@ -34,20 +34,19 @@ def _backoff_sleep(attempt: int) -> None:
 
 
 def _generate_api_jwt() -> Optional[str]:
-    """Generate ephemeral Video SDK API JWT for server-to-server REST calls."""
-    sdk_key = getattr(settings, 'ZOOM_VIDEO_SDK_KEY', '') or ''
-    sdk_secret = getattr(settings, 'ZOOM_VIDEO_SDK_SECRET', '') or ''
-    if not sdk_key.strip() or not sdk_secret.strip():
+    """Generate ephemeral Video SDK REST JWT. Signed with the app's API credentials (not the SDK key/secret), `iss` claim."""
+    api_key = getattr(settings, 'ZOOM_VIDEO_SDK_API_KEY', '') or ''
+    api_secret = getattr(settings, 'ZOOM_VIDEO_SDK_API_SECRET', '') or ''
+    if not api_key.strip() or not api_secret.strip():
         return None
 
     now = int(time.time())
     payload = {
-        'app_key': sdk_key.strip(),
-        'version': 1,
+        'iss': api_key.strip(),
         'iat': now,
         'exp': now + 3600,
     }
-    return jwt.encode(payload, sdk_secret.strip(), algorithm='HS256')
+    return jwt.encode(payload, api_secret.strip(), algorithm='HS256')
 
 
 def _make_api_request(

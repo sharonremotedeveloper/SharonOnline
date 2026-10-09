@@ -85,17 +85,23 @@ Inventory IDs from `COMPREHENSIVE_PAGE_INVENTORY_AND_SYSTEM_LOGIC.md` (10 PUB + 
 5. Open money decisions: prices (provisional USD 9.00 / EUR 8.50 / ZAR 162 / JPY 1350), pack expiry rule, trial lesson, FX source (admin table now), D-13 treasury/bank inflow, accountant on SARB/FX treatment and VAT (14.6).
 6. Before live: flip `PAYFAST_SANDBOX`/`PAYPAL_MODE`, remove sandbox constants (guard already blocks sandbox values in production per `DECISIONS_D1_D12.md`), rehearse a real R1 live charge + refund.
 
-### (e) Zoom Video SDK slices V1-V5
+### (e) Video Calling Architecture: Transition to Daily.co (Decision D-14)
 
-| Slice | Status (code) | Remaining |
+On 2026-10-08, the project resolved Decision **D-14**, approving the transition from Zoom Video SDK to **Daily.co** (see `DAILY_CO_MIGRATION_PLAN.md`).
+
+**Why the transition was approved:**
+- **Raw Canvas Overhead:** Zoom Video SDK required raw HTML5 `<canvas>` rendering (`mediaStream.renderVideo(canvas)`) because enabling COOP/COEP headers breaks PayFast and PayPal checkout iframes. Daily.co uses native `<video>` elements with standard WebRTC.
+- **Cross-Browser Stability:** Daily Prebuilt / standard WebRTC eliminates mobile Safari canvas dimension and audio context glitches.
+- **Maintenance & Lifecycle:** Zoom enforces a quarterly minimum client version policy (locking out apps older than 9 months). Daily.co has standard semantic versioning without forced client obsolescence.
+- **Dual Credentials:** Zoom Video SDK required separate credential pairs for join tokens vs REST session probes; Daily uses a single clean API key and webhook secret.
+
+| Slice | Status | Description |
 | :--- | :--- | :--- |
-| V1 token service | done, reviewed, 32+ char secret guard, mutation 10/10 | live check |
-| V2 `GET /bookings/<id>/video-token/` | done; ERR-196 IDOR/unpaid leak fixed | live check |
-| V3 `VideoSdkClassroom.tsx` + both classroom pages | done, node tests, device selection | never run against real Zoom; browser verification with a live token pending |
-| V4 attendance (webhook `/integrations/video-sdk/webhooks/`, probe) | done in code, 14/14 contract tests unchanged | **needs a public HTTPS backend URL**, Zoom event subscription (4 events) validation, Secret Token into deployment secrets, a real two-party session test (`ZOOM_VIDEO_SDK_MIGRATION_PLAN.md` section 5) |
-| V5 retire Meetings columns/files | **not approved** by Anesu | destructive migration; needs sandbox exercise first |
-
-Other Zoom risks: C2 in `HANDOFF` section 7 (`past_meetings` equivalent for never-held sessions: if Zoom 404s a never-held session every real tutor no-show becomes DISPUTED rather than a no-show: safe but operationally heavy); free tier 10,000 participant minutes/month; Zoom Video SDK app exists in Platform Studio with key/secret in the local `.env` (per the uncommitted edit of `ZOOM_VIDEO_SDK_MIGRATION_PLAN.md` section 5), but the webhook secret token and subscription need the public URL. `TOOL_ACCESS_AND_ACCOUNTS.md` has no Video SDK row (still lists "Zoom Server-to-Server OAuth app").
+| D1 Daily settings & client | Upcoming | `DAILY_API_KEY`, room token issuer (`POST /v1/meeting-tokens`) |
+| D2 Token endpoint & probe | Upcoming | Return `{ room_url, token }`; $T+10\text{m}$ presence probe against Daily REST API |
+| D3 Frontend Daily Classroom | Upcoming | Drop `@daily-co/daily-js` / Prebuilt iframe into `ClassroomSplitLayout.tsx` |
+| D4 Webhook ingestion | Upcoming | Ingest Daily `participant.joined` / `participant.left` into `AttendanceAudit` |
+| D5 Clean up stale Zoom code | Upcoming | Retire `@zoom/videosdk`, Zoom S2S files, and legacy columns |
 
 ### (f) Security, compliance, legal
 

@@ -22,8 +22,7 @@ Comprehensive documentation for developers (**Anesu MUPESA**) and collaborating 
 * **Frontend:** Next.js 16 (App Router, TypeScript, Tailwind CSS)
 * **Backend:** Django 5.x / Django REST Framework (Python 3.12, Celery, Redis)
 * **Database:** PostgreSQL 16 (Neon Serverless for Staging/Prod; Docker Postgres / SQLite for dev)
-* **Cache & Distributed Locks:** Redis 7 (Upstash Serverless in Prod; LocMem / Docker Redis in Dev)
-* **Video & Calendar:** Zoom Server-to-Server OAuth 2.0 & Google Calendar API (v3)
+* **Video & Calendar:** Daily.co WebRTC (Decision D-14) & Google Calendar API (v3)
 * **Payments:** PayFast (ZAR) & PayPal v2 Orders (USD/EUR/JPY)
 
 ---

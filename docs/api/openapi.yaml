@@ -1889,6 +1889,31 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/integrations/daily/webhooks/:
+    post:
+      operationId: v1_integrations_daily_webhooks_create
+      description: Ingest Daily.co WebRTC participant events for presence and attendance auditing.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: Webhook received and processed
+        '400':
+          description: Malformed payload or timestamp drift
+        '401':
+          description: Invalid HMAC signature
   /api/v1/integrations/eskom/status/:
     get:
       operationId: v1_integrations_eskom_status_retrieve
@@ -6985,7 +7010,7 @@ components:
       properties:
         token:
           type: string
-          description: JWT session token for Zoom Video SDK
+          description: Ephemeral meeting token for Daily.co embedded WebRTC (or fallback Zoom Video SDK)
         session_name:
           type: string
           description: Session topic / room name
@@ -7001,6 +7026,12 @@ components:
         expires_at:
           type: integer
           description: Epoch expiration timestamp
+        room_url:
+          type: string
+          description: Daily.co room URL when Daily provider is configured
+        is_owner:
+          type: boolean
+          description: True if participant is owner/host in Daily room
       required:
       - expires_at
       - role_type

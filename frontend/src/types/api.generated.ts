@@ -928,6 +928,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/daily/webhooks/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Ingest Daily.co WebRTC participant events for presence and attendance auditing. */
+        post: operations["v1_integrations_daily_webhooks_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integrations/eskom/status/": {
         parameters: {
             query?: never;
@@ -3330,7 +3347,7 @@ export interface components {
          */
         UserTypeEnum: "student" | "teacher" | "other";
         VideoToken: {
-            /** @description JWT session token for Zoom Video SDK */
+            /** @description Ephemeral meeting token for Daily.co embedded WebRTC (or fallback Zoom Video SDK) */
             token: string;
             /** @description Session topic / room name */
             session_name: string;
@@ -3342,6 +3359,10 @@ export interface components {
             user_name: string;
             /** @description Epoch expiration timestamp */
             expires_at: number;
+            /** @description Daily.co room URL when Daily provider is configured */
+            room_url?: string;
+            /** @description True if participant is owner/host in Daily room */
+            is_owner?: boolean;
         };
         Wallet: {
             total_credits: number;
@@ -5191,6 +5212,48 @@ export interface operations {
                         [key: string]: unknown;
                     };
                 };
+            };
+        };
+    };
+    v1_integrations_daily_webhooks_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Webhook received and processed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Malformed payload or timestamp drift */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid HMAC signature */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

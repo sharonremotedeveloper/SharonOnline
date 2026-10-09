@@ -1,3 +1,5 @@
+import base64
+from datetime import datetime, timezone as dt_timezone
 import hashlib
 import hmac
 import json
@@ -17,7 +19,9 @@ from rest_framework import status, permissions
 from rest_framework.permissions import AllowAny
 from rest_framework.throttling import ScopedRateThrottle
 
-from apps.bookings.models import Booking
+from apps.admin_api.models import DisputeCase
+from apps.bookings.models import AttendanceAudit, Booking
+from apps.bookings.services.state_machine import transition_booking
 from apps.integrations.models import EskomAreaStatus
 from apps.teachers.models import TeacherAsset, TeacherProfile
 from apps.teachers.assets import audit_private_access
@@ -496,6 +500,250 @@ class VideoSdkWebhookReceiverView(APIView):
             "event": event,
             "booking_id": str(booking_uuid),
         }, status=status.HTTP_200_OK)
+
+
+@extend_schema(
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+        401: OpenApiTypes.OBJECT,
+    },
+    description="Receive Daily.co Webhook events (participant.joined, participant.left) for attendance telemetry.",
+)
+class DailyWebhookReceiverView(APIView):
+    """Daily.co Webhook Ingestion Receiver (Decision D-14 / Requirement R2).
+
+    Validates timing-safe HMAC-SHA256 signatures with replay protection (300s window)
+    and ingests attendance telemetry into AttendanceAudit.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'webhook'
+
+    @staticmethod
+    def get_webhook_secret() -> str:
+        return (getattr(settings, 'DAILY_WEBHOOK_SECRET', '') or '').strip()
+
+    def verify_signature(self, signature: str, timestamp_str: str, raw_body: bytes) -> tuple[bool, str]:
+        if not signature or not timestamp_str:
+            return False, "Missing Daily webhook signature or timestamp headers"
+
+        try:
+            timestamp_int = int(timestamp_str)
+        except (ValueError, TypeError):
+            return False, "Invalid timestamp format in Daily webhook header"
+
+        if abs(int(time.time()) - timestamp_int) > 300:
+            return False, "Request timestamp out of allowable window (replay guard)"
+
+        secret = self.get_webhook_secret()
+        if not secret:
+            logger.error("[DAILY_WEBHOOK] DAILY_WEBHOOK_SECRET is not configured; rejecting webhook")
+            return False, "Daily webhook secret not configured"
+
+        try:
+            secret_bytes = base64.b64decode(secret)
+        except Exception:
+            secret_bytes = secret.encode('utf-8')
+
+        message = f"{timestamp_int}.".encode('utf-8') + raw_body
+        expected_digest = hmac.new(secret_bytes, message, hashlib.sha256).digest()
+        expected_signature = base64.b64encode(expected_digest).decode('utf-8')
+
+        if not hmac.compare_digest(expected_signature, signature):
+            return False, "Invalid HMAC signature"
+
+        return True, "Valid"
+
+    def post(self, request, *args, **kwargs):
+        # 1. Parse JSON payload first to catch malformed JSON
+        try:
+            payload_data = json.loads(request.body.decode('utf-8'))
+        except (ValueError, UnicodeDecodeError) as e:
+            logger.warning("[DAILY_WEBHOOK] Malformed JSON payload: %s", e)
+            return Response({"error": "Malformed JSON payload"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 2. Signature verification
+        signature = (
+            request.META.get('HTTP_X_WEBHOOK_SIGNATURE')
+            or request.headers.get('x-webhook-signature')
+            or ''
+        )
+        timestamp_str = (
+            request.META.get('HTTP_X_WEBHOOK_TIMESTAMP')
+            or request.headers.get('x-webhook-timestamp')
+            or ''
+        )
+
+        is_valid, reason = self.verify_signature(signature, timestamp_str, request.body)
+        if not is_valid:
+            logger.warning("[DAILY_WEBHOOK] Unauthorized request rejected: %s", reason)
+            return Response({"error": reason}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # 3. Verification ping handshake: {"test": "test"}
+        if payload_data == {"test": "test"} or payload_data.get("test") == "test":
+            return Response({"status": "ok"}, status=status.HTTP_200_OK)
+
+        # 4. Extract room topic and event details
+        payload = payload_data.get('payload') or {}
+        room = str(payload.get('room') or '').strip()
+        if not room.startswith('lesson-'):
+            return Response({"status": "skipped", "reason": "not_a_lesson_room"}, status=status.HTTP_200_OK)
+
+        booking_id_str = room[len('lesson-'):]
+        try:
+            booking_uuid = uuid.UUID(booking_id_str)
+        except (ValueError, TypeError):
+            return Response({"status": "skipped", "reason": "invalid_booking_id"}, status=status.HTTP_200_OK)
+
+        event_type = payload_data.get('type')
+        event_id = str(payload_data.get('id') or '')[:128]
+
+        with transaction.atomic():
+            booking = (
+                Booking.objects.select_for_update(of=('self',))
+                .filter(id=booking_uuid)
+                .select_related('teacher__user', 'student')
+                .first()
+            )
+            if not booking:
+                return Response({"status": "skipped", "reason": "booking_not_found"}, status=status.HTTP_200_OK)
+
+            now = timezone.now()
+            user_id = str(payload.get('user_id') or '').strip().lower()
+            session_id = str(payload.get('session_id') or event_id or 'daily_session')
+
+            teacher_user = getattr(booking.teacher, 'user', None) if hasattr(booking, 'teacher') else None
+            teacher_id = str(teacher_user.id).lower() if teacher_user else ''
+            student_id = str(booking.student_id).lower()
+
+            if teacher_id and user_id == teacher_id:
+                role = 'teacher'
+                email = teacher_user.email
+            elif student_id and user_id == student_id:
+                role = 'student'
+                email = booking.student.email
+            else:
+                role = 'unknown'
+                email = ''
+
+            # State transitions and quarantine checks
+            if event_type == 'participant.joined':
+                joined_at_raw = payload.get('joined_at')
+                join_time = now
+                if joined_at_raw:
+                    try:
+                        join_time = datetime.fromtimestamp(float(joined_at_raw), tz=dt_timezone.utc)
+                    except Exception:
+                        join_time = now
+
+                if role == 'teacher':
+                    if booking.status == Booking.Status.CONFIRMED:
+                        transition_booking(booking, Booking.Status.IN_PROGRESS, actor='system:daily_webhook', reason='tutor joined')
+                        booking.refresh_from_db()
+                    elif booking.status == Booking.Status.TEACHER_NO_SHOW:
+                        # Late tutor join contradicts no-show verdict: quarantine to DISPUTED
+                        transition_booking(booking, Booking.Status.DISPUTED, actor='system:daily_webhook', reason='Late tutor join')
+                        DisputeCase.objects.get_or_create(
+                            booking=booking,
+                            defaults={
+                                'student': booking.student,
+                                'teacher': booking.teacher,
+                                'opened_by': 'system:daily_webhook',
+                                'reason': 'Late tutor join after TEACHER_NO_SHOW',
+                            }
+                        )
+                elif role == 'student':
+                    if booking.status == Booking.Status.STUDENT_NO_SHOW:
+                        # Late student join contradicts no-show verdict: quarantine to DISPUTED
+                        transition_booking(booking, Booking.Status.DISPUTED, actor='system:daily_webhook', reason='Late student join')
+                        DisputeCase.objects.get_or_create(
+                            booking=booking,
+                            defaults={
+                                'student': booking.student,
+                                'teacher': booking.teacher,
+                                'opened_by': 'system:daily_webhook',
+                                'reason': 'Late student join after STUDENT_NO_SHOW',
+                            }
+                        )
+
+                # Upsert AttendanceAudit row
+                audit_row = AttendanceAudit.objects.filter(
+                    booking=booking,
+                    participant_id=user_id,
+                    zoom_session_id=f"daily-{session_id}"[:96],
+                ).first()
+                if not audit_row:
+                    audit_row = AttendanceAudit(
+                        booking=booking,
+                        participant_email=email,
+                        participant_id=user_id,
+                        classification=role,
+                        identity='daily',
+                        zoom_session_id=f"daily-{session_id}"[:96],
+                        join_time_utc=join_time,
+                        event_ids=[event_id] if event_id else [],
+                    )
+                else:
+                    if not audit_row.join_time_utc:
+                        audit_row.join_time_utc = join_time
+                    if event_id and event_id not in audit_row.event_ids:
+                        audit_row.event_ids.append(event_id)
+                # Compute total minutes if leave_time already present (out-of-order)
+                if audit_row.join_time_utc and audit_row.leave_time_utc:
+                    if audit_row.leave_time_utc > audit_row.join_time_utc:
+                        mins = int((audit_row.leave_time_utc - audit_row.join_time_utc).total_seconds() // 60)
+                        audit_row.total_minutes = min(25, max(0, mins))
+                    else:
+                        audit_row.total_minutes = 0
+                audit_row.save()
+
+            elif event_type == 'participant.left':
+                left_at_raw = payload.get('left_at')
+                leave_time = now
+                if left_at_raw:
+                    try:
+                        leave_time = datetime.fromtimestamp(float(left_at_raw), tz=dt_timezone.utc)
+                    except Exception:
+                        leave_time = now
+
+                audit_row = AttendanceAudit.objects.filter(
+                    booking=booking,
+                    participant_id=user_id,
+                    zoom_session_id=f"daily-{session_id}"[:96],
+                ).first()
+                if not audit_row:
+                    audit_row = AttendanceAudit(
+                        booking=booking,
+                        participant_email=email,
+                        participant_id=user_id,
+                        classification=role,
+                        identity='daily',
+                        zoom_session_id=f"daily-{session_id}"[:96],
+                        leave_time_utc=leave_time,
+                        event_ids=[event_id] if event_id else [],
+                    )
+                else:
+                    audit_row.leave_time_utc = leave_time
+                    if event_id and event_id not in audit_row.event_ids:
+                        audit_row.event_ids.append(event_id)
+
+                duration_secs = payload.get('duration')
+                if duration_secs is not None:
+                    mins = int(float(duration_secs) // 60)
+                    audit_row.total_minutes = min(25, max(0, mins))
+                elif audit_row.join_time_utc and audit_row.leave_time_utc:
+                    if audit_row.leave_time_utc > audit_row.join_time_utc:
+                        mins = int((audit_row.leave_time_utc - audit_row.join_time_utc).total_seconds() // 60)
+                        audit_row.total_minutes = min(25, max(0, mins))
+                    else:
+                        audit_row.total_minutes = 0
+                audit_row.save()
+
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)
+
 
 
 

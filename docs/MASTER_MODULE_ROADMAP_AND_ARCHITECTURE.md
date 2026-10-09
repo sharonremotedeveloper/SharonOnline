@@ -271,10 +271,14 @@ Eliminates high-contention double-booking race conditions when multiple global s
 
 ---
 
-### Module 5: Video Classroom Infrastructure (Zoom S2S OAuth, Webhook Telemetry & Drop-out Radar)
+### Module 5: Video Classroom Infrastructure (Daily.co WebRTC & Attendance Telemetry)
 
 #### Architectural Context
-Zero-maintenance, carrier-grade synchronous video infrastructure using Zoom Server-to-Server OAuth REST API, paired with automated meeting generation, webhook attendance telemetry, and connection drop-out radars.
+> [!IMPORTANT]
+> **ARCHITECTURAL DECISION D-14 (2026-10-08):**
+> Video infrastructure has transitioned to **Daily.co** embedded WebRTC (Daily Prebuilt / Call Object), superseding both legacy Zoom Meetings S2S and the intermediate Zoom Video SDK canvas implementation. Daily.co eliminates raw HTML5 canvas rendering, payment gateway COOP/COEP conflicts, and quarterly client deprecations. See [`DAILY_CO_MIGRATION_PLAN.md`](./DAILY_CO_MIGRATION_PLAN.md).
+
+Zero-maintenance, carrier-grade synchronous video infrastructure using Daily.co WebRTC REST API, paired with automated room token generation, webhook attendance telemetry, and connection drop-out radars.
 
 #### Stages & Status
 - **Stage 5.1: Zoom Server-to-Server OAuth Client** `[x] COMPLETED`

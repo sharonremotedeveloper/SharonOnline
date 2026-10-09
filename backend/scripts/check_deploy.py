@@ -40,6 +40,10 @@ def throwaway_environment() -> dict:
         'REDIS_URL': 'rediss://cache.invalid:6379/0',
         # Production must route refunds to the real gateways; the manual backend moves no money (Task 10.7).
         'REFUND_GATEWAY_BACKEND': 'apps.payments.services.refund_gateways.RoutingRefundGateway',
+        # Daily.co Video Conferencing (Decision D-14 / R4)
+        'DAILY_API_KEY': 'ci-daily-' + secrets.token_hex(16),
+        'DAILY_DOMAIN': 'ci.daily.co',
+        'DAILY_WEBHOOK_SECRET': secrets.token_hex(16),
         # Zoom Server-to-Server OAuth (settings ZOOM_* -> apps/integrations/zoom.py; no call is made here). Since Z1 the
         # production boot guard refuses them missing too, so an override to '' fails at settings load.
         'ZOOM_ACCOUNT_ID': 'ci-' + secrets.token_hex(6),
@@ -48,7 +52,27 @@ def throwaway_environment() -> dict:
     }
 
 
+_LOCAL_HOSTS = {'localhost', '127.0.0.1', '0.0.0.0', 'backend', '::1'}
+DAILY_CREDENTIALS = ('DAILY_API_KEY', 'DAILY_DOMAIN', 'DAILY_WEBHOOK_SECRET')   # == guard.DAILY_CREDENTIAL_SETTINGS (tested)
 ZOOM_CREDENTIALS = ('ZOOM_ACCOUNT_ID', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET')   # == guard.ZOOM_CREDENTIAL_SETTINGS (tested)
+
+
+def daily_credentials_problems(env) -> list:
+    """Without Daily credentials production cannot provision lesson rooms, issue tokens, or verify webhooks."""
+    problems = []
+    if not (env.get('DAILY_API_KEY') or '').strip():
+        problems.append('DAILY_API_KEY is not set: Daily lesson rooms and tokens cannot be provisioned.')
+    domain = (env.get('DAILY_DOMAIN') or '').strip()
+    if not domain:
+        problems.append('DAILY_DOMAIN is not set: Daily room URLs cannot be constructed.')
+    elif domain.lower().startswith('localhost') or 'localhost' in domain.lower() or domain in _LOCAL_HOSTS:
+        problems.append('DAILY_DOMAIN must not be localhost.')
+    secret = (env.get('DAILY_WEBHOOK_SECRET') or '').strip()
+    if not secret:
+        problems.append('DAILY_WEBHOOK_SECRET is not set: Daily webhook signatures cannot be verified.')
+    elif len(secret) < 16:
+        problems.append('DAILY_WEBHOOK_SECRET must be at least 16 characters.')
+    return problems
 
 
 def zoom_credentials_problems(env) -> list:
@@ -85,7 +109,7 @@ def main() -> int:
     os.chdir(BACKEND_DIR)
     sys.path.insert(0, BACKEND_DIR)
     environment = throwaway_environment()
-    for name in ('REFUND_GATEWAY_BACKEND', *ZOOM_CREDENTIALS):    # throwaway values a caller may override, to prove a check bites
+    for name in ('REFUND_GATEWAY_BACKEND', *DAILY_CREDENTIALS, *ZOOM_CREDENTIALS):    # throwaway values a caller may override, to prove a check bites
         if name in os.environ:
             environment[name] = os.environ[name]
     os.environ.update(environment)
@@ -97,6 +121,7 @@ def main() -> int:
     from django.conf import settings
 
     problems = (refund_backend_problems(getattr(settings, 'REFUND_GATEWAY_BACKEND', ''))
+                + daily_credentials_problems(os.environ)
                 + zoom_credentials_problems(os.environ)
                 + email_mode_problems(getattr(settings, 'EMAIL_BACKEND_MODE', '')))
     for warning in alert_recipient_warnings(os.environ):

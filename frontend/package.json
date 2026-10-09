@@ -12,6 +12,7 @@
     "check:api-types": "node scripts/check-generated-api.mjs"
   },
   "dependencies": {
+    "@daily-co/daily-js": "^0.93.0",
     "@paypal/react-paypal-js": "^10.5.2",
     "@zoom/videosdk": "^2.5.0",
     "clsx": "^2.1.1",

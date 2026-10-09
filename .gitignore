@@ -75,5 +75,7 @@ backend/celerybeat-schedule*
 .claude/
 .codex/
 .agents/
+.playwright-mcp/
+.pytest-tmp-guards/
 .env.*
 !.env.example
