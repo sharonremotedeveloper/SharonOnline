@@ -108,6 +108,94 @@ class DailyClient:
             'Accept': 'application/json',
         }
 
+    def _is_mocked(self, method) -> bool:
+        return hasattr(method, 'mock_calls') or hasattr(method, 'assert_called')
+
+    def _should_simulate(self) -> bool:
+        return self.simulate or self.api_key.startswith(('test-', 'local-'))
+
+    def get_room(self, room_name: str) -> Optional[Dict[str, Any]]:
+        """Return a Daily room, or ``None`` when it does not exist."""
+        if self._should_simulate() and not self._is_mocked(requests.get):
+            return {'name': room_name, 'url': f'https://{self.domain}/{room_name}', 'simulated': True}
+        try:
+            response = requests.get(
+                f'{self.api_base_url}/rooms/{room_name}',
+                headers=self._headers(),
+                timeout=8,
+            )
+        except requests.RequestException as exc:
+            raise DailyApiError('Daily room lookup failed.') from exc
+        if response.status_code == 404:
+            return None
+        if response.status_code != 200:
+            logger.warning('[DAILY_CLIENT] Room lookup returned status %s', response.status_code)
+            raise DailyApiError(f'Daily room lookup error: status {response.status_code}')
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise DailyApiError('Daily room lookup returned invalid JSON.') from exc
+
+    def ensure_room(self, room_name: str, nbf: int, exp: int) -> Dict[str, Any]:
+        """Create a private, time-bounded room once and safely reuse it on retries."""
+        existing = self.get_room(room_name)
+        if existing is not None:
+            return existing
+        if self._should_simulate() and not self._is_mocked(requests.post):
+            return {'name': room_name, 'url': f'https://{self.domain}/{room_name}', 'simulated': True}
+
+        body = {
+            'name': room_name,
+            'privacy': 'private',
+            'properties': {
+                'nbf': nbf,
+                'exp': exp,
+                'max_participants': 2,
+                'enable_recording': False,
+                'start_video_off': False,
+                'start_audio_off': False,
+                'eject_at_room_exp': True,
+            },
+        }
+        try:
+            response = requests.post(
+                f'{self.api_base_url}/rooms',
+                headers=self._headers(),
+                json=body,
+                timeout=8,
+            )
+        except requests.RequestException as exc:
+            raise DailyApiError('Daily room creation failed.') from exc
+        if response.status_code in (200, 201):
+            try:
+                return response.json()
+            except ValueError as exc:
+                raise DailyApiError('Daily room creation returned invalid JSON.') from exc
+        if response.status_code == 409:
+            # A concurrent worker may have created the deterministic room first.
+            existing = self.get_room(room_name)
+            if existing is not None:
+                return existing
+        logger.warning('[DAILY_CLIENT] Room creation returned status %s', response.status_code)
+        raise DailyApiError(f'Daily room creation error: status {response.status_code}')
+
+    def delete_room(self, room_name: str) -> bool:
+        """Delete a lesson room; a missing room is already clean."""
+        if self._should_simulate() and not self._is_mocked(requests.delete):
+            return True
+        try:
+            response = requests.delete(
+                f'{self.api_base_url}/rooms/{room_name}',
+                headers=self._headers(),
+                timeout=8,
+            )
+        except requests.RequestException as exc:
+            raise DailyApiError('Daily room deletion failed.') from exc
+        if response.status_code in (200, 204, 404):
+            return True
+        logger.warning('[DAILY_CLIENT] Room deletion returned status %s', response.status_code)
+        raise DailyApiError(f'Daily room deletion error: status {response.status_code}')
+
     def create_meeting_token(
         self,
         room_name: str,
@@ -119,7 +207,7 @@ class DailyClient:
         enable_recording: bool = False,
     ) -> str:
         """Issue an ephemeral Daily meeting token with given permissions and validity window."""
-        is_mocked = hasattr(requests.post, 'mock_calls') or hasattr(requests.post, 'assert_called')
+        is_mocked = self._is_mocked(requests.post)
         if (self.simulate or not self.api_key or self.api_key.startswith('test-') or self.api_key.startswith('local-')) and not is_mocked:
             payload = {
                 'room_name': room_name,
@@ -245,6 +333,10 @@ def generate_daily_token(
     client = DailyClient()
     nbf_ts = int(open_time.timestamp())
     exp_ts = int(close_time.timestamp())
+
+    # Room provisioning is idempotent and intentionally happens before token
+    # issuance. A token for a missing room is not usable by the browser.
+    client.ensure_room(room_name=room_name, nbf=nbf_ts, exp=exp_ts)
 
     token = client.create_meeting_token(
         room_name=room_name,

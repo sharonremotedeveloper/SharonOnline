@@ -27,6 +27,7 @@ export interface MaterialDetail {
   cefr_display: string;
   estimated_minutes: number;
   summary: string;
+  description?: string;
   content_html: string;
   vocabulary: VocabularyItem[];
   discussion_questions: string[];

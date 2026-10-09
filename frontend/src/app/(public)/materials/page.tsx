@@ -157,16 +157,23 @@ export default function MaterialsPage() {
         ) : materials.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border border-divider p-8 space-y-4">
             <BookOpen className="w-12 h-12 text-ink-muted mx-auto" />
-            <h3 className="text-lg font-bold text-ink">No lesson materials found</h3>
+            <h3 className="text-lg font-bold text-ink">
+              {hasActiveFilters ? "No lesson materials found" : "Curriculum Catalog Updating"}
+            </h3>
             <p className="text-sm text-ink-muted max-w-sm mx-auto">
-              We couldn&apos;t find any curriculum matching your criteria. Try adjusting your search keywords or CEFR level.
+              {hasActiveFilters
+                ? "We couldn't find any curriculum matching your criteria. Try adjusting your search keywords or CEFR level."
+                : "No approved curriculum materials are currently published in the catalog. Please check back shortly."}
             </p>
-            <button
-              onClick={clearFilters}
-              className="min-h-11 inline-flex items-center px-4 py-2 bg-cocoa text-white rounded-xl text-sm font-bold hover:bg-cocoa-hover transition-colors"
-            >
-              Reset Filters
-            </button>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="min-h-11 inline-flex items-center px-4 py-2 bg-cocoa text-white rounded-xl text-sm font-bold hover:bg-cocoa-hover transition-colors"
+              >
+                Reset Filters
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -189,7 +196,7 @@ export default function MaterialsPage() {
                     <h3 className="text-xl font-extrabold text-ink font-serif leading-snug group-hover:text-cocoa transition-colors">
                       <Link href={`/materials/${mat.slug}`}>{mat.title}</Link>
                     </h3>
-                    <p className="text-sm text-ink-muted line-clamp-3 leading-relaxed font-sans">{mat.summary}</p>
+                    <p className="text-sm text-ink-muted line-clamp-3 leading-relaxed font-sans">{mat.description || mat.summary}</p>
                   </div>
 
                   {/* Meta Details */}

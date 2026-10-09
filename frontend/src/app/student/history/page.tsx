@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { studentApi } from "@/lib/api";
 import { StudentLessonItem } from "@/types/student";
+import { canonicalMaterialLink, isHistoricalLesson } from "@/lib/repairHelpers";
 import { LessonMemoModal } from "@/components/student/LessonMemoModal";
 import { ReviewRubricModal } from "@/components/student/ReviewRubricModal";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -28,7 +29,8 @@ export default function StudentHistoryPage() {
     () => studentApi.getStudentLessons(),
     []
   );
-  const lessons = data ?? [];
+  const rawLessons = data ?? [];
+  const lessons = rawLessons.filter(isHistoricalLesson);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "interrupted">("all");
 
@@ -193,6 +195,21 @@ export default function StudentHistoryPage() {
                       Scheduled
                     </span>
                   )}
+                  {lesson.status.startsWith("cancelled") && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-cream-deep text-ink-muted border border-divider">
+                      Cancelled
+                    </span>
+                  )}
+                  {lesson.status === "disputed" && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-warning-surface text-warning-hover border border-warning-border">
+                      <AlertCircle className="w-3.5 h-3.5 text-warning" /> Disputed
+                    </span>
+                  )}
+                  {(lesson.status === "student_no_show" || lesson.status === "teacher_no_show") && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold bg-error-surface text-error border border-error-border">
+                      Missed / No-Show
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -242,14 +259,17 @@ export default function StudentHistoryPage() {
                     </>
                   )}
 
-                  {lesson.material_slug && (
-                    <Link
-                      href={`/materials/${lesson.material_slug}`}
-                      className="min-h-11 inline-flex items-center gap-1 px-3 py-2 bg-cream-100 hover:bg-cream-200 text-ink-700 text-sm font-medium rounded-xl transition-colors"
-                    >
-                      <BookOpen className="w-3.5 h-3.5" /> Open Sheet
-                    </Link>
-                  )}
+                  {(() => {
+                    const materialHref = canonicalMaterialLink(lesson.material_slug);
+                    return materialHref ? (
+                      <Link
+                        href={materialHref}
+                        className="min-h-11 inline-flex items-center gap-1 px-3 py-2 bg-cream-100 hover:bg-cream-200 text-ink-700 text-sm font-medium rounded-xl transition-colors"
+                      >
+                        <BookOpen className="w-3.5 h-3.5" /> Open Sheet
+                      </Link>
+                    ) : null;
+                  })()}
                 </div>
               </div>
 

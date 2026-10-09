@@ -529,7 +529,6 @@ def configure_test_settings(settings):
 - **Symptom:** one full-suite run in about every twenty failed `tests/test_t2_availability_api.py::TestTimezoneValidation::test_the_validator_uses_the_tzdata_list`; it passed when re-run alone (the "single unidentified flaky failure" seen during the layer-1b integration).
 - **Root cause:** the test checked the first 25 entries of `list(zoneinfo.available_timezones())`, a `set` with a per-process random order. On machines whose tzdata lists non-zone entries (here `Factory`) a sample sometimes included one, which `is_valid_timezone` correctly rejects (ERR-194).
 - **Fix:** the test now takes a deterministic sample (first and last 25 of the sorted list) after excluding the validator's own `_NOT_ZONES`.
-=======
 ### ERR-220: T3 R2 commit could leave storage state inconsistent after a database rollback (T3 review)
 - **Symptom:** the asset was copied and the quarantine object was deleted before the surrounding `transaction.atomic` block committed; a later database error could leave a final object with no `TeacherAsset` row.
 - **Root cause:** object storage has no transaction rollback and the old code performed both storage mutations inside the database transaction without compensating cleanup.
@@ -549,7 +548,6 @@ def configure_test_settings(settings):
 - **Symptom:** the prescribed `backend/venv/Scripts/python.exe` failed before pytest with `Unable to create process ... Python312\\python.exe`.
 - **Root cause:** `pyvenv.cfg` points to a Python 3.12 installation absent from this host.
 - **Fix:** no repository workaround was applied; test evidence is explicitly pending a repaired runtime or CI.
-=======
 ### ERR-250: N1b notification API was missing (slice N1b)
 - **Symptom:** N1a exposed durable notification rows and preferences but no owner-scoped API, unread count, read transitions, or preference endpoint.
 - **Root cause:** the N1a layer intentionally stopped before the API contract freeze.
@@ -659,3 +657,52 @@ def configure_test_settings(settings):
 - **Root cause:** `video_session_probe._generate_api_jwt` signed a `{app_key, version}` JWT with the Video SDK key/secret. Those sign client join tokens only. The Video SDK REST API accepts a JWT with an `iss` claim signed with the app's separate "API credentials" pair, and rejects S2S OAuth tokens ("This API does not support OAuth2"). Mocked tests only checked that credentials existed, so nothing exercised the real contract.
 - **Resolution:** new settings `ZOOM_VIDEO_SDK_API_KEY` / `ZOOM_VIDEO_SDK_API_SECRET`; the probe signs `{iss, iat, exp}` with them and returns UNKNOWN (no Zoom call) if they are unset. Tests added for both. Unrelated to the SDK key/secret used for join tokens.
 - **Verification:** live probe call with the new token returns 200 and `not_started` for an unknown topic; full backend suite 3481 passed / 26 skipped; ruff clean.
+
+### ERR-450: Materials list/detail placeholder link and empty state confusion (F-01, F-02)
+
+- **Observed:** Lessons without specific curriculum sheets mapped to `/materials/freetalk-discussion`, triggering 404 navigation errors. Empty catalog searches did not distinguish between a zero-record database and an active filter mismatch.
+- **Root cause:** Backend serializers defaulted unassigned lessons to the slug `"freetalk-discussion"`. The frontend created unconditional `<Link>` elements to this path.
+- **Resolution:** Introduced `canonicalMaterialLink` to map placeholder, empty, or null slugs to `null`. In `student/history/page.tsx`, unlinked plain text is rendered for placeholder topics. In `(public)/materials/page.tsx`, catalog empty state is distinguished from filter empty state, and 403 restricted access is gracefully presented.
+- **Verification:** Unit tests in `liveFailuresRepair.test.ts` passed; `npm run build` and HTTP checks passed.
+
+### ERR-451: Power Guard full-page crash on unconfigured area or provider downtime (F-03)
+
+- **Observed:** When Eskom telemetry returned HTTP 409 (`eskom_area_not_configured`) or HTTP 503 (`eskom_status_unavailable`), tutors were blocked by a fatal red error screen and could not declare or update their backup inverter/LTE hardware.
+- **Root cause:** `useApiData` error handling in `teacher/power-guard/page.tsx` and `teacher/dashboard/page.tsx` treated all errors as fatal system failures, preventing UI rendering.
+- **Resolution:** Implemented `classifyEskomProblem` in `repairHelpers.ts`. Area unconfigured errors now display an actionable setup prompt linking to the teacher profile; provider outages display a retryable warning banner. The hardware backup certification form remains fully functional.
+- **Verification:** Unit tests passed; `npm test` and build passed.
+
+### ERR-452: Student schedule mislabelling past cancelled/unpaid lessons as Completed (F-04)
+
+- **Observed:** In `student/schedule/page.tsx`, any lesson with `end_time_utc < now` was labelled "Completed", regardless of whether it had been cancelled, disputed, or was never paid for. Unpaid `pending_payment` bookings also displayed Google Calendar sync buttons.
+- **Root cause:** The schedule view computed status locally with `!upcoming -> "Completed"`.
+- **Resolution:** Created `StudentScheduleCard.tsx` consuming authoritative `BookingStatus`. Filtered `student/history/page.tsx` with `isHistoricalLesson` to keep pending payment and in-progress lessons out of completed history. Added "Complete Checkout" action for `pending_payment` bookings.
+- **Verification:** Unit tests passed; `npm test` and build passed.
+
+### ERR-453: Live session radar unbounded dwell time and unflagged anomalies (F-05)
+
+- **Observed:** The admin live session radar allowed progress bars to exceed 100% and did not flag sessions exceeding the 25-minute lesson window.
+- **Root cause:** Elapsed minutes were displayed raw and unclamped without telemetry integrity checks.
+- **Resolution:** Implemented `formatRadarTelemetry` in `repairHelpers.ts`. Visual dwell progress is capped at 100%, and sessions exceeding 25 minutes are flagged with `"Overdue Telemetry · Review Required"` or anomaly badges.
+- **Verification:** Unit tests in `liveFailuresRepair.test.ts` passed; `npm test` and build passed.
+
+### ERR-454: Unactionable checkout failure when EUR/JPY exchange rates are stale (F-06)
+
+- **Observed:** Selecting EUR or JPY checkout when FX rates were stale or unconfigured caused unhelpful error states without an actionable recovery path.
+- **Root cause:** Checkout relied on late PayPal API rejection without guiding the student to alternative currencies.
+- **Resolution:** Added currency reminder notice for EUR/JPY with a one-click "Pay in USD instead" action. Enhanced error messaging with `checkoutFailureMessage` to clearly advise students to switch to USD or PayFast (ZAR).
+- **Verification:** Unit tests passed; `npm test` and build passed.
+
+### ERR-455: Fabricated demo media URLs in tutor audition components (F-07)
+
+- **Observed:** `VideoReelPlayer.tsx` and `AudioSnippetButton.tsx` hardcoded third-party fallback URLs (`mixkit.co` and `actions.google.com`).
+- **Root cause:** Placeholders were added during initial UI prototyping and persisted into production code.
+- **Resolution:** Removed all fabricated fallback media URLs. Both components now render truthful unavailable/disabled placeholders with accessible titles and labels.
+- **Verification:** RED tests captured in `liveFailuresRepair.test.ts` turned GREEN after removal. Zero warnings in lint and build.
+
+### ERR-456: Availability grid alignment and atomic conflict safety (F-08)
+
+- **Observed:** Need for assurance that saving availability in the weekly grid respects server-persisted windows and alerts tutors if confirmed lessons fall outside their hours.
+- **Root cause:** Legacy or non-standard availability windows required confirmation before replacement.
+- **Resolution:** Verified `wouldChangeSavedWindows` confirmation prompts and atomic conflict resolution modals (`pendingConflicts` / `leftConflicts`) in `WeeklyScheduleGrid.tsx`.
+- **Verification:** Unit tests passed; `npm test` and build passed.

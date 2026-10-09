@@ -1,4 +1,4 @@
-"""Live-session probe for Video SDK lessons (Decision D-9, Slice V4).
+"""Live-session probe for video lessons (Decision D-9, Slice V4).
 
 Queries Zoom's Video SDK REST API to check the live state of session `lesson-<booking_id>`:
 - STARTED: The session is live AND the tutor's user_identity is in it.
@@ -16,6 +16,8 @@ import jwt
 import requests
 from django.conf import settings
 
+from apps.integrations.services.daily import STARTED as DAILY_STARTED, NOT_STARTED as DAILY_NOT_STARTED, UNKNOWN as DAILY_UNKNOWN
+from apps.integrations.services.daily import DailyClient, is_daily_configured
 from apps.integrations.services.video_sdk import is_video_sdk_configured
 
 logger = logging.getLogger(__name__)
@@ -173,11 +175,29 @@ def _get_matching_sessions(token: str, topic: str) -> tuple[Optional[list[dict]]
     return _parse_sessions_data(data, topic)
 
 
-def probe_session(booking) -> str:
-    """Query Zoom Video SDK REST API for the booking's session.
+def _probe_daily_session(booking) -> str:
+    status, roster = DailyClient().get_room_presence(f'lesson-{booking.id}')
+    if status == 'not_found':
+        return DAILY_NOT_STARTED
+    if status != 'ok':
+        return DAILY_UNKNOWN
+    teacher_user = getattr(booking.teacher, 'user', None) if hasattr(booking, 'teacher') else None
+    if not teacher_user:
+        return DAILY_UNKNOWN
+    tutor_identity = str(teacher_user.id)
+    return DAILY_STARTED if any(
+        isinstance(participant, dict) and str(
+            participant.get('user_id') or participant.get('user_identity') or participant.get('id') or ''
+        ) == tutor_identity
+        for participant in roster
+    ) else DAILY_NOT_STARTED
 
-    Returns STARTED, NOT_STARTED, or UNKNOWN.
-    """
+
+def probe_session(booking) -> str:
+    """Query the configured provider for the booking's session."""
+    if is_daily_configured():
+        return _probe_daily_session(booking)
+
     if not is_video_sdk_configured():
         return UNKNOWN
 

@@ -18,6 +18,7 @@ import {
 import { api } from "@/lib/api";
 import { LiveSessionRadarItem } from "@/types/admin";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
+import { formatRadarTelemetry } from "@/lib/repairHelpers";
 
 export default function AdminLiveSessionsPage() {
   const [sessions, setSessions] = useState<LiveSessionRadarItem[]>([]);
@@ -123,12 +124,15 @@ export default function AdminLiveSessionsPage() {
         {sessions.map((sess) => {
           const isWrapUp = sess.status === "wrap_up";
           const isStaging = sess.status === "staging";
+          const telemetry = formatRadarTelemetry(sess);
 
           return (
             <div
               key={sess.id}
               className={`bg-white rounded-3xl p-6 border shadow-card transition-all space-y-5 ${
-                isWrapUp
+                telemetry.isAnomaly
+                  ? "border-error-border ring-2 ring-error-surface"
+                  : telemetry.isOverdue || isWrapUp
                   ? "border-warning-border ring-2 ring-warning-surface"
                   : isStaging
                   ? "border-info-border"
@@ -141,28 +145,40 @@ export default function AdminLiveSessionsPage() {
                   {sess.booking_ref}
                 </span>
 
-                <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
-                    isWrapUp
-                      ? "bg-warning-surface text-warning-hover animate-pulse"
-                      : isStaging
-                      ? "bg-info-surface text-info-hover"
-                      : "bg-success-surface text-success-hover"
-                  }`}
-                >
+                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                  {telemetry.badgeText && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider bg-warning-surface text-warning-hover border border-warning-border">
+                      <AlertCircle className="w-3 h-3 text-warning" />
+                      <span>{telemetry.badgeText}</span>
+                    </span>
+                  )}
                   <span
-                    className={`w-2 h-2 rounded-full ${
-                      isWrapUp ? "bg-warning" : isStaging ? "bg-info" : "bg-success"
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
+                      telemetry.isOverdue
+                        ? "bg-warning-surface text-warning-hover"
+                        : isWrapUp
+                        ? "bg-warning-surface text-warning-hover animate-pulse"
+                        : isStaging
+                        ? "bg-info-surface text-info-hover"
+                        : "bg-success-surface text-success-hover"
                     }`}
-                  />
-                  <span>
-                    {isWrapUp
-                      ? `Wrapping Up (${sess.elapsed_minutes}m/25m)`
-                      : isStaging
-                      ? "Staging Room"
-                      : `Active Class (${sess.elapsed_minutes}m/25m)`}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        telemetry.isOverdue ? "bg-warning" : isWrapUp ? "bg-warning" : isStaging ? "bg-info" : "bg-success"
+                      }`}
+                    />
+                    <span>
+                      {telemetry.isOverdue
+                        ? `Overdue (${sess.elapsed_minutes}m)`
+                        : isWrapUp
+                        ? `Wrapping Up (${sess.elapsed_minutes}m/25m)`
+                        : isStaging
+                        ? "Staging Room"
+                        : `Active Class (${sess.elapsed_minutes}m/25m)`}
+                    </span>
                   </span>
-                </span>
+                </div>
               </div>
 
               {/* Participants Details */}
@@ -210,14 +226,29 @@ export default function AdminLiveSessionsPage() {
               <div className="space-y-1.5 pt-1">
                 <div className="flex justify-between text-xs font-bold text-ink-muted">
                   <span>Lesson Dwell Time</span>
-                  <span className="text-ink font-mono">{sess.elapsed_minutes} / 25 mins</span>
+                  <div className="flex items-center gap-1.5 font-mono">
+                    <span className="text-ink">{telemetry.displayMinutes}</span>
+                    {telemetry.isOverdue && (
+                      <span className="text-warning-hover font-bold text-xs">
+                        ({sess.elapsed_minutes}m actual)
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="w-full h-2.5 bg-cream-deep rounded-full overflow-hidden">
                   <div
                     className={`h-full transition-all duration-500 rounded-full ${
-                      isWrapUp ? "bg-warning" : isStaging ? "bg-info" : "bg-cocoa"
+                      telemetry.isAnomaly
+                        ? "bg-error"
+                        : telemetry.isOverdue
+                        ? "bg-warning"
+                        : isWrapUp
+                        ? "bg-warning"
+                        : isStaging
+                        ? "bg-info"
+                        : "bg-cocoa"
                     }`}
-                    style={{ width: `${Math.min(100, (sess.elapsed_minutes / 25) * 100)}%` }}
+                    style={{ width: `${telemetry.progressPercent}%` }}
                   />
                 </div>
               </div>

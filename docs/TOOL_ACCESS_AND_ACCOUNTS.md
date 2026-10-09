@@ -92,6 +92,13 @@ Before an agent uses **any** external tool, service, API, MCP server, CLI, or co
 | EskomSePush | Load-shedding schedules | `sharonremotedeveloper@gmail.com` (+ id: TBD) | prod | provider dashboard | `.env` | `AUTHORIZED` |
 | Wise | Tutor payouts (future) | `sharonremotedeveloper@gmail.com` (+ id: TBD) | — | — | — | `N/A` |
 
+### 3.5 Security, SAST & DAST tooling
+
+| Tool | Purpose | Authorized Account | Env | How to verify (read-only) | Secrets live in | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| OWASP ZAP (Zed Attack Proxy) | Dynamic Application Security Testing (DAST) vulnerability scan against running web application (OWASP Top 10, headers, injection, auth) | `sharonremotedeveloper@gmail.com` | staging / dev | `zap.sh -version` / ZAP desktop/CLI banner / container log | n/a | `AUTHORIZED` |
+| GitHub CodeQL | Static Application Security Testing (SAST) semantic code analysis for Python and JavaScript/TypeScript vulnerabilities in CI & local analysis | `sharonremotedeveloper@gmail.com` (GitHub repository `sharonremotedeveloper/SharonOnline`) | CI / dev | `codeql version` / GitHub Actions CodeQL workflow status / `gh api repos/sharonremotedeveloper/SharonOnline/code-scanning/alerts` | n/a (GitHub native) | `AUTHORIZED` |
+
 ---
 
 ## 4. Confirmation Log (append-only)
@@ -139,6 +146,8 @@ One line per confirmation or change. Newest last. Do not delete entries.
 | 2026-10-08 | Claude | Vercel (read-only dashboard check in Anesu's logged-in Chrome, project `sharon-team1/sharon-online`) | Dashboard user shown as `sharonremotedeveloper` (team SharonTeam, Hobby) | prod/preview | Matches registry. Git repo `sharonremotedeveloper/SharonOnline` connected, Root Directory `frontend`, Production branch `main`, Preview = all other branches. No settings changed by Claude; no login, no deploy, Railway untouched. |
 | 2026-10-08 | Claude | GitHub CLI (account switch + push of docs to `develop`) | `gh auth status` was `anesu-metabox` (mismatch); on Anesu's explicit chat instruction ("change to sharonremotedeveloper@gmail.com") Claude ran `gh auth switch -u sharonremotedeveloper`; `gh api user` login = `sharonremotedeveloper` | develop | Matches registry after the switch. Switch only between already-logged-in accounts; no login or credential change. |
 | 2026-10-09 | Antigravity | GitHub / Daily.co Migration (Decision D-14) | `sharonremotedeveloper` active | develop | Migrated video conferencing to Daily.co embedded WebRTC, added DailyClient, webhook receiver, attendance auditor, frontend DailyClassroom component, unit & E2E tests, updated docs. |
+| 2026-10-07 | Antigravity | OWASP ZAP | `sharonremotedeveloper@gmail.com` | staging / dev | Registered in §3.5 per Anesu instruction. Scheduled as pre-production DAST security assessment tool against staging endpoints prior to production launch. |
+| 2026-10-07 | Antigravity | GitHub CodeQL | `sharonremotedeveloper` (`sharonremotedeveloper@gmail.com`) | CI / dev | Registered in §3.5 per Anesu instruction. Scheduled as automated SAST code scanner for Python and JavaScript/TypeScript in CI and pre-production security review. |
 
 ---
 

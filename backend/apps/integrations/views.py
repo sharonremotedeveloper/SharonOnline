@@ -519,6 +519,17 @@ class DailyWebhookReceiverView(APIView):
         return (getattr(settings, 'DAILY_WEBHOOK_SECRET', '') or '').strip()
 
     def verify_signature(self, signature: str, timestamp_str: str, raw_body: bytes) -> tuple[bool, str]:
+        signature = (signature or '').strip()
+        timestamp_str = (timestamp_str or '').strip()
+        # Some Daily deliveries use a Stripe-style envelope such as
+        # ``t=<unix>,v1=<signature>`` rather than a separate timestamp header.
+        if signature and not timestamp_str:
+            for part in signature.replace(' ', ',').split(','):
+                key, _, value = part.partition('=')
+                if key.strip() == 't' and value.strip():
+                    timestamp_str = value.strip()
+                    break
+
         if not signature or not timestamp_str:
             return False, "Missing Daily webhook signature or timestamp headers"
 
@@ -535,16 +546,39 @@ class DailyWebhookReceiverView(APIView):
             logger.error("[DAILY_WEBHOOK] DAILY_WEBHOOK_SECRET is not configured; rejecting webhook")
             return False, "Daily webhook secret not configured"
 
-        try:
-            secret_bytes = base64.b64decode(secret)
-        except Exception:
-            secret_bytes = secret.encode('utf-8')
-
         message = f"{timestamp_int}.".encode('utf-8') + raw_body
-        expected_digest = hmac.new(secret_bytes, message, hashlib.sha256).digest()
-        expected_signature = base64.b64encode(expected_digest).decode('utf-8')
+        key_candidates = [secret.encode('utf-8')]
+        try:
+            decoded_secret = base64.b64decode(secret, validate=True)
+        except Exception:
+            decoded_secret = None
+        if decoded_secret and decoded_secret != key_candidates[0]:
+            key_candidates.append(decoded_secret)
 
-        if not hmac.compare_digest(expected_signature, signature):
+        expected_signatures = set()
+        for key in key_candidates:
+            expected_digest = hmac.new(key, message, hashlib.sha256).digest()
+            expected_signatures.update({
+                base64.b64encode(expected_digest).decode('utf-8'),
+                expected_digest.hex(),
+                f'sha256={expected_digest.hex()}',
+                f'v1={base64.b64encode(expected_digest).decode("utf-8")}',
+                f'v1={expected_digest.hex()}',
+            })
+        received_signatures = {signature}
+        # Daily integrations in the wild have used both a standalone
+        # signature header and a timestamp/signature envelope. Accept either
+        # without weakening the timestamp replay check above.
+        if ',' in signature or ' ' in signature:
+            for part in signature.replace(' ', ',').split(','):
+                key, _, value = part.partition('=')
+                if key in {'v1', 'sig', 'signature'} and value:
+                    received_signatures.add(value.strip())
+        if not any(
+            hmac.compare_digest(expected, received)
+            for expected in expected_signatures
+            for received in received_signatures
+        ):
             return False, "Invalid HMAC signature"
 
         return True, "Valid"
@@ -679,7 +713,16 @@ class DailyWebhookReceiverView(APIView):
             logger.warning("[DAILY_WEBHOOK] Malformed JSON payload: %s", e)
             return Response({"error": "Malformed JSON payload"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 2. Signature verification
+        # Daily's registration probe is an exact test payload. It can carry a
+        # provider-generated timestamp unrelated to a real event, so it must
+        # not be subject to the attendance replay window.
+        daily_user_agent = request.META.get('HTTP_USER_AGENT', '')
+        if payload_data == {"test": "test"} and daily_user_agent.startswith('node-superagent/'):
+            return Response({"status": "ok"}, status=status.HTTP_200_OK)
+
+        # Daily validates a newly-created webhook with an exact test body. The
+        # provider's connectivity probe may not carry event-signature headers;
+        # allow only this exact handshake through without HMAC verification.
         signature = (
             request.META.get('HTTP_X_WEBHOOK_SIGNATURE')
             or request.headers.get('x-webhook-signature')
@@ -691,13 +734,17 @@ class DailyWebhookReceiverView(APIView):
             or ''
         )
 
+        if payload_data == {"test": "test"} and not signature and not timestamp_str:
+            return Response({"status": "ok"}, status=status.HTTP_200_OK)
+
+        # 2. Signature verification
         is_valid, reason = self.verify_signature(signature, timestamp_str, request.body)
         if not is_valid:
             logger.warning("[DAILY_WEBHOOK] Unauthorized request rejected: %s", reason)
             return Response({"error": reason}, status=status.HTTP_401_UNAUTHORIZED)
 
         # 3. Verification ping handshake: {"test": "test"}
-        if payload_data == {"test": "test"} or payload_data.get("test") == "test":
+        if payload_data.get("test") == "test":
             return Response({"status": "ok"}, status=status.HTTP_200_OK)
 
         # 4. Extract room topic and event details

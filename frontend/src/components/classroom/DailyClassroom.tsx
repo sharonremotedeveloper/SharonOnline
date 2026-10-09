@@ -50,6 +50,14 @@ export function DailyClassroom({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const callFrameRef = useRef<any>(null);
 
+  const finishLeave = useCallback(() => {
+    callFrameRef.current = null;
+    setJoined(false);
+    setConnecting(false);
+    setRemoteUserJoined(false);
+    onLeave?.();
+  }, [onLeave]);
+
   // Clean up Daily call frame on unmount
   useEffect(() => {
     return () => {
@@ -72,13 +80,9 @@ export function DailyClassroom({
       } catch (e) {
         console.warn("Error leaving Daily call:", e);
       }
-      callFrameRef.current = null;
     }
-    setJoined(false);
-    setConnecting(false);
-    setRemoteUserJoined(false);
-    onLeave?.();
-  }, [onLeave]);
+    finishLeave();
+  }, [finishLeave]);
 
   const joinSession = useCallback(async () => {
     setConnecting(true);
@@ -162,7 +166,14 @@ export function DailyClassroom({
       });
 
       callFrame.on("left-meeting", () => {
-        handleLeave();
+        // Daily has already completed leave(); calling leave() again here can
+        // race the iframe teardown and produce an avoidable SDK error.
+        try {
+          callFrame.destroy();
+        } catch {
+          /* ignore teardown errors after the SDK left */
+        }
+        finishLeave();
       });
 
       callFrame.on("error", (event: any) => {
@@ -185,7 +196,7 @@ export function DailyClassroom({
       setConnecting(false);
       setJoined(false);
     }
-  }, [bookingId, handleLeave]);
+  }, [bookingId, finishLeave]);
 
   return (
     <div className="space-y-4">

@@ -21,6 +21,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
 import { useAuth } from "@/context/AuthContext";
 import { viewerPeriodBounds } from "@/lib/dashboardTime";
+import { classifyEskomProblem } from "@/lib/repairHelpers";
 
 /** The server filters and counts, so nothing here depends on how many lessons the tutor has had. */
 async function loadTeacherBookings(timezone: string): Promise<{
@@ -119,7 +120,49 @@ export default function TeacherDashboardPage() {
         {eskom.loading ? (
           <div className="h-16 rounded-2xl bg-white border border-divider animate-pulse" />
         ) : eskom.error ? (
-          <ErrorState error={eskom.error} title="Eskom Power Guard status isn't available" onRetry={eskom.reload} />
+          (() => {
+            const problem = classifyEskomProblem(eskom.error);
+            if (problem.kind === "area_not_configured") {
+              return (
+                <div className="p-4 rounded-2xl bg-cream-surface border border-divider text-xs text-ink flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-warning" />
+                    <span>
+                      <strong>Load Shedding Area Not Set:</strong> Add your suburb or municipal zone in your profile for automated lesson protection.
+                    </span>
+                  </div>
+                  <Link
+                    href="/teacher/profile"
+                    className="min-h-11 inline-flex items-center text-xs font-bold text-cocoa hover:underline shrink-0"
+                  >
+                    Set area &rarr;
+                  </Link>
+                </div>
+              );
+            }
+            if (problem.kind === "provider_unavailable") {
+              return (
+                <div className="p-4 rounded-2xl bg-cream-surface border border-divider text-xs text-ink flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-ink-muted" />
+                    <span>
+                      <strong>Power Guard Telemetry Offline:</strong> Grid provider is currently unreachable. Lesson protections remain active.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={eskom.reload}
+                    className="min-h-11 px-3 py-1.5 rounded-xl bg-white border border-divider text-xs font-bold text-ink hover:bg-cream-surface shrink-0"
+                  >
+                    Retry
+                  </button>
+                </div>
+              );
+            }
+            return (
+              <ErrorState error={eskom.error} title="Eskom Power Guard status isn't available" onRetry={eskom.reload} />
+            );
+          })()
         ) : (
           eskomStatus && <EskomStageBanner status={eskomStatus} />
         )}
