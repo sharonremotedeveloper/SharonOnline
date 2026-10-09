@@ -52,7 +52,7 @@ def throwaway_environment() -> dict:
     }
 
 
-_LOCAL_HOSTS = {'localhost', '127.0.0.1', '0.0.0.0', 'backend', '::1'}
+_LOCAL_HOSTS = {'localhost', '127.0.0.1', '0.0.0.0', 'backend', '::1'}  # noqa: S104
 DAILY_CREDENTIALS = ('DAILY_API_KEY', 'DAILY_DOMAIN', 'DAILY_WEBHOOK_SECRET')   # == guard.DAILY_CREDENTIAL_SETTINGS (tested)
 ZOOM_CREDENTIALS = ('ZOOM_ACCOUNT_ID', 'ZOOM_CLIENT_ID', 'ZOOM_CLIENT_SECRET')   # == guard.ZOOM_CREDENTIAL_SETTINGS (tested)
 

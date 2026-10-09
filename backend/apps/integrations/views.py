@@ -549,6 +549,128 @@ class DailyWebhookReceiverView(APIView):
 
         return True, "Valid"
 
+    @staticmethod
+    def _resolve_participant(booking, user_id: str) -> tuple[str, str]:
+        teacher_user = getattr(booking.teacher, 'user', None) if hasattr(booking, 'teacher') else None
+        teacher_id = str(teacher_user.id).lower() if teacher_user else ''
+        student_id = str(booking.student_id).lower()
+
+        if teacher_id and user_id == teacher_id:
+            return 'teacher', teacher_user.email
+        if student_id and user_id == student_id:
+            return 'student', booking.student.email
+        return 'unknown', ''
+
+    @classmethod
+    def _process_participant_joined(cls, booking, role: str, email: str, user_id: str, session_id: str, event_id: str, payload: dict, now):
+        joined_at_raw = payload.get('joined_at')
+        join_time = now
+        if joined_at_raw:
+            try:
+                join_time = datetime.fromtimestamp(float(joined_at_raw), tz=dt_timezone.utc)
+            except Exception:
+                join_time = now
+
+        if role == 'teacher':
+            if booking.status == Booking.Status.CONFIRMED:
+                transition_booking(booking, Booking.Status.IN_PROGRESS, actor='system:daily_webhook', reason='tutor joined')
+                booking.refresh_from_db()
+            elif booking.status == Booking.Status.TEACHER_NO_SHOW:
+                transition_booking(booking, Booking.Status.DISPUTED, actor='system:daily_webhook', reason='Late tutor join')
+                DisputeCase.objects.get_or_create(
+                    booking=booking,
+                    defaults={
+                        'student': booking.student,
+                        'teacher': booking.teacher,
+                        'opened_by': 'system:daily_webhook',
+                        'reason': 'Late tutor join after TEACHER_NO_SHOW',
+                    }
+                )
+        elif role == 'student' and booking.status == Booking.Status.STUDENT_NO_SHOW:
+            transition_booking(booking, Booking.Status.DISPUTED, actor='system:daily_webhook', reason='Late student join')
+            DisputeCase.objects.get_or_create(
+                booking=booking,
+                defaults={
+                    'student': booking.student,
+                    'teacher': booking.teacher,
+                    'opened_by': 'system:daily_webhook',
+                    'reason': 'Late student join after STUDENT_NO_SHOW',
+                }
+            )
+
+        audit_row = AttendanceAudit.objects.filter(
+            booking=booking,
+            participant_id=user_id,
+            zoom_session_id=f"daily-{session_id}"[:96],
+        ).first()
+        if not audit_row:
+            audit_row = AttendanceAudit(
+                booking=booking,
+                participant_email=email,
+                participant_id=user_id,
+                classification=role,
+                identity='daily',
+                zoom_session_id=f"daily-{session_id}"[:96],
+                join_time_utc=join_time,
+                event_ids=[event_id] if event_id else [],
+            )
+        else:
+            if not audit_row.join_time_utc:
+                audit_row.join_time_utc = join_time
+            if event_id and event_id not in audit_row.event_ids:
+                audit_row.event_ids.append(event_id)
+
+        if audit_row.join_time_utc and audit_row.leave_time_utc:
+            if audit_row.leave_time_utc > audit_row.join_time_utc:
+                mins = int((audit_row.leave_time_utc - audit_row.join_time_utc).total_seconds() // 60)
+                audit_row.total_minutes = min(25, max(0, mins))
+            else:
+                audit_row.total_minutes = 0
+        audit_row.save()
+
+    @classmethod
+    def _process_participant_left(cls, booking, role: str, email: str, user_id: str, session_id: str, event_id: str, payload: dict, now):
+        left_at_raw = payload.get('left_at')
+        leave_time = now
+        if left_at_raw:
+            try:
+                leave_time = datetime.fromtimestamp(float(left_at_raw), tz=dt_timezone.utc)
+            except Exception:
+                leave_time = now
+
+        audit_row = AttendanceAudit.objects.filter(
+            booking=booking,
+            participant_id=user_id,
+            zoom_session_id=f"daily-{session_id}"[:96],
+        ).first()
+        if not audit_row:
+            audit_row = AttendanceAudit(
+                booking=booking,
+                participant_email=email,
+                participant_id=user_id,
+                classification=role,
+                identity='daily',
+                zoom_session_id=f"daily-{session_id}"[:96],
+                leave_time_utc=leave_time,
+                event_ids=[event_id] if event_id else [],
+            )
+        else:
+            audit_row.leave_time_utc = leave_time
+            if event_id and event_id not in audit_row.event_ids:
+                audit_row.event_ids.append(event_id)
+
+        duration_secs = payload.get('duration')
+        if duration_secs is not None:
+            mins = int(float(duration_secs) // 60)
+            audit_row.total_minutes = min(25, max(0, mins))
+        elif audit_row.join_time_utc and audit_row.leave_time_utc:
+            if audit_row.leave_time_utc > audit_row.join_time_utc:
+                mins = int((audit_row.leave_time_utc - audit_row.join_time_utc).total_seconds() // 60)
+                audit_row.total_minutes = min(25, max(0, mins))
+            else:
+                audit_row.total_minutes = 0
+        audit_row.save()
+
     def post(self, request, *args, **kwargs):
         # 1. Parse JSON payload first to catch malformed JSON
         try:
@@ -606,133 +728,12 @@ class DailyWebhookReceiverView(APIView):
             now = timezone.now()
             user_id = str(payload.get('user_id') or '').strip().lower()
             session_id = str(payload.get('session_id') or event_id or 'daily_session')
+            role, email = self._resolve_participant(booking, user_id)
 
-            teacher_user = getattr(booking.teacher, 'user', None) if hasattr(booking, 'teacher') else None
-            teacher_id = str(teacher_user.id).lower() if teacher_user else ''
-            student_id = str(booking.student_id).lower()
-
-            if teacher_id and user_id == teacher_id:
-                role = 'teacher'
-                email = teacher_user.email
-            elif student_id and user_id == student_id:
-                role = 'student'
-                email = booking.student.email
-            else:
-                role = 'unknown'
-                email = ''
-
-            # State transitions and quarantine checks
             if event_type == 'participant.joined':
-                joined_at_raw = payload.get('joined_at')
-                join_time = now
-                if joined_at_raw:
-                    try:
-                        join_time = datetime.fromtimestamp(float(joined_at_raw), tz=dt_timezone.utc)
-                    except Exception:
-                        join_time = now
-
-                if role == 'teacher':
-                    if booking.status == Booking.Status.CONFIRMED:
-                        transition_booking(booking, Booking.Status.IN_PROGRESS, actor='system:daily_webhook', reason='tutor joined')
-                        booking.refresh_from_db()
-                    elif booking.status == Booking.Status.TEACHER_NO_SHOW:
-                        # Late tutor join contradicts no-show verdict: quarantine to DISPUTED
-                        transition_booking(booking, Booking.Status.DISPUTED, actor='system:daily_webhook', reason='Late tutor join')
-                        DisputeCase.objects.get_or_create(
-                            booking=booking,
-                            defaults={
-                                'student': booking.student,
-                                'teacher': booking.teacher,
-                                'opened_by': 'system:daily_webhook',
-                                'reason': 'Late tutor join after TEACHER_NO_SHOW',
-                            }
-                        )
-                elif role == 'student':
-                    if booking.status == Booking.Status.STUDENT_NO_SHOW:
-                        # Late student join contradicts no-show verdict: quarantine to DISPUTED
-                        transition_booking(booking, Booking.Status.DISPUTED, actor='system:daily_webhook', reason='Late student join')
-                        DisputeCase.objects.get_or_create(
-                            booking=booking,
-                            defaults={
-                                'student': booking.student,
-                                'teacher': booking.teacher,
-                                'opened_by': 'system:daily_webhook',
-                                'reason': 'Late student join after STUDENT_NO_SHOW',
-                            }
-                        )
-
-                # Upsert AttendanceAudit row
-                audit_row = AttendanceAudit.objects.filter(
-                    booking=booking,
-                    participant_id=user_id,
-                    zoom_session_id=f"daily-{session_id}"[:96],
-                ).first()
-                if not audit_row:
-                    audit_row = AttendanceAudit(
-                        booking=booking,
-                        participant_email=email,
-                        participant_id=user_id,
-                        classification=role,
-                        identity='daily',
-                        zoom_session_id=f"daily-{session_id}"[:96],
-                        join_time_utc=join_time,
-                        event_ids=[event_id] if event_id else [],
-                    )
-                else:
-                    if not audit_row.join_time_utc:
-                        audit_row.join_time_utc = join_time
-                    if event_id and event_id not in audit_row.event_ids:
-                        audit_row.event_ids.append(event_id)
-                # Compute total minutes if leave_time already present (out-of-order)
-                if audit_row.join_time_utc and audit_row.leave_time_utc:
-                    if audit_row.leave_time_utc > audit_row.join_time_utc:
-                        mins = int((audit_row.leave_time_utc - audit_row.join_time_utc).total_seconds() // 60)
-                        audit_row.total_minutes = min(25, max(0, mins))
-                    else:
-                        audit_row.total_minutes = 0
-                audit_row.save()
-
+                self._process_participant_joined(booking, role, email, user_id, session_id, event_id, payload, now)
             elif event_type == 'participant.left':
-                left_at_raw = payload.get('left_at')
-                leave_time = now
-                if left_at_raw:
-                    try:
-                        leave_time = datetime.fromtimestamp(float(left_at_raw), tz=dt_timezone.utc)
-                    except Exception:
-                        leave_time = now
-
-                audit_row = AttendanceAudit.objects.filter(
-                    booking=booking,
-                    participant_id=user_id,
-                    zoom_session_id=f"daily-{session_id}"[:96],
-                ).first()
-                if not audit_row:
-                    audit_row = AttendanceAudit(
-                        booking=booking,
-                        participant_email=email,
-                        participant_id=user_id,
-                        classification=role,
-                        identity='daily',
-                        zoom_session_id=f"daily-{session_id}"[:96],
-                        leave_time_utc=leave_time,
-                        event_ids=[event_id] if event_id else [],
-                    )
-                else:
-                    audit_row.leave_time_utc = leave_time
-                    if event_id and event_id not in audit_row.event_ids:
-                        audit_row.event_ids.append(event_id)
-
-                duration_secs = payload.get('duration')
-                if duration_secs is not None:
-                    mins = int(float(duration_secs) // 60)
-                    audit_row.total_minutes = min(25, max(0, mins))
-                elif audit_row.join_time_utc and audit_row.leave_time_utc:
-                    if audit_row.leave_time_utc > audit_row.join_time_utc:
-                        mins = int((audit_row.leave_time_utc - audit_row.join_time_utc).total_seconds() // 60)
-                        audit_row.total_minutes = min(25, max(0, mins))
-                    else:
-                        audit_row.total_minutes = 0
-                audit_row.save()
+                self._process_participant_left(booking, role, email, user_id, session_id, event_id, payload, now)
 
         return Response({"status": "ok"}, status=status.HTTP_200_OK)
 

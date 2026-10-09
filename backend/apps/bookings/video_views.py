@@ -68,6 +68,55 @@ class BookingVideoTokenView(APIView):
             self.throttle_scope = 'daily_video_token'
         return super().get_throttles()
 
+    def _issue_daily_token(self, booking, user):
+        try:
+            token_data = generate_daily_token(
+                booking=booking,
+                user=user,
+                enforce_window=True,
+            )
+            response = Response(VideoTokenSerializer(token_data).data)
+            response['Cache-Control'] = 'no-store'
+            return response
+        except DailyTimingError as exc:
+            return Response(
+                {'error': str(exc), 'code': 'outside_lesson_window'},
+                status=status.HTTP_409_CONFLICT,
+            )
+        except PermissionDenied as exc:
+            return Response(
+                {'error': str(exc), 'code': 'forbidden'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        except DailyConfigError:
+            return None
+
+    def _issue_zoom_token(self, booking, user):
+        try:
+            token_data = generate_video_sdk_token(
+                booking=booking,
+                user=user,
+                enforce_window=True,
+            )
+            response = Response(VideoTokenSerializer(token_data).data)
+            response['Cache-Control'] = 'no-store'
+            return response
+        except VideoSdkTimingError as exc:
+            return Response(
+                {'error': str(exc), 'code': 'outside_lesson_window'},
+                status=status.HTTP_409_CONFLICT,
+            )
+        except VideoSdkConfigError:
+            return Response(
+                {'error': 'Video classroom service is not configured.', 'code': 'video_unconfigured'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except PermissionDenied as exc:
+            return Response(
+                {'error': str(exc), 'code': 'forbidden'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
     def get(self, request, booking_id):
         try:
             booking = (
@@ -101,54 +150,13 @@ class BookingVideoTokenView(APIView):
 
         # Primary provider: Daily.co WebRTC (Decision D-14)
         if is_daily_configured():
-            try:
-                token_data = generate_daily_token(
-                    booking=booking,
-                    user=request.user,
-                    enforce_window=True,
-                )
-                response = Response(VideoTokenSerializer(token_data).data)
-                response['Cache-Control'] = 'no-store'
-                return response
-            except DailyTimingError as exc:
-                return Response(
-                    {'error': str(exc), 'code': 'outside_lesson_window'},
-                    status=status.HTTP_409_CONFLICT,
-                )
-            except PermissionDenied as exc:
-                return Response(
-                    {'error': str(exc), 'code': 'forbidden'},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-            except DailyConfigError:
-                pass  # Fall through to legacy check below
+            daily_response = self._issue_daily_token(booking, request.user)
+            if daily_response is not None:
+                return daily_response
 
         # Fallback provider: Zoom Video SDK (Legacy fallback)
         if is_video_sdk_configured():
-            try:
-                token_data = generate_video_sdk_token(
-                    booking=booking,
-                    user=request.user,
-                    enforce_window=True,
-                )
-                response = Response(VideoTokenSerializer(token_data).data)
-                response['Cache-Control'] = 'no-store'
-                return response
-            except VideoSdkTimingError as exc:
-                return Response(
-                    {'error': str(exc), 'code': 'outside_lesson_window'},
-                    status=status.HTTP_409_CONFLICT,
-                )
-            except VideoSdkConfigError:
-                return Response(
-                    {'error': 'Video classroom service is not configured.', 'code': 'video_unconfigured'},
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
-            except PermissionDenied as exc:
-                return Response(
-                    {'error': str(exc), 'code': 'forbidden'},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+            return self._issue_zoom_token(booking, request.user)
 
         return Response(
             {'error': 'Video classroom service is not configured.', 'code': 'video_unconfigured'},

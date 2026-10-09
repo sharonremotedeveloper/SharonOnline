@@ -7,13 +7,8 @@ Provides ephemeral meeting token generation and presence probing against Daily.c
 - RBAC: is_owner=True for tutors and staff, is_owner=False for students
 - Non-recorded: enable_recording=False (Decision D-8)
 """
-import base64
-import hashlib
-import hmac
-import json
 import logging
-import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 import jwt
@@ -163,7 +158,7 @@ class DailyClient:
             raise DailyApiError(f"Daily API error: status {resp.status_code}")
         except requests.RequestException as exc:
             logger.warning("[DAILY_CLIENT] Request exception: %s", exc)
-            raise DailyApiError(f"Daily API transport error: {exc}")
+            raise DailyApiError(f"Daily API transport error: {exc}") from exc
 
     def get_room_presence(self, room_name: str) -> Tuple[str, List[Dict[str, Any]]]:
         """Query Daily REST presence API for live room roster.

@@ -15,11 +15,9 @@ import hmac
 import json
 import time
 from datetime import timedelta
-from decimal import Decimal
 from unittest import mock
 
 import pytest
-from django.conf import settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 

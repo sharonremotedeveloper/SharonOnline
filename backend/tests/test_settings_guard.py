@@ -294,7 +294,7 @@ def test_production_refuses_missing_or_blank_daily_domain(value):
         validate_production_settings(env)
 
 
-@pytest.mark.parametrize('bad_domain', ['localhost', 'http://localhost:3000', '127.0.0.1', '0.0.0.0', 'sub.localhost'])
+@pytest.mark.parametrize('bad_domain', ['localhost', 'http://localhost:3000', '127.0.0.1', '0.0.0.0', 'sub.localhost'])  # noqa: S104
 def test_production_refuses_localhost_daily_domain(bad_domain):
     """Production boot must reject localhost / loopback Daily domains."""
     env = dict(GOOD, DAILY_DOMAIN=bad_domain)
@@ -441,7 +441,7 @@ def _run_check_deploy(extra_env=None):
     if extra_env:
         env.update(extra_env)
     backend_dir = Path(__file__).resolve().parent.parent
-    return subprocess.run([sys.executable, str(SCRIPT)], cwd=backend_dir, env=env, capture_output=True, text=True, timeout=180)
+    return subprocess.run([sys.executable, str(SCRIPT)], cwd=backend_dir, env=env, capture_output=True, text=True, timeout=180)  # noqa: S603
 
 
 def test_check_deploy_script_passes_with_default_throwaway_env():
