@@ -653,3 +653,9 @@ def configure_test_settings(settings):
 - **Root cause:** the isolated worktree inherited a broken local virtual-environment interpreter reference from an unrelated checkout.
 - **Resolution:** created a fresh isolated `backend/.venv-codex` from the bundled Python 3.12.14 runtime and installed the declared development requirements. The broken `backend/venv` was preserved untouched.
 - **Verification:** focused repair suite, broader focused suite, OpenAPI contract suite, Django checks, migration drift check, and Ruff all pass. Full local execution reached 3,381 passing tests; Q0 nested-Git and native PostgreSQL-driver checks remain blocked by Windows application-control policy.
+
+### ERR-510: Video SDK session probe authenticated with the wrong credentials (found by the first live Zoom call)
+- **Observed:** with real Zoom credentials, `GET https://api.zoom.us/v2/videosdk/sessions` returned `401 {"code":124,"message":"Invalid access token."}` for the probe's token. Every V4 probe would have answered UNKNOWN, so no tutor no-show could ever be adjudicated on an SDK lesson (it ends DISPUTED).
+- **Root cause:** `video_session_probe._generate_api_jwt` signed a `{app_key, version}` JWT with the Video SDK key/secret. Those sign client join tokens only. The Video SDK REST API accepts a JWT with an `iss` claim signed with the app's separate "API credentials" pair, and rejects S2S OAuth tokens ("This API does not support OAuth2"). Mocked tests only checked that credentials existed, so nothing exercised the real contract.
+- **Resolution:** new settings `ZOOM_VIDEO_SDK_API_KEY` / `ZOOM_VIDEO_SDK_API_SECRET`; the probe signs `{iss, iat, exp}` with them and returns UNKNOWN (no Zoom call) if they are unset. Tests added for both. Unrelated to the SDK key/secret used for join tokens.
+- **Verification:** live probe call with the new token returns 200 and `not_started` for an unknown topic; full backend suite 3481 passed / 26 skipped; ruff clean.
