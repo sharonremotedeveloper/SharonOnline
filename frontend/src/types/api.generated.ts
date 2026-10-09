@@ -865,7 +865,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Retrieve an ephemeral Zoom Video SDK JWT token to enter the live in-browser classroom. */
+        /** @description Retrieve an ephemeral video token to enter the live in-browser classroom (Daily.co or legacy Video SDK). */
         get: operations["v1_bookings_video_token_retrieve"];
         put?: never;
         post?: never;
@@ -922,23 +922,6 @@ export interface paths {
         get: operations["v1_bookings_slots_retrieve"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/integrations/daily/webhooks/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** @description Ingest Daily.co WebRTC participant events for presence and attendance auditing. */
-        post: operations["v1_integrations_daily_webhooks_create"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3347,22 +3330,22 @@ export interface components {
          */
         UserTypeEnum: "student" | "teacher" | "other";
         VideoToken: {
-            /** @description Ephemeral meeting token for Daily.co embedded WebRTC (or fallback Zoom Video SDK) */
+            /** @description JWT session token for Daily.co or Video SDK */
             token: string;
+            /** @description Daily.co room URL */
+            room_url?: string;
+            /** @description True for host/owner (tutor/staff), False for participant */
+            is_owner?: boolean;
             /** @description Session topic / room name */
-            session_name: string;
+            session_name?: string;
             /** @description 1 for Host (tutor), 0 for Participant (student) */
-            role_type: number;
+            role_type?: number;
             /** @description Unique user ID */
-            user_identity: string;
+            user_identity?: string;
             /** @description Display name of participant */
             user_name: string;
             /** @description Epoch expiration timestamp */
-            expires_at: number;
-            /** @description Daily.co room URL when Daily provider is configured */
-            room_url?: string;
-            /** @description True if participant is owner/host in Daily room */
-            is_owner?: boolean;
+            expires_at?: number;
         };
         Wallet: {
             total_credits: number;
@@ -5212,48 +5195,6 @@ export interface operations {
                         [key: string]: unknown;
                     };
                 };
-            };
-        };
-    };
-    v1_integrations_daily_webhooks_create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-            };
-        };
-        responses: {
-            /** @description Webhook received and processed */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Malformed payload or timestamp drift */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid HMAC signature */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

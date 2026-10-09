@@ -1764,8 +1764,8 @@ paths:
   /api/v1/bookings/{booking_id}/video-token/:
     get:
       operationId: v1_bookings_video_token_retrieve
-      description: Retrieve an ephemeral Zoom Video SDK JWT token to enter the live
-        in-browser classroom.
+      description: Retrieve an ephemeral video token to enter the live in-browser
+        classroom (Daily.co or legacy Video SDK).
       parameters:
       - in: path
         name: booking_id
@@ -1889,31 +1889,6 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
-  /api/v1/integrations/daily/webhooks/:
-    post:
-      operationId: v1_integrations_daily_webhooks_create
-      description: Ingest Daily.co WebRTC participant events for presence and attendance auditing.
-      tags:
-      - v1
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: {}
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: {}
-          description: Webhook received and processed
-        '400':
-          description: Malformed payload or timestamp drift
-        '401':
-          description: Invalid HMAC signature
   /api/v1/integrations/eskom/status/:
     get:
       operationId: v1_integrations_eskom_status_retrieve
@@ -7010,7 +6985,13 @@ components:
       properties:
         token:
           type: string
-          description: Ephemeral meeting token for Daily.co embedded WebRTC (or fallback Zoom Video SDK)
+          description: JWT session token for Daily.co or Video SDK
+        room_url:
+          type: string
+          description: Daily.co room URL
+        is_owner:
+          type: boolean
+          description: True for host/owner (tutor/staff), False for participant
         session_name:
           type: string
           description: Session topic / room name
@@ -7026,18 +7007,8 @@ components:
         expires_at:
           type: integer
           description: Epoch expiration timestamp
-        room_url:
-          type: string
-          description: Daily.co room URL when Daily provider is configured
-        is_owner:
-          type: boolean
-          description: True if participant is owner/host in Daily room
       required:
-      - expires_at
-      - role_type
-      - session_name
       - token
-      - user_identity
       - user_name
     Wallet:
       type: object

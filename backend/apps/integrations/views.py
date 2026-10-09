@@ -502,15 +502,7 @@ class VideoSdkWebhookReceiverView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-@extend_schema(
-    request=OpenApiTypes.OBJECT,
-    responses={
-        200: OpenApiTypes.OBJECT,
-        400: OpenApiTypes.OBJECT,
-        401: OpenApiTypes.OBJECT,
-    },
-    description="Receive Daily.co Webhook events (participant.joined, participant.left) for attendance telemetry.",
-)
+@extend_schema(exclude=True)  # machine-to-machine webhook, not part of the client API
 class DailyWebhookReceiverView(APIView):
     """Daily.co Webhook Ingestion Receiver (Decision D-14 / Requirement R2).
 
