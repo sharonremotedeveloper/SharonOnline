@@ -44,7 +44,7 @@ export function EskomStageBanner({ status, className = "" }: EskomStageBannerPro
                 Eskom Grid Status: {status.stage === 0 ? "Normal (No Outages)" : `Stage ${status.stage} Active`}
               </span>
               <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-black/5">
-                {status.area_name.split("-")[0].trim()}
+                {(status.area_name || "Zone").split("-")[0].trim()}
               </span>
             </div>
 

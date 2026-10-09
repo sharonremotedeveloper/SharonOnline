@@ -1,5 +1,5 @@
 """
-Post-payment lesson provisioning: Zoom room, tutor Google Calendar event, confirmation e-mail (Slice F0).
+Post-payment lesson provisioning: video room, tutor Google Calendar event, confirmation e-mail (Slice F0).
 
 One `payments.FulfillmentDispatch` row per booking. The protocol:
 
@@ -30,6 +30,7 @@ from apps.bookings.models import Booking
 from apps.integrations.email import send_booking_confirmation_email
 from apps.integrations.google_calendar import sync_booking_to_teacher_gcal
 from apps.bookings.services.video_provider import uses_video_sdk
+from apps.integrations.services.daily import DailyClient, is_daily_configured
 from apps.integrations.zoom import zoom_client
 from apps.integrations.zoom_hosts import host_picker
 from apps.notifications.alerts import alert_staff
@@ -271,12 +272,26 @@ def _delete_orphan(meeting_id, booking_id) -> None:
 def _zoom_step(booking_id, token, now) -> None:
     with transaction.atomic():
         booking = _locked_confirmed(booking_id, token)
+        if is_daily_configured():
+            room_name = f'lesson-{booking.id}'
+            nbf = int((booking.start_time_utc - timedelta(minutes=settings.DAILY_ROOM_OPEN_MINUTES_BEFORE)).timestamp())
+            exp = int((booking.end_time_utc + timedelta(minutes=settings.DAILY_ROOM_VALID_AFTER_END_MINUTES)).timestamp())
+        else:
+            room_name = nbf = exp = None
         if booking.zoom_meeting_id:
             _set_step(booking_id, token, 'zoom', St.DONE, now)       # a room exists: reuse it, never build a second one
             return
-        if uses_video_sdk(booking):
+        if room_name is not None:
+            # Keep provider I/O out of the booking/dispatch row lock. The
+            # deterministic name makes retries safe if the worker is reclaimed.
+            pass
+        if room_name is None and uses_video_sdk(booking):
             _set_step(booking_id, token, 'zoom', St.SKIPPED, now)    # Video SDK lesson: the classroom needs no Meetings room
             return
+    if room_name is not None:
+        DailyClient().ensure_room(room_name, nbf, exp)
+        _set_step(booking_id, token, 'zoom', St.DONE, now)
+        return
     student, tutor = booking.student, booking.teacher.user
     # Any earlier attempt (a failed step, OR a worker that died after Zoom built the room and was reclaimed: attempts > 1)
     # may have left a meeting behind: look for it before creating another (Z1, QA #2).

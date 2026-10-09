@@ -111,6 +111,25 @@ export default function MaterialReaderPage() {
   }
 
   if (loadError) {
+    const isForbidden = loadError instanceof ApiError && loadError.status === 403;
+    if (isForbidden) {
+      return (
+        <div className="min-h-screen bg-cream py-20">
+          <div className="max-w-2xl mx-auto px-4 text-center space-y-6">
+            <h1 className="text-2xl font-black text-ink font-serif">Curriculum Material Restricted</h1>
+            <p className="text-sm text-ink-muted">
+              This curriculum material is currently in review or restricted to authorized educators.
+            </p>
+            <Link
+              href="/materials"
+              className="min-h-11 inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-cocoa text-white text-sm font-bold hover:bg-cocoa-hover transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" /> Return to Catalog
+            </Link>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen bg-cream py-20 px-4">
         <ErrorState
@@ -200,7 +219,7 @@ export default function MaterialReaderPage() {
           </h1>
 
           <p className="text-sm sm:text-base text-ink-muted leading-relaxed font-sans italic border-l-4 border-cocoa pl-4 bg-cream-surface/50 py-3 rounded-r-2xl">
-            {material.summary}
+            {material.description || material.summary}
           </p>
         </div>
 

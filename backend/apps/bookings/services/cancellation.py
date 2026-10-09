@@ -192,9 +192,10 @@ def cancel_booking(booking_id, user, *, reason: str = '', acknowledge_forfeit: b
 
 def _after_cancel(booking_id: str, meeting_id: str, cancelled_by: str, gcal: tuple):
     """Best-effort tidy-up outside the money transaction: free the Zoom room and calendar slot, tell the other person."""
-    from apps.integrations.tasks import cleanup_gcal_event, cleanup_zoom_meeting, send_cancellation_emails
+    from apps.integrations.tasks import cleanup_daily_room, cleanup_gcal_event, cleanup_zoom_meeting, send_cancellation_emails
     if meeting_id:
         cleanup_zoom_meeting.delay(meeting_id)
+    cleanup_daily_room.delay(f'lesson-{booking_id}')
     if gcal[1]:
         cleanup_gcal_event.delay(*gcal)
     send_cancellation_emails.delay(booking_id, cancelled_by)

@@ -1,4 +1,5 @@
 import type { components } from "./api.generated";
+import type { BookingStatus } from "./booking";
 
 export interface StudentLessonItem {
   id: string;
@@ -18,7 +19,7 @@ export interface StudentLessonItem {
   material_title: string;
   material_cefr: string;
   material_slug?: string;
-  status: "confirmed" | "completed" | "interrupted_power";
+  status: BookingStatus;
   zoom_url?: string;
   memo?: {
     id: string;
@@ -28,12 +29,12 @@ export interface StudentLessonItem {
     grammar_notes: string;
     homework: string;
     submitted_at: string;
-  };
+  } | null;
   review?: {
     rating: number;
     tags: string[];
     submitted_at: string;
-  };
+  } | null;
 }
 
 export interface StudentFlashcard {

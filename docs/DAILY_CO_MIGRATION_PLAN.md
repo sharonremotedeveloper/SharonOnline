@@ -1,5 +1,11 @@
 # Daily.co Architectural Migration Plan
 
+## Current implementation status (2026-10-09)
+
+The D1-D4 implementation is now present on `feature/antigravity-repair` and has been integrated with confirmed-booking fulfillment. Rooms use the deterministic `lesson-<booking_id>` name, are created privately with a bounded lesson window, reused safely on retries, and deleted on cancellation/rescheduling. Token issuance requires room readiness, and the T+10 probe prefers Daily presence while preserving `UNKNOWN` on provider failures. The frontend Daily classroom teardown no longer re-enters `leave()` when Daily has already emitted `left-meeting`.
+
+The remaining acceptance boundary is live classroom verification. Daily credentials and the development webhook subscription are configured on Railway development; a confirmed development booking, two authenticated browser sessions, and real `participant.joined` / `participant.left` deliveries are still required. Zoom remains available only as a legacy compatibility path for historical Zoom bookings; it is not used to provision a Daily booking.
+
 **Document ID:** `PLAN-2026-DAILY-CO-MIGRATION`  
 **Status:** Approved Architectural Decision (Decision **D-14** Resolved)  
 **Date:** October 08, 2026  

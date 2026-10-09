@@ -17,6 +17,7 @@ import {
 import { api } from "@/lib/api";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
+import { classifyEskomProblem } from "@/lib/repairHelpers";
 
 export default function TeacherPowerGuardPage() {
   const { data: status, error: loadError, loading, reload } = useApiData(() => api.getEskomStatus(), []);
@@ -26,12 +27,23 @@ export default function TeacherPowerGuardPage() {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<unknown>(null);
 
+  const problem = loadError ? classifyEskomProblem(loadError) : null;
+
   useEffect(() => {
     if (status) {
       setHasInverter(status.has_inverter_backup);
       setHasLte(status.has_lte_failover);
+    } else if (loadError) {
+      api.getMyTeacherProfile()
+        .then((prof: any) => {
+          if (prof) {
+            if (typeof prof.has_inverter_backup === "boolean") setHasInverter(prof.has_inverter_backup);
+            if (typeof prof.has_lte_failover === "boolean") setHasLte(prof.has_lte_failover);
+          }
+        })
+        .catch(() => {});
     }
-  }, [status]);
+  }, [status, loadError]);
 
   const handleSaveCertification = async () => {
     setSaving(true);
@@ -63,14 +75,15 @@ export default function TeacherPowerGuardPage() {
     );
   }
 
-  if (loadError || !status) {
+  // Only bail out completely if unauthenticated or fatal unknown failure without hardware declaration ability
+  if (problem && (problem.kind === "unauthorized" || (problem.kind === "unknown" && !status))) {
     return (
       <div className="min-h-screen bg-cream py-20">
         <div className="max-w-xl mx-auto px-4 space-y-4">
           <ErrorState
             error={loadError ?? "No Power Guard data returned."}
-            title="Power Guard isn't available right now"
-            onRetry={reload}
+            title={problem.kind === "unauthorized" ? "Tutor authentication required" : "Power Guard isn't available right now"}
+            onRetry={problem.retryable ? reload : undefined}
           />
           <div className="text-center">
             <Link href="/teacher/dashboard" className="min-h-11 inline-flex items-center text-sm font-bold text-cocoa hover:underline">
@@ -127,7 +140,48 @@ export default function TeacherPowerGuardPage() {
 
         <InlineError error={saveError} />
 
-        {status.stale && (
+        {problem?.kind === "area_not_configured" && (
+          <div className="p-5 rounded-2xl bg-warning-surface border border-warning-border text-ink space-y-2">
+            <div className="flex items-center gap-2 text-warning-hover font-bold text-sm">
+              <AlertTriangle className="w-4 h-4" />
+              <span>Load Shedding Area Setup Required</span>
+            </div>
+            <p className="text-sm text-ink-muted">
+              {problem.guidance}
+            </p>
+            <div>
+              <Link
+                href="/teacher/profile"
+                className="min-h-11 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-cocoa text-white text-xs font-bold hover:bg-cocoa-hover transition-colors shadow-xs"
+              >
+                <span>Configure Eskom Area in Profile</span> &rarr;
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {problem?.kind === "provider_unavailable" && (
+          <div className="p-5 rounded-2xl bg-warning-surface border border-warning-border text-ink space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-warning-hover font-bold text-sm">
+                <Radio className="w-4 h-4 text-warning" />
+                <span>Grid Telemetry Temporarily Unavailable</span>
+              </div>
+              <button
+                type="button"
+                onClick={reload}
+                className="min-h-11 px-3 py-1.5 rounded-xl bg-white border border-divider text-xs font-bold text-ink hover:bg-cream-surface transition-colors shadow-xs"
+              >
+                Retry telemetry
+              </button>
+            </div>
+            <p className="text-sm text-ink-muted">
+              {problem.guidance} Your lesson protection remains active through hardware redundancy declarations below.
+            </p>
+          </div>
+        )}
+
+        {status?.stale && (
           <div className="p-4 rounded-2xl bg-warning-surface border border-warning-border text-xs text-warning-hover flex gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>
@@ -137,64 +191,66 @@ export default function TeacherPowerGuardPage() {
         )}
 
         {/* Live Grid Stage Monitor Card */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-divider pb-6">
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-ink-muted uppercase tracking-wider block">Live Eskom Status</span>
-              <h2 className="text-xl font-black text-ink font-serif flex items-center gap-2">
-                <Zap className="w-5 h-5 text-warning fill-warning" />
-                <span>Stage {status.stage} Currently Active</span>
-              </h2>
-              <p className="text-sm text-ink-muted">
-                Cached EskomSePush reading · Area: <strong>{status.area_name}</strong>
-              </p>
-            </div>
-
-            <div className="flex items-center gap-1.5 self-start sm:self-auto">
-              {[0, 1, 2, 3, 4, 5, 6].map((stg) => (
-                <div
-                  key={stg}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black transition-all ${
-                    stg === status.stage
-                      ? `${getStageColor(stg)} ring-2 ring-black/10 scale-105 shadow-sm`
-                      : "bg-cream-surface text-ink-muted border border-divider opacity-50"
-                  }`}
-                >
-                  S{stg}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Provider area and next outage */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-cocoa" />
-                <span>Municipal Suburb &amp; Load Shedding Block</span>
-              </label>
-              <div className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink font-semibold">
-                {status.area_name}
+        {status && (
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-divider pb-6">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-ink-muted uppercase tracking-wider block">Live Eskom Status</span>
+                <h2 className="text-xl font-black text-ink font-serif flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-warning fill-warning" />
+                  <span>Stage {status.stage} Currently Active</span>
+                </h2>
+                <p className="text-sm text-ink-muted">
+                  Cached EskomSePush reading · Area: <strong>{status.area_name || "Configured Zone"}</strong>
+                </p>
               </div>
-              <p className="text-sm text-ink-muted">Area mapping is managed by support and provider identifiers are not guessed in this form.</p>
+
+              <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                {[0, 1, 2, 3, 4, 5, 6].map((stg) => (
+                  <div
+                    key={stg}
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black transition-all ${
+                      stg === status.stage
+                        ? `${getStageColor(stg)} ring-2 ring-black/10 scale-105 shadow-sm`
+                        : "bg-cream-surface text-ink-muted border border-divider opacity-50"
+                    }`}
+                  >
+                    S{stg}
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-1">
-              <span className="text-xs font-bold text-ink flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-warning" />
-                <span>Next Scheduled Outage Window</span>
-              </span>
-              <p className="text-sm font-extrabold text-ink font-mono">
-                {status.next_outage_start && status.next_outage_end
-                  ? `${new Date(status.next_outage_start).toLocaleString()} - ${new Date(status.next_outage_end).toLocaleString()}`
-                  : "No outage window reported"}
-              </p>
-              <p className="text-sm text-ink-muted">
-                Uncertified tutors have unbooked slots hidden during this block.
-              </p>
+            {/* Provider area and next outage */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-cocoa" />
+                  <span>Municipal Suburb &amp; Load Shedding Block</span>
+                </label>
+                <div className="w-full p-3 bg-cream-surface rounded-xl border border-divider text-xs text-ink font-semibold">
+                  {status.area_name || "Unconfigured"}
+                </div>
+                <p className="text-sm text-ink-muted">Area mapping is managed by support and provider identifiers are not guessed in this form.</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-1">
+                <span className="text-xs font-bold text-ink flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-warning" />
+                  <span>Next Scheduled Outage Window</span>
+                </span>
+                <p className="text-sm font-extrabold text-ink font-mono">
+                  {status.next_outage_start && status.next_outage_end
+                    ? `${new Date(status.next_outage_start).toLocaleString()} - ${new Date(status.next_outage_end).toLocaleString()}`
+                    : "No outage window reported"}
+                </p>
+                <p className="text-sm text-ink-muted">
+                  Uncertified tutors have unbooked slots hidden during this block.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Hardware Certification Checklist */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">

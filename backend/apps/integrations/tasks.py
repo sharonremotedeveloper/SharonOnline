@@ -227,6 +227,19 @@ def cleanup_zoom_meeting(self, meeting_id: str):
         raise self.retry(exc=exc)
 
 
+@shared_task(bind=True, max_retries=3, default_retry_delay=120, name='apps.integrations.tasks.cleanup_daily_room')
+def cleanup_daily_room(self, room_name: str):
+    """Free a Daily lesson room after cancellation or rescheduling."""
+    from .services.daily import DailyClient, is_daily_configured
+    if not is_daily_configured():
+        return True
+    try:
+        return DailyClient().delete_room(room_name)
+    except Exception as exc:
+        logger.error('Could not delete Daily room %s: %s', room_name, type(exc).__name__)
+        raise self.retry(exc=exc)
+
+
 def _cancellation_recipients(booking, cancelled_by: str):
     outcome = 'full_refund' if cancelled_by in ('teacher', 'admin') else ('fee_forfeited' if cancelled_by == 'student_late' else 'cancelled')
     if cancelled_by == 'student':

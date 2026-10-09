@@ -21,7 +21,7 @@ from apps.bookings.services.fulfillment import reset_for_reprovision
 from apps.bookings.services.holds import live_hold_q
 from apps.bookings.services.lock_service import acquire_slot_lock, new_slot_lock_token, release_slot_lock
 from apps.bookings.services.slot_generator import LESSON_DURATION_MINUTES, generate_teacher_slots, horizon_days, horizon_scan_days
-from apps.integrations.tasks import cleanup_zoom_meeting, dispatch_booking_fulfillment
+from apps.integrations.tasks import cleanup_daily_room, cleanup_zoom_meeting, dispatch_booking_fulfillment
 from django.db.models import Q
 
 S = Booking.Status
@@ -118,6 +118,7 @@ def _after_move(booking_id: str, old_meeting_id: str):
     event (same event id, see sync_booking_to_teacher_gcal) and tell everyone."""
     if old_meeting_id:
         cleanup_zoom_meeting.delay(old_meeting_id)
+    cleanup_daily_room.delay(f'lesson-{booking_id}')
     dispatch_booking_fulfillment.delay(booking_id)
 
 
