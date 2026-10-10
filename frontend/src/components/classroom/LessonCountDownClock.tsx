@@ -55,7 +55,7 @@ export function LessonCountDownClock({
           </div>
           <div>
             <span className="text-xs font-bold text-ink block">Scheduled Session</span>
-            <span className="text-xs text-ink-muted">Lesson staging room opens 5 minutes before start</span>
+            <span className="text-xs text-ink-muted">Lesson staging room opens 15 minutes before start</span>
           </div>
         </div>
         <div className="text-right">

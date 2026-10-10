@@ -160,7 +160,7 @@ export default function BookingConfirmedPage() {
             </div>
             <div>
               <div className="text-sm font-bold text-sun-soft">Your classroom</div>
-              <div className="text-sm text-white/80">Room will open 5 minutes prior to class</div>
+              <div className="text-sm text-white/80">Room will open 15 minutes prior to class</div>
             </div>
           </div>
 
