@@ -24,7 +24,7 @@ def confirm_test_booking(*, booking, student):
     if settings.PAYMENTS_ENABLED or not settings.TEST_BOOKINGS_ENABLED:
         raise TestBookingError(503, 'Test bookings are not enabled in this environment.')
 
-    booking = (Booking.objects.select_for_update()
+    booking = (Booking.objects.select_for_update(of=('self',))
                .select_related('teacher__user', 'student')
                .get(pk=booking.pk))
     if booking.student_id != student.id:

@@ -742,6 +742,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bookings/{booking_id}/confirm-test/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Development-only booking confirmation for browser/provider E2E tests. */
+        post: operations["v1_bookings_confirm_test_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/bookings/{booking_id}/memo/": {
         parameters: {
             query?: never;
@@ -4822,6 +4839,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CancelPreview"];
+                };
+            };
+        };
+    };
+    v1_bookings_confirm_test_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                booking_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
