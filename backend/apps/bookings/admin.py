@@ -1,5 +1,19 @@
 from django.contrib import admin
-from .models import AttendanceAudit, Booking, BookingStatusChange, LessonMemo
+from .models import AttendanceAudit, Booking, BookingStatusChange, LessonMemo, VideoTrial
+
+
+@admin.register(VideoTrial)
+class VideoTrialAdmin(admin.ModelAdmin):
+    list_display = ('id', 'teacher', 'student', 'opens_at', 'closes_at', 'enabled', 'created_by')
+    list_filter = ('enabled',)
+    search_fields = ('teacher__username', 'student__username')
+    readonly_fields = ('id', 'created_by', 'created_at')
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        obj.full_clean()
+        super().save_model(request, obj, form, change)
 
 class LessonMemoInline(admin.StackedInline):
     model = LessonMemo

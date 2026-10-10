@@ -1868,6 +1868,53 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /api/v1/bookings/video-trials/{trial_id}/token/:
+    get:
+      operationId: v1_bookings_video_trials_token_retrieve
+      description: Get an ephemeral Daily token for a named, admin-created video-only
+        trial. No booking or payment is created.
+      parameters:
+      - in: path
+        name: trial_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoToken'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+        '502':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorCode'
+          description: ''
   /api/v1/integrations/eskom/status/:
     get:
       operationId: v1_integrations_eskom_status_retrieve

@@ -41,6 +41,9 @@ export function videoSessionProblem(err: unknown): VideoSessionProblem {
   const code = errorCode(err);
 
   if (status === 409) {
+    if (code === "outside_trial_window") {
+      return { kind: "not_open", message: "This video trial is not open. Check its scheduled time with the organizer." };
+    }
     if (code === "outside_lesson_window") {
       return {
         kind: "not_open",
@@ -58,7 +61,7 @@ export function videoSessionProblem(err: unknown): VideoSessionProblem {
   }
 
   if (status === 404) {
-    return { kind: "other", message: "This lesson booking could not be found." };
+    return { kind: "other", message: "This classroom could not be found, or your account was not invited." };
   }
 
   if (status === 503) {

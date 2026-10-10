@@ -1,6 +1,38 @@
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
 import uuid
+from datetime import timedelta
+
+
+class VideoTrial(models.Model):
+    """Admin-authorized, short-lived Daily call; deliberately unrelated to bookings or money."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='hosted_video_trials')
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='student_video_trials')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='created_video_trials')
+    opens_at = models.DateTimeField()
+    closes_at = models.DateTimeField()
+    enabled = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        super().clean()
+        errors = {}
+        if self.teacher_id and self.teacher.role != 'teacher':
+            errors['teacher'] = 'Select a tutor account.'
+        if self.student_id and self.student.role != 'student':
+            errors['student'] = 'Select a student account.'
+        if self.created_by_id and not self.created_by.is_staff:
+            errors['created_by'] = 'Only staff may create a video trial.'
+        if self.opens_at and self.closes_at and not (self.opens_at < self.closes_at <= self.opens_at + timedelta(hours=2)):
+            errors['closes_at'] = 'Trial must close within two hours of opening.'
+        if errors:
+            raise ValidationError(errors)
+
+    def __str__(self):
+        return f'Video trial {self.id}: {self.teacher_id} with {self.student_id}'
 
 class Booking(models.Model):
     class Status(models.TextChoices):

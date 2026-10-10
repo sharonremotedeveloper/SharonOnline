@@ -1,5 +1,6 @@
 from django.urls import path
 from .video_views import BookingVideoTokenView
+from .video_trial_views import VideoTrialTokenView
 from .views import (
     TeacherSlotsView,
     ReserveSlotView,
@@ -16,6 +17,7 @@ from .views import (
 )
 
 urlpatterns = [
+    path('video-trials/<uuid:trial_id>/token/', VideoTrialTokenView.as_view(), name='video-trial-token'),
     path('slots/<uuid:teacher_id>/', TeacherSlotsView.as_view(), name='teacher-slots'),
     path('reserve/', ReserveSlotView.as_view(), name='booking-reserve-slot'),
     path('', BookingListCreateView.as_view(), name='booking-list-create'),

@@ -135,6 +135,12 @@ describe("videoSessionProblem", () => {
     assert.match(p.message, /15 minutes/i);
   });
 
+  it("maps a closed video-trial window to specific guidance", () => {
+    const p = videoSessionProblem(apiErr(409, "outside_trial_window"));
+    assert.equal(p.kind, "not_open");
+    assert.match(p.message, /video trial/i);
+  });
+
   it("maps 409 booking_cancelled to cancelled", () => {
     const p = videoSessionProblem(apiErr(409, "booking_cancelled"));
     assert.equal(p.kind, "cancelled");
@@ -153,7 +159,7 @@ describe("videoSessionProblem", () => {
     assert.match(p.message, /assigned tutor or student/i);
   });
 
-  it("maps 404 not found to other explaining booking not found", () => {
+  it("maps 404 not found to other without exposing trial membership", () => {
     const p = videoSessionProblem(apiErr(404, "not_found"));
     assert.equal(p.kind, "other");
     assert.match(p.message, /could not be found/i);

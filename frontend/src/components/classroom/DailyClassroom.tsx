@@ -21,7 +21,7 @@ import {
   X,
   Wifi,
 } from "lucide-react";
-import { fetchVideoSessionToken, videoSessionProblem, VideoSessionProblem } from "../../lib/classroomSession";
+import { fetchVideoSessionToken, videoSessionProblem, VideoSessionProblem, VideoSessionToken } from "../../lib/classroomSession";
 
 interface DailyClassroomProps {
   bookingId: string;
@@ -29,6 +29,8 @@ interface DailyClassroomProps {
   partnerName: string;
   partnerAvatar?: string;
   onLeave?: () => void;
+  tokenFetcher?: () => Promise<VideoSessionToken>;
+  joinLabel?: string;
 }
 
 export function DailyClassroom({
@@ -37,6 +39,8 @@ export function DailyClassroom({
   partnerName,
   partnerAvatar,
   onLeave,
+  tokenFetcher,
+  joinLabel,
 }: DailyClassroomProps) {
   const [joined, setJoined] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -87,7 +91,7 @@ export function DailyClassroom({
     setProblem(null);
 
     try {
-      const data = await fetchVideoSessionToken(bookingId);
+      const data = await (tokenFetcher ? tokenFetcher() : fetchVideoSessionToken(bookingId));
 
       // Only attempt browser WebRTC initialization if window is defined
       if (typeof window === "undefined" || !containerRef.current) {
@@ -194,7 +198,7 @@ export function DailyClassroom({
       setConnecting(false);
       setJoined(false);
     }
-  }, [bookingId, finishLeave]);
+  }, [bookingId, finishLeave, tokenFetcher]);
 
   return (
     <div className="space-y-4">
@@ -317,12 +321,12 @@ export function DailyClassroom({
               ) : isHost ? (
                 <>
                   <Video className="w-4 h-4" />
-                  <span>Open Classroom as Host</span>
+                  <span>{joinLabel || "Open Classroom as Host"}</span>
                 </>
               ) : (
                 <>
                   <Video className="w-4 h-4" />
-                  <span>Enter Classroom</span>
+                  <span>{joinLabel || "Enter Classroom"}</span>
                 </>
               )}
             </button>
