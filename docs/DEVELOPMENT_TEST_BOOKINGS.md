@@ -15,6 +15,8 @@ NEXT_PUBLIC_TEST_BOOKINGS_ENABLED=true
 
 The backend endpoint refuses the test path unless payments are disabled and `TEST_BOOKINGS_ENABLED` is explicitly true. The production settings override `TEST_BOOKINGS_ENABLED` to false, so copying the variable into production cannot enable free bookings there.
 
+For convenience, a deployment with `PAYMENTS_ENABLED=false` and no `TEST_BOOKINGS_ENABLED` variable enables this development path by default. Set `TEST_BOOKINGS_ENABLED=false` (and `NEXT_PUBLIC_TEST_BOOKINGS_ENABLED=false` for the frontend) when a payment-disabled environment should still reject test confirmations.
+
 ## Browser flow
 
 1. Sign in as a student and select an approved tutor's future availability slot.
