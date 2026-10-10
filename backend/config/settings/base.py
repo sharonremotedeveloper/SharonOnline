@@ -433,6 +433,8 @@ FX_RATE_MAX_AGE_HOURS = int(os.environ.get('FX_RATE_MAX_AGE_HOURS', '24'))
 # False refuses gateway checkout and PayPal capture (503 payments_disabled); lesson credits can still be redeemed. For
 # deployed test environments that do not exercise payments. The frontend mirrors it with NEXT_PUBLIC_PAYMENTS_ENABLED.
 PAYMENTS_ENABLED = _env_bool('PAYMENTS_ENABLED', True)
+# Explicit opt-in for development browser testing without payment or wallet credits.
+TEST_BOOKINGS_ENABLED = _env_bool('TEST_BOOKINGS_ENABLED', False)
 
 PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', '')
 PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', '')

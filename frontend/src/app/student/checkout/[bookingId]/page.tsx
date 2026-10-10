@@ -28,7 +28,7 @@ import { useLessonPrices } from "@/hooks/useLessonPrices";
 import { ReservationTimer } from "@/components/booking/ReservationTimer";
 import { PayFastForm } from "@/components/booking/PayFastForm";
 import { PayPalButtonsWrapper } from "@/components/booking/PayPalButtonsWrapper";
-import { PAYMENTS_ENABLED } from "@/lib/paymentsEnabled";
+import { PAYMENTS_ENABLED, TEST_BOOKINGS_ENABLED } from "@/lib/paymentsEnabled";
 import type { OutcomeView } from "@/lib/paypalOutcome";
 import { rememberPendingPayFast } from "@/lib/pendingPayment";
 import { creditsLabel } from "@/lib/rating";
@@ -114,6 +114,19 @@ export default function StudentCheckoutPage() {
       router.push(`/student/confirmed/${bookingId}`);
     } catch (err) {
       console.error("Failed to redeem credit:", err);
+      setError(err);
+      setSubmitting(false);
+    }
+  };
+
+  const handleConfirmTestBooking = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      await api.confirmTestBooking(bookingId);
+      router.push(`/student/confirmed/${bookingId}`);
+    } catch (err) {
+      console.error("Failed to confirm development test booking:", err);
       setError(err);
       setSubmitting(false);
     }
@@ -340,9 +353,27 @@ export default function StudentCheckoutPage() {
               </button>
             </div>
             )}
-            {!PAYMENTS_ENABLED && (<p className="text-sm text-ink-muted bg-cream-surface border border-divider rounded-xl px-4 py-3">
-            Payments are switched off in this test environment. Lessons are booked with lesson credits.
-            </p>)}
+            {!PAYMENTS_ENABLED && (
+              <div className="text-sm text-ink-muted bg-cream-surface border border-divider rounded-xl px-4 py-3 space-y-3">
+                <p>Payments are switched off in this test environment.</p>
+                {TEST_BOOKINGS_ENABLED ? (
+                  <>
+                    <p>This development booking will be confirmed without payment or wallet credits.</p>
+                    <button
+                      type="button"
+                      onClick={handleConfirmTestBooking}
+                      disabled={submitting}
+                      className="min-h-11 w-full py-3 bg-cocoa hover:bg-cocoa-hover text-white rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {submitting ? "Confirming Test Booking..." : "Confirm Test Booking"}
+                      {!submitting && <ArrowRight className="w-4 h-4" />}
+                    </button>
+                  </>
+                ) : (
+                  <p>Lessons can be booked with an existing lesson credit.</p>
+                )}
+              </div>
+            )}
 
             {/* Path A: Credit Redemption */}
             {hasCredits && activeGateway === "credit" && (

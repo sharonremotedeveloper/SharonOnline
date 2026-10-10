@@ -3,6 +3,8 @@ import dj_database_url
 import os
 
 DEBUG = False
+# Production must never permit free test bookings, even if an environment variable is copied accidentally.
+TEST_BOOKINGS_ENABLED = False
 
 from .guard import validate_production_settings
 

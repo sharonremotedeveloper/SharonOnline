@@ -12,6 +12,7 @@ from .views import (
     CancelPreviewView,
     RescheduleBookingView,
     RedeemCreditView,
+    ConfirmTestBookingView,
 )
 
 urlpatterns = [
@@ -26,5 +27,6 @@ urlpatterns = [
     path('<uuid:booking_id>/cancel-preview/', CancelPreviewView.as_view(), name='booking-cancel-preview'),
     path('<uuid:booking_id>/reschedule/', RescheduleBookingView.as_view(), name='booking-reschedule'),
     path('<uuid:booking_id>/redeem-credit/', RedeemCreditView.as_view(), name='booking-redeem-credit'),
+    path('<uuid:booking_id>/confirm-test/', ConfirmTestBookingView.as_view(), name='booking-confirm-test'),
     path('<uuid:booking_id>/video-token/', BookingVideoTokenView.as_view(), name='booking-video-token'),   # Slice V2 (Video SDK)
 ]

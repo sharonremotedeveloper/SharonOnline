@@ -35,6 +35,7 @@ from .services.state_machine import InvalidTransition, transition_booking
 from apps.users.permissions import IsStudent
 from apps.payments.services.credits import grant_credit
 from apps.payments.services.credits import CreditRedemptionError, redeem_booking_credit
+from .services.test_checkout import TestBookingError, confirm_test_booking
 from apps.payments.services.settlement import successful_transaction
 from apps.payments.services.funding import funding_for_settlement
 from apps.payments.models import CreditWalletEntry
@@ -181,6 +182,28 @@ class RedeemCreditView(APIView):
             'status': booking.status,
             'redeemed': changed,
             'message': '1 lesson credit redeemed successfully.' if changed else 'Credit was already redeemed.',
+        })
+
+
+@extend_schema(request=None, responses=OpenApiTypes.OBJECT)
+class ConfirmTestBookingView(APIView):
+    """Development-only booking confirmation for browser/provider E2E tests."""
+    permission_classes = (IsStudent,)
+    throttle_classes = (ScopedRateThrottle,)
+    throttle_scope = 'checkout'
+
+    def post(self, request, booking_id):
+        booking = get_object_or_404(Booking, pk=booking_id, student=request.user)
+        try:
+            booking, changed = confirm_test_booking(booking=booking, student=request.user)
+        except TestBookingError as exc:
+            return Response({'error': exc.message}, status=exc.status_code)
+        return Response({
+            'success': True,
+            'booking_id': str(booking.id),
+            'status': booking.status,
+            'confirmed': changed,
+            'message': 'Development test booking confirmed.' if changed else 'Test booking was already confirmed.',
         })
 
 # A memo is only for lessons that have actually ended. CONFIRMED / IN_PROGRESS lessons are settled by the attendance job

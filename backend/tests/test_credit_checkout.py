@@ -4,6 +4,7 @@ from decimal import Decimal
 import pytest
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
+from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -148,6 +149,36 @@ class TestCreditRedemption:
         assert response.status_code == 409
         assert bundle.remaining_credits == 1 and booking.status == Booking.Status.PENDING_PAYMENT
         assert not BookingFunding.objects.filter(booking=booking).exists()
+
+
+@pytest.mark.django_db(transaction=True)
+class TestDevelopmentTestBooking:
+    @override_settings(PAYMENTS_ENABLED=False, TEST_BOOKINGS_ENABLED=False)
+    def test_test_confirmation_is_disabled_without_explicit_switch(self, student_user, teacher_user):
+        booking = held_booking(teacher_user, student_user)
+        response = client(student_user).post(f'/api/v1/bookings/{booking.id}/confirm-test/')
+        assert response.status_code == 503
+        booking.refresh_from_db()
+        assert booking.status == Booking.Status.PENDING_PAYMENT
+
+    @override_settings(PAYMENTS_ENABLED=False, TEST_BOOKINGS_ENABLED=True)
+    def test_test_confirmation_confirms_without_credits_and_dispatches(
+        self, student_user, teacher_user, django_capture_on_commit_callbacks, monkeypatch
+    ):
+        booking = held_booking(teacher_user, student_user)
+        queued = []
+        monkeypatch.setattr(
+            'apps.payments.services.webhook_handler.dispatch_fulfillment',
+            lambda booking_id: queued.append(booking_id),
+        )
+        with django_capture_on_commit_callbacks(execute=True):
+            response = client(student_user).post(f'/api/v1/bookings/{booking.id}/confirm-test/')
+        assert response.status_code == 200, response.data
+        booking.refresh_from_db()
+        assert booking.status == Booking.Status.CONFIRMED
+        assert queued == [str(booking.id)]
+        assert not BookingFunding.objects.filter(booking=booking).exists()
+        assert not CreditWalletEntry.objects.filter(booking=booking).exists()
 
 
 @pytest.mark.django_db

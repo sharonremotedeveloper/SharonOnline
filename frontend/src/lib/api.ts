@@ -645,6 +645,21 @@ export const api = {
     };
   },
 
+  async confirmTestBooking(bookingId: string) {
+    const live = await liveRequest(`${API_BASE}/bookings/${bookingId}/confirm-test/`, {
+      method: "POST",
+    });
+    if (live !== MOCK) return live;
+
+    return {
+      success: true,
+      booking_id: bookingId,
+      status: "confirmed" as const,
+      confirmed: true,
+      message: "Development test booking confirmed.",
+    };
+  },
+
   async initializeCheckout(payload: {
     gateway: "payfast" | "paypal";
     booking_id?: string;
