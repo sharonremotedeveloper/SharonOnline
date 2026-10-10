@@ -69,6 +69,10 @@ def validate_production_settings(env=os.environ):
     daily_api_key = (env.get('DAILY_API_KEY') or '').strip()
     if not daily_api_key:
         errors.append('DAILY_API_KEY must be set: without it Daily.co meeting rooms and tokens cannot be provisioned')
+    elif daily_api_key.startswith(('test-', 'local-')):
+        errors.append('DAILY_API_KEY must not be a simulated test/local key in production')
+    if (env.get('DAILY_SIMULATE_WITHOUT_CREDENTIALS') or '').strip().lower() in ('1', 'true', 'yes'):
+        errors.append('DAILY_SIMULATE_WITHOUT_CREDENTIALS must be disabled in production')
 
     daily_domain = (env.get('DAILY_DOMAIN') or '').strip()
     if not daily_domain:
