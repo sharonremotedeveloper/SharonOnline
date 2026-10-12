@@ -743,3 +743,10 @@ def configure_test_settings(settings):
 - **Root cause:** The authenticated Railway workspace has insufficient remaining Free-plan resource capacity; the existing SharonRailway project is the development environment and must not be repurposed as production.
 - **Resolution:** No upgrade, billing change, unrelated-project reuse, or production service creation was performed. Vercel Production domain attachment and the Cloudflare apex record were completed independently; Railway API DNS remains pending.
 - **Verification:** Railway new-project UI displayed the upgrade requirement; Vercel reports `topteacheracademy.com` attached to Production with SSL certificate generation in progress; Cloudflare zone contains the Vercel-generated apex CNAME with proxy disabled.
+
+### ERR-516: Upstash production Redis creation blocked by Free tier
+
+- **Observed:** On 2026-10-12, Upstash rejected creation of `sharon-online-production` because the Free tier permits only one database and the existing `sharon-online-development` database already uses that allowance.
+- **Root cause:** The authenticated Upstash account has no remaining Free-tier database capacity.
+- **Resolution:** No payment method was added, no upgrade was accepted, and the development Redis was not reused for production. Production `REDIS_URL` remains unset until an isolated production database is provisioned.
+- **Verification:** Upstash UI displayed the one-database Free-tier limit and offered account billing/upgrade as the only path to create another database.
