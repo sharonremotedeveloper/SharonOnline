@@ -13,9 +13,18 @@ export const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
 
 export const PROXY_BASE = "/api/proxy";
 
+function serverApiBase(): string {
+  const configured = process.env.INTERNAL_API_URL?.trim();
+  if (configured) return configured.replace(/\/+$/, "");
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("INTERNAL_API_URL must be set in production; the server will not use a browser-visible or localhost API URL.");
+  }
+  return "http://localhost:8000/api/v1";
+}
+
 export const API_BASE =
   typeof window === "undefined"
-    ? (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/+$/, "")
+    ? serverApiBase()
     : PROXY_BASE;
 
 /** Sentinel returned by `liveRequest` in explicit mock mode when the live call failed. */

@@ -12,9 +12,29 @@ export interface Tokens {
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
 const UPSTREAM_TIMEOUT_MS = 25_000;
+const DEV_ONLY_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"]);
 
 export function upstreamBase(): string {
-  return (process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1").replace(/\/+$/, "");
+  const configured = process.env.INTERNAL_API_URL?.trim();
+  if (!configured) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("INTERNAL_API_URL must be set in production; the server will not use NEXT_PUBLIC_API_URL or localhost.");
+    }
+    return "http://localhost:8000/api/v1";
+  }
+  let url: URL;
+  try {
+    url = new URL(configured);
+  } catch {
+    throw new Error("INTERNAL_API_URL must be a valid http(s) URL.");
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("INTERNAL_API_URL must be a valid http(s) URL.");
+  }
+  if (process.env.NODE_ENV === "production" && DEV_ONLY_HOSTS.has(url.hostname)) {
+    throw new Error("INTERNAL_API_URL must not point at localhost in production.");
+  }
+  return configured.replace(/\/+$/, "");
 }
 
 /**

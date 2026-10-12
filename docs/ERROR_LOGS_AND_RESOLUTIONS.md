@@ -712,3 +712,19 @@ def configure_test_settings(settings):
 - **Root cause:** `DailyClient.ensure_room` reused an existing room as it was, with the OLD `nbf`/`exp`. Either the cleanup deleted the room right after fulfilment reused it (no room), or the room kept the old slot's window and Daily rejected joins for the new time.
 - **Resolution:** `ensure_room` now moves an existing room's window in place (`POST /rooms/<name>` with the new `nbf`/`exp`) and reschedule no longer deletes the room (cancellation still does). Tests: `test_daily_room_lifecycle.py`, `test_f0_fulfilment_probe.py::TestRescheduleReprovisions`.
 - **Verification:** backend 3,242 passed; ruff clean; `makemigrations --check` clean.
+
+### ERR-512: Deployment account and DNS preflight could not complete non-interactively
+
+- **Observed:** During the read-only deployment preflight on 2026-10-12, the local Vercel and Wrangler CLIs were unavailable; the Railway shim exited with code 126; Neon listed an OAuth profile but did not return the account email; and DNS queries for `topscholaracademy.com` returned no NS, SOA, or A records.
+- **Root cause:** Required hosting/DNS identity tools are not currently usable in this shell, and the domain's registrar/DNS authority is not visible through the local resolver.
+- **Resolution:** No deployment, login, DNS, variable, provider, or secret change was attempted. Record the exact blockers in `PROGRESS_AND_ROADMAP.md`; owner must complete browser identity verification and identify the authoritative DNS provider.
+- **Verification:** Git branch and starting SHA confirmed: `develop` at `2c1221ff54bc02798b45b2e60a08987034663a06`. Vercel, Railway, Neon email identity, Cloudflare, and DNS authority remain unverified.
+- **Follow-up verification (2026-10-12):** Browser checks confirmed Vercel, Railway, and Neon under `sharonremotedeveloper@gmail.com`. Cloudflare was open under the same session and exposed a second `Teachersharone` account containing `topteacheracademy.com`; `topscholaracademy.com` was not present. No DNS or account changes were made.
+- **Owner clarification (2026-10-12):** Anesu confirmed that `topteacheracademy.com` is the correct canonical production domain. The earlier `topscholaracademy.com` reference was superseded; no DNS or account changes were made.
+
+### ERR-513: Local frontend production build blocked by restricted network/filesystem access
+
+- **Observed:** After the server-only API boundary changes, focused frontend tests (257/257), lint, and generated API type checks passed. `npm run build` could not complete: the local resolver could not reach `fonts.googleapis.com`, and Next.js also reported `EPERM` while creating `frontend/.next/types/app/teacher/wallet/payout-settings`.
+- **Root cause:** The build environment currently blocks the external Google Fonts fetch and prevents one generated `.next/types` directory operation. This is an environment limitation, not a reported TypeScript or application compile error.
+- **Resolution:** Not yet resolved. Retry with approved host-level network/filesystem access; if the network remains unavailable, run the project’s documented offline font/build path or use CI as the authoritative build environment.
+- **Verification:** `npm test` passed 257 tests; `npm run lint` passed with zero warnings; `npm run check:api-types` passed. Build remains unverified until the environment blocker is removed.

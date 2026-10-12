@@ -229,7 +229,7 @@ flowchart LR
   - *Containerized Test Execution*: Executed full automated test suite (`docker compose exec backend pytest`) passing 74/74 unit, integration, concurrency stress, double-entry ledger, and storage tests clean (100% pass rate in 29.9s).
   - *Live Endpoint & SSR Validation*: Verified live health check (`GET /api/health/`), JWT auth token issuance (`POST /api/v1/auth/token/`), teacher and material catalogs, admin telemetry radar, and multi-route Next.js server-side rendering (`/`, `/tutors`, `/materials`, `/pricing`, `/how-it-works`, `/trust-safety`) with zero connection errors.
   - *PostgreSQL Outer-Join Concurrency Fix (`ERR-004`)*: Resolved `FeatureNotSupported: FOR UPDATE cannot be applied to the nullable side of an outer join` in `release_cleared_escrow_task` using subquery exclusion and table-level `of=('self',)` row locks.
-  - *Multi-Container Dual-Environment Routing (`ERR-005`)*: Configured `INTERNAL_API_URL=http://backend:8000/api/v1` for server-side RSC/SSR container-to-container calls with automatic fallback to client-side browser endpoint `http://localhost:8000/api/v1`.
+  - *Multi-Container Dual-Environment Routing (`ERR-005`, historical)*: Configured `INTERNAL_API_URL=http://backend:8000/api/v1` for server-side RSC/SSR container-to-container calls. The former localhost browser fallback is superseded by the server-only upstream boundary documented in the Vercel dual-environment working protocol.
 
 ---
 
@@ -261,6 +261,37 @@ Full detail and evidence: [`GAP_ANALYSIS_AND_LAUNCH_TIMELINE_2026-10-07.md`](GAP
 - **Timeline from 2026-10-07:** invite-only hosted soft launch best 3 / likely 5-6 / worst 9 weeks; full-scope production best 7 / likely 10-12 / worst 18 weeks. Critical path is external: domain + D-10, hosted staging, credentials + sandbox verification, UAT, live PayPal/PayFast approval, cutover. Legal entity (D-12), counsel and gateway KYC are the longest chains.
 - **Blocked on Anesu:** decisions D-3 (+ second admin account), D-4, D-7, D-10 (+ domain), D-11, D-12, D-13; confirmations D-1, D-6, D-14 (Daily.co), Task 7.10; credentials/accounts (PayPal sandbox then live, PayFast live, Daily.co API key, Resend domain, Railway re-login as `sharonremotedeveloper@gmail.com`, Vercel/Upstash/Sentry verification, Cloudflare DNS zone); content from Sharon (training modules, vetting rubric).
 - Repo hygiene: `main` (`261077c`) is 196 commits behind `develop`; more than the two documented branches exist locally (see GAP_ANALYSIS section 9). Promotion to `main` only on Anesu's say-so.
+
+### 5.2 Vercel dual-environment deployment workstream
+
+**Status:** `IN PROGRESS - shared-branch API boundary slice implemented locally; hosted provisioning not started`
+
+The mandatory working rules and architecture are in [`VERCEL_DUAL_ENVIRONMENT_WORKING_PROTOCOL.md`](./VERCEL_DUAL_ENVIRONMENT_WORKING_PROTOCOL.md). All agents on this stream work in the same shared branch; they do not create separate branches or worktrees unless Anesu explicitly changes that instruction. Every agent must update the progress record at start, checkpoint, handoff, and stop.
+
+| Field | Current status |
+| :--- | :--- |
+| Shared deployment branch | `develop` (designated 2026-10-12) |
+| Current commit | `2c1221ff54bc02798b45b2e60a08987034663a06` (`fix(security): reject simulated Daily credentials in production`) |
+| Working-tree slice | `Server-only API boundary: production requires validated INTERNAL_API_URL; no NEXT_PUBLIC_API_URL or localhost fallback; production compose updated; focused tests added` |
+| Development Vercel project/URL | `Confirmed: sharon-online project; develop preview visible at sharon-online-git-develop-sharon-team1.vercel.app` |
+| Production Vercel project/domain | `topteacheracademy.com confirmed as canonical; Vercel attachment/DNS/TLS unverified` |
+| Development backend/resources | `Not hosted; Railway SharonRailway project exists but has no services` |
+| Production backend/resources | `Not hosted; must be isolated` |
+| Exact-commit promotion pipeline | `Not implemented` |
+| One-shot migration release | `Not implemented` |
+| Provider callbacks/secrets | `Per-environment contracts required; live readiness incomplete` |
+| Monitoring/backups/restore | `Not verified` |
+| Vercel account | `Confirmed in browser: sharonremotedeveloper; project sharon-online visible; no production deployment` |
+| Railway account | `Confirmed in browser: sharonremotedeveloper@gmail.com; SharonRailway project visible with no services` |
+| Neon account | `Confirmed in browser: sharonremotedeveloper@gmail.com; org-lucky-pine-32944571 and SharonOnline visible` |
+| Cloudflare/DNS account | `Cloudflare session confirmed as sharonremotedeveloper@gmail.com; Teachersharone account also visible` |
+| Domain found in Cloudflare | `topteacheracademy.com under Teachersharone account; confirmed correct by Anesu on 2026-10-12` |
+| DNS authority | `Cloudflare zone visible; Vercel attachment/TLS and final DNS records remain unverified` |
+| Verification | `257 frontend tests passed; lint passed; generated API type check passed; Next.js production build passed with explicit local build env (static generation logged expected ECONNREFUSED because Django was not running)` |
+| Current blockers | `Commit/push shared-branch slice, confirm hosted API contract, provision isolated Railway services/resources, then attach/verify Vercel and Cloudflare DNS/TLS` |
+| Last update | `2026-10-12 — Codex + Pauli review — server-only API boundary implemented and quality gates passed` |
+
+No deployment, DNS, account, provider, or secret changes are implied by this documentation update.
 
 ---
 

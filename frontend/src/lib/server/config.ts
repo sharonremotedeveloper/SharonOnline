@@ -23,14 +23,14 @@ export function serverConfigProblems(env: Env): string[] {
     problems.push("SESSION_SECRET must be set to a random value of at least 32 characters (it signs the role/session cookie).");
   }
 
-  const api = env.INTERNAL_API_URL || env.NEXT_PUBLIC_API_URL || "";
+  const api = env.INTERNAL_API_URL || "";
   if (!api) {
-    problems.push("INTERNAL_API_URL (or NEXT_PUBLIC_API_URL) must point at the Django API, e.g. http://backend:8000/api/v1 - there is no safe default.");
+    problems.push("INTERNAL_API_URL must point at the Django API, e.g. http://backend:8000/api/v1; browser-visible API variables and localhost are never production fallbacks.");
   } else {
     const url = parseUrl(api);
     if (!url) problems.push(`INTERNAL_API_URL is not a valid http(s) URL: ${api}`);
-    else if (DEV_ONLY_HOSTS.includes(url.hostname) && env.ALLOW_LOCAL_UPSTREAM !== "1") {
-      problems.push("INTERNAL_API_URL points at localhost in production; set ALLOW_LOCAL_UPSTREAM=1 only for a deliberate single-host test.");
+    else if (DEV_ONLY_HOSTS.includes(url.hostname)) {
+      problems.push("INTERNAL_API_URL points at localhost in production; production must use a reachable private backend origin.");
     }
   }
 

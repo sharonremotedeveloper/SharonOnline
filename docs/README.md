@@ -27,6 +27,7 @@ This documentation suite is engineered to serve as a single source of truth for 
 | 📅 [**`BOOKING_STATE_MACHINE.md`**](./BOOKING_STATE_MACHINE.md) · [**`BOOKING_HOLDS.md`**](./BOOKING_HOLDS.md) · [**`BOOKING_LIST.md`**](./BOOKING_LIST.md) · [**`DAILY_CO_MIGRATION_PLAN.md`**](./DAILY_CO_MIGRATION_PLAN.md) · [**`ZOOM_ATTENDANCE.md`**](./ZOOM_ATTENDANCE.md) · [**`LESSON_REVIEWS.md`**](./LESSON_REVIEWS.md) | How a booking moves, holds its slot, is listed, and is verified against Daily.co attendance; how reviews stay private. | Backend & AI Agents |
 | 💸 [**`CANCELLATION_AND_REFUNDS.md`**](./CANCELLATION_AND_REFUNDS.md) · [**`SETTLEMENT_PATHS.md`**](./SETTLEMENT_PATHS.md) · [**`DECISIONS_D1_D12.md`**](./DECISIONS_D1_D12.md) | The money policy (cancel, reschedule, refunds, credit expiry, strikes), where every outcome's money goes, and the product decisions behind them. | Backend, Finance & AI Agents |
 | ⚙️ [**`ENVIRONMENT_AND_TESTING.md`**](./ENVIRONMENT_AND_TESTING.md) | Local environment setup, environment variables, Pytest execution, Next.js build verification, and deployment specs. | Engineering Team |
+| 🌐 [**`VERCEL_DUAL_ENVIRONMENT_WORKING_PROTOCOL.md`**](./VERCEL_DUAL_ENVIRONMENT_WORKING_PROTOCOL.md) | Mandatory shared-branch protocol, progress-reporting requirements, development/production resource boundaries, and exact-commit promotion plan for Vercel deployment. | All Deployment Agents & Humans |
 
 ---
 
