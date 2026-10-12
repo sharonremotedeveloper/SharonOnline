@@ -750,3 +750,10 @@ def configure_test_settings(settings):
 - **Root cause:** The authenticated Upstash account has no remaining Free-tier database capacity.
 - **Resolution:** No payment method was added, no upgrade was accepted, and the development Redis was not reused for production. Production `REDIS_URL` remains unset until an isolated production database is provisioned.
 - **Verification:** Upstash UI displayed the one-database Free-tier limit and offered account billing/upgrade as the only path to create another database.
+
+### ERR-517: Vercel Production backend URL intentionally deferred
+
+- **Observed:** Vercel Production now has `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SITE_URL`, `TRUSTED_PROXY_COUNT`, and a unique `SESSION_SECRET`; `INTERNAL_API_URL` is not configured.
+- **Root cause:** The production Railway API service does not yet exist, so no verified HTTPS API origin is available.
+- **Resolution:** Added only the values whose production targets are already authoritative. Deferred `INTERNAL_API_URL` and the Vercel production deployment until Railway produces a healthy API hostname.
+- **Verification:** Vercel environment-variable UI confirmed the four Production variables were added; the project domain reports `Valid Configuration`.
