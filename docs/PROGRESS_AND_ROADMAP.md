@@ -280,7 +280,7 @@ The mandatory working rules and architecture are in [`VERCEL_DUAL_ENVIRONMENT_WO
 | Production backend/resources | `Not hosted; isolated Railway project creation blocked by Free-plan resource provision limit; no unrelated project repurposed` |
 | Exact-commit promotion pipeline | `Not implemented; develop commit bbd320c is pushed to origin and Vercel preview deployed from bbd320c` |
 | One-shot migration release | `Not implemented` |
-| Provider callbacks/secrets | `Per-environment contracts required; live readiness incomplete` |
+| Provider callbacks/secrets | `Vercel Production has public site URLs, TRUSTED_PROXY_COUNT=1, and a unique SESSION_SECRET; INTERNAL_API_URL is deferred until a healthy production Railway API exists; backend provider credentials remain incomplete` |
 | Monitoring/backups/restore | `Not verified` |
 | Vercel account | `Confirmed in browser: sharonremotedeveloper; project sharon-online visible; no production deployment` |
 | Railway account | `Confirmed in browser: sharonremotedeveloper@gmail.com; SharonRailway project visible with no services` |
