@@ -271,7 +271,8 @@ The mandatory working rules and architecture are in [`VERCEL_DUAL_ENVIRONMENT_WO
 | Field | Current status |
 | :--- | :--- |
 | Shared deployment branch | `develop` (designated 2026-10-12) |
-| Current commit | `2c1221ff54bc02798b45b2e60a08987034663a06` (`fix(security): reject simulated Daily credentials in production`) |
+| Starting commit | `2c1221ff54bc02798b45b2e60a08987034663a06` (`fix(security): reject simulated Daily credentials in production`) |
+| Current commit | `778d827` (`chore(deploy): enforce private API boundary for environments`) |
 | Working-tree slice | `Server-only API boundary: production requires validated INTERNAL_API_URL; no NEXT_PUBLIC_API_URL or localhost fallback; production compose updated; focused tests added` |
 | Development Vercel project/URL | `Confirmed: sharon-online project; develop preview visible at sharon-online-git-develop-sharon-team1.vercel.app` |
 | Production Vercel project/domain | `topteacheracademy.com confirmed as canonical; Vercel attachment/DNS/TLS unverified` |
