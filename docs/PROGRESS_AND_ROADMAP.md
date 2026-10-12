@@ -276,21 +276,23 @@ The mandatory working rules and architecture are in [`VERCEL_DUAL_ENVIRONMENT_WO
 | Working-tree slice | `Server-only API boundary: production requires validated INTERNAL_API_URL; no NEXT_PUBLIC_API_URL or localhost fallback; production compose updated; focused tests added` |
 | Development Vercel project/URL | `Confirmed: sharon-online project; develop preview visible at sharon-online-git-develop-sharon-team1.vercel.app` |
 | Production Vercel project/domain | `topteacheracademy.com confirmed as canonical; Vercel attachment/DNS/TLS unverified` |
-| Development backend/resources | `Not hosted; Railway SharonRailway project exists but has no services` |
+| Development backend/resources | `Railway SharonRailway confirmed under sharonremotedeveloper; API service backend-api-production created from develop/backend and image built, but healthcheck failed on missing guarded provider/security variables; worker service SharonOnline staged with develop/backend and Celery worker command; beat service blocked by Railway free-plan resource cap` |
 | Production backend/resources | `Not hosted; must be isolated` |
-| Exact-commit promotion pipeline | `Not implemented` |
+| Exact-commit promotion pipeline | `Not implemented; develop commit bbd320c is pushed to origin and Vercel preview deployed from bbd320c` |
 | One-shot migration release | `Not implemented` |
 | Provider callbacks/secrets | `Per-environment contracts required; live readiness incomplete` |
 | Monitoring/backups/restore | `Not verified` |
 | Vercel account | `Confirmed in browser: sharonremotedeveloper; project sharon-online visible; no production deployment` |
 | Railway account | `Confirmed in browser: sharonremotedeveloper@gmail.com; SharonRailway project visible with no services` |
-| Neon account | `Confirmed in browser: sharonremotedeveloper@gmail.com; org-lucky-pine-32944571 and SharonOnline visible` |
+| Neon account | `Confirmed in browser: sharonremotedeveloper@gmail.com; SharonOnline development branch br-withered-surf-b4bqx4nw exists and is active` |
+| Upstash development Redis | `Confirmed in browser: sharon-online-development / exact-raptor, AWS us-east-2, TLS enabled; URL staged only on API service` |
 | Cloudflare/DNS account | `Cloudflare session confirmed as sharonremotedeveloper@gmail.com; Teachersharone account also visible` |
 | Domain found in Cloudflare | `topteacheracademy.com under Teachersharone account; confirmed correct by Anesu on 2026-10-12` |
 | DNS authority | `Cloudflare zone visible; Vercel attachment/TLS and final DNS records remain unverified` |
 | Verification | `257 frontend tests passed; lint passed; generated API type check passed; Next.js production build passed with explicit local build env (static generation logged expected ECONNREFUSED because Django was not running)` |
-| Current blockers | `Commit/push shared-branch slice, confirm hosted API contract, provision isolated Railway services/resources, then attach/verify Vercel and Cloudflare DNS/TLS` |
-| Last update | `2026-10-12 — Codex + Pauli review — server-only API boundary implemented and quality gates passed` |
+| Vercel development verification | `Preview for bbd320c is READY at the develop alias; browser root smoke rendered, but live API/catalog data is unavailable until Railway API passes healthcheck` |
+| Current blockers | `Supply/authorize isolated development Daily, Resend, Eskom, R2, and encryption credentials; configure guarded Railway variables; resolve free-plan capacity for celery-beat; run migrations; then verify Vercel-to-Railway API and browser auth flow` |
+| Last update | `2026-10-12 — Codex + Pauli/Mill review — pushed develop, provisioned Neon/Upstash targets, created Railway API/worker setup, and verified Vercel preview; hosted API remains blocked by guarded variables and Railway plan capacity` |
 
 No deployment, DNS, account, provider, or secret changes are implied by this documentation update.
 

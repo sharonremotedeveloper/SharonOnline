@@ -728,3 +728,11 @@ def configure_test_settings(settings):
 - **Root cause:** The build environment currently blocks the external Google Fonts fetch and prevents one generated `.next/types` directory operation. This is an environment limitation, not a reported TypeScript or application compile error.
 - **Resolution:** Not yet resolved. Retry with approved host-level network/filesystem access; if the network remains unavailable, run the project’s documented offline font/build path or use CI as the authoritative build environment.
 - **Verification:** `npm test` passed 257 tests; `npm run lint` passed with zero warnings; `npm run check:api-types` passed. Build remains unverified until the environment blocker is removed.
+
+### ERR-514: Railway development API healthcheck failed on guarded environment contract
+
+- **Observed:** On 2026-10-12, Railway built the `backend-api-production` image from `sharonremotedeveloper/SharonOnline@develop` successfully, but `/api/health/` remained unavailable and the deployment failed after the healthcheck retry window.
+- **Root cause:** Railway reported that only `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, and `REDIS_URL` were configured. The production settings guard intentionally rejected the missing Django, origin, Daily, Resend, EskomSePush, encryption-keyring, and private R2 configuration instead of starting an unsafe deployment.
+- **Resolution:** No guard was bypassed and no fake provider credentials were added. The isolated Neon `development` branch and Upstash `sharon-online-development` Redis target were identified; remaining development credentials must be supplied/configured before redeploy.
+- **Related infrastructure blocker:** Railway rejected creation of the third `celery-beat` service because the current free-plan resource provision limit was exceeded. No upgrade or production resource was created.
+- **Verification:** Railway UI showed image build complete, deployment failed specifically at Network > Healthcheck; Vercel `bbd320c` preview is READY and renders the public shell, but catalog/currency data is unavailable because the API is not healthy.
