@@ -272,12 +272,12 @@ The mandatory working rules and architecture are in [`VERCEL_DUAL_ENVIRONMENT_WO
 | :--- | :--- |
 | Shared deployment branch | `develop` (designated 2026-10-12) |
 | Starting commit | `2c1221ff54bc02798b45b2e60a08987034663a06` (`fix(security): reject simulated Daily credentials in production`) |
-| Current commit | `778d827` (`chore(deploy): enforce private API boundary for environments`) |
+| Current commit | `fe74f02` (`docs(deploy): record hosted development blockers`) |
 | Working-tree slice | `Server-only API boundary: production requires validated INTERNAL_API_URL; no NEXT_PUBLIC_API_URL or localhost fallback; production compose updated; focused tests added` |
 | Development Vercel project/URL | `Confirmed: sharon-online project; develop preview visible at sharon-online-git-develop-sharon-team1.vercel.app` |
-| Production Vercel project/domain | `topteacheracademy.com confirmed as canonical; Vercel attachment/DNS/TLS unverified` |
+| Production Vercel project/domain | `topteacheracademy.com attached to sharon-online Production; Cloudflare apex CNAME added; Vercel reports SSL certificate generation in progress` |
 | Development backend/resources | `Railway SharonRailway confirmed under sharonremotedeveloper; API service backend-api-production created from develop/backend and image built, but healthcheck failed on missing guarded provider/security variables; worker service SharonOnline staged with develop/backend and Celery worker command; beat service blocked by Railway free-plan resource cap` |
-| Production backend/resources | `Not hosted; must be isolated` |
+| Production backend/resources | `Not hosted; isolated Railway project creation blocked by Free-plan resource provision limit; no unrelated project repurposed` |
 | Exact-commit promotion pipeline | `Not implemented; develop commit bbd320c is pushed to origin and Vercel preview deployed from bbd320c` |
 | One-shot migration release | `Not implemented` |
 | Provider callbacks/secrets | `Per-environment contracts required; live readiness incomplete` |
@@ -288,11 +288,11 @@ The mandatory working rules and architecture are in [`VERCEL_DUAL_ENVIRONMENT_WO
 | Upstash development Redis | `Confirmed in browser: sharon-online-development / exact-raptor, AWS us-east-2, TLS enabled; URL staged only on API service` |
 | Cloudflare/DNS account | `Cloudflare session confirmed as sharonremotedeveloper@gmail.com; Teachersharone account also visible` |
 | Domain found in Cloudflare | `topteacheracademy.com under Teachersharone account; confirmed correct by Anesu on 2026-10-12` |
-| DNS authority | `Cloudflare zone visible; Vercel attachment/TLS and final DNS records remain unverified` |
+| DNS authority | `Cloudflare zone 617048a2d41d13e7f9ec6bdb154f0736; apex CNAME to Vercel-generated target saved DNS-only; Railway API record pending production service` |
 | Verification | `257 frontend tests passed; lint passed; generated API type check passed; Next.js production build passed with explicit local build env (static generation logged expected ECONNREFUSED because Django was not running)` |
 | Vercel development verification | `Preview for bbd320c is READY at the develop alias; browser root smoke rendered, but live API/catalog data is unavailable until Railway API passes healthcheck` |
-| Current blockers | `Supply/authorize isolated development Daily, Resend, Eskom, R2, and encryption credentials; configure guarded Railway variables; resolve free-plan capacity for celery-beat; run migrations; then verify Vercel-to-Railway API and browser auth flow` |
-| Last update | `2026-10-12 — Codex + Pauli/Mill review — pushed develop, provisioned Neon/Upstash targets, created Railway API/worker setup, and verified Vercel preview; hosted API remains blocked by guarded variables and Railway plan capacity` |
+| Current blockers | `Railway Free-plan resource provision limit prevents production project/service creation; production provider credentials remain incomplete; Railway API hostname and DNS record cannot be generated until a healthy production service exists; migrations and full browser-to-API verification remain pending` |
+| Last update | `2026-10-12 — Codex — created active production rollout goal; attached topteacheracademy.com to Vercel Production and saved the Vercel apex CNAME in Cloudflare; Railway production project creation blocked by Free-plan resource limit` |
 
 No deployment, DNS, account, provider, or secret changes are implied by this documentation update.
 

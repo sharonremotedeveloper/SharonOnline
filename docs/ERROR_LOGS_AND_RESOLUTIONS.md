@@ -736,3 +736,10 @@ def configure_test_settings(settings):
 - **Resolution:** No guard was bypassed and no fake provider credentials were added. The isolated Neon `development` branch and Upstash `sharon-online-development` Redis target were identified; remaining development credentials must be supplied/configured before redeploy.
 - **Related infrastructure blocker:** Railway rejected creation of the third `celery-beat` service because the current free-plan resource provision limit was exceeded. No upgrade or production resource was created.
 - **Verification:** Railway UI showed image build complete, deployment failed specifically at Network > Healthcheck; Vercel `bbd320c` preview is READY and renders the public shell, but catalog/currency data is unavailable because the API is not healthy.
+
+### ERR-515: Railway production resource creation blocked by Free plan
+
+- **Observed:** On 2026-10-12, creating an isolated Railway production project returned `Free plan resource provision limit exceeded. Please upgrade to provision more resources!`.
+- **Root cause:** The authenticated Railway workspace has insufficient remaining Free-plan resource capacity; the existing SharonRailway project is the development environment and must not be repurposed as production.
+- **Resolution:** No upgrade, billing change, unrelated-project reuse, or production service creation was performed. Vercel Production domain attachment and the Cloudflare apex record were completed independently; Railway API DNS remains pending.
+- **Verification:** Railway new-project UI displayed the upgrade requirement; Vercel reports `topteacheracademy.com` attached to Production with SSL certificate generation in progress; Cloudflare zone contains the Vercel-generated apex CNAME with proxy disabled.
