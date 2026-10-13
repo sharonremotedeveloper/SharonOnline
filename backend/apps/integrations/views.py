@@ -17,7 +17,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework.permissions import AllowAny
-from rest_framework.throttling import ScopedRateThrottle
+from apps.common.throttles import ResilientScopedRateThrottle as ScopedRateThrottle
+from apps.common.throttles import ObservedScopedRateThrottle
 
 from apps.admin_api.models import DisputeCase
 from apps.bookings.models import AttendanceAudit, Booking
@@ -81,6 +82,8 @@ class EskomStatusView(APIView):
 @extend_schema(responses=OpenApiTypes.OBJECT)
 class GoogleCalendarConnectView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsTeacher]
+    throttle_classes = [ObservedScopedRateThrottle]
+    throttle_scope = 'integration_write'
 
     def get(self, request):
         try:
@@ -94,6 +97,8 @@ class GoogleCalendarCallbackView(APIView):
     # Google redirects may not preserve the API session. The single-use state
     # nonce is the authentication binding for this callback.
     permission_classes = [AllowAny]
+    throttle_classes = [ObservedScopedRateThrottle]
+    throttle_scope = 'integration_callback'
 
     def get(self, request):
         serializer = GoogleCalendarCallbackSerializer(data=request.query_params)
@@ -120,6 +125,8 @@ class GoogleCalendarCallbackView(APIView):
 @extend_schema(exclude=True)
 class GoogleCalendarDisconnectView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsTeacher]
+    throttle_classes = [ObservedScopedRateThrottle]
+    throttle_scope = 'integration_write'
 
     @extend_schema(responses=OpenApiTypes.OBJECT)
     def post(self, request):

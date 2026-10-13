@@ -18,6 +18,15 @@ Whenever an error, test breakage, build failure, or unexpected API behavior occu
 
 ## 📋 Historical Error & Resolution Ledger
 
+### ERR-518: High-risk API reads/writes needed narrower throttles and purchase polling was unbounded
+
+- **Observed:** Public teacher-slot generation, booking creation, purchase-status checks, financial/document reads, and selected state-changing endpoints relied on broad default limits. The student wallet polled purchase status every two seconds without a maximum duration, visibility pause, cancellation, or `Retry-After` handling.
+- **Root cause:** Existing DRF/Redis throttling was strong for several authentication/payment paths but had no explicit policy for these higher-cost paths; the frontend used a fixed interval for an eventually consistent payment result.
+- **Resolution:** Added explicit DRF scopes using the existing Django cache/Redis architecture for public teacher/material directories and details, credit-pack listing, student/admin refund lists, and the previously identified high-risk paths. The application-wide resilient throttle wrappers now cover default anonymous/user throttles, older scoped throttles, and hashed login/reset-target throttles: bounded public safe-method reads fail open with a privacy-safe warning, while sensitive/state-changing/unknown scopes fail closed with a controlled 503. Existing username/email hashing and per-target limits are unchanged. Replaced the wallet interval with bounded exponential backoff, visibility-aware scheduling, `AbortController` cleanup, a two-minute/eight-attempt cap, and bounded `Retry-After` parsing. No Upstash SDK or provider setting was added.
+- **Verification:** Reproducible implementation-host evidence is the focused backend baseline (19 passed with `--no-migrations`) plus the expanded resilient-throttle suite (34 passed with `--no-migrations`), legacy login/reservation throttle regressions (8 passed), frontend tests (261 passed), ESLint, TypeScript, generated API contract checks, Ruff, and `git diff --check` passed. Independent reviewer reproduction recorded backend 15 passed plus 2 setup errors from the existing Windows migration-file permission issue; frontend checks were unavailable because dependencies/`tsx` were absent. Hosted/provider behavior remains pending separate acceptance.
+- **Status:** `RESOLVED LOCALLY`
+- **Logged By:** Codex
+
 | Error ID | Date | Component | Severity | Log / Stack Trace Summary | Root Cause Analysis | Fix Summary & Code Diff | Status | Logged By |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `ERR-001` | 2026-09-25 | Backend (Pytest) | `High` | `redis.exceptions.ConnectionError: Error 10061 connecting to 127.0.0.1:6379...` | Pytest suite attempted to connect to local host Redis server when running outside Docker container. | Updated `conftest.py` to override cache settings with `LocMemCache` and `CELERY_TASK_ALWAYS_EAGER = True`. | `RESOLVED` | Antigravity |

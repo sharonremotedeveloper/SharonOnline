@@ -5,11 +5,14 @@ from rest_framework import generics, permissions, filters, status
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+from apps.common.throttles import (
+    ObservedScopedRateThrottle,
+    ResilientScopedRateThrottle as ScopedRateThrottle,
+    ResilientUserRateThrottle as UserRateThrottle,
+)
 from rest_framework.views import APIView
 from django.db.models import Q
 from rest_framework.exceptions import NotFound, PermissionDenied
-from rest_framework.throttling import UserRateThrottle
 from apps.common import clock
 from apps.users.permissions import IsTeacher
 from .models import TeacherProfile, TeacherAvailability, TeacherDateOverride, TeacherTimeOff
@@ -29,6 +32,8 @@ from .services import availability
 class TeacherListView(generics.ListAPIView):
     serializer_class = TeacherListSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'public_teacher_directory'
 
     def get_queryset(self):
         queryset = TeacherProfile.objects.bookable().select_related('user')
@@ -69,6 +74,8 @@ class TeacherListView(generics.ListAPIView):
 class TeacherDetailView(generics.RetrieveAPIView):
     serializer_class = TeacherDetailSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'public_teacher_detail'
     lookup_field = 'id'
 
     def get_queryset(self):
@@ -260,6 +267,8 @@ class TeacherPowerBackupView(generics.UpdateAPIView):
     serializer_class = PowerBackupSerializer
     permission_classes = (permissions.IsAuthenticated, IsTeacher)
     http_method_names = ('patch',)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'teacher_settings'
 
     def get_object(self):
         if not hasattr(self.request.user, 'teacher_profile'):
@@ -297,6 +306,8 @@ class TeacherAssetCommitView(APIView):
 @extend_schema(responses=OpenApiTypes.OBJECT)
 class TeacherPrivateAssetDownloadView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'private_asset'
 
     def get(self, request, kind):
         teacher = getattr(request.user, 'teacher_profile', None)

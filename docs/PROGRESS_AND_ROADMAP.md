@@ -1,5 +1,17 @@
 # Engineering Delivery Roadmap & Progress Tracking
 
+## Current implementation progress — rate-limit and request-efficiency hardening (2026-10-14)
+
+- **Branch:** `develop` shared checkout; no worktree or separate branch used.
+- **Implemented:** targeted DRF/Redis scopes for public teacher slots, booking writes, purchase-status polling, financial reads/exports/documents, selected lesson/student/teacher/integration/admin/refund/CRM mutations, and private asset downloads.
+- **Implemented:** explicit scopes for public teacher/material directories and details, credit-pack listing, and student/admin refund lists; cheap bounded catalog reads fail open on Redis outage, while sensitive/state-changing/unknown scopes fail closed with a controlled 503.
+- **Implemented:** application-wide resilient wrappers for default anonymous/user throttles, older scoped throttles, and hashed login/reset-target throttles; existing identity hashing and rate behavior are preserved while Redis failures follow the same controlled policy.
+- **Implemented:** bounded five-minute HMAC-keyed abuse counters with once-per-window escalation events; no raw identifiers, request bodies, IPs, tokens, or secrets are stored or logged.
+- **Implemented:** bounded purchase-status polling with exponential backoff, visibility pause/resume, abort cancellation, a two-minute/eight-attempt cap, and bounded `Retry-After` handling.
+- **Tests added:** focused backend scope/enforcement/observability tests and frontend polling/Retry-After tests.
+- **Provider state:** no Railway, Vercel, DNS, Upstash, secret, or production setting changes were made.
+- **Verification status:** reproducible implementation-host evidence is the focused backend baseline (19 passed with `--no-migrations`) plus the expanded resilient-throttle suite (34 passed with `--no-migrations`), legacy login/reservation throttle regressions (8 passed), frontend tests (261 passed), Ruff, ESLint, full TypeScript, generated API contract checks, and `git diff --check` passed. Independent reviewer reproduction recorded backend 15 passed plus 2 setup errors from the existing Windows migration-file permission issue; frontend checks were unavailable there because dependencies/`tsx` were absent. Hosted/provider acceptance remains separate.
+
 ## 1. 6-Phase Delivery Roadmap
 
 ```mermaid

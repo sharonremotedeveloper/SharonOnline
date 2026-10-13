@@ -27,6 +27,15 @@ import { rememberPendingPayFast } from "@/lib/pendingPayment";
 import { ReceiptsList } from "@/components/student/ReceiptsList";
 import { ReceiptDrawer } from "@/components/wallet/ReceiptDrawer";
 import { creditsLabel } from "@/lib/rating";
+import { ApiError } from "@/lib/http";
+import {
+  PURCHASE_POLL_MAX_ATTEMPTS,
+  PURCHASE_POLL_MAX_DURATION_MS,
+  PURCHASE_POLL_FETCH_TIMEOUT_MS,
+  purchasePollDelayMs,
+  purchasePollRemainingMs,
+  retryAfterMs,
+} from "@/lib/purchasePolling";
 
 // Generated from the backend OpenAPI schema (`npm run gen:api`), so a contract change breaks the build instead of the page.
 type WalletResponse = components["schemas"]["Wallet"];
@@ -54,24 +63,110 @@ export default function StudentWalletPage() {
 
   useEffect(() => {
     if (!pendingPurchaseId) return;
-    const timer = window.setInterval(async () => {
+
+    let timer: number | undefined;
+    let attempts = 0;
+    let stopped = false;
+    const startedAt = Date.now();
+    let activeFetchController: AbortController | null = null;
+    let inFlight = false;
+    let resumeAfterFlight = false;
+
+    const clearTimer = () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+      timer = undefined;
+    };
+
+    const stopWithPendingNotice = () => {
+      stopped = true;
+      clearTimer();
+      setPurchaseNotice("Your payment is still processing. Refresh the wallet shortly to check for the final result.");
+    };
+
+    const poll = async () => {
+      if (stopped || inFlight || document.visibilityState !== "visible") return;
+      const remainingBeforeFetch = purchasePollRemainingMs(startedAt);
+      if (!remainingBeforeFetch) {
+        stopWithPendingNotice();
+        return;
+      }
+      attempts += 1;
+      inFlight = true;
+      const fetchController = new AbortController();
+      activeFetchController = fetchController;
+      const fetchTimeout = window.setTimeout(
+        () => fetchController.abort(),
+        Math.min(PURCHASE_POLL_FETCH_TIMEOUT_MS, remainingBeforeFetch),
+      );
       try {
-        const purchase = await api.getCreditPurchase(pendingPurchaseId);
+        const purchase = await api.getCreditPurchase(pendingPurchaseId, { signal: fetchController.signal });
+        if (stopped || document.visibilityState !== "visible") return;
         if (purchase.status === "success") {
-          window.clearInterval(timer);
+          stopped = true;
+          clearTimer();
           setPendingPurchaseId(null);
           setPurchaseNotice(`${purchase.pack.name} was confirmed and the credits are now in your wallet.`);
           reload();
         } else if (purchase.status === "failed" || purchase.status === "refunded") {
-          window.clearInterval(timer);
+          stopped = true;
+          clearTimer();
           setPendingPurchaseId(null);
           setPurchaseNotice(`Purchase ${pendingPurchaseId} is ${purchase.status}; no new credits were added.`);
+        } else if (attempts >= PURCHASE_POLL_MAX_ATTEMPTS || Date.now() - startedAt >= PURCHASE_POLL_MAX_DURATION_MS) {
+          stopWithPendingNotice();
+        } else {
+          const remaining = purchasePollRemainingMs(startedAt);
+          if (!remaining) stopWithPendingNotice();
+          else timer = window.setTimeout(poll, purchasePollDelayMs(attempts, undefined, remaining));
         }
       } catch (err) {
-        console.error("Credit purchase status poll failed:", err);
+        if (stopped || document.visibilityState !== "visible") return;
+        if (attempts >= PURCHASE_POLL_MAX_ATTEMPTS || Date.now() - startedAt >= PURCHASE_POLL_MAX_DURATION_MS) {
+          stopWithPendingNotice();
+          return;
+        }
+        const retryAfter = err instanceof ApiError && err.status === 429 ? retryAfterMs(err.retryAfter) : undefined;
+        const remaining = purchasePollRemainingMs(startedAt);
+        if (!remaining) stopWithPendingNotice();
+        else timer = window.setTimeout(poll, purchasePollDelayMs(attempts, retryAfter, remaining));
+      } finally {
+        window.clearTimeout(fetchTimeout);
+        if (activeFetchController === fetchController) activeFetchController = null;
+        inFlight = false;
+        if (resumeAfterFlight && !stopped && document.visibilityState === "visible") {
+          resumeAfterFlight = false;
+          timer = window.setTimeout(poll, 0);
+        }
       }
-    }, 2000);
-    return () => window.clearInterval(timer);
+    };
+
+    const onVisibilityChange = () => {
+      clearTimer();
+      if (document.visibilityState !== "visible") {
+        resumeAfterFlight = true;
+        activeFetchController?.abort();
+        return;
+      }
+      if (!stopped) {
+        if (inFlight) resumeAfterFlight = true;
+        else {
+          // The hidden transition may have marked a resume as pending even if
+          // no request was active. Consume it here so the next finally block
+          // cannot schedule a second loop.
+          resumeAfterFlight = false;
+          timer = window.setTimeout(poll, 0);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    timer = window.setTimeout(poll, purchasePollDelayMs(0));
+    return () => {
+      stopped = true;
+      clearTimer();
+      activeFetchController?.abort();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [pendingPurchaseId, reload]);
 
   // ZAR packs go through PayFast (signed redirect); every other currency is paid with the PayPal buttons.

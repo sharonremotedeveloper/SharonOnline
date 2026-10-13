@@ -9,7 +9,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, permissions, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from rest_framework.throttling import UserRateThrottle
+from apps.common.throttles import ResilientUserRateThrottle as UserRateThrottle
 from rest_framework.views import APIView
 
 from apps.notifications import registry

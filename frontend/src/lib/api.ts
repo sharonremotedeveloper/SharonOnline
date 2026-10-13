@@ -701,8 +701,8 @@ export const api = {
     return [];
   },
 
-  async getCreditPurchase(purchaseId: string) {
-    const live = await liveRequest(`${API_BASE}/payments/credit-purchases/${purchaseId}/`, {});
+  async getCreditPurchase(purchaseId: string, init: RequestInit = {}) {
+    const live = await liveRequest(`${API_BASE}/payments/credit-purchases/${purchaseId}/`, init);
     if (live !== MOCK) return live;
     throw new Error("Credit purchase status is unavailable in mock mode.");
   },

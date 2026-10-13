@@ -1,7 +1,7 @@
-from rest_framework.throttling import ScopedRateThrottle
+from apps.common.throttles import ResilientScopedRateThrottle
 
 
-class WritesOnlyScopedThrottle(ScopedRateThrottle):
+class WritesOnlyScopedThrottle(ResilientScopedRateThrottle):
     """
     Rate-limits only changes (POST / PATCH / PUT / DELETE). The payout-settings endpoint re-checks the user's password on every
     change, so without this a stolen session could guess it at the default 300 requests a minute. Reading the masked
