@@ -776,3 +776,37 @@ def configure_test_settings(settings):
 - **Root cause:** The production Railway API service does not yet exist, so no verified HTTPS API origin is available.
 - **Resolution:** Added only the values whose production targets are already authoritative. Deferred `INTERNAL_API_URL` and the Vercel production deployment until Railway produces a healthy API hostname.
 - **Verification:** Vercel environment-variable UI confirmed the four Production variables were added; the project domain reports `Valid Configuration`.
+
+### ERR-518: Isolated Railway production rollout remains blocked by fail-closed production settings
+
+- **Observed:** On 2026-10-14, Railway successfully created isolated project `SharonOnlineProduction` with API, Celery worker, and one Celery Beat service from `sharonremotedeveloper/SharonOnline@develop`. The image builds completed, but the worker runtime exited on the production configuration guard; the API and follow-up rollouts were still deploying at the last snapshot.
+- **Root cause:** Production credentials and authoritative origins were intentionally not present. The guard reported missing or unsafe `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `FRONTEND_BASE_URL`, `RESEND_API_KEY`, `DAILY_API_KEY`, `DAILY_DOMAIN`, `DAILY_WEBHOOK_SECRET`, `ESKOMSEPUSH_API_KEY`, `PAYOUT_DATA_KEYS`, `INTEGRATION_DATA_KEYS`, `CLOUDFLARE_R2_PRIVATE_BUCKET_NAME`, `THROTTLE_NUM_PROXIES`/`BEHIND_NO_PROXY`, and `REFUND_GATEWAY_BACKEND`; it also reported blank `ADMIN_ALERT_RECIPIENTS` and disabled `TUTOR_TRAINING_GATE_ENABLED`.
+- **Resolution:** No development Redis, development credentials, production secrets, placeholder values, or unrelated Railway project were reused. Only non-secret service structure/settings and `DJANGO_SETTINGS_MODULE`/API `PORT` were configured. The Railway-generated API domain is `api-production-production-d7b0.up.railway.app`.
+- **Verification:** Project `4ce0d52f-2b46-41d8-aad9-8823029532ee`, environment `02470be8-1714-4e9e-95ab-20cee5ac0101`; services `7c5004c4-05ee-4e46-8512-5fcbe2dcbf53`, `0f64d932-0cec-4ceb-8160-2422a70fb32f`, and `34577807-2006-4f75-867b-ea4c56e37904`; initial deployments were `b5e3f676-c87b-4966-8da5-bd94e920593f`, `37a48e5d-708f-4314-8b4c-81c376db7f19`, and `0ecf3bd6-71a6-42c2-add6-35df41249be6`; current follow-up deployments were `c8a60b2f-cf76-44f8-9729-ca9fc313df4e`, `d4ead557-2073-4e9e-9c59-0e7d8668f566`, and `0eac46c9-44cd-402a-8956-df638861acef`. Railway domain status is Railway-managed with target port 8000 and no DNS/TLS action required.
+
+### ERR-519: Railway environment-status request exceeded tool limit
+
+- **Observed:** A read-only environment-status call was rejected because `limit: 50` exceeded the tool maximum of 10.
+- **Root cause:** The first capacity/status query used an out-of-range page size.
+- **Resolution:** Retried with `limit: 10`; no Railway state was changed by the rejected request.
+- **Verification:** The corrected status calls returned the three-service production environment and deployment states.
+
+### ERR-520: Current provider recheck found mismatched or insufficient access scopes
+
+- **Observed:** On 2026-10-14, Vercel authenticated as `sharonremotedeveloper@gmail.com` but project-scoped reads for `sharon-team1/sharon-online` returned 403; Neon MCP authenticated to `MetaBox` / `org-ancient-dew-43434004` rather than the registered Sharon organization; the open Cloudflare tab showed `Teachersharone Gmail's Account` / `30971c1f8b0cb0fae652fed13a4288c9`; Upstash identity and billing were not verifiable through the available browser binding.
+- **Root cause:** Provider sessions/connectors are not uniformly scoped to the mandatory Sharon account, and Vercel's project scope is not authorized for the current connector.
+- **Resolution:** Stopped Neon work at the account gate. Did not change Vercel environment variables, domains, Cloudflare DNS, Upstash billing, or Redis databases. No secrets were read or recorded.
+- **Verification:** Railway and Vercel user identity checks matched the mandatory account; Vercel project reads remained 403; current Railway production API has no domain and remains unhealthy, so no exact production API URL exists to configure.
+
+### ERR-521: Railway production API has no usable hostname and fails healthcheck
+
+- **Observed:** Railway deployment `27aa82c3-ea07-4048-82e6-ef65dc87266a` for `backend-api-production` at commit `dcaa9c7b92156e5e08d89ce550b08c26e09127aa` is `FAILED` at `/api/health/`; the service has no Railway-generated or custom domain.
+- **Root cause:** The production settings guard rejects missing real provider/security variables, including origins, email, Daily, EskomSePush, encryption keyrings, and private R2 configuration; the service therefore never becomes healthy or eligible for a production hostname.
+- **Resolution:** No guard bypass, fake credentials, deployment, staged-patch commit, or domain creation was performed.
+- **Verification:** Latest deployment status, service domain inventory, staged patch `3a580cef-6dfb-4e7b-ad36-6fd23d8a7ce2`, and deployment logs were read through the authenticated Railway MCP; variable values remained redacted.
+
+### ERR-522: Earlier provider-blocker snapshot superseded by production provisioning
+
+- **Observed:** Subsequent authorized execution created canonical Railway project `sharon-online-prod` (`e2b11747-5519-4139-bd34-a658affea42a`) with API, worker, and one Beat service from `develop` at `dcaa9c7`; created separate production Upstash Redis; configured Vercel production `INTERNAL_API_URL`; and added Cloudflare `www` and `api` DNS-only records.
+- **Resolution:** The earlier ERR-520/ERR-521 account and hostname statements remain historical observations only. Current API health is still blocked by missing guarded production provider secrets; no guard bypass or development-resource reuse occurred.
+- **Verification:** Worker and Beat are online; API is rebuilding after encrypted production Redis and safe non-secret configuration were applied. Vercel reports both production domains valid. Full hosted acceptance remains open.

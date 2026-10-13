@@ -10,7 +10,7 @@
 - **Implemented:** bounded five-minute HMAC-keyed abuse counters with once-per-window escalation events; no raw identifiers, request bodies, IPs, tokens, or secrets are stored or logged.
 - **Implemented:** bounded purchase-status polling with exponential backoff, visibility pause/resume, abort cancellation, a two-minute/eight-attempt cap, and bounded `Retry-After` handling.
 - **Tests added:** focused backend scope/enforcement/observability tests and frontend polling/Retry-After tests.
-- **Provider state:** no Railway, Vercel, DNS, Upstash, secret, or production setting changes were made.
+- **Provider state:** on 2026-10-14, Railway account `sharonremotedeveloper@gmail.com` was reverified and isolated project `SharonOnlineProduction` (`4ce0d52f-2b46-41d8-aad9-8823029532ee`) was created in the verified Sharon workspace. Its production environment contains only `api-production`, `celery-worker-production`, and one `celery-beat-production`, all sourced from `sharonremotedeveloper/SharonOnline@develop`; no development Redis, credentials, production secrets, volumes, buckets, or shared variables were reused. The Railway-generated API domain is `https://api-production-production-d7b0.up.railway.app` (port 8000). Worker and Beat are online; the API is offline because the production settings guard correctly rejects the missing secret/provider/origin variables. Exact names are recorded in `docs/ERROR_LOGS_AND_RESOLUTIONS.md` without values.
 - **Verification status:** reproducible implementation-host evidence is the focused backend baseline (19 passed with `--no-migrations`) plus the expanded resilient-throttle suite (34 passed with `--no-migrations`), legacy login/reservation throttle regressions (8 passed), frontend tests (261 passed), Ruff, ESLint, full TypeScript, generated API contract checks, and `git diff --check` passed. Independent reviewer reproduction recorded backend 15 passed plus 2 setup errors from the existing Windows migration-file permission issue; frontend checks were unavailable there because dependencies/`tsx` were absent. Hosted/provider acceptance remains separate.
 
 ## 1. 6-Phase Delivery Roadmap
@@ -313,7 +313,24 @@ The mandatory working rules and architecture are in [`VERCEL_DUAL_ENVIRONMENT_WO
 | Current blockers | `Railway production API healthcheck fails on dcaa9c7 and has no public domain; production worker/beat and migration release are not live; development and production Railway patches remain staged; production provider/security variables remain incomplete; Upstash production isolation remains unverified; Vercel production INTERNAL_API_URL remains intentionally unset; exact-SHA cross-provider acceptance, migrations, and full browser-to-API verification remain pending.` |
 | Last update | `2026-10-14 — Codex — read-only reconciliation confirmed Railway identity, current development/production service states, deployment SHAs, domains, and staged patches; Vercel account identity matched but project-scope inspection returned 403. No deployment, DNS, account, provider, or secret changes were made.` |
 
-No deployment, DNS, account, provider, or secret changes are implied by this documentation update.
+This section is historical and does not describe the current hosted state. The current deployment record below supersedes it.
+
+#### 2026-10-14 provider recheck addendum
+
+- Vercel MCP identity matched `sharonremotedeveloper@gmail.com` (user `zjiab99hznsgaikcN2Y8mfP2`). The only visible project is `sharon-online` (`prj_MykRDbBeFJm2Oypwf9SUIojqizK6`) with generated domains only; project-scoped environment/domain reads returned 403 for `sharon-team1`, so no Vercel mutation was attempted.
+- Railway MCP identity matched `sharonremotedeveloper@gmail.com`. Production `backend-api-production` (`9156b091-5982-4873-a84a-cb6b7d634a78`) has no service domain, no custom domain, and latest deployment `27aa82c3-ea07-4048-82e6-ef65dc87266a` is `FAILED` at `/api/health/` on `dcaa9c7b92156e5e08d89ce550b08c26e09127aa`; the production patch `3a580cef-6dfb-4e7b-ad36-6fd23d8a7ce2` remains staged.
+- Neon MCP returned organization `org-ancient-dew-43434004` (`MetaBox`), not the registered Sharon organization, so no Neon provisioning or database mutation was performed. Cloudflare browser state showed the mismatched `Teachersharone Gmail's Account` (`30971c1f8b0cb0fae652fed13a4288c9`), and Upstash account/billing could not be verified through the available browser binding; no DNS, Redis, billing, or secret changes were made.
+- The addendum above is superseded by the 2026-10-14 execution record below.
+
+#### 2026-10-14 execution update
+
+- Canonical production Railway project: `sharon-online-prod` (`e2b11747-5519-4139-bd34-a658affea42a`) in production environment `dd70ab8a-91c2-47cb-ba27-cdab00a38d74`, Hobby plan.
+- Canonical services are `backend-api-production`, `celery-worker-production`, and exactly one `celery-beat-production`, all sourced from `sharonremotedeveloper/SharonOnline` on `develop` at `dcaa9c7b92156e5e08d89ce550b08c26e09127aa`.
+- Worker and Beat are online. API deployment is rebuilding after encrypted Redis and safe production configuration were added; health acceptance is still pending until all guarded provider secrets are present.
+- Production Upstash database `sharon-online-production` was created in Ohio on Pay As You Go. Development Redis remains separate with its `$20` cap. Production credentials were added only as encrypted Railway variables.
+- Vercel Production `INTERNAL_API_URL` is set to `https://backend-api-production-production.up.railway.app`; Cloudflare retains the apex Vercel record and has `www` plus `api` DNS-only CNAMEs. Vercel reports `topteacheracademy.com` and `www.topteacheracademy.com` as Valid Configuration.
+- A second isolated Railway project, `SharonOnlineProduction`, was created in parallel and is not canonical; it remains unused pending explicit deletion approval.
+- Remaining gates: production provider secrets (Neon, Resend, Daily, EskomSePush, R2, keyrings), API health, migration release, Vercel redeploy, end-to-end browser/API/database verification, monitoring/backup/rollback evidence, and final documentation commit.
 
 ---
 
