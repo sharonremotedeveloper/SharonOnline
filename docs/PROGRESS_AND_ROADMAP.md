@@ -332,6 +332,14 @@ This section is historical and does not describe the current hosted state. The c
 - A second isolated Railway project, `SharonOnlineProduction`, was created in parallel and is not canonical; it remains unused pending explicit deletion approval.
 - Remaining gates: production provider secrets (Neon, Resend, Daily, EskomSePush, R2, keyrings), API health, migration release, Vercel redeploy, end-to-end browser/API/database verification, monitoring/backup/rollback evidence, and final documentation commit.
 
+#### 2026-10-14 live execution checkpoint
+
+- Railway production variables were rechecked through the authenticated Sharon workspace without recording values. The canonical pooled `DATABASE_URL` and `DATABASE_URL_UNPOOLED` are present on API, worker, and Beat; Daily API key/domain and the generated application webhook secret are present on all three services; production R2, Redis, keyrings, origins, and guard controls remain isolated from development.
+- Production worker deployment `9c14291f-03b6-4fbe-ab57-cd30877cd8c6` and Beat deployment `c907d673-7d44-4551-aeda-5607ae5957b7` completed successfully from `develop` at `3c9edd65cf42803785e1243f61cac56452f1d39c`.
+- Production API deployment `8260bfae-f42d-45d6-8521-41f39c38e5f9` failed closed at startup. The authoritative remaining fatal guard errors are `RESEND_API_KEY` and `ESKOMSEPUSH_API_KEY`; no development credential or placeholder was copied. The Railway API domain is confirmed as `https://backend-api-production-production.up.railway.app`.
+- Resend currently has one existing masked “Onboarding” key and does not reveal its token again. EskomSePush has no authenticated usable production key in the available session. Creating a new Resend API key and acquiring an EskomSePush key remain owner/provider gates; no purchase or fake credential was attempted.
+- Vercel project-scoped reads still return HTTP 403 for `sharon-team1/sharon-online`; current Vercel/DNS state therefore remains unverified despite earlier browser observations. Full hosted acceptance is still open.
+
 ---
 
 ## 6. Technical-debt remediation batches (started 2026-10-02)
