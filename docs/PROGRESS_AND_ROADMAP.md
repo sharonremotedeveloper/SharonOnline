@@ -338,7 +338,13 @@ This section is historical and does not describe the current hosted state. The c
 - Production worker deployment `9c14291f-03b6-4fbe-ab57-cd30877cd8c6` and Beat deployment `c907d673-7d44-4551-aeda-5607ae5957b7` completed successfully from `develop` at `3c9edd65cf42803785e1243f61cac56452f1d39c`.
 - Production API deployment `8260bfae-f42d-45d6-8521-41f39c38e5f9` failed closed at startup. The authoritative remaining fatal guard errors are `RESEND_API_KEY` and `ESKOMSEPUSH_API_KEY`; no development credential or placeholder was copied. The Railway API domain is confirmed as `https://backend-api-production-production.up.railway.app`.
 - Resend currently has one existing masked “Onboarding” key and does not reveal its token again. EskomSePush has no authenticated usable production key in the available session. Creating a new Resend API key and acquiring an EskomSePush key remain owner/provider gates; no purchase or fake credential was attempted.
-- Vercel project-scoped reads still return HTTP 403 for `sharon-team1/sharon-online`; current Vercel/DNS state therefore remains unverified despite earlier browser observations. Full hosted acceptance is still open.
+- The Vercel MCP connector still returns HTTP 403 for `sharon-team1/sharon-online`, but the Sharon-authenticated browser session now provides project access. Current Vercel/DNS state is therefore partially verified in-browser; full hosted acceptance remains open.
+
+#### 2026-10-14 Vercel browser access recheck
+
+- **Observed account:** The authenticated Sharon browser session is `sharonremotedeveloper` in the `SharonTeam` Vercel team; the project `sharon-online` is readable in the dashboard.
+- **Observed production state:** The production deployment is `Ready`, sourced from `develop` at the older SHA `12d5ca3`, and the dashboard shows `topteacheracademy.com` plus two additional domains. This is browser evidence of current Vercel project/domain access, not proof that the current `develop` commit is deployed or that the API path is healthy.
+- **Required follow-up:** After the Railway API is healthy, deploy the exact approved `develop` SHA, inspect the full domain list and production environment variables from the Sharon-scoped session, then complete browser/API/database/provider acceptance.
 
 #### 2026-10-14 Codex migration-release implementation start
 
