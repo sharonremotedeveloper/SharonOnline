@@ -1,4 +1,4 @@
-# Railway First-Time Setup (MANDATORY before any agent touches Railway)
+# Railway First-Time Setup and Current Deployment State (MANDATORY before any agent touches Railway)
 
 **Applies to:** Claude, Codex, Antigravity/Gemini, and humans.
 **Prerequisite:** read [`TOOL_ACCESS_AND_ACCOUNTS.md`](./TOOL_ACCESS_AND_ACCOUNTS.md). Railway must be used **only** under `sharonremotedeveloper@gmail.com`.
@@ -9,6 +9,8 @@
 | Account | `sharonremotedeveloper@gmail.com` (nothing else) |
 | Intended role | Hosts the Django API and Celery worker/beat (see `ENVIRONMENT_AND_TESTING.md` §4). Postgres = Neon, Redis = Upstash (not Railway add-ons unless Anesu decides otherwise). |
 | Container source | `Project-files/backend/Dockerfile` |
+
+**Read-only state checked 2026-10-14:** Railway identity matched `sharonremotedeveloper@gmail.com`. `SharonRailway` has `development` and `production` environments. The development API, worker, and beat services all have successful deployments from `develop` commit `dcaa9c7`; the production API service exists but its `dcaa9c7` deployment failed at `/api/health/`. No variables, secrets, domains, staged changes, or infrastructure were changed by this check.
 
 ---
 
@@ -39,11 +41,14 @@ If `railway link` asks for an environment or service, pick the one Anesu names; 
 
 | Service | Command | Notes |
 | :--- | :--- | :--- |
-| `api` | Gunicorn serving `config.wsgi` (settings `config.settings.production`) | Public domain; health check `GET /api/health/` |
-| `celery-worker` | `celery -A config worker -l info -c 2 -Q celery,scheduler_beat,financial_escrow,notifications,critical_io` | Must consume all five queues |
-| `celery-beat` | `celery -A config beat -l info` | Exactly one instance (beat is not horizontally scalable) |
+| Environment / service | Current read-only state | Evidence |
+| :--- | :--- | :--- |
+| development / `backend-api-development` | SUCCESS from develop / dcaa9c7; Railway domain `backend-api-development-development-9d0e.up.railway.app`; health check `/api/health/` | Deployment `12d3dd2a-8fed-477e-bea8-214b8bbccaba` |
+| development / `celery-worker-development` | SUCCESS from develop / dcaa9c7 | Deployment `aff043fc-cf59-4e93-ac99-8eb6ebca9a9e` |
+| development / `celery-beat-development` | SUCCESS from develop / dcaa9c7 | Deployment `426d93fe-9746-4db9-9317-c8d4b4935f73` |
+| production / `backend-api-production` | FAILED from develop / dcaa9c7 at `/api/health/`; no Railway service domain; no live production worker/beat | Deployment `27aa82c3-ea07-4048-82e6-ef65dc87266a` |
 
-Status: **none verified** — update this table after the first confirmed `railway status`.
+Staged-but-not-deployed state observed read-only: development patch `192cc8f3-5894-404d-b390-9b706586a046` contains three Daily-related changes; production patch `3a580cef-6dfb-4e7b-ad36-6fd23d8a7ce2` contains six changes. Variable values were not read.
 
 ## 3. Variables & secrets
 
@@ -60,5 +65,7 @@ Status: **none verified** — update this table after the first confirmed `railw
 | Step | State |
 | :--- | :--- |
 | CLI installed (5.59.0) | Present |
-| Login as `sharonremotedeveloper@gmail.com` | **BLOCKED — CLI currently logged in as `anesu@intern-mail.metabox.technology`; Anesu must re-login** |
-| `railway link` to `816aac81-…` | Not done (blocked by gate) |
+| Account identity | **CONFIRMED 2026-10-14 by read-only Railway MCP identity check: `sharonremotedeveloper@gmail.com`** |
+| `SharonRailway` project | **CONFIRMED 2026-10-14; development and production environments visible** |
+| Current service/deployment state | **CONFIRMED 2026-10-14; see §2. No changes made.** |
+| `railway link` to `816aac81-…` | Not checked or changed; local CLI linkage is not required for the read-only MCP evidence |

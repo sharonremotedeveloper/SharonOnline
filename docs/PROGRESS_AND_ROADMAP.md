@@ -3,6 +3,7 @@
 ## Current implementation progress — rate-limit and request-efficiency hardening (2026-10-14)
 
 - **Branch:** `develop` shared checkout; no worktree or separate branch used.
+- **Exact revision:** `dcaa9c7b92156e5e08d89ce550b08c26e09127aa` (`Add resilient rate limiting and request controls`), with local `HEAD` and the local `origin/develop` ref aligned.
 - **Implemented:** targeted DRF/Redis scopes for public teacher slots, booking writes, purchase-status polling, financial reads/exports/documents, selected lesson/student/teacher/integration/admin/refund/CRM mutations, and private asset downloads.
 - **Implemented:** explicit scopes for public teacher/material directories and details, credit-pack listing, and student/admin refund lists; cheap bounded catalog reads fail open on Redis outage, while sensitive/state-changing/unknown scopes fail closed with a controlled 503.
 - **Implemented:** application-wide resilient wrappers for default anonymous/user throttles, older scoped throttles, and hashed login/reset-target throttles; existing identity hashing and rate behavior are preserved while Redis failures follow the same controlled policy.
@@ -276,35 +277,41 @@ Full detail and evidence: [`GAP_ANALYSIS_AND_LAUNCH_TIMELINE_2026-10-07.md`](GAP
 
 ### 5.2 Vercel dual-environment deployment workstream
 
-**Status:** `IN PROGRESS - shared-branch API boundary slice implemented locally; hosted provisioning not started`
+**Status:** `IN PROGRESS - shared develop branch is at dcaa9c7; Railway development services are healthy on that SHA, while the Railway production API deployment at the same SHA fails its healthcheck. Vercel project state is last browser-observed on 2026-10-12; the current connector account check cannot inspect the sharon-team1 project scope.`
 
 The mandatory working rules and architecture are in [`VERCEL_DUAL_ENVIRONMENT_WORKING_PROTOCOL.md`](./VERCEL_DUAL_ENVIRONMENT_WORKING_PROTOCOL.md). All agents on this stream work in the same shared branch; they do not create separate branches or worktrees unless Anesu explicitly changes that instruction. Every agent must update the progress record at start, checkpoint, handoff, and stop.
+
+#### Hosted-state classification (evidence dated 2026-10-14)
+
+- **Confirmed:** the shared repository is on `develop` at `dcaa9c7`, the local `origin/develop` ref matches, and the read-only Railway check observed all three development services (`backend-api-development`, `celery-worker-development`, and `celery-beat-development`) successful from that SHA. The development API domain and deployment IDs are recorded below. The Railway and Vercel account identities matched the authorized account; no variable values, secrets, settings, deployments, DNS, or infrastructure were changed.
+- **Unverified:** current Vercel project/deployment state, current Neon/Upstash/Cloudflare state, current Vercel production variable values, current DNS resolution, migration application, monitoring/backups/restore, and browser-to-API/provider acceptance. The last Vercel project evidence is the 2026-10-12 browser observation; the 2026-10-14 project-scope inspection returned 403.
+- **Blocked:** the Railway production API deployment from `dcaa9c7` failed its `/api/health/` check and has no Railway domain; no production worker/beat is live; production provider/security variables and both environment patches remain incomplete or staged; production Redis isolation, one-shot migrations, exact-SHA cross-provider acceptance, and the production `INTERNAL_API_URL` therefore remain blocked or deferred.
 
 | Field | Current status |
 | :--- | :--- |
 | Shared deployment branch | `develop` (designated 2026-10-12) |
 | Starting commit | `2c1221ff54bc02798b45b2e60a08987034663a06` (`fix(security): reject simulated Daily credentials in production`) |
-| Current commit | `fe74f02` (`docs(deploy): record hosted development blockers`) |
-| Working-tree slice | `Server-only API boundary: production requires validated INTERNAL_API_URL; no NEXT_PUBLIC_API_URL or localhost fallback; production compose updated; focused tests added` |
-| Development Vercel project/URL | `Confirmed: sharon-online project; develop preview visible at sharon-online-git-develop-sharon-team1.vercel.app` |
-| Production Vercel project/domain | `topteacheracademy.com attached to sharon-online Production; Cloudflare apex CNAME added DNS-only; Vercel now reports Valid Configuration` |
-| Development backend/resources | `Railway SharonRailway confirmed under sharonremotedeveloper; API service backend-api-production created from develop/backend and image built, but healthcheck failed on missing guarded provider/security variables; worker service SharonOnline staged with develop/backend and Celery worker command; beat service blocked by Railway free-plan resource cap` |
-| Production backend/resources | `Not hosted; isolated Railway project creation blocked by Free-plan resource provision limit; no unrelated project repurposed` |
-| Exact-commit promotion pipeline | `Not implemented; develop commit bbd320c is pushed to origin and Vercel preview deployed from bbd320c` |
+| Current commit | `dcaa9c7b92156e5e08d89ce550b08c26e09127aa` (Add resilient rate limiting and request controls); origin/develop matches |
+| Working-tree slice | `Documentation-only reconciliation. Current develop also contains the server-only API boundary and rate-limit/request-control hardening; no provider or infrastructure change was made here.` |
+| Development Vercel project/URL | `Last browser-observed 2026-10-12: sharon-online project; develop preview visible at sharon-online-git-develop-sharon-team1.vercel.app. Current Vercel account is confirmed, but project inspection returned 403 for the sharon-team1 scope; no Vercel setting or deployment was changed.` |
+| Production Vercel project/domain | `Last browser-observed 2026-10-12: topteacheracademy.com attached to sharon-online Production; Cloudflare apex CNAME saved DNS-only; Vercel reported Valid Configuration. Current project state was not re-verified because the Vercel project-scope query returned 403.` |
+| Development backend/resources | `Railway SharonRailway development has backend-api-development, celery-worker-development, and celery-beat-development; all latest deployments are SUCCESS from develop commit dcaa9c7 (2026-10-13), with API domain https://backend-api-development-development-9d0e.up.railway.app. Three Daily-related changes remain staged, not deployed (patch 192cc8f3-5894-404d-b390-9b706586a046); variable values were not read.` |
+| Production backend/resources | `Railway backend-api-production exists in the production environment; latest deployment is FAILED from develop commit dcaa9c7 at healthcheck /api/health/ (deployment 27aa82c3-ea07-4048-82e6-ef65dc87266a). It has no Railway service domain. Six production changes remain staged, not deployed (patch 3a580cef-6dfb-4e7b-ad36-6fd23d8a7ce2); no production worker/beat is live.` |
+| Exact-commit promotion pipeline | `Not implemented. Railway development is currently on dcaa9c7; the production API attempted dcaa9c7 but failed healthcheck. The last Vercel preview evidence is bbd320c, so cross-provider exact-SHA acceptance is not proven.` |
 | One-shot migration release | `Not implemented` |
-| Provider callbacks/secrets | `Vercel Production has public site URLs, TRUSTED_PROXY_COUNT=1, and a unique SESSION_SECRET; INTERNAL_API_URL is deferred until a healthy production Railway API exists; backend provider credentials remain incomplete` |
+| Provider callbacks/secrets | `Last verified Vercel Production values are public site URLs, TRUSTED_PROXY_COUNT=1, and a unique SESSION_SECRET; INTERNAL_API_URL remains intentionally deferred until a healthy production Railway API hostname exists. Railway provider/security variables remain incomplete or staged; values were not read.` |
 | Monitoring/backups/restore | `Not verified` |
-| Vercel account | `Confirmed in browser: sharonremotedeveloper; project sharon-online visible; no production deployment` |
-| Railway account | `Confirmed in browser: sharonremotedeveloper@gmail.com; SharonRailway project visible with no services` |
-| Neon account | `Confirmed in browser: sharonremotedeveloper@gmail.com; SharonOnline development branch br-withered-surf-b4bqx4nw exists and is active` |
-| Upstash development Redis | `Confirmed in browser: sharon-online-development / exact-raptor, AWS us-east-2, TLS enabled; URL staged only on API service` |
+| Vercel account | `Confirmed by read-only account check 2026-10-14: sharonremotedeveloper / sharonremotedeveloper@gmail.com. Project-scope inspection for sharon-team1 returned 403; no Vercel setting or deployment was changed.` |
+| Railway account | `Confirmed by read-only MCP identity check 2026-10-14: sharonremotedeveloper / sharonremotedeveloper@gmail.com; workspace sharonremotedeveloper's Projects; SharonRailway development and production environments visible.` |
+| Neon account | `Last browser-observed 2026-10-12: sharonremotedeveloper@gmail.com; SharonOnline development branch br-withered-surf-b4bqx4nw exists and is active. Not rechecked in this read-only reconciliation.` |
+| Upstash development Redis | `Last browser-observed 2026-10-12: sharon-online-development / exact-raptor, AWS us-east-2, TLS enabled; URL staged only on the development API service. Production isolation remains unverified.` |
 | Cloudflare/DNS account | `Cloudflare session confirmed as sharonremotedeveloper@gmail.com; Teachersharone account also visible` |
 | Domain found in Cloudflare | `topteacheracademy.com under Teachersharone account; confirmed correct by Anesu on 2026-10-12` |
-| DNS authority | `Cloudflare zone 617048a2d41d13e7f9ec6bdb154f0736; apex CNAME to Vercel-generated target saved DNS-only; Railway API record pending production service` |
-| Verification | `257 frontend tests passed; lint passed; generated API type check passed; Next.js production build passed with explicit local build env (static generation logged expected ECONNREFUSED because Django was not running)` |
-| Vercel development verification | `Preview for bbd320c is READY at the develop alias; browser root smoke rendered, but live API/catalog data is unavailable until Railway API passes healthcheck` |
-| Current blockers | `Railway Free-plan resource provision limit prevents production project/service creation; Upstash Free tier permits only the existing development database and blocks a separate production Redis; production backend/provider credentials remain incomplete; Railway API hostname and DNS record cannot be generated until a healthy production service exists; Vercel production INTERNAL_API_URL remains intentionally unset; migrations and full browser-to-API verification remain pending` |
-| Last update | `2026-10-12 — Codex — created active production rollout goal; attached topteacheracademy.com to Vercel Production and saved the Vercel apex CNAME in Cloudflare; Railway production project creation blocked by Free-plan resource limit` |
+| DNS authority | `Last browser-observed 2026-10-12: Cloudflare zone 617048a2d41d13e7f9ec6bdb154f0736; apex CNAME to Vercel-generated target saved DNS-only. Railway production API record remains absent because the production service has no Railway domain.` |
+| Verification | `Current implementation evidence is recorded above at dcaa9c7. Railway provider evidence on 2026-10-14: all three development services SUCCESS on dcaa9c7; production API FAILED at /api/health/ on dcaa9c7. Local tests and hosted/provider acceptance remain separate.` |
+| Vercel development verification | `Last browser-observed preview for bbd320c was READY at the develop alias and rendered the public shell; live API/catalog data was unavailable until the Railway API passed healthcheck. No current dcaa9c7 Vercel preview was confirmed because project-scope inspection returned 403.` |
+| Current blockers | `Railway production API healthcheck fails on dcaa9c7 and has no public domain; production worker/beat and migration release are not live; development and production Railway patches remain staged; production provider/security variables remain incomplete; Upstash production isolation remains unverified; Vercel production INTERNAL_API_URL remains intentionally unset; exact-SHA cross-provider acceptance, migrations, and full browser-to-API verification remain pending.` |
+| Last update | `2026-10-14 — Codex — read-only reconciliation confirmed Railway identity, current development/production service states, deployment SHAs, domains, and staged patches; Vercel account identity matched but project-scope inspection returned 403. No deployment, DNS, account, provider, or secret changes were made.` |
 
 No deployment, DNS, account, provider, or secret changes are implied by this documentation update.
 
