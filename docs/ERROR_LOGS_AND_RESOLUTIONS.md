@@ -818,3 +818,10 @@ def configure_test_settings(settings):
 - **Resolution:** No guard bypass, placeholder, development credential reuse, API-key creation, purchase, DNS mutation, or Vercel mutation was performed. Database and Daily configuration were applied through the canonical Railway production services without exposing secret values in the repository.
 - **Verification:** Railway variable-name reads are authoritative but values remain redacted; worker/Beat success and API failure are recorded by deployment IDs above. Vercel project-scoped reads remain HTTP 403, so Vercel/DNS and hosted browser acceptance remain unverified.
 - **Status:** `BLOCKED — requires a real Resend key and a real EskomSePush key or an owner decision to acquire them`
+
+### ERR-524: Local makemigrations check blocked by virtualenv file permissions
+
+- **Observed:** On 2026-10-14, `backend\venv\Scripts\python.exe manage.py makemigrations --check --dry-run` failed while Django loaded `rest_framework_simplejwt` migration `0010_fix_migrate_to_bigautofield.py`; `Path.resolve(strict=True)` raised `WinError 5: Access is denied` for that installed site-package file.
+- **Root cause:** The local virtualenv dependency file is not readable/resolvable by the current process. This is outside the repository migration graph and is not evidence of a migration diff.
+- **Resolution:** No dependency or permissions were changed. `manage.py check`, focused migration-release tests, and Python compilation were run independently. A clean migration-check result remains pending a repaired/recreated virtualenv or CI runner.
+- **Environment/resource touched:** `none`; no database connection or migration was attempted.

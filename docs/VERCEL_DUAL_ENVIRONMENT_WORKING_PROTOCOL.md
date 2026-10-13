@@ -102,7 +102,7 @@ The Next.js server-side BFF must remain the only browser-to-Django path. Product
 
 Development and production must have separate Railway API/worker/beat services, Neon databases, Upstash databases, R2 credentials, Daily credentials/webhooks, Google OAuth clients/callbacks, Resend secrets, and payment credentials. PayPal and PayFast remain sandbox-only until Anesu explicitly authorizes live mode.
 
-The production compose file is not itself proof of a hosted contract. Hosted services must have explicit commands, health checks, environment-variable contracts, source SHA or immutable image digest, worker/beat compatibility, and a separate one-shot migration release.
+The production compose file is not itself proof of a hosted contract. Hosted services must have explicit commands, health checks, environment-variable contracts, source SHA or immutable image digest, worker/beat compatibility, and a separate one-shot migration release. The repository's guarded release entrypoint is `backend/scripts/run_production_migrations.py`; it requires `DJANGO_SETTINGS_MODULE=config.settings.production`, maps `DATABASE_URL_UNPOOLED` to Django's migration connection, requires explicit `PRODUCTION_MIGRATION_APPROVED=true` for `--apply`, and rejects arbitrary migration flags. It must be run only after an expand/contract plan review; this change does not apply migrations.
 
 ## 6. Promotion rule
 

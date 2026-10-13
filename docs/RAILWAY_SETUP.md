@@ -60,7 +60,46 @@ Staged-but-not-deployed state observed read-only: development patch `192cc8f3-58
 
 `railway up`, redeploys, restarts, variable changes, domain changes, and deleting services/volumes/environments are outward-facing. **Do not run any of them without Anesu's explicit go-ahead in chat for that specific action**, and only after the §0 gate passes. Run `python manage.py check`, `makemigrations --check` and `pytest` first (collab Rule 6). Reading logs (`railway logs`) and `railway status` are safe once the gate passes.
 
-## 5. Status
+## 5. One-shot production migration release
+
+The migration job is a separate Railway release using the same backend image and
+exact source SHA as the API/worker/beat release. It must not be attached to the
+API startup command and must not share a pooled application connection.
+
+Use this command for the one-shot service/release command:
+
+```text
+python scripts/run_production_migrations.py --apply
+```
+
+The release must provide these environment variables through Railway's
+encrypted variable store (never in source or logs):
+
+```text
+DJANGO_SETTINGS_MODULE=config.settings.production
+DATABASE_URL_UNPOOLED=<Neon direct/unpooled URL>
+PRODUCTION_MIGRATION_APPROVED=true
+```
+
+`run_production_migrations.py` maps the explicit unpooled URL to Django's
+`DATABASE_URL` only inside the child migration process. It refuses local/Docker
+targets, refuses to run without the exact production settings module, requires
+an explicit approval flag for `--apply`, and accepts no arbitrary Django
+migration arguments (`--fake`, `--run-syncdb`, or a partial target). `--plan`
+is the non-applying preview mode.
+
+Before setting `PRODUCTION_MIGRATION_APPROVED`, review the plan against the
+expand/contract policy and confirm a current Neon restore point/backup through
+the owner-controlled database workflow. This implementation does not run a
+migration, create a restore point, change Railway, or alter provider
+infrastructure. Do not use this path for destructive schema changes; split
+those into an explicitly reviewed, backwards-compatible release first.
+
+The job is complete only after its exit code, exact source SHA, migration plan
+or applied version, and target environment are recorded. A successful local
+test or image build is not production migration evidence.
+
+## 6. Status
 
 | Step | State |
 | :--- | :--- |

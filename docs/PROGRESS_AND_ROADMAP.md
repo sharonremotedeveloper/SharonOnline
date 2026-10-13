@@ -340,6 +340,31 @@ This section is historical and does not describe the current hosted state. The c
 - Resend currently has one existing masked “Onboarding” key and does not reveal its token again. EskomSePush has no authenticated usable production key in the available session. Creating a new Resend API key and acquiring an EskomSePush key remain owner/provider gates; no purchase or fake credential was attempted.
 - Vercel project-scoped reads still return HTTP 403 for `sharon-team1/sharon-online`; current Vercel/DNS state therefore remains unverified despite earlier browser observations. Full hosted acceptance is still open.
 
+#### 2026-10-14 Codex migration-release implementation start
+
+- **Agent/time:** Codex — 2026-10-14 (Indian/Mauritius)
+- **Shared branch / starting commit:** `develop` / `f535ba5` (`docs(deploy): record live production guard checkpoint`); working tree clean.
+- **Scope:** Implement a guarded, explicit one-shot production migration release path using `DJANGO_SETTINGS_MODULE=config.settings.production` and `DATABASE_URL_UNPOOLED`; add focused safety validation; update Docker/Railway deployment documentation. No migration, provider, infrastructure, secret, Vercel, or DNS action is authorized or planned.
+- **Files planned:** `backend/scripts/run_production_migrations.py`, focused backend test, `docs/RAILWAY_SETUP.md`, `docs/VERCEL_DUAL_ENVIRONMENT_WORKING_PROTOCOL.md`, and this progress record.
+- **Environment/resource touched:** `none` (local source and documentation only; production database will not be connected).
+- **Checks planned:** script unit tests, Django migration-plan/check validation under local settings, diff/working-tree review. Hosted deployment, provider acceptance, and actual production migration remain unperformed.
+- **Status:** `in progress`; next action is implement and checkpoint the guarded runner.
+
+#### 2026-10-14 Codex migration-release checkpoint
+
+- **Checkpoint:** Guarded runner, focused safety tests, Railway runbook, protocol cross-reference, and error record are implemented. No provider state, secrets, DNS, Vercel, Railway, Docker daemon, or database was touched.
+- **Validation:** Focused release tests `2 passed`; Python compilation passed; `manage.py check` passed; `git diff --check` passed. Ruff initially flagged two intentional safety patterns and was corrected with narrow inline suppressions; final lint is pending below. `makemigrations --check --dry-run` is blocked by local virtualenv `WinError 5` and is recorded as `ERR-524`.
+- **Status:** `complete locally / production unverified`; next action is final lint and stop record. Owner approval remains required before any one-shot production release.
+
+#### 2026-10-14 Codex migration-release stop
+
+- **Final local checks:** Ruff `All checks passed`; focused release tests `4 passed`; Python compilation passed; `manage.py check` passed; `git diff --check` passed. `makemigrations --check --dry-run` remains unverified because of `ERR-524`; no migration command was run against any database.
+- **Files changed:** `backend/scripts/run_production_migrations.py`; `backend/tests/test_production_migration_release.py`; `docs/RAILWAY_SETUP.md`; `docs/VERCEL_DUAL_ENVIRONMENT_WORKING_PROTOCOL.md`; `docs/PROGRESS_AND_ROADMAP.md`; `docs/ERROR_LOGS_AND_RESOLUTIONS.md`.
+- **Commit/state:** Base `develop` commit remains `f535ba5741c40ff0e21d005402f2201cd7f2bf69`; changes are intentionally uncommitted in the shared checkout for handoff/review. No branch or worktree was created.
+- **Environment/resource touched:** `none`; no Railway, Docker, Vercel, DNS, secrets, provider, or database state changed.
+- **Risks/open gates:** Production API/provider guards, exact-SHA deployment, Neon restore-point/backup confirmation, expand/contract review, and actual migration execution remain owner-controlled and unverified. The runner is a guarded path, not proof that production is ready.
+- **Status:** `complete locally / production unverified`; handoff owner is Anesu for review and any separately authorized Railway one-shot release.
+
 ---
 
 ## 6. Technical-debt remediation batches (started 2026-10-02)
