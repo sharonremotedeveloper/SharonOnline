@@ -491,6 +491,7 @@ This section is historical and does not describe the current hosted state. The c
 
 - The authenticated Neon CLI sees only Sharon organization `org-lucky-pine-32944571` on the Free plan. Production project `sweet-bonus-69458238`, branch `br-icy-rice-b45wkr17`, still has an empty automatic snapshot schedule (`[]`). The sole manual snapshot `production-recovery-baseline-2026-10-14` (`snap-hidden-block-b4stxgva`) still exists.
 - Current [Neon plan documentation](https://neon.com/docs/introduction/plans) limits Free to one manual snapshot and makes automated backup schedules available on paid plans. The existing snapshot fills the Free manual allotment. No plan upgrade, schedule, snapshot deletion/replacement, database dump, credential transfer or restore was attempted. Automatic backup coverage and application-level cutover remain open; the saved baseline is not a continuous backup policy.
+- **Owner decision:** Keep only the existing manual snapshot for now. Defer any paid Neon backup schedule or encrypted off-platform/R2 backup design and implementation until a later explicit decision. This is an accepted temporary recovery gap, not evidence of automatic backup coverage.
 
 ---
 
