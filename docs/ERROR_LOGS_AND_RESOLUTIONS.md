@@ -877,3 +877,10 @@ def configure_test_settings(settings):
 - **Root cause:** The same installed dependency file access restriction recorded in ERR-524 prevents local Django test-database setup; no test assertion failed.
 - **Resolution:** No dependency permissions or migration history were changed. The new heartbeat tests, Ruff and `manage.py check` pass locally; CI and hosted checks remain required.
 - **Environment/resource touched:** Local test runner only; no database schema or provider state changed.
+
+### ERR-532: GitHub workflow view flags were unsupported
+
+- **Observed:** On 2026-10-15, two read-only `gh workflow view` attempts failed: this CLI version does not accept `--json` for that command and requires `--yaml` when `--ref` is supplied.
+- **Root cause:** Assumed generic GitHub CLI view flags applied to workflow view.
+- **Resolution:** Used `gh workflow view production-uptime.yml` on the repository default branch, then the GitHub API to verify workflow `384771384` is active. Manual dispatch run `38631600839` succeeded.
+- **Environment/resource touched:** No state changed by the failed reads; the authorized manual dispatch made only read-only public HTTP checks.
