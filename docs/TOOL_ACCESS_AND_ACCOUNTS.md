@@ -88,7 +88,7 @@ Before an agent uses **any** external tool, service, API, MCP server, CLI, or co
 | Google Cloud (Calendar API v3) | Teacher 2-way calendar sync | `sharonremotedeveloper@gmail.com` (+ project `Sharon Online Calendar`, ID `crafty-elf-510716-b6`) | dev / staging / prod | GCP console project; Calendar API enabled; Google Auth Platform client list | `.env` / OAuth client | `CONFIRMED` (2026-10-05; external test OAuth web client created with localhost callback; client secret not recorded here) |
 | PayFast | ZAR payments | `sharonremotedeveloper@gmail.com` (+ id: TBD) — **sandbox only** | sandbox | PayFast sandbox dashboard | `.env` `PAYFAST_*` | `AUTHORIZED` |
 | PayPal | USD/EUR/JPY payments | `sharonremotedeveloper@gmail.com` (+ id: TBD) — **sandbox only** | sandbox | PayPal developer dashboard | `.env` `PAYPAL_*` | `AUTHORIZED` |
-| Resend | Transactional email (.ics) | `sharonremotedeveloper@gmail.com` (+ workspace `sharonremotedeveloper`) | dev / staging / prod | Resend dashboard | `.env` `RESEND_API_KEY` | `CONFIRMED` (2026-10-05; dashboard verified; no sending domain configured) |
+| Resend | Transactional email (.ics) | `sharonremotedeveloper@gmail.com` (+ workspace `sharonremotedeveloper`) | dev / staging / prod | Resend dashboard | `.env` `RESEND_API_KEY` | `CONFIRMED` (2026-10-14; `topteacheracademy.com` sending domain verified; canonical production sender configured; real student confirmation mail provider-reported Delivered; inbox/link UAT pending) |
 | EskomSePush | Load-shedding schedules | `sharonremotedeveloper@gmail.com` (+ id: TBD) | prod | provider dashboard | `.env` | `AUTHORIZED` |
 | Wise | Tutor payouts (future) | `sharonremotedeveloper@gmail.com` (+ id: TBD) | — | — | — | `N/A` |
 
