@@ -404,6 +404,14 @@ This section is historical and does not describe the current hosted state. The c
 - **Neon access boundary:** The connected Neon MCP session still resolves to the unrelated `MetaBox` organization, not the Sharon production Neon project. No snapshot, backup, restore, or database mutation was performed through that mismatched connector.
 - **Current status:** Hosted routing and health are verified; production schema migration and backup/restore evidence remain open. The temporary migration service is pinned, non-restarting, and plan-only.
 
+#### 2026-10-14 production migration completion checkpoint
+
+- **Neon authentication and recovery point:** Sharon-authenticated Neon access is confirmed for `sharonremotedeveloper@gmail.com` in project `SharonOnline` (`sweet-bonus-69458238`). The `production` branch is the default branch. A data-and-schema child branch named `pre-production-migrations-b33743` (`br-red-surf-b42d5emy`) was created from production and is set to expire on 2026-10-15 09:48 GMT+4. Neon remains on the Free plan with six-hour history retention; the child branch is the documented bounded recovery point for this release.
+- **Guarded production apply:** Railway migration deployment `c948cd95-1f82-475c-b181-4416dfb32f74` ran `python scripts/run_production_migrations.py --apply` against the direct production Neon target at exact SHA `b33743acc91b52b9a0042c9571ee1179c760081b` and completed successfully. A follow-up idempotency run `81eb91aa-b1ca-47a8-a6e8-6d3e43ef9ed1` returned `No migrations to apply.`
+- **Post-apply verification:** Read-only `showmigrations` verification reported all migration entries applied; no unchecked migrations remained. The one-shot service is now reset to plan-only, restart policy `NEVER`, and its approval flag was cleared so an accidental redeploy cannot apply schema changes.
+- **Hosted acceptance:** Read-only external HTTPS checks returned API `200` with `{"status":"healthy","service":"esl_backend","version":"1.0.0"}` and website `200` with the Sharon Online production title. Railway API, worker, and Beat remain deployed from the exact tested release SHA; Cloudflare DNS and the Railway custom certificate remain verified.
+- **Status:** `production infrastructure and schema migration complete`; the short-lived Neon recovery branch should be retained until its expiry or explicitly removed by the owner. The production migration service should remain plan-only unless a future release creates a new recovery point and approval gate.
+
 ---
 
 ## 6. Technical-debt remediation batches (started 2026-10-02)

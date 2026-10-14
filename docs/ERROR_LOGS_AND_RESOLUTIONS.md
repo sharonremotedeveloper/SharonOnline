@@ -847,3 +847,11 @@ def configure_test_settings(settings):
 - **Resolution:** Added `REDIS_URL=${{backend-api-production.REDIS_URL}}` without exposing its value, then redeployed the same exact SHA with the same plan-only command.
 - **Verification:** Retry deployment `89919f6b-6db3-410a-9334-1d7885c8f6eb` completed successfully and emitted the pending migration plan. `PRODUCTION_MIGRATION_APPROVED` remained unset and no migration was applied.
 - **Environment/resource touched:** Production Railway migration service only; no application service, database schema, or provider credential was changed.
+
+### ERR-528: Railway redeploy reused the prior migration command
+
+- **Observed:** Initial redeploys of the one-shot migration service continued to emit the previous plan/showmigrations command even after the live service configuration was updated.
+- **Root cause:** Railway redeploy reused the existing deployment configuration snapshot rather than creating a fresh Git-backed deployment with the updated start command.
+- **Resolution:** Reconnected the service to `sharonremotedeveloper/SharonOnline@develop` at immutable SHA `b33743acc91b52b9a0042c9571ee1179c760081b` to force a fresh deployment. The guarded apply then completed successfully, and a second apply returned `No migrations to apply.`
+- **Verification:** Fresh apply deployment `c948cd95-1f82-475c-b181-4416dfb32f74` logged `production migration apply` and successful migration operations. Idempotency deployment `81eb91aa-b1ca-47a8-a6e8-6d3e43ef9ed1` logged `No migrations to apply.` The service was reset to plan-only and `PRODUCTION_MIGRATION_APPROVED` was cleared afterward.
+- **Environment/resource touched:** Production Railway migration service and the production Neon schema only; application services, DNS, Vercel, and provider credentials were not changed by the migration runs.
