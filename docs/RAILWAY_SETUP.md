@@ -5,12 +5,12 @@
 
 | Item | Value |
 | :--- | :--- |
-| Railway project ID | `816aac81-bae6-40c4-b2de-48dc68d55709` |
+| Railway project ID | `e2b11747-5519-4139-bd34-a658affea42a` (`sharon-online-prod`) |
 | Account | `sharonremotedeveloper@gmail.com` (nothing else) |
 | Intended role | Hosts the Django API and Celery worker/beat (see `ENVIRONMENT_AND_TESTING.md` §4). Postgres = Neon, Redis = Upstash (not Railway add-ons unless Anesu decides otherwise). |
 | Container source | `Project-files/backend/Dockerfile` |
 
-**Read-only state checked 2026-10-14:** Railway identity matched `sharonremotedeveloper@gmail.com`. `SharonRailway` has `development` and `production` environments. The development API, worker, and beat services all have successful deployments from `develop` commit `dcaa9c7`; the production API service exists but its `dcaa9c7` deployment failed at `/api/health/`. No variables, secrets, domains, staged changes, or infrastructure were changed by this check.
+**Current state checked 2026-10-14:** Railway identity is `sharonremotedeveloper@gmail.com`. The canonical production project is `sharon-online-prod` (`e2b11747-5519-4139-bd34-a658affea42a`), environment `production` (`dd70ab8a-91c2-47cb-ba27-cdab00a38d74`). API, worker, and Beat are pinned to exact SHA `b33743acc91b52b9a0042c9571ee1179c760081b`; the latest deployments succeeded. The API custom domain is `api.topteacheracademy.com`; Railway reports its certificate valid and the DNS ownership record verified. Historical identifiers below are retained as audit history only.
 
 ---
 
@@ -46,7 +46,9 @@ If `railway link` asks for an environment or service, pick the one Anesu names; 
 | development / `backend-api-development` | SUCCESS from develop / dcaa9c7; Railway domain `backend-api-development-development-9d0e.up.railway.app`; health check `/api/health/` | Deployment `12d3dd2a-8fed-477e-bea8-214b8bbccaba` |
 | development / `celery-worker-development` | SUCCESS from develop / dcaa9c7 | Deployment `aff043fc-cf59-4e93-ac99-8eb6ebca9a9e` |
 | development / `celery-beat-development` | SUCCESS from develop / dcaa9c7 | Deployment `426d93fe-9746-4db9-9317-c8d4b4935f73` |
-| production / `backend-api-production` | FAILED from develop / dcaa9c7 at `/api/health/`; no Railway service domain; no live production worker/beat | Deployment `27aa82c3-ea07-4048-82e6-ef65dc87266a` |
+| production / `backend-api-production` | SUCCESS from develop / `b33743a`; Railway healthcheck passed; custom domain `api.topteacheracademy.com` | Deployment `8ddf565b-dc3b-4929-8da1-aa5b03d8a106` |
+| production / `celery-worker-production` | SUCCESS from develop / `b33743a` | Deployment `2ba3fe91-2847-4e8d-b37b-35adff934902` |
+| production / `celery-beat-production` | SUCCESS from develop / `b33743a` | Deployment `562b5055-ea8e-49c7-8acf-3028a1cea823` |
 
 Staged-but-not-deployed state observed read-only: development patch `192cc8f3-5894-404d-b390-9b706586a046` contains three Daily-related changes; production patch `3a580cef-6dfb-4e7b-ad36-6fd23d8a7ce2` contains six changes. Variable values were not read.
 
@@ -105,6 +107,6 @@ test or image build is not production migration evidence.
 | :--- | :--- |
 | CLI installed (5.59.0) | Present |
 | Account identity | **CONFIRMED 2026-10-14 by read-only Railway MCP identity check: `sharonremotedeveloper@gmail.com`** |
-| `SharonRailway` project | **CONFIRMED 2026-10-14; development and production environments visible** |
-| Current service/deployment state | **CONFIRMED 2026-10-14; see §2. No changes made.** |
+| Canonical production project | **CONFIRMED 2026-10-14; `sharon-online-prod` / `e2b11747-5519-4139-bd34-a658affea42a`** |
+| Current service/deployment state | **CONFIRMED 2026-10-14; all three production services SUCCESS on exact SHA `b33743a`** |
 | `railway link` to `816aac81-…` | Not checked or changed; local CLI linkage is not required for the read-only MCP evidence |

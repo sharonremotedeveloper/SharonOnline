@@ -386,6 +386,16 @@ This section is historical and does not describe the current hosted state. The c
 - **Current checkpoint:** All three production services are pinned to exact SHA `6cf721b` for the retry deployments `b0fc0978-dda9-43dd-90e7-04c435a9aee1`, `5ce5fdd3-dfb4-41cb-89f5-a950cb1ed28b`, and `c2dd8317-a427-4fb1-9107-cc3d8fdb6d1c`; their final status is still pending. The Docker healthcheck now forwards `X-Forwarded-Proto: https` so Django can answer the probe without weakening public HTTPS enforcement.
 - **Open gates:** API success and live health evidence, guarded production migration plan/apply, Vercel redeploy from the approved SHA, Cloudflare/DNS and browser-to-API/database verification, and final provider/rollback evidence remain incomplete. Do not mark production ready until each is recorded.
 
+#### 2026-10-14 hosted release and DNS checkpoint
+
+- **Starting/release commit:** Shared `develop` is now at `b33743acc91b52b9a0042c9571ee1179c760081b` (`fix(deploy): isolate railway liveness probe`). `main` remains production-only. The working tree was clean before this checkpoint.
+- **Railway production:** Canonical project `sharon-online-prod` (`e2b11747-5519-4139-bd34-a658affea42a`) now has API deployment `8ddf565b-dc3b-4929-8da1-aa5b03d8a106`, worker deployment `2ba3fe91-2847-4e8d-b37b-35adff934902`, and Beat deployment `562b5055-ea8e-49c7-8acf-3028a1cea823`; all are `SUCCESS` on the exact release SHA. The API healthcheck passed after the Railway `PORT` binding and isolated liveness-probe fixes.
+- **Railway custom domain / Cloudflare:** `api.topteacheracademy.com` is attached to the API service. Railway reports the custom certificate valid and ownership verified. Cloudflare zone `topteacheracademy.com` has the API CNAME pointing to Railway target `0pu3ich9.up.railway.app` and the `_railway-verify.api` TXT record present; apex and `www` remain Vercel DNS-only CNAMEs.
+- **Vercel production:** Sharon-authenticated browser promotion produced Ready deployment `DP5UgLMYSbcP6YuWpgXvspAZdkWH` from the tested frontend SHA `d97a488`; `https://topteacheracademy.com/` rendered the production Sharon Online shell. Vercel’s production branch setting remains `main`, so promotion is recorded as an explicit immutable artifact promotion from the tested `develop` release rather than a branch-setting change.
+- **Resend / Eskom:** The new Resend Sending key remains encrypted in Railway production API, worker, and Beat variables. EskomSePush remains disabled (`ESKOMSEPUSH_ENABLED=false`), with related UI surfaces hidden; no Eskom Business API purchase or credential was made.
+- **Verification boundary:** Railway deployment and healthcheck evidence is complete. Public DNS/API verification is still pending propagation from the current browser/network session; Neon restore/PITR evidence and the guarded production migration plan/apply remain separate gates. No production migration was run.
+- **Next action:** verify `https://api.topteacheracademy.com/api/health/` after DNS propagation, capture Neon backup/restore evidence, run the guarded migration `--plan`, and only then assess whether production migration apply is authorized. Record every result here before calling the environment production-ready.
+
 ---
 
 ## 6. Technical-debt remediation batches (started 2026-10-02)
