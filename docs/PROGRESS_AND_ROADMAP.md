@@ -377,6 +377,15 @@ This section is historical and does not describe the current hosted state. The c
 - **Risks/open gates:** Production API/provider guards, exact-SHA deployment, Neon restore-point/backup confirmation, expand/contract review, and actual migration execution remain owner-controlled and unverified. The runner is a guarded path, not proof that production is ready.
 - **Status:** `complete locally / production unverified`; handoff owner is Anesu for review and any separately authorized Railway one-shot release.
 
+#### 2026-10-14 billing-recovery checkpoint
+
+- **Agent review:** Two read-only agents reconstructed the deployment history and independently audited the shared checkout. Both confirmed `develop` is the shared implementation branch, `main` remains production-only, and the billing interruption occurred before the current SHA was pushed or hosted.
+- **Source promotion:** The four pending `develop` commits were pushed to `origin/develop` at `f5e8380`; a targeted Railway healthcheck fix was then committed and pushed as `6cf721b`.
+- **Resend/Eskom:** A new Resend Sending key was created in the Sharon account and staged as encrypted `RESEND_API_KEY` on production API, worker, and Beat. EskomSePush was intentionally disabled with `ESKOMSEPUSH_ENABLED=false`; no Eskom Business API purchase or credential was made. The related frontend surfaces are hidden by the application feature guard.
+- **Railway:** The staged six-variable production change was accepted and first deployed at `f5e8380`. Worker `885ac495-d3ea-4d9f-877a-582188533601` and Beat `bfbcaaa4-2eaf-4177-8cfa-824a22ab5ff1` succeeded. API `6463da66-74e6-4560-8203-23f0e4ed5e0e` built and started but failed its five-minute `/api/health/` probe because production HTTPS redirect behavior made the internal HTTP probe unavailable.
+- **Current checkpoint:** All three production services are pinned to exact SHA `6cf721b` for the retry deployments `b0fc0978-dda9-43dd-90e7-04c435a9aee1`, `5ce5fdd3-dfb4-41cb-89f5-a950cb1ed28b`, and `c2dd8317-a427-4fb1-9107-cc3d8fdb6d1c`; their final status is still pending. The Docker healthcheck now forwards `X-Forwarded-Proto: https` so Django can answer the probe without weakening public HTTPS enforcement.
+- **Open gates:** API success and live health evidence, guarded production migration plan/apply, Vercel redeploy from the approved SHA, Cloudflare/DNS and browser-to-API/database verification, and final provider/rollback evidence remain incomplete. Do not mark production ready until each is recorded.
+
 ---
 
 ## 6. Technical-debt remediation batches (started 2026-10-02)
