@@ -1,7 +1,9 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
+from django.views.decorators.http import require_safe
 from drf_spectacular.views import SpectacularAPIView
+from config import health
 
 def health_check(request):
     return JsonResponse({
@@ -10,9 +12,21 @@ def health_check(request):
         "version": "1.0.0"
     })
 
+
+@require_safe
+def readiness_check(request):
+    ready = health.check_dependencies()
+    response = JsonResponse({
+        "status": "ready" if ready else "unavailable",
+        "service": "esl_backend",
+    }, status=200 if ready else 503)
+    response["Cache-Control"] = "no-store"
+    return response
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/health/', health_check, name='health-check'),
+    path('api/ready/', readiness_check, name='readiness-check'),
     path('api/schema/', SpectacularAPIView.as_view(), name='api-schema'),  # admin-only (SPECTACULAR_SETTINGS)
     path('api/v1/auth/', include('apps.users.urls')),
     path('api/v1/teachers/', include('apps.teachers.urls')),

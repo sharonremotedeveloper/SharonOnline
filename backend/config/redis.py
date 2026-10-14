@@ -10,5 +10,5 @@ def normalize_redis_url(redis_url: str) -> str:
         return redis_url
     parts = urlsplit(redis_url)
     query = dict(parse_qsl(parts.query, keep_blank_values=True))
-    query.setdefault("ssl_cert_reqs", "required")
+    query["ssl_cert_reqs"] = "required"
     return urlunsplit(parts._replace(query=urlencode(query)))

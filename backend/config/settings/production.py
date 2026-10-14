@@ -1,7 +1,7 @@
 from .base import *
-import dj_database_url
 import os
 from config.redis import normalize_redis_url
+from config.database import production_database_config
 
 DEBUG = False
 # Production must never permit free test bookings, even if an environment variable is copied accidentally.
@@ -17,11 +17,7 @@ if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable must be set in production")
 
 DATABASES = {
-    'default': dj_database_url.parse(
-        DATABASE_URL,
-        conn_max_age=600,
-        ssl_require=True
-    )
+    'default': production_database_config(DATABASE_URL)
 }
 
 # Production Upstash Redis
