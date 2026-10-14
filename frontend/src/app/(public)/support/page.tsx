@@ -5,6 +5,7 @@ import { HelpCircle, Mail, Send, CheckCircle2, MessageSquare } from "lucide-reac
 import { submitInquiry } from "@/lib/api";
 import { InlineError } from "@/components/ui/ErrorState";
 import { ApiError } from "@/lib/http";
+import { PAYMENTS_ENABLED } from "@/lib/paymentsEnabled";
 
 export default function SupportPage() {
   const [formData, setFormData] = useState({
@@ -65,7 +66,9 @@ export default function SupportPage() {
     },
     {
       q: "Which payment methods are accepted?",
-      a: "We support PayFast (ZAR instant EFT and SA bank cards) as well as PayPal v2 (USD, EUR, JPY credit cards and balance).",
+      a: PAYMENTS_ENABLED
+        ? "We support PayFast (ZAR instant EFT and SA bank cards) as well as PayPal v2 (USD, EUR, JPY credit cards and balance)."
+        : "Online payments are temporarily unavailable. We will show the available methods when checkout reopens.",
     },
     {
       q: "How do I cancel or reschedule a class?",

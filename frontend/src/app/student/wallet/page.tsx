@@ -291,7 +291,7 @@ export default function StudentWalletPage() {
       {/* Top-Up Bundle Packs Grid */}
       {!PAYMENTS_ENABLED ? (
         <p className="text-sm text-ink-muted bg-cream-surface border border-divider rounded-xl px-4 py-3">
-        Payments are switched off in this test environment. Lessons are booked with lesson credits.
+        Online payments are temporarily unavailable. Existing lesson credits can still be used to book.
         </p>
       ) : (
       <div className="space-y-4">
