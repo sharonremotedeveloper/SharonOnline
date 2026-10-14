@@ -1,6 +1,7 @@
 from .base import *
 import dj_database_url
 import os
+from config.redis import normalize_redis_url
 
 DEBUG = False
 # Production must never permit free test bookings, even if an environment variable is copied accidentally.
@@ -27,6 +28,13 @@ DATABASES = {
 REDIS_URL = os.environ.get('REDIS_URL')
 if not REDIS_URL:
     raise ValueError("REDIS_URL environment variable must be set in production")
+
+# redis-py 8 / Kombu require an explicit certificate policy for ``rediss://``
+# URLs. Upstash's generated URL omits the query parameter, so normalize it at
+# the production boundary while retaining TLS and requiring certificate
+# validation by default.
+if REDIS_URL.lower().startswith('rediss://'):
+    REDIS_URL = normalize_redis_url(REDIS_URL)
 
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL

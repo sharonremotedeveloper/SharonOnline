@@ -3,7 +3,7 @@ from django.core.wsgi import get_wsgi_application
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.production')
 
-application = get_wsgi_application()
+django_application = get_wsgi_application()
 
 
 def railway_health_probe_application(environ, start_response):
@@ -25,7 +25,7 @@ def railway_health_probe_application(environ, start_response):
             ],
         )
         return [body]
-    return application(environ, start_response)
+    return django_application(environ, start_response)
 
 
 application = railway_health_probe_application
