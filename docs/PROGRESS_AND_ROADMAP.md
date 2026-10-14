@@ -446,6 +446,12 @@ This section is historical and does not describe the current hosted state. The c
 - **Post-removal inventory:** Both non-canonical production environments now have no services and no pending deletion patch. The `SharonRailway` development environment still has its three services, each with a `SUCCESS` latest deployment; its pre-existing staged development changes were not applied. Canonical `sharon-online-prod` retains its API, worker, Beat, and guarded one-shot migration service, all with `SUCCESS` latest deployments. A fresh public proxy price request still returned HTTP 200 after cleanup.
 - **Remaining production acceptance:** The canonical API has no `PAYPAL_*` or `PAYFAST_*` variable names, so live checkout must not be reported functional. No approved tutors are listed, so an end-to-end booking is not yet possible. Authenticated booking, payment, email, Daily/video, and production browser UAT remain unverified.
 
+#### 2026-10-14 checkout safety decision
+
+- **Owner choice:** Keep production checkout disabled until a live merchant account is configured and verified; do not use sandbox credentials or free test bookings to imply a working payment path.
+- **Backend:** Set `PAYMENTS_ENABLED=false` and `TEST_BOOKINGS_ENABLED=false` on only the canonical production Railway API. Deployment `dc10d96a-605b-4f1e-9143-32bb705b9c3b` reached `SUCCESS` with one running replica and no recent failures. `config.settings.production` also hard-disables test bookings regardless of the environment value.
+- **Frontend:** Set Production-only Vercel Config variables `NEXT_PUBLIC_PAYMENTS_ENABLED=false` and `NEXT_PUBLIC_TEST_BOOKINGS_ENABLED=false`; the existing Preview/develop payment flag was not edited. The checkout copy now says online payments are temporarily unavailable, rather than calling production a test environment. These Vercel variables require a fresh production build and browser verification before this frontend gate is considered live.
+
 ---
 
 ## 6. Technical-debt remediation batches (started 2026-10-02)
