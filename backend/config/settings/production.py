@@ -41,6 +41,10 @@ CACHES = {
 # Security Headers
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = True
+# Railway probes the container health endpoint over plain HTTP during rollout.
+# Keep HTTPS enforcement for every application route while allowing this
+# non-sensitive liveness response to be used by the platform healthcheck.
+SECURE_REDIRECT_EXEMPT = [r'^api/health/$']
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = 31536000
