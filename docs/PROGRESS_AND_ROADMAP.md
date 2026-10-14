@@ -487,6 +487,11 @@ This section is historical and does not describe the current hosted state. The c
 - **External watcher:** Credential-free `.github/workflows/production-uptime.yml` was committed at `0c2c8d19cd1e1a90466a338076f884667964d8ab` after the endpoint was live and pushed to both `develop` and `main`. GitHub registered it as active workflow `384771384` on repository default `develop`. Manual dispatch run `38631600839` completed `success` for the public site, dependency readiness and scheduler freshness checks. Its ten-minute schedule is best-effort; a scheduled run and a failed-run notification have not yet been observed. The Sharon account's failed-Action notifications were observed enabled on GitHub and by email.
 - **Remaining acceptance boundary:** Checkout remains intentionally disabled by the owner, with no live merchant account or approved tutor. Payment, booking, lesson/video and password-recovery flows are not production-accepted. Automatic backup coverage and an application-level restore/cutover drill remain open. This checkpoint is a monitoring improvement, not full production completion.
 
+#### 2026-10-15 Neon backup-plan recheck (read-only)
+
+- The authenticated Neon CLI sees only Sharon organization `org-lucky-pine-32944571` on the Free plan. Production project `sweet-bonus-69458238`, branch `br-icy-rice-b45wkr17`, still has an empty automatic snapshot schedule (`[]`). The sole manual snapshot `production-recovery-baseline-2026-10-14` (`snap-hidden-block-b4stxgva`) still exists.
+- Current [Neon plan documentation](https://neon.com/docs/introduction/plans) limits Free to one manual snapshot and makes automated backup schedules available on paid plans. The existing snapshot fills the Free manual allotment. No plan upgrade, schedule, snapshot deletion/replacement, database dump, credential transfer or restore was attempted. Automatic backup coverage and application-level cutover remain open; the saved baseline is not a continuous backup policy.
+
 ---
 
 ## 6. Technical-debt remediation batches (started 2026-10-02)
