@@ -420,6 +420,14 @@ This section is historical and does not describe the current hosted state. The c
 - **End-to-end check:** Read-only HTTPS verification after promotion returned API `200` with the healthy `esl_backend` payload and website `200` with the Sharon Online production title.
 - **Status:** `main promoted; Railway production rebuilt successfully; public path healthy`. Keep production pinned to an exact tested SHA when promoting future changes; do not switch the live services to a moving branch tip.
 
+#### 2026-10-14 Railway runtime log remediation checkpoint
+
+- **Root causes found in live logs:** the API WSGI liveness wrapper recursively called itself for non-health routes; the Celery worker crashed because Upstash `rediss://` lacked the explicit `ssl_cert_reqs` policy required by the installed Redis/Kombu versions; Celery Beat crashed because its default schedule file was not writable in Railway's runtime directory.
+- **Code fix:** commit `df1ac79094f776055fd8951bef4244ec79468820` fixes the WSGI delegation, normalizes production `rediss://` URLs to require certificate validation, and adds focused regression tests (`2 passed`, Ruff clean).
+- **Railway fix:** API deployment `ada7891c-b01c-496d-b9c3-b14e2d43cb82` and worker deployment `5cfe1d74-a335-49ff-86b1-5cc99c15594a` succeeded from `main` at the fix SHA. Worker logs show a successful Upstash connection and `celery@... ready`.
+- **Beat fix:** the production Beat start command now uses `--schedule=/tmp/celerybeat-schedule`; fresh deployment `4e26aa57-70c2-4965-9909-56767dced9af` succeeded and logs show `beat: Starting...` plus scheduled task dispatches with no `_gdbm` or permission errors.
+- **Status:** `Railway production runtime failures resolved and verified`; retain exact-SHA pinning and inspect service logs after future source/config changes.
+
 ---
 
 ## 6. Technical-debt remediation batches (started 2026-10-02)

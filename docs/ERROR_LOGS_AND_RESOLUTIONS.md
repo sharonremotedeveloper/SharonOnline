@@ -855,3 +855,11 @@ def configure_test_settings(settings):
 - **Resolution:** Reconnected the service to `sharonremotedeveloper/SharonOnline@develop` at immutable SHA `b33743acc91b52b9a0042c9571ee1179c760081b` to force a fresh deployment. The guarded apply then completed successfully, and a second apply returned `No migrations to apply.`
 - **Verification:** Fresh apply deployment `c948cd95-1f82-475c-b181-4416dfb32f74` logged `production migration apply` and successful migration operations. Idempotency deployment `81eb91aa-b1ca-47a8-a6e8-6d3e43ef9ed1` logged `No migrations to apply.` The service was reset to plan-only and `PRODUCTION_MIGRATION_APPROVED` was cleared afterward.
 - **Environment/resource touched:** Production Railway migration service and the production Neon schema only; application services, DNS, Vercel, and provider credentials were not changed by the migration runs.
+
+### ERR-529: Railway production runtime failures after green healthchecks
+
+- **Observed:** The latest successful API/worker/Beat deployments still emitted runtime errors: API `RecursionError` on `/`, worker `ValueError` requiring `ssl_cert_reqs` for `rediss://`, and Beat `_gdbm.error: Permission denied` for `celerybeat-schedule`.
+- **Root causes:** the WSGI wrapper referenced the global `application` after replacing it with the wrapper; Redis/Kombu required an explicit TLS certificate policy; Celery Beat's default persistent schedule path was not writable in the Railway container.
+- **Resolution:** The WSGI wrapper now delegates through a stable `django_application`; production normalizes `rediss://` URLs with `ssl_cert_reqs=required`; Beat is configured with `--schedule=/tmp/celerybeat-schedule`.
+- **Verification:** Focused tests passed `2/2` and Ruff passed. API deployment `ada7891c-b01c-496d-b9c3-b14e2d43cb82` has no recursion/healthcheck errors, worker deployment `5cfe1d74-a335-49ff-86b1-5cc99c15594a` connects to Upstash and reaches ready state, and Beat deployment `4e26aa57-70c2-4965-9909-56767dced9af` starts and dispatches scheduled tasks without the prior permission error.
+- **Environment/resource touched:** Production Railway service configuration and application code on `main`; no database schema, DNS, or provider credentials were changed.
