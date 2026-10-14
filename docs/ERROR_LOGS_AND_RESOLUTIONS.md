@@ -839,3 +839,11 @@ def configure_test_settings(settings):
 - **Root cause:** The component returned early on the disabled feature flag before declaring its existing `useState` hooks.
 - **Resolution:** Moved the flag return after all hooks; the component still renders nothing while the flag is `false` and lint can verify stable hook order.
 - **Verification:** TypeScript passed; lint was rerun after this fix and passed with zero warnings. The full frontend test suite also passed 262/262.
+
+### ERR-527: Initial production migration plan release omitted Redis reference
+
+- **Observed:** The first plan-only Railway migration deployment built successfully but failed during Django settings import with `REDIS_URL environment variable must be set in production`.
+- **Root cause:** The temporary one-shot migration service copied the production variable contract by reference but initially omitted `REDIS_URL`.
+- **Resolution:** Added `REDIS_URL=${{backend-api-production.REDIS_URL}}` without exposing its value, then redeployed the same exact SHA with the same plan-only command.
+- **Verification:** Retry deployment `89919f6b-6db3-410a-9334-1d7885c8f6eb` completed successfully and emitted the pending migration plan. `PRODUCTION_MIGRATION_APPROVED` remained unset and no migration was applied.
+- **Environment/resource touched:** Production Railway migration service only; no application service, database schema, or provider credential was changed.

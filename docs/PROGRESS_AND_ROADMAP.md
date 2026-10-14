@@ -396,6 +396,14 @@ This section is historical and does not describe the current hosted state. The c
 - **Verification boundary:** Railway deployment and healthcheck evidence is complete. Public DNS/API verification is still pending propagation from the current browser/network session; Neon restore/PITR evidence and the guarded production migration plan/apply remain separate gates. No production migration was run.
 - **Next action:** verify `https://api.topteacheracademy.com/api/health/` after DNS propagation, capture Neon backup/restore evidence, run the guarded migration `--plan`, and only then assess whether production migration apply is authorized. Record every result here before calling the environment production-ready.
 
+#### 2026-10-14 public health and migration-plan checkpoint
+
+- **Public verification:** Read-only external checks now return HTTP 200 for both `https://topteacheracademy.com/` and `https://api.topteacheracademy.com/api/health/`; the API payload reports `healthy`, service `esl_backend`, version `1.0.0`.
+- **Migration release:** Provisioned Railway one-shot service `production-migrations-b33743a` (`cdc25acb-eb33-4ded-bd90-679b4398fcfd`) from exact SHA `b33743acc91b52b9a0042c9571ee1179c760081b`. Final plan deployment `89919f6b-6db3-410a-9334-1d7885c8f6eb` completed successfully and emitted the pending Django migration plan against the production Neon target. `PRODUCTION_MIGRATION_APPROVED` was not set; no schema changes were applied.
+- **Migration finding:** The plan lists pending migrations across the project, so the production database is not yet at the application migration leaf. Applying them remains gated on Neon backup/PITR or restore-point evidence and expand/contract review.
+- **Neon access boundary:** The connected Neon MCP session still resolves to the unrelated `MetaBox` organization, not the Sharon production Neon project. No snapshot, backup, restore, or database mutation was performed through that mismatched connector.
+- **Current status:** Hosted routing and health are verified; production schema migration and backup/restore evidence remain open. The temporary migration service is pinned, non-restarting, and plan-only.
+
 ---
 
 ## 6. Technical-debt remediation batches (started 2026-10-02)
