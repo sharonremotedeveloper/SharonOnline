@@ -1,6 +1,6 @@
 # Vercel Dual-Environment Deployment Working Protocol
 
-**Status:** Planned, not yet implemented
+**Status:** Active; hosted resources provisioned, final migration/restore and public API verification gates remain open (2026-10-14)
 
 **Scope:** The Sharon Online deployment stream for:
 
@@ -113,7 +113,7 @@ The required release path is:
 3. Run CI and record the exact tested `develop` SHA.
 4. Deploy that SHA to development Vercel, Railway, workers, beat, and the intended development database migration release.
 5. Complete hosted development and provider-sandbox acceptance.
-6. Promote the same SHA to `main` using a history-preserving merge/fast-forward where possible.
+6. Promote the same tested artifact to production. Vercel currently retains `main` as its production branch setting, so an explicit dashboard promotion from the tested immutable deployment is acceptable when its deployment ID and source SHA are recorded; do not silently deploy a moving branch tip.
 7. If a merge method creates a new commit, promote the immutable artifact created from the tested SHA and record its source SHA, tree hash, image digests, Vercel deployment IDs, Railway release IDs, and migration version.
 8. Run production gates and obtain explicit cutover approval.
 
