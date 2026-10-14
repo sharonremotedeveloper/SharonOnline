@@ -10,7 +10,7 @@
 | Intended role | Hosts the Django API and Celery worker/beat (see `ENVIRONMENT_AND_TESTING.md` §4). Postgres = Neon, Redis = Upstash (not Railway add-ons unless Anesu decides otherwise). |
 | Container source | `Project-files/backend/Dockerfile` |
 
-**Current state checked 2026-10-14:** Railway identity is `sharonremotedeveloper@gmail.com`. The canonical production project is `sharon-online-prod` (`e2b11747-5519-4139-bd34-a658affea42a`), environment `production` (`dd70ab8a-91c2-47cb-ba27-cdab00a38d74`). API, worker, and Beat are pinned to exact SHA `5b37e2707369deaaadf1e7a8161e336599fef3de`; all three deployments succeeded. The API custom domain is `api.topteacheracademy.com`. Public `/api/health/` and the new dependency `/api/ready/` both returned 200; readiness also returned `Cache-Control: no-store`. The historical identifiers below are audit history, not the active deployment.
+**Current state checked 2026-10-15:** Railway identity is `sharonremotedeveloper@gmail.com`. The canonical production project is `sharon-online-prod` (`e2b11747-5519-4139-bd34-a658affea42a`), environment `production` (`dd70ab8a-91c2-47cb-ba27-cdab00a38d74`). API, worker, and Beat are pinned to exact SHA `d5608dd8019d9a1169052b3e81b83c30698dbaa0`; all three deployments succeeded. The API custom domain is `api.topteacheracademy.com`. Public `/api/ready/` and `/api/scheduler-ready/` both returned 200 `ready` with `Cache-Control: no-store` after Beat-to-worker execution. The historical identifiers below are audit history, not the active deployment.
 
 ---
 
@@ -41,9 +41,9 @@ If `railway link` asks for an environment or service, pick the one Anesu names; 
 
 | Environment / service | Current state | Evidence |
 | :--- | :--- | :--- |
-| production / `backend-api-production` | SUCCESS, pinned `main` at `5b37e27`; custom domain `api.topteacheracademy.com`; Railway healthcheck stays liveness-only at `/api/health/` | Deployment `b378367b-d49b-4b13-8bb3-e6d4eb476437`; public `/api/ready/` checks Neon and Upstash |
-| production / `celery-worker-production` | SUCCESS, pinned `main` at `5b37e27`; task receipts and successful scheduled jobs observed | Deployment `49323bd9-62a6-4bb6-98d2-795c135176c4` |
-| production / `celery-beat-production` | SUCCESS, pinned `main` at `5b37e27`; scheduler startup observed | Deployment `10eb984a-ea5b-48f5-ab1c-54e8a09f5687` |
+| production / `backend-api-production` | SUCCESS, pinned `main` at `d5608dd`; custom domain `api.topteacheracademy.com`; Railway healthcheck stays liveness-only at `/api/health/` | Deployment `1978f8cd-4748-4b8f-b93b-d4462bd0a784`; public `/api/ready/` and `/api/scheduler-ready/` returned 200 |
+| production / `celery-worker-production` | SUCCESS, pinned `main` at `d5608dd`; new heartbeat task registered, received and completed | Deployment `a61cfd7a-cf7b-4fa7-a88d-69370ebbf677` |
+| production / `celery-beat-production` | SUCCESS, pinned `main` at `d5608dd`; heartbeat dispatched at 20:19 UTC | Deployment `6e8e4056-3af6-4d68-a02c-3a066def3d51` |
 
 The earlier development `dcaa9c7` deployments (`12d3dd2a`, `aff043fc`, `426d93fe`) and production `b33743a` deployments (`8ddf565b`, `2ba3fe91`, `562b5055`) were past checkpoints, not current state. Re-read provider status before relying on any deployment ID. No variable values were printed during this release.
 
@@ -101,7 +101,35 @@ test or image build is not production migration evidence.
 | Step | State |
 | :--- | :--- |
 | CLI installed (5.59.0) | Present |
-| Account identity | **CONFIRMED 2026-10-14 by read-only Railway MCP identity check: `sharonremotedeveloper@gmail.com`** |
+| Account identity | **CONFIRMED 2026-10-15 by read-only Railway MCP identity check: `sharonremotedeveloper@gmail.com`** |
 | Canonical production project | **CONFIRMED 2026-10-14; `sharon-online-prod` / `e2b11747-5519-4139-bd34-a658affea42a`** |
-| Current service/deployment state | **CONFIRMED 2026-10-14; all three production services SUCCESS on exact SHA `5b37e27`** |
+| Current service/deployment state | **CONFIRMED 2026-10-15; all three production services SUCCESS on exact SHA `d5608dd`** |
 | `railway link` to the canonical project | Not checked or changed; local CLI linkage is not required for MCP evidence |
+
+## 7. Production scheduler freshness and external check
+
+`GET /api/scheduler-ready/` is separate from the API liveness and database/Redis
+readiness endpoints. Beat dispatches `apps.notifications.tasks.scheduler_heartbeat_task`
+every 60 seconds onto `scheduler_beat`; the production worker consumes that queue
+and writes a timestamped Redis key with a 180-second TTL. The API returns generic
+`ready` only while the last executed task is at most 150 seconds old. The Redis
+read is cached for 30 seconds per API process and has a bounded child-process
+deadline. A 503 indicates a missing/stale heartbeat or an unavailable check;
+it does **not** identify which of Beat, broker, worker, or Redis failed.
+
+Never use this endpoint as Railway's restart healthcheck: a scheduler outage
+should page an operator, not restart an otherwise healthy API. The production
+uptime GitHub Actions workflow on the repository default branch checks the
+public site, `/api/ready/`, and `/api/scheduler-ready/` every ten minutes.
+It is credential-free and best-effort: scheduled Actions can be delayed or
+skipped, so it is not a strict availability SLA. The Sharon GitHub account has
+Actions notifications for failed workflows enabled on GitHub and by email.
+
+On a failed check, inspect the exact workflow run and time, then the canonical
+Railway project/service IDs and deployment-specific API, worker, and Beat logs.
+Check whether Beat emitted the task, whether the worker received and completed
+it, and whether Redis was reachable. Recheck the public endpoint after the
+next Beat interval; the API may cache a failed result for up to 30 seconds.
+Do not change secrets, restart services, or switch the API healthcheck based on
+one failed scheduled run. Record the incident and evidence in
+`ERROR_LOGS_AND_RESOLUTIONS.md` and `PROGRESS_AND_ROADMAP.md`.

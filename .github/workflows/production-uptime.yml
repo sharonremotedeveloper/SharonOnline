@@ -1,0 +1,41 @@
+name: Production uptime
+
+# The repository default branch is develop. Scheduled checks run there but
+# inspect only the public production endpoints; no production credentials are
+# present in this workflow. GitHub schedule timing is best-effort, not an SLA.
+on:
+  schedule:
+    - cron: '7,17,27,37,47,57 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  check-public-path:
+    if: github.repository == 'sharonremotedeveloper/SharonOnline'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check the public website
+        run: |
+          curl --fail --silent --show-error --max-time 12 \
+            --retry 2 --retry-delay 3 --retry-all-errors \
+            --output /dev/null https://topteacheracademy.com/pricing
+
+      - name: Check API dependencies
+        run: |
+          set -euo pipefail
+          body=$(curl --fail --silent --show-error --max-time 12 \
+            --retry 2 --retry-delay 3 --retry-all-errors \
+            https://api.topteacheracademy.com/api/ready/)
+          printf '%s' "$body" | python3 -c \
+            'import json, sys; data = json.load(sys.stdin); sys.exit(0 if data.get("status") == "ready" else 1)'
+
+      - name: Check Beat-to-worker freshness
+        run: |
+          set -euo pipefail
+          body=$(curl --fail --silent --show-error --max-time 12 \
+            --retry 2 --retry-delay 3 --retry-all-errors \
+            https://api.topteacheracademy.com/api/scheduler-ready/)
+          printf '%s' "$body" | python3 -c \
+            'import json, sys; data = json.load(sys.stdin); sys.exit(0 if data.get("status") == "ready" else 1)'

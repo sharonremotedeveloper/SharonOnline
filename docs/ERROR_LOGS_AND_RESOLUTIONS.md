@@ -863,3 +863,17 @@ def configure_test_settings(settings):
 - **Resolution:** The WSGI wrapper now delegates through a stable `django_application`; production normalizes `rediss://` URLs with `ssl_cert_reqs=required`; Beat is configured with `--schedule=/tmp/celerybeat-schedule`.
 - **Verification:** Focused tests passed `2/2` and Ruff passed. API deployment `ada7891c-b01c-496d-b9c3-b14e2d43cb82` has no recursion/healthcheck errors, worker deployment `5cfe1d74-a335-49ff-86b1-5cc99c15594a` connects to Upstash and reaches ready state, and Beat deployment `4e26aa57-70c2-4965-9909-56767dced9af` starts and dispatches scheduled tasks without the prior permission error.
 - **Environment/resource touched:** Production Railway service configuration and application code on `main`; no database schema, DNS, or provider credentials were changed.
+
+### ERR-530: Heartbeat agent started in an isolated worktree
+
+- **Observed:** On 2026-10-15, the delegated heartbeat implementation began in an agent-created detached worktree, contrary to the shared-`develop` protocol.
+- **Root cause:** The delegation was launched before enforcing the repository's no-isolated-worktree rule for this deployment stream.
+- **Resolution:** The agent was stopped from editing and used only for read-only design review. The implementation and tests were written in the shared `develop` checkout. After verifying the agent-created worktree contained only its five draft files, the corrected implementation was committed on shared `develop` and that exact detached worktree was removed with `git worktree remove --force`.
+- **Verification:** The shared checkout owns the heartbeat commit `d5608dd`; the agent draft was never merged or pushed. The `antigravity-repair` and `merge-develop` worktrees were untouched. The removed draft files are not independently recoverable from Git because they were uncommitted; their intended behavior is represented in the shared commit.
+
+### ERR-531: Adjacent database tests blocked by local virtualenv permissions
+
+- **Observed:** On 2026-10-15, a focused run including readiness and production-runtime tests produced 19 passes and two setup errors. Both failed while `rest_framework_simplejwt` resolved migration `0010_fix_migrate_to_bigautofield.py` with `WinError 5: Access is denied`.
+- **Root cause:** The same installed dependency file access restriction recorded in ERR-524 prevents local Django test-database setup; no test assertion failed.
+- **Resolution:** No dependency permissions or migration history were changed. The new heartbeat tests, Ruff and `manage.py check` pass locally; CI and hosted checks remain required.
+- **Environment/resource touched:** Local test runner only; no database schema or provider state changed.
