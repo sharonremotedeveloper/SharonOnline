@@ -412,6 +412,14 @@ This section is historical and does not describe the current hosted state. The c
 - **Hosted acceptance:** Read-only external HTTPS checks returned API `200` with `{"status":"healthy","service":"esl_backend","version":"1.0.0"}` and website `200` with the Sharon Online production title. Railway API, worker, and Beat remain deployed from the exact tested release SHA; Cloudflare DNS and the Railway custom certificate remain verified.
 - **Status:** `production infrastructure and schema migration complete`; the short-lived Neon recovery branch should be retained until its expiry or explicitly removed by the owner. The production migration service should remain plan-only unless a future release creates a new recovery point and approval gate.
 
+#### 2026-10-14 production branch promotion and Railway rebuild checkpoint
+
+- **Branch promotion:** `main` was fast-forwarded from `261077c` to the fully tested shared tip `6a5c301e59c15256ec857bbc290ed179f744066d`. `develop` remains the shared implementation branch; `main` now contains the same tested code and deployment records.
+- **Railway source correction:** API, worker, and Beat production services were reconnected to `sharonremotedeveloper/SharonOnline@main` at immutable SHA `6a5c301e59c15256ec857bbc290ed179f744066d`. This removes the prior production source drift while preserving exact-SHA pinning.
+- **Fresh production builds:** API deployment `921cddaa-19b8-4aeb-88ce-bc1c3290d79`, worker deployment `e8de7817-17c3-4662-8f73-9f8bdebad60d`, and Beat deployment `deedf884-5468-4681-b1c8-83887da7f76` all completed `SUCCESS` from `main`. The earlier Railway failures were historical attempts at `674bee5` and older SHAs; they are not the active deployments.
+- **End-to-end check:** Read-only HTTPS verification after promotion returned API `200` with the healthy `esl_backend` payload and website `200` with the Sharon Online production title.
+- **Status:** `main promoted; Railway production rebuilt successfully; public path healthy`. Keep production pinned to an exact tested SHA when promoting future changes; do not switch the live services to a moving branch tip.
+
 ---
 
 ## 6. Technical-debt remediation batches (started 2026-10-02)
