@@ -3,6 +3,11 @@ from celery.schedules import crontab
 # Sharon's ESL Marketplace - Production Celery Beat Schedule
 # Compliant with SOW-ESL-2026-001 & Master Architecture Blueprint
 CELERY_BEAT_SCHEDULE = {
+    'scheduler-heartbeat-every-minute': {
+        'task': 'apps.notifications.tasks.scheduler_heartbeat_task',
+        'schedule': 60.0,
+        'options': {'queue': 'scheduler_beat', 'expires': 50},
+    },
     # 1. Purge expired 10-minute slot locks & abandoned checkouts (Every 60 seconds)
     'purge-expired-reservations-every-minute': {
         'task': 'apps.bookings.tasks.purge_expired_reservations_task',
@@ -98,6 +103,7 @@ CELERY_BEAT_SCHEDULE = {
 
 # Task Queue Routing Definition
 CELERY_TASK_ROUTES = {
+    'apps.notifications.tasks.scheduler_heartbeat_task': {'queue': 'scheduler_beat'},
     'apps.bookings.tasks.purge_expired_reservations_task': {'queue': 'scheduler_beat'},
     'apps.bookings.tasks.audit_attendance_and_noshows_task': {'queue': 'scheduler_beat'},
     'apps.bookings.tasks.dispatch_pre_lesson_reminders_task': {'queue': 'notifications'},
