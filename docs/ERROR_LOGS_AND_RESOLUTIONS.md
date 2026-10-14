@@ -825,3 +825,17 @@ def configure_test_settings(settings):
 - **Root cause:** The local virtualenv dependency file is not readable/resolvable by the current process. This is outside the repository migration graph and is not evidence of a migration diff.
 - **Resolution:** No dependency or permissions were changed. `manage.py check`, focused migration-release tests, and Python compilation were run independently. A clean migration-check result remains pending a repaired/recreated virtualenv or CI runner.
 - **Environment/resource touched:** `none`; no database connection or migration was attempted.
+
+### ERR-525: Temporary Eskom frontend shutdown build verification blocked by local environment
+
+- **Observed:** On 2026-10-14, frontend tests passed (262/262) and ESLint passed with zero warnings. `npm run build` could not complete: the local resolver failed for `fonts.googleapis.com`, followed by `EPERM` creating `frontend/.next/server/app/admin/teachers/vetting`.
+- **Root cause:** The build environment has no usable external Google Fonts DNS resolution and the existing Next build output directory has a filesystem permission restriction. No application compile diagnostic was reported before the filesystem failure.
+- **Resolution:** No network, provider, dependency, or destructive filesystem change was attempted. The build remains unverified; retry with approved network/filesystem access or CI.
+- **Environment/resource touched:** `frontend/.next` was read/written by the normal build process only; Railway/provider state was not accessed or changed.
+
+### ERR-526: Shutdown guard initially placed before report-component hooks
+
+- **Observed:** The first post-shutdown lint run rejected `EskomReportButton.tsx` for five conditional React hook calls.
+- **Root cause:** The component returned early on the disabled feature flag before declaring its existing `useState` hooks.
+- **Resolution:** Moved the flag return after all hooks; the component still renders nothing while the flag is `false` and lint can verify stable hook order.
+- **Verification:** TypeScript passed; lint was rerun after this fix and passed with zero warnings. The full frontend test suite also passed 262/262.

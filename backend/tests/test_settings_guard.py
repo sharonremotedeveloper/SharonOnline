@@ -37,6 +37,13 @@ def test_valid_env_passes():
     validate_production_settings(dict(GOOD))
 
 
+def test_valid_env_passes_when_eskom_is_temporarily_disabled_without_provider_key():
+    env = dict(GOOD)
+    env['ESKOMSEPUSH_ENABLED'] = 'false'
+    env.pop('ESKOMSEPUSH_API_KEY')
+    validate_production_settings(env)
+
+
 @pytest.mark.parametrize('key,value', [
     ('DJANGO_SECRET_KEY', ''),
     ('FRONTEND_BASE_URL', ''),

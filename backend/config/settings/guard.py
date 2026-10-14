@@ -90,7 +90,8 @@ def validate_production_settings(env=os.environ):
     elif len(daily_webhook_secret) < 16:
         errors.append('DAILY_WEBHOOK_SECRET must be at least 16 characters')
 
-    if not env.get('ESKOMSEPUSH_API_KEY'):
+    eskom_enabled = (env.get('ESKOMSEPUSH_ENABLED', 'true') or '').strip().lower() in ('1', 'true', 'yes')
+    if eskom_enabled and not env.get('ESKOMSEPUSH_API_KEY'):
         errors.append('ESKOMSEPUSH_API_KEY must be set so Power Guard never fabricates provider status')
 
     try:

@@ -335,6 +335,7 @@ REFUND_SWEEP_BUDGET_SECONDS = int(os.environ.get('REFUND_SWEEP_BUDGET_SECONDS', 
 REFUND_POLL_INTERVAL_MINUTES = int(os.environ.get('REFUND_POLL_INTERVAL_MINUTES', '60'))           # lookup cadence for SUBMITTED refunds
 REFUND_FIRST_ATTEMPT_DELAY_MINUTES = int(os.environ.get('REFUND_FIRST_ATTEMPT_DELAY_MINUTES', '60'))   # the student's window to convert to wallet credit (provisional, Anesu to confirm)
 # EskomSePush provider. The periodic task is the only provider caller; request paths read durable cached status.
+ESKOMSEPUSH_ENABLED = os.environ.get('ESKOMSEPUSH_ENABLED', 'true').strip().lower() in ('1', 'true', 'yes')
 ESKOMSEPUSH_API_KEY = os.environ.get('ESKOMSEPUSH_API_KEY', '')
 ESKOMSEPUSH_BASE_URL = os.environ.get('ESKOMSEPUSH_BASE_URL', 'https://developer.sepush.co.za/business/2.0')
 ESKOMSEPUSH_TIMEOUT_SECONDS = int(os.environ.get('ESKOMSEPUSH_TIMEOUT_SECONDS', '10'))

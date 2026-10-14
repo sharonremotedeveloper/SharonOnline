@@ -1,5 +1,11 @@
 # Engineering Delivery Roadmap & Progress Tracking
 
+## Temporary Eskom / Power Guard frontend shutdown (2026-10-14)
+
+- **Start:** Began on shared `develop` checkout; frontend-only scope confirmed. No branch/worktree was created and no Railway/provider action was taken.
+- **Checkpoint:** Added the reversible `POWER_GUARD_UI_ENABLED` flag (currently `false`) and removed the exposed teacher Power Guard route/dashboard surfaces, classroom Eskom report controls, admin status pill, and public Eskom/Power Guard marketing/refund copy. Generic tutor backup-power eligibility fields and badges remain unchanged.
+- **Stop:** Focused frontend tests passed (262/262), TypeScript passed, and ESLint passed with zero warnings after the Rules-of-Hooks review. `npm run build` remains unverified because of ERR-525 (Google Fonts DNS failure followed by existing `.next` permission error). No Railway/provider state was accessed or changed.
+
 ## Current implementation progress — rate-limit and request-efficiency hardening (2026-10-14)
 
 - **Branch:** `develop` shared checkout; no worktree or separate branch used.

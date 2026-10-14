@@ -42,6 +42,8 @@ class EskomStatusView(APIView):
     permission_classes = (permissions.IsAuthenticated, IsTeacher)
 
     def get(self, request):
+        if not settings.ESKOMSEPUSH_ENABLED:
+            return Response({'code': 'eskom_disabled'}, status=status.HTTP_404_NOT_FOUND)
         profile = getattr(request.user, 'teacher_profile', None)
         if profile is None or not profile.eskom_area_id:
             return Response({'code': 'eskom_area_not_configured'}, status=status.HTTP_409_CONFLICT)

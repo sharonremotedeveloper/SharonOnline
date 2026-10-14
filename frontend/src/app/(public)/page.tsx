@@ -3,7 +3,6 @@ import { ArrowRight, Clock, UserRound, BadgeCheck, Wallet } from "lucide-react";
 import { HeroSection } from "@/components/public/HeroSection";
 import { GoalSelector } from "@/components/public/GoalSelector";
 import { HowItWorksSteps } from "@/components/public/HowItWorksSteps";
-import { PowerGuardCallout } from "@/components/public/PowerGuardCallout";
 import { PricingTable } from "@/components/public/PricingTable";
 import { SectionHeading } from "@/components/public/SectionHeading";
 import { FeaturedTutorCard } from "@/components/public/FeaturedTutorCard";
@@ -122,7 +121,6 @@ export default async function HomePage() {
       {/* Why South Africa */}
       <section className="mx-auto mt-20 max-w-7xl space-y-8 px-4 sm:px-6 lg:px-8">
         <WhySouthAfrica />
-        <PowerGuardCallout />
       </section>
 
       {/* Goals */}

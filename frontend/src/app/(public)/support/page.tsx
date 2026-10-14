@@ -64,10 +64,6 @@ export default function SupportPage() {
       a: "Each lesson ticket unlocks one 1-on-1 private 25-minute session with your chosen tutor. Lesson credits never expire.",
     },
     {
-      q: "What happens if my tutor misses a class or loses power?",
-      a: "Power Guard uses fresh provider evidence for student-reported tutor-area outages. Confirmed operational failures return one lesson credit to the wallet; tutor or staff reports remain subject to the lesson-time window.",
-    },
-    {
       q: "Which payment methods are accepted?",
       a: "We support PayFast (ZAR instant EFT and SA bank cards) as well as PayPal v2 (USD, EUR, JPY credit cards and balance).",
     },
