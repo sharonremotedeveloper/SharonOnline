@@ -10,7 +10,7 @@
 | Intended role | Hosts the Django API and Celery worker/beat (see `ENVIRONMENT_AND_TESTING.md` §4). Postgres = Neon, Redis = Upstash (not Railway add-ons unless Anesu decides otherwise). |
 | Container source | `Project-files/backend/Dockerfile` |
 
-**Current state checked 2026-10-14:** Railway identity is `sharonremotedeveloper@gmail.com`. The canonical production project is `sharon-online-prod` (`e2b11747-5519-4139-bd34-a658affea42a`), environment `production` (`dd70ab8a-91c2-47cb-ba27-cdab00a38d74`). API, worker, and Beat are pinned to exact SHA `b33743acc91b52b9a0042c9571ee1179c760081b`; the latest deployments succeeded. The API custom domain is `api.topteacheracademy.com`; Railway reports its certificate valid and the DNS ownership record verified. Historical identifiers below are retained as audit history only.
+**Current state checked 2026-10-14:** Railway identity is `sharonremotedeveloper@gmail.com`. The canonical production project is `sharon-online-prod` (`e2b11747-5519-4139-bd34-a658affea42a`), environment `production` (`dd70ab8a-91c2-47cb-ba27-cdab00a38d74`). API, worker, and Beat are pinned to exact SHA `5b37e2707369deaaadf1e7a8161e336599fef3de`; all three deployments succeeded. The API custom domain is `api.topteacheracademy.com`. Public `/api/health/` and the new dependency `/api/ready/` both returned 200; readiness also returned `Cache-Control: no-store`. The historical identifiers below are audit history, not the active deployment.
 
 ---
 
@@ -31,26 +31,21 @@ railway whoami          # read-only: shows the logged-in user
 npm i -g @railway/cli            # only if `railway` is missing
 railway login                    # HUMAN ONLY: Anesu signs in as sharonremotedeveloper@gmail.com
 railway whoami                   # re-run Gate §0
-railway link --project 816aac81-bae6-40c4-b2de-48dc68d55709   # bind this folder to the project
+railway link --project e2b11747-5519-4139-bd34-a658affea42a   # bind this folder to the canonical production project only if explicitly authorized
 railway status                   # read-only: confirm project / environment / service
 ```
 
 If `railway link` asks for an environment or service, pick the one Anesu names; if unsure, ask. Do not create new projects, environments or services without approval.
 
-## 2. Expected services (to be confirmed by Anesu / filled in as built)
+## 2. Current services and historical audit
 
-| Service | Command | Notes |
+| Environment / service | Current state | Evidence |
 | :--- | :--- | :--- |
-| Environment / service | Current read-only state | Evidence |
-| :--- | :--- | :--- |
-| development / `backend-api-development` | SUCCESS from develop / dcaa9c7; Railway domain `backend-api-development-development-9d0e.up.railway.app`; health check `/api/health/` | Deployment `12d3dd2a-8fed-477e-bea8-214b8bbccaba` |
-| development / `celery-worker-development` | SUCCESS from develop / dcaa9c7 | Deployment `aff043fc-cf59-4e93-ac99-8eb6ebca9a9e` |
-| development / `celery-beat-development` | SUCCESS from develop / dcaa9c7 | Deployment `426d93fe-9746-4db9-9317-c8d4b4935f73` |
-| production / `backend-api-production` | SUCCESS from develop / `b33743a`; Railway healthcheck passed; custom domain `api.topteacheracademy.com` | Deployment `8ddf565b-dc3b-4929-8da1-aa5b03d8a106` |
-| production / `celery-worker-production` | SUCCESS from develop / `b33743a` | Deployment `2ba3fe91-2847-4e8d-b37b-35adff934902` |
-| production / `celery-beat-production` | SUCCESS from develop / `b33743a` | Deployment `562b5055-ea8e-49c7-8acf-3028a1cea823` |
+| production / `backend-api-production` | SUCCESS, pinned `main` at `5b37e27`; custom domain `api.topteacheracademy.com`; Railway healthcheck stays liveness-only at `/api/health/` | Deployment `b378367b-d49b-4b13-8bb3-e6d4eb476437`; public `/api/ready/` checks Neon and Upstash |
+| production / `celery-worker-production` | SUCCESS, pinned `main` at `5b37e27`; task receipts and successful scheduled jobs observed | Deployment `49323bd9-62a6-4bb6-98d2-795c135176c4` |
+| production / `celery-beat-production` | SUCCESS, pinned `main` at `5b37e27`; scheduler startup observed | Deployment `10eb984a-ea5b-48f5-ab1c-54e8a09f5687` |
 
-Staged-but-not-deployed state observed read-only: development patch `192cc8f3-5894-404d-b390-9b706586a046` contains three Daily-related changes; production patch `3a580cef-6dfb-4e7b-ad36-6fd23d8a7ce2` contains six changes. Variable values were not read.
+The earlier development `dcaa9c7` deployments (`12d3dd2a`, `aff043fc`, `426d93fe`) and production `b33743a` deployments (`8ddf565b`, `2ba3fe91`, `562b5055`) were past checkpoints, not current state. Re-read provider status before relying on any deployment ID. No variable values were printed during this release.
 
 ## 3. Variables & secrets
 
@@ -108,5 +103,5 @@ test or image build is not production migration evidence.
 | CLI installed (5.59.0) | Present |
 | Account identity | **CONFIRMED 2026-10-14 by read-only Railway MCP identity check: `sharonremotedeveloper@gmail.com`** |
 | Canonical production project | **CONFIRMED 2026-10-14; `sharon-online-prod` / `e2b11747-5519-4139-bd34-a658affea42a`** |
-| Current service/deployment state | **CONFIRMED 2026-10-14; all three production services SUCCESS on exact SHA `b33743a`** |
-| `railway link` to `816aac81-…` | Not checked or changed; local CLI linkage is not required for the read-only MCP evidence |
+| Current service/deployment state | **CONFIRMED 2026-10-14; all three production services SUCCESS on exact SHA `5b37e27`** |
+| `railway link` to the canonical project | Not checked or changed; local CLI linkage is not required for MCP evidence |
