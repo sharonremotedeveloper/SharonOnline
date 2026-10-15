@@ -28,6 +28,15 @@ jobs:
             --retry 2 --retry-delay 3 --retry-all-errors \
             --output /dev/null https://topteacheracademy.com/pricing
 
+      - name: Check frontend-to-API proxy
+        run: |
+          set -euo pipefail
+          body=$(curl --fail --silent --show-error --max-time 12 \
+            --retry 2 --retry-delay 3 --retry-all-errors \
+            'https://topteacheracademy.com/api/proxy/teachers?page_size=1')
+          printf '%s' "$body" | python3 -c \
+            'import json, sys; data = json.load(sys.stdin); sys.exit(0 if isinstance(data.get("count"), int) and isinstance(data.get("results"), list) else 1)'
+
       - name: Check API dependencies
         run: |
           set -euo pipefail
