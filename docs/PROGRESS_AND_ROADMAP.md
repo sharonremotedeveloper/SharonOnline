@@ -511,6 +511,12 @@ This section is historical and does not describe the current hosted state. The c
 - Public read-only checks at about 03:38 UTC returned HTTP 200 for `/pricing`, `/api/proxy/teachers?page_size=3`, API `/api/ready/`, and `/api/scheduler-ready/`. The live pricing HTML still contained “New purchases are temporarily unavailable.” This confirms the observed public path and paused-checkout copy, not payment, booking or video acceptance.
 - Vercel deployment listing and aliases were readable without an explicit team scope. Project-scoped deployment event logs and grouped runtime errors returned 403 for the Sharon team; no local Vercel CLI fallback was installed. Runtime-error aggregation remains unverified, and no Vercel settings, aliases, or deployments were changed during this recheck (see ERR-534).
 
+#### 2026-10-15 frontend-to-API monitor coverage
+
+- The public uptime workflow now tests `https://topteacheracademy.com/api/proxy/teachers?page_size=1` between its website and direct API checks. It requires HTTP success plus a JSON `count` integer and `results` array, confirming the Next.js server proxy reaches the Django public teacher directory and returns the expected envelope even when zero tutors are approved. This is read-only and anonymous, but each request consumes the directory's Redis-backed throttle operation; normally one request per run, with up to two retries on a transient failure. It does not replace authenticated, payment, booking, or video acceptance.
+- Commit `93a8c0478eb8977e4bb98fec8b44babc92abaa93` was pushed to shared `develop` and production `main` after restoring the active GitHub account to `sharonremotedeveloper` (ERR-535). [Manual run `38678134567`](https://github.com/sharonremotedeveloper/SharonOnline/actions/runs/38678134567) completed `success` at 03:48 UTC: website, frontend proxy, API dependencies, and Beat-to-worker freshness all passed; the notification-drill job was skipped. A scheduled run at this SHA has not yet been observed.
+- The owner confirmed that the Vercel Logs page opens in the Sharon-signed-in browser. The connected observability tool still returns 403, so this narrows ERR-534 to the connector/scoped API path rather than proving logs unavailable to the account; no runtime-error scan was completed through the dashboard here.
+
 ---
 
 ## 6. Technical-debt remediation batches (started 2026-10-02)

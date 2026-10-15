@@ -895,6 +895,13 @@ def configure_test_settings(settings):
 ### ERR-534: Vercel project-scoped observability reads denied
 
 - **Observed:** On 2026-10-15, Vercel identified `sharonremotedeveloper@gmail.com` and listed the Sharon Online project, current production/Preview deployments, and production aliases. Explicit team-scoped `get_project`, deployment-event logs, and grouped runtime-error reads returned HTTP 403 for the Sharon team.
-- **Root cause:** The connected Vercel credential lacks permission for those project-scoped observability endpoints, or the connector applies a scope that is not authorized. The exact provider-side permission gap is not established. `get_project` without an explicit team scope did work; do not infer that the 403 is an application runtime error.
+- **Root cause:** The connected Vercel credential lacks permission for those project-scoped observability endpoints, or the connector applies a scope that is not authorized. The exact provider-side permission gap is not established. `get_project` without an explicit team scope did work. The owner subsequently confirmed the project's Logs page opens in the Sharon-signed-in browser, narrowing this to connected-tool access rather than a general account/dashboard denial. Do not infer that the 403 is an application runtime error.
 - **Resolution/workaround:** Used the account-scoped Vercel deployment and alias reads, plus public read-only HTTP checks, to verify current release alignment and health. The local `vercel` CLI fallback was not installed, so no alternate runtime-error scan was available. Do not claim runtime-error aggregation is clean.
 - **Environment/resource touched:** Read-only provider/API and public HTTP checks; no Vercel settings, deployments, DNS, or secrets changed.
+
+### ERR-535: Git push selected the wrong stored GitHub account
+
+- **Observed:** On 2026-10-15, the first push of the public proxy-monitor commit was rejected with `Permission to sharonremotedeveloper/SharonOnline.git denied to anesu-metabox` (HTTP 403). No remote branch changed from that attempt.
+- **Root cause:** `gh auth status` showed `anesu-metabox` had become the active GitHub CLI account while the Sharon account remained stored but inactive. The reason the active choice changed since the prior Sharon-authenticated push was not established.
+- **Resolution:** Switched the active CLI identity to `sharonremotedeveloper`, confirmed it with `gh auth status`, then atomically pushed the same reviewed commit `93a8c04` to `develop` and `main`. Manual monitor run `38678134567` succeeded at that SHA. Always recheck the active account before GitHub writes in this shared repository.
+- **Environment/resource touched:** Local GitHub CLI active-account selection and the authorized repository branches; no credentials were printed or changed, and no Railway/DNS/secrets changed.

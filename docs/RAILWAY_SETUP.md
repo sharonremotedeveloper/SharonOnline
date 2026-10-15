@@ -120,7 +120,13 @@ it does **not** identify which of Beat, broker, worker, or Redis failed.
 Never use this endpoint as Railway's restart healthcheck: a scheduler outage
 should page an operator, not restart an otherwise healthy API. The production
 uptime GitHub Actions workflow on the repository default branch checks the
-public site, `/api/ready/`, and `/api/scheduler-ready/` every ten minutes.
+public site, the anonymous frontend-to-API teacher-directory proxy,
+`/api/ready/`, and `/api/scheduler-ready/` every ten minutes. The proxy step
+requires a JSON directory envelope (`count` integer and `results` array), so
+a 200 HTML error page cannot appear healthy. It uses the existing public
+directory endpoint and its Redis-backed rate limit: normally one small request
+per run, with at most two retries on transient failure. Do not use a booking,
+login, payment, or user-data endpoint for this credential-free monitor.
 It is credential-free and best-effort: scheduled Actions can be delayed or
 skipped, so it is not a strict availability SLA. The Sharon GitHub account's
 failed-workflow notification settings were previously observed enabled;
@@ -137,6 +143,9 @@ in GitHub's in-app notifications. A scheduled-run failure has not been induced,
 so its delivery is not separately proven. Normal manual run `38676699986` at
 the same SHA subsequently succeeded with the drill job skipped. Never
 interpret the drill run as a site outage.
+The proxy check was added at `93a8c04`; manual run `38678134567` passed all
+four public checks and skipped the drill job. A scheduled run of this revised
+workflow has not yet been observed.
 
 On a failed check, inspect the exact workflow run and time, then the canonical
 Railway project/service IDs and deployment-specific API, worker, and Beat logs.
