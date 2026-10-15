@@ -6281,7 +6281,6 @@ components:
         detail:
           type: string
       required:
-      - code
       - detail
     TeacherList:
       type: object

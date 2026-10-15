@@ -52,7 +52,10 @@ class TeacherDirectoryPagination(PageNumberPagination):
 ], responses={
     200: TeacherListSerializer(many=True),
     503: inline_serializer(name='TeacherDirectoryUnavailable', fields={
-        'code': serializers.ChoiceField(choices=['directory_budget_exceeded', 'directory_cache_unavailable']),
+        # Directory errors include a code; the shared fail-closed throttle
+        # exception returns only detail when its own Redis counter is down.
+        'code': serializers.ChoiceField(choices=['directory_budget_exceeded', 'directory_cache_unavailable'],
+                                        required=False),
         'detail': serializers.CharField(),
     }),
 }))
@@ -62,6 +65,14 @@ class TeacherListView(generics.ListAPIView):
     permission_classes = (permissions.AllowAny,)
     throttle_classes = (ObservedScopedRateThrottle,)
     throttle_scope = 'public_teacher_directory'
+
+    def get_throttles(self):
+        # A rolling 24-hour scan can touch the slot-lock cache for many tutors.
+        # Keep cheap catalog browsing available while budgeting the expensive
+        # option separately and failing closed if its throttle cache is down.
+        if self.request.query_params.getlist('free_next_24h') == ['true']:
+            self.throttle_scope = 'public_teacher_availability'
+        return super().get_throttles()
 
     def list(self, request, *args, **kwargs):
         free_next_24h = _directory_boolean(request, 'free_next_24h')

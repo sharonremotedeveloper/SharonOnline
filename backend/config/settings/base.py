@@ -163,6 +163,7 @@ REST_FRAMEWORK = {
         # provider integrations, and staff mutations. These remain DRF/Redis-backed.
         'public_slots': '30/min',
         'public_teacher_directory': '120/min',
+        'public_teacher_availability': '12/min',
         'public_teacher_detail': '120/min',
         'public_materials_directory': '120/min',
         'public_materials_detail': '120/min',

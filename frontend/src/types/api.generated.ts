@@ -3063,7 +3063,7 @@ export interface components {
             readonly availabilities: components["schemas"]["TeacherAvailability"][];
         };
         TeacherDirectoryUnavailable: {
-            code: components["schemas"]["CodeEnum"];
+            code?: components["schemas"]["CodeEnum"];
             detail: string;
         };
         TeacherList: {

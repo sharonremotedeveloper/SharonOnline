@@ -5,11 +5,14 @@ import pytest
 from django.core.cache import cache
 from django.db import connection
 from django.test.utils import CaptureQueriesContext
+from redis.exceptions import ConnectionError as RedisConnectionError
 from rest_framework.test import APIClient
 
 import factories as f
 from apps.bookings.models import Booking
 from apps.bookings.services.lock_service import build_slot_lock_key
+from apps.common import throttles as throttle_module
+from apps.common.throttles import ObservedScopedRateThrottle
 from apps.integrations.google_calendar import busy_cache_key
 from apps.integrations.models import CalendarCredential
 from apps.teachers.models import TeacherAvailability, TeacherDateOverride, TeacherTimeOff
@@ -118,6 +121,26 @@ def test_explicit_false_is_unfiltered(frozen_clock):
     frozen_clock.set(NOW)
     tutor_at(1, time(10, 30), time(10, 55), has_inverter_backup=False)
     assert listed(backup_power='false', free_next_24h='false')['count'] == 1
+
+
+def test_expensive_filter_has_separate_rate_budget(monkeypatch):
+    monkeypatch.setitem(ObservedScopedRateThrottle.THROTTLE_RATES, 'public_teacher_availability', '1/min')
+    client = APIClient(REMOTE_ADDR='198.51.100.30')
+    assert client.get(URL, {'free_next_24h': 'true'}).status_code == 200
+    assert client.get(URL, {'free_next_24h': 'true'}).status_code == 429
+    assert client.get(URL).status_code == 200  # cheap catalog uses its own bucket
+
+
+def test_expensive_filter_fails_closed_if_throttle_cache_is_down(monkeypatch):
+    def unavailable(*args, **kwargs):
+        raise RedisConnectionError('private Redis endpoint')
+
+    monkeypatch.setattr(throttle_module, '_increment_counter', unavailable)
+    client = APIClient(REMOTE_ADDR='198.51.100.31')
+    response = client.get(URL, {'free_next_24h': 'true'})
+    assert response.status_code == 503
+    assert response.json()['detail'] == 'Rate limiting is temporarily unavailable. Please retry shortly.'
+    assert client.get(URL).status_code == 200  # established cheap-read policy
 
 
 def test_directory_batch_does_not_query_once_per_tutor(frozen_clock):

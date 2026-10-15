@@ -74,6 +74,8 @@ def test_only_bounded_catalog_reads_fail_open():
     }.issubset(throttle_module.THROTTLE_FAIL_OPEN_SCOPES)
     assert 'public_default_read' in throttle_module.THROTTLE_FAIL_OPEN_SCOPES
     assert 'public_slots' not in throttle_module.THROTTLE_FAIL_OPEN_SCOPES
+    assert 'public_teacher_availability' not in throttle_module.THROTTLE_FAIL_OPEN_SCOPES
+    assert 'public_teacher_availability' in throttle_module.THROTTLE_FAIL_CLOSED_SCOPES
 
 
 def test_default_throttles_use_the_resilient_classes(settings):

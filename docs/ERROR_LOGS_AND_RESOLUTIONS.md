@@ -917,3 +917,9 @@ def configure_test_settings(settings):
 - **Observed:** On 2026-10-15, Chrome inventory exposed tabs, but two attempts to select the existing student tab timed out at `Emulation.setFocusEmulationEnabled` before page inspection. No production account or application error was observed from the timeout.
 - **Resolution:** Stopped the browser automation path for this checkpoint. Retain the owner's earlier mobile-dashboard acceptance and production API/worker evidence as separately labeled evidence; do not describe the new directory change as browser-accepted.
 - **Environment/resource touched:** Read-only browser selection only; no form submission or provider-state change.
+
+### ERR-538: Expensive public availability filter inherited the cheap catalog rate policy
+
+- **Observed:** The new `free_next_24h=true` directory path can scan tutor schedules and read many Redis lock keys, but initially shared the ordinary directory's 120/minute scope. That scope intentionally fails open on throttle-cache outage for cheap catalog reads. The expensive option should not inherit that policy.
+- **Local correction:** Select a separate `public_teacher_availability` scope only for the exact enabled flag, with a 12/minute per-IP limit and fail-closed Redis-outage behavior. Ordinary directory browse retains its 120/minute fail-open scope. This does not replace global abuse protection or guarantee a fixed Upstash bill against distributed clients; the per-request work caps still apply.
+- **Verification boundary:** 76 focused rate/directory/API-contract tests, Ruff, Django check, migration-drift check and generated-type drift check passed locally. Independent re-review found no remaining blocker after the 503 schema was corrected. Commit, CI and hosted verification are pending; production is unchanged.

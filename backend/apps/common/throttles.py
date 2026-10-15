@@ -39,7 +39,7 @@ THROTTLE_FAIL_OPEN_SCOPES = frozenset({
 # The implementation still defaults unknown scopes to fail-closed so a new
 # state-changing or sensitive endpoint cannot silently inherit fail-open.
 THROTTLE_FAIL_CLOSED_SCOPES = frozenset({
-    'public_slots', 'booking_write', 'purchase_status', 'financial_read',
+    'public_slots', 'public_teacher_availability', 'booking_write', 'purchase_status', 'financial_read',
     'financial_export', 'financial_document', 'private_asset', 'lesson_write',
     'student_write', 'student_refund_read', 'crm_write', 'refund_write',
     'teacher_settings', 'integration_write', 'integration_callback',
