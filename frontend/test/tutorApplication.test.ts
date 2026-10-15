@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildApplicationPayload, isSpeedTestPassing, validateApplicationStep } from "../src/lib/tutorApplication";
+import { buildApplicationPayload, hydrateTutorAssetProgress, isSpeedTestPassing, resolveTutorAssetContentType, validateApplicationStep } from "../src/lib/tutorApplication";
 
 test("T5b speed threshold requires 10/5 Mbps", () => {
   assert.equal(isSpeedTestPassing(10, 5), true);
@@ -16,5 +16,32 @@ test("T5b validates required uploads and declarations", () => {
 test("T5b emits only the typed application PATCH fields", () => {
   assert.deepEqual(buildApplicationPayload({ download: 12.5, upload: 6, powerConfirmed: true, accepted: true }), {
     speed_test: { download_mbps: "12.50", upload_mbps: "6.00" }, confirm_power_backup: true, accept_declaration: true,
+  });
+});
+
+test("tutor uploads normalize supported browser MIME aliases without accepting unsupported media", () => {
+  assert.equal(resolveTutorAssetContentType("accent_audio", { name: "sample.m4a", type: "audio/x-m4a", size: 1200 }), "audio/mp4");
+  assert.equal(resolveTutorAssetContentType("accent_audio", { name: "sample.ogg", type: "", size: 1200 }), "audio/ogg");
+  assert.equal(resolveTutorAssetContentType("intro_video", { name: "intro.mp4", type: "application/octet-stream", size: 1200 }), "video/mp4");
+  assert.throws(() => resolveTutorAssetContentType("intro_video", { name: "intro.mov", type: "video/quicktime", size: 1200 }), /MP4 or WebM/);
+  assert.throws(() => resolveTutorAssetContentType("accent_audio", { name: "sample.aac", type: "audio/aac", size: 1200 }), /MP3, M4A, WAV, WebM or OGG/);
+  assert.throws(() => resolveTutorAssetContentType("avatar", { name: "photo.jpg", type: "image/jpeg", size: 0 }), /empty/);
+  assert.throws(() => resolveTutorAssetContentType("avatar", { name: "photo.jpg", type: "image/jpeg", size: 6 * 1024 * 1024 }), /5 MB/);
+  assert.throws(() => resolveTutorAssetContentType("accent_audio", { name: "sample.m4a", type: "audio/mp4", size: 11 * 1024 * 1024 }), /10 MB/);
+  assert.throws(() => resolveTutorAssetContentType("intro_video", { name: "intro.mp4", type: "video/mp4", size: 51 * 1024 * 1024 }), /50 MB/);
+});
+
+test("tutor application resumes committed uploads from the API contract", () => {
+  const kinds = ["avatar", "accent_audio", "intro_video", "tefl_certificate", "identity_document"];
+  assert.deepEqual(hydrateTutorAssetProgress({
+    requirements: { upload_kinds: kinds },
+    steps: [{ key: "uploads", missing: ["accent_audio", "intro_video"] }],
+  }, ["fallback"]), {
+    requiredKinds: kinds,
+    committedKinds: ["avatar", "tefl_certificate", "identity_document"],
+  });
+  assert.deepEqual(hydrateTutorAssetProgress({ requirements: { upload_kinds: "invalid" } }, ["avatar"]), {
+    requiredKinds: ["avatar"],
+    committedKinds: [],
   });
 });

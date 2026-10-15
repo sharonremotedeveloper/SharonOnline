@@ -1,6 +1,7 @@
 from datetime import timedelta
 from unittest import mock
 
+import pytest
 from cryptography.fernet import Fernet
 from django.core.cache import cache
 from django.test import override_settings
@@ -21,6 +22,8 @@ def test_t3_magic_bytes_are_format_specific():
     assert not _matches(TeacherAsset.Kind.AVATAR, 'image/webp', b'RIFFxxxxNOPEdata')
     assert _matches(TeacherAsset.Kind.INTRO_VIDEO, 'video/mp4', b'xxxxftypisom')
     assert not _matches(TeacherAsset.Kind.INTRO_VIDEO, 'video/mp4', b'ftyp')
+    assert _matches(TeacherAsset.Kind.ACCENT_AUDIO, 'audio/ogg', b'OggS\x00sample')
+    assert not _matches(TeacherAsset.Kind.ACCENT_AUDIO, 'audio/ogg', b'not-ogg')
 
 
 def test_t3_commits_from_private_quarantine_to_final_bucket(teacher_user, fake_r2, settings,
@@ -38,6 +41,38 @@ def test_t3_commits_from_private_quarantine_to_final_bucket(teacher_user, fake_r
     assert asset.object_key.startswith(f'teachers/avatar/{teacher_user.user_id}/')
     assert fake_r2.objects[('public-assets', asset.object_key)]['body'].startswith(b'\x89PNG')
     assert ('private-assets', quarantine) not in fake_r2.objects
+
+
+@override_settings(DEBUG=False, SIMULATE_WITHOUT_CREDENTIALS=False,
+                   CLOUDFLARE_R2_PRIVATE_BUCKET_NAME='private-assets',
+                   CLOUDFLARE_R2_BUCKET_NAME='public-assets')
+def test_t3_production_commit_requires_browser_observed_etag(teacher_user, fake_r2):
+    quarantine = f'incoming/{teacher_user.user_id}/avatar.png'
+    response = fake_r2.put_object(Bucket='private-assets', Key=quarantine,
+                                  Body=b'\x89PNG\r\n\x1a\nbytes', ContentType='image/png')
+
+    with pytest.raises(ValueError, match='verification metadata'):
+        commit_asset(teacher_user, actor=teacher_user.user, kind=TeacherAsset.Kind.AVATAR,
+                     quarantine_key=quarantine, expected_etag='')
+
+    asset = commit_asset(teacher_user, actor=teacher_user.user, kind=TeacherAsset.Kind.AVATAR,
+                         quarantine_key=quarantine, expected_etag=response['ETag'])
+    assert asset.etag == response['ETag'].strip('"')
+
+
+@override_settings(DEBUG=False, SIMULATE_WITHOUT_CREDENTIALS=False,
+                   CLOUDFLARE_R2_PRIVATE_BUCKET_NAME='private-assets')
+def test_t3_commit_enforces_kind_specific_size_cap(teacher_user, fake_r2):
+    quarantine = f'incoming/{teacher_user.user_id}/avatar.png'
+    fake_r2.put_object(Bucket='private-assets', Key=quarantine,
+                       Body=b'\x89PNG\r\n\x1a\nbytes', ContentType='image/png')
+    stored = fake_r2.objects[('private-assets', quarantine)]
+    stored['body'] = b'\x89PNG\r\n\x1a\n' + (b'x' * (6 * 1024 * 1024))
+    etag = stored['etag']
+
+    with pytest.raises(ValueError, match='too large'):
+        commit_asset(teacher_user, actor=teacher_user.user, kind=TeacherAsset.Kind.AVATAR,
+                     quarantine_key=quarantine, expected_etag=etag)
 
 
 @override_settings(INTEGRATION_DATA_KEYS={}, INTEGRATION_DATA_ACTIVE_KEY='')

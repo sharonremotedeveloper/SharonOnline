@@ -179,14 +179,10 @@ class PresignedUploadURLView(APIView):
                 allowed_prefixes = []
                 user_role = getattr(user, 'role', '')
                 if user_role == 'teacher' or getattr(user, 'teacher_profile', None):
-                    allowed_prefixes.extend([
-                        f"incoming/{user_id_str}",
-                        f"teachers/avatars/{user_id_str}",
-                        f"teachers/audio/{user_id_str}",
-                        f"private/vetting/certificates/{user_id_str}",
-                        f"private/vetting/{user_id_str}",
-                    ])
-                if user_role in ['student', 'teacher']:
+                    # Tutor media and vetting documents must enter the private quarantine bucket.
+                    # Only the audited asset-commit flow may copy validated objects to final public/private keys.
+                    allowed_prefixes.append(f"incoming/{user_id_str}")
+                if user_role == 'student':
                     allowed_prefixes.append(f"students/avatars/{user_id_str}")
 
                 if not any(key.startswith(p + '/') for p in allowed_prefixes):

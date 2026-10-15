@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/lib/http";
 import { useAuth } from "@/context/AuthContext";
-import { buildApplicationPayload, isSpeedTestPassing, validateApplicationStep } from "@/lib/tutorApplication";
+import { buildApplicationPayload, hydrateTutorAssetProgress, isSpeedTestPassing, resolveTutorAssetContentType, validateApplicationStep } from "@/lib/tutorApplication";
 
 const ASSET_LABELS: Record<string, string> = {
   avatar: "Profile photo", accent_audio: "Accent audio", intro_video: "Intro video", tefl_certificate: "TEFL certificate", identity_document: "Identity document",
@@ -31,10 +31,9 @@ export default function TutorApplicationPage() {
   useEffect(() => { void (async () => {
     try {
       const [application, profile] = await Promise.all([api.getTeacherApplication(), api.getMyTeacherProfile()]);
-      const requirements = application?.requirements || {};
-      const kinds = Array.isArray(requirements.required_asset_kinds) ? requirements.required_asset_kinds : DEFAULT_REQUIRED_KINDS;
-      setRequiredKinds(kinds);
-      setDraft((old) => ({ ...old, headline: profile.headline || "", bio: profile.bio || "", specialties: profile.specialties || [], inverter: !!profile.has_inverter_backup, lte: !!profile.has_lte_failover }));
+      const uploads = hydrateTutorAssetProgress(application, DEFAULT_REQUIRED_KINDS);
+      setRequiredKinds(uploads.requiredKinds);
+      setDraft((old) => ({ ...old, headline: profile.headline || "", bio: profile.bio || "", specialties: profile.specialties || [], inverter: !!profile.has_inverter_backup, lte: !!profile.has_lte_failover, committed: uploads.committedKinds }));
       setAccent(profile.accent_display || profile.accent || "Not yet assigned");
       setFeedback(profile.review_feedback?.requested_changes || []);
     } catch (err) { setMessage(errorMessage(err)); } finally { setLoading(false); }
@@ -66,14 +65,17 @@ export default function TutorApplicationPage() {
     const file = event.target.files?.[0]; if (!file || !user) return;
     setBusy(true); setMessage("");
     try {
+      const contentType = resolveTutorAssetContentType(kind, file);
       const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "-");
       const key = `incoming/${user.id}/${crypto.randomUUID()}-${safe}`;
-      const presigned = await api.presignTeacherAsset({ action: "upload", key, content_type: file.type || "application/octet-stream", size: file.size });
-      const put = await fetch(presigned.upload_url, { method: "PUT", body: file, headers: { "Content-Type": file.type || "application/octet-stream" } });
+      const presigned = await api.presignTeacherAsset({ action: "upload", key, content_type: contentType, size: file.size });
+      const put = await fetch(presigned.upload_url, { method: "PUT", body: file, headers: { "Content-Type": contentType } });
       if (!put.ok) throw new Error("The upload could not be completed.");
-      await api.commitTeacherAsset({ kind, key, etag: presigned.etag || "" });
+      const etag = put.headers.get("ETag");
+      if (!etag) throw new Error("The upload response could not be verified. Please upload the file again.");
+      await api.commitTeacherAsset({ kind, key, etag });
       set({ committed: [...new Set([...draft.committed, kind])] });
-    } catch (err) { setMessage(errorMessage(err, "Upload failed. Please try again.")); } finally { setBusy(false); }
+    } catch (err) { setMessage(errorMessage(err, "Upload failed. Please try again.")); } finally { event.target.value = ""; setBusy(false); }
   }
   async function speedTest() {
     setBusy(true); setMessage("");
@@ -98,7 +100,7 @@ export default function TutorApplicationPage() {
     <div className="mt-8 flex gap-2">{[1,2,3,4,5].map((number) => <div key={number} className={`h-2 flex-1 rounded-full ${number <= step ? "bg-cocoa" : "bg-cream-300"}`} />)}</div>
     <section className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
       {step === 1 && <><h2 className="text-2xl font-semibold">Profile & bio</h2><p className="mt-2 text-ink-muted">Tell learners what makes your lessons effective.</p><div className="mt-6 grid gap-3 sm:grid-cols-2"><div className="rounded-lg bg-cream-deep p-3 text-sm"><span className="block text-sm text-ink-muted">Accent</span>{accent || "Not yet assigned"}</div><div className="rounded-lg bg-cream-deep p-3 text-sm"><span className="block text-sm text-ink-muted">Timezone</span>{user?.timezone || "UTC"}</div></div><input aria-describedby={message ? "apply-message" : undefined} className="mt-3 w-full rounded-lg border border-strong p-3" placeholder="Profile headline" aria-label="Profile headline" value={draft.headline} onChange={(e) => set({ headline: e.target.value })} /><textarea aria-describedby={message ? "apply-message" : undefined} className="mt-3 min-h-40 w-full rounded-lg border border-strong p-3" placeholder="Your teaching bio" aria-label="Your teaching bio" value={draft.bio} onChange={(e) => set({ bio: e.target.value })} /><input aria-describedby={message ? "apply-message" : undefined} className="mt-3 w-full rounded-lg border border-strong p-3" placeholder="Specialties, separated by commas" aria-label="Specialties, separated by commas" value={draft.specialties.join(", ")} onChange={(e) => set({ specialties: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} /></>}
-      {step === 2 && <><h2 className="text-2xl font-semibold">Your teaching assets</h2><p className="mt-2 text-ink-muted">Uploads are quarantined and checked before review.</p><div className="mt-6 space-y-3">{requiredKinds.map((kind) => <label key={kind} className="flex cursor-pointer items-center justify-between rounded-lg border border-strong p-4"><span>{ASSET_LABELS[kind] || kind.replaceAll("_", " ")}</span><span className={draft.committed.includes(kind) ? "text-success-hover" : "text-ink-muted"}>{draft.committed.includes(kind) ? "Uploaded" : "Choose file"}<input className="hidden" type="file" accept={kind === "intro_video" ? "video/*" : kind === "accent_audio" ? "audio/*" : "image/*,.pdf"} onChange={(e) => void upload(kind, e)} /></span></label>)}</div></>}
+      {step === 2 && <><h2 className="text-2xl font-semibold">Your teaching assets</h2><p className="mt-2 text-ink-muted">Uploads are quarantined and checked before review. Photos must be 5 MB or smaller; audio and documents 10 MB; video 50 MB. Intro videos must be MP4 or WebM; accent audio can be MP3, M4A, WAV, WebM or OGG.</p><div className="mt-6 space-y-3">{requiredKinds.map((kind) => <label key={kind} className="flex cursor-pointer items-center justify-between rounded-lg border border-strong p-4"><span>{ASSET_LABELS[kind] || kind.replaceAll("_", " ")}</span><span className={draft.committed.includes(kind) ? "text-success-hover" : "text-ink-muted"}>{draft.committed.includes(kind) ? "Uploaded" : "Choose file"}<input className="hidden" type="file" accept={kind === "intro_video" ? ".mp4,.webm,video/mp4,video/webm" : kind === "accent_audio" ? ".mp3,.m4a,.wav,.webm,.ogg,audio/*" : kind === "avatar" ? ".jpg,.jpeg,.png,.webp,image/*" : ".pdf,.jpg,.jpeg,.png"} onChange={(e) => void upload(kind, e)} /></span></label>)}</div></>}
       {step === 3 && <><h2 className="text-2xl font-semibold">Power backup</h2><p className="mt-2 text-ink-muted">Lessons need a reliable continuity plan.</p><label className="mt-6 flex gap-3"><input type="checkbox" checked={draft.inverter} onChange={(e) => set({ inverter: e.target.checked })} /> I have inverter or battery backup.</label><label className="mt-3 flex gap-3"><input type="checkbox" checked={draft.lte} onChange={(e) => set({ lte: e.target.checked })} /> I have mobile/LTE failover.</label><label className="mt-6 flex gap-3"><input type="checkbox" checked={draft.power} onChange={(e) => set({ power: e.target.checked })} /> I confirm I can continue lessons during local outages.</label></>}
       {step === 4 && <><h2 className="text-2xl font-semibold">Network speed test</h2><p className="mt-2 text-ink-muted">We need at least 10 Mbps download and 5 Mbps upload for live lessons.</p><button className="min-h-11 inline-flex items-center mt-6 rounded-lg bg-cocoa px-5 py-3 font-semibold text-white disabled:opacity-50" disabled={busy} onClick={() => void speedTest()}>Run WebRTC network test</button><div className="mt-6 grid grid-cols-2 gap-4"><div className="rounded-lg bg-cream-deep p-4"><div className="text-sm text-ink-muted">Download</div><strong className="text-2xl">{draft.download.toFixed(2)} Mbps</strong></div><div className="rounded-lg bg-cream-deep p-4"><div className="text-sm text-ink-muted">Upload</div><strong className="text-2xl">{draft.upload.toFixed(2)} Mbps</strong></div></div></>}
       {step === 5 && <><h2 className="text-2xl font-semibold">Legal declarations</h2><p className="mt-2 text-ink-muted">Please confirm each statement before submitting.</p><label className="mt-6 flex gap-3"><input type="checkbox" checked={draft.accepted} onChange={(e) => set({ accepted: e.target.checked })} /> I confirm that my profile and teaching assets are accurate.</label><label className="mt-3 flex gap-3"><input type="checkbox" checked={draft.accepted} onChange={(e) => set({ accepted: e.target.checked })} /> I agree to the tutor terms and safeguarding requirements.</label></>}

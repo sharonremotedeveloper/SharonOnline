@@ -1,6 +1,42 @@
 export const APPLICATION_MIN_DOWNLOAD_MBPS = 10;
 export const APPLICATION_MIN_UPLOAD_MBPS = 5;
 
+const MB = 1024 * 1024;
+const ASSET_FORMATS: Record<string, { types: string[]; extensions: Record<string, string>; hint: string; maxBytes: number }> = {
+  avatar: { types: ["image/jpeg", "image/png", "image/webp"], extensions: { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" }, hint: "JPG, PNG or WebP", maxBytes: 5 * MB },
+  accent_audio: { types: ["audio/mpeg", "audio/mp4", "audio/wav", "audio/webm", "audio/ogg"], extensions: { mp3: "audio/mpeg", m4a: "audio/mp4", mp4: "audio/mp4", wav: "audio/wav", webm: "audio/webm", ogg: "audio/ogg" }, hint: "MP3, M4A, WAV, WebM or OGG", maxBytes: 10 * MB },
+  intro_video: { types: ["video/mp4", "video/webm"], extensions: { mp4: "video/mp4", webm: "video/webm" }, hint: "MP4 or WebM", maxBytes: 50 * MB },
+  tefl_certificate: { types: ["application/pdf", "image/jpeg", "image/png"], extensions: { pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png" }, hint: "PDF, JPG or PNG", maxBytes: 10 * MB },
+  identity_document: { types: ["application/pdf", "image/jpeg", "image/png"], extensions: { pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png" }, hint: "PDF, JPG or PNG", maxBytes: 10 * MB },
+};
+
+export function resolveTutorAssetContentType(kind: string, file: { name: string; type: string; size: number }): string {
+  const format = ASSET_FORMATS[kind];
+  if (!format) throw new Error("Unknown tutor asset type.");
+  if (file.size <= 0) throw new Error("The selected file is empty.");
+  if (file.size > format.maxBytes) throw new Error(`The file must be ${format.maxBytes / MB} MB or smaller.`);
+  const aliases: Record<string, string> = { "image/jpg": "image/jpeg", "audio/x-m4a": "audio/mp4", "audio/m4a": "audio/mp4", "audio/x-wav": "audio/wav", "audio/mp3": "audio/mpeg" };
+  const reported = file.type.toLowerCase();
+  const extension = file.name.split(".").pop()?.toLowerCase() || "";
+  const contentType = !reported || reported === "application/octet-stream" ? format.extensions[extension] : (aliases[reported] || reported);
+  if (!contentType || !format.types.includes(contentType)) throw new Error(`Unsupported ${kind.replaceAll("_", " ")} format. Use ${format.hint}.`);
+  return contentType;
+}
+
+export function hydrateTutorAssetProgress(
+  application: { requirements?: { upload_kinds?: unknown }; steps?: Array<{ key?: unknown; missing?: unknown }> } | null | undefined,
+  fallbackKinds: string[],
+): { requiredKinds: string[]; committedKinds: string[] } {
+  const configuredKinds = application?.requirements?.upload_kinds;
+  const requiredKinds = Array.isArray(configuredKinds) && configuredKinds.every((kind) => typeof kind === "string")
+    ? configuredKinds
+    : fallbackKinds;
+  const uploadStep = Array.isArray(application?.steps) ? application.steps.find((step) => step?.key === "uploads") : undefined;
+  if (!uploadStep || !Array.isArray(uploadStep.missing)) return { requiredKinds, committedKinds: [] };
+  const missingKinds = new Set(uploadStep.missing.filter((kind): kind is string => typeof kind === "string"));
+  return { requiredKinds, committedKinds: requiredKinds.filter((kind) => !missingKinds.has(kind)) };
+}
+
 export function isSpeedTestPassing(download: number, upload: number): boolean {
   return Number.isFinite(download) && Number.isFinite(upload) && download >= APPLICATION_MIN_DOWNLOAD_MBPS && upload >= APPLICATION_MIN_UPLOAD_MBPS;
 }
