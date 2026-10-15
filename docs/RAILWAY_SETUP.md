@@ -10,7 +10,7 @@
 | Intended role | Hosts the Django API and Celery worker/beat (see `ENVIRONMENT_AND_TESTING.md` §4). Postgres = Neon, Redis = Upstash (not Railway add-ons unless Anesu decides otherwise). |
 | Container source | `Project-files/backend/Dockerfile` |
 
-**Current state checked 2026-10-15:** Railway identity is `sharonremotedeveloper@gmail.com`. The canonical production project is `sharon-online-prod` (`e2b11747-5519-4139-bd34-a658affea42a`), environment `production` (`dd70ab8a-91c2-47cb-ba27-cdab00a38d74`). API, worker, and Beat are pinned to exact SHA `d5608dd8019d9a1169052b3e81b83c30698dbaa0`; all three deployments succeeded. The API custom domain is `api.topteacheracademy.com`. Public `/api/ready/` and `/api/scheduler-ready/` both returned 200 `ready` with `Cache-Control: no-store` after Beat-to-worker execution. The historical identifiers below are audit history, not the active deployment.
+**Current state checked 2026-10-15:** Railway identity is `sharonremotedeveloper@gmail.com`. The canonical production project is `sharon-online-prod` (`e2b11747-5519-4139-bd34-a658affea42a`), environment `production` (`dd70ab8a-91c2-47cb-ba27-cdab00a38d74`). API, worker, and Beat are pinned to the verified application release SHA `e696d8e8372b16d00bd73bc8df926a5588a9f0ff`; all three deployments succeeded with one running replica and zero recent failures. Repository branch tips may advance with documentation or monitoring-only commits without changing the pinned application source tree; verify both before claiming a new backend release. The API custom domain is `api.topteacheracademy.com`. Public `/api/ready/` and `/api/scheduler-ready/` both returned 200 `ready`. The historical identifiers below are audit history, not the active deployment.
 
 ---
 
@@ -41,9 +41,9 @@ If `railway link` asks for an environment or service, pick the one Anesu names; 
 
 | Environment / service | Current state | Evidence |
 | :--- | :--- | :--- |
-| production / `backend-api-production` | SUCCESS, pinned `main` at `d5608dd`; custom domain `api.topteacheracademy.com`; Railway healthcheck stays liveness-only at `/api/health/` | Deployment `1978f8cd-4748-4b8f-b93b-d4462bd0a784`; public `/api/ready/` and `/api/scheduler-ready/` returned 200 |
-| production / `celery-worker-production` | SUCCESS, pinned `main` at `d5608dd`; new heartbeat task registered, received and completed | Deployment `a61cfd7a-cf7b-4fa7-a88d-69370ebbf677` |
-| production / `celery-beat-production` | SUCCESS, pinned `main` at `d5608dd`; heartbeat dispatched at 20:19 UTC | Deployment `6e8e4056-3af6-4d68-a02c-3a066def3d51` |
+| production / `backend-api-production` | SUCCESS, pinned `main` at application SHA `e696d8e`; custom domain `api.topteacheracademy.com`; Railway healthcheck stays liveness-only at `/api/health/` | Deployment `da68cbcb-dfba-4af2-8e40-dfaf09c84aab`; public `/api/ready/`, `/api/scheduler-ready/`, and filtered directory returned 200 |
+| production / `celery-worker-production` | SUCCESS, pinned `main` at `e696d8e`; one running replica, scheduled tasks completed | Deployment `ef762075-1922-4283-9685-651e1d3daa79` |
+| production / `celery-beat-production` | SUCCESS, pinned `main` at `e696d8e`; one running replica, scheduled tasks dispatched | Deployment `ee9c3c6e-20dc-4226-adab-6f7ac5db7657` |
 
 The earlier development `dcaa9c7` deployments (`12d3dd2a`, `aff043fc`, `426d93fe`) and production `b33743a` deployments (`8ddf565b`, `2ba3fe91`, `562b5055`) were past checkpoints, not current state. Re-read provider status before relying on any deployment ID. No variable values were printed during this release.
 
@@ -120,7 +120,7 @@ it does **not** identify which of Beat, broker, worker, or Redis failed.
 Never use this endpoint as Railway's restart healthcheck: a scheduler outage
 should page an operator, not restart an otherwise healthy API. The production
 uptime GitHub Actions workflow on the repository default branch checks the
-public site, the anonymous frontend-to-API teacher-directory proxy,
+public pricing and tutor pages, the anonymous frontend-to-API teacher-directory proxy,
 `/api/ready/`, and `/api/scheduler-ready/` every ten minutes. The proxy step
 requires a JSON directory envelope (`count` integer and `results` array), so
 a 200 HTML error page cannot appear healthy. It uses the existing public

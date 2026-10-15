@@ -22,11 +22,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Check the public website
+      - name: Check public pricing and tutor pages
         run: |
           curl --fail --silent --show-error --max-time 12 \
             --retry 2 --retry-delay 3 --retry-all-errors \
             --output /dev/null https://topteacheracademy.com/pricing
+          curl --fail --silent --show-error --max-time 12 \
+            --retry 2 --retry-delay 3 --retry-all-errors \
+            --output /dev/null https://topteacheracademy.com/tutors
 
       - name: Check frontend-to-API proxy
         run: |
