@@ -125,8 +125,9 @@ It is credential-free and best-effort: scheduled Actions can be delayed or
 skipped, so it is not a strict availability SLA. The Sharon GitHub account has
 Actions notifications for failed workflows enabled on GitHub and by email.
 Workflow `384771384` was active and manual dispatch `38631600839` succeeded
-on 2026-10-15. This is not proof that a scheduled run or failure notification
-has been delivered.
+on 2026-10-15. Scheduled run `38674318881` subsequently passed all three
+checks, but recent runs were spaced about 30-40 minutes apart despite the
+ten-minute cron. No failure notification has been induced or received.
 
 On a failed check, inspect the exact workflow run and time, then the canonical
 Railway project/service IDs and deployment-specific API, worker, and Beat logs.

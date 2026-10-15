@@ -884,3 +884,10 @@ def configure_test_settings(settings):
 - **Root cause:** Assumed generic GitHub CLI view flags applied to workflow view.
 - **Resolution:** Used `gh workflow view production-uptime.yml` on the repository default branch, then the GitHub API to verify workflow `384771384` is active. Manual dispatch run `38631600839` succeeded.
 - **Environment/resource touched:** No state changed by the failed reads; the authorized manual dispatch made only read-only public HTTP checks.
+
+### ERR-533: Chrome browser connection unavailable during recovery UAT
+
+- **Observed:** On 2026-10-15, two Chrome browser inventory attempts failed before exposing tabs with `Unable to load browser request-header policy`.
+- **Root cause:** The browser-control connection failed before a page could be selected; no application failure was observed from this error.
+- **Resolution:** Stopped trying to access the signed-in Chrome session. Opened the public `/forgot-password` page in an in-app browser and inspected it read-only. Asked the account owner to complete the sensitive reset-email/password path without sharing credentials or tokens.
+- **Verification:** The public reset form rendered. Account-specific recovery, email delivery, and password change remain unverified; no account form was submitted by the agent.
