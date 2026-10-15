@@ -27,9 +27,17 @@ function TutorsContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const handleFiltersChange = useCallback((next: TutorFilterState) => {
+    setLoading(true);
+    setError("");
     setFilters(next);
     setPage(1);
   }, []);
+
+  const handlePageChange = (nextPage: number) => {
+    setLoading(true);
+    setError("");
+    setPage(nextPage);
+  };
 
   useEffect(() => {
     let active = true;
@@ -70,7 +78,7 @@ function TutorsContent() {
       <p className="mt-4 max-w-2xl text-lg text-ink-muted">Search by name or topic. Open a tutor to see their free times.</p>
 
       <div className="mt-8">
-        <TutorFilters filters={filters} onFilterChange={handleFiltersChange} totalCount={count} />
+        <TutorFilters filters={filters} onFilterChange={handleFiltersChange} totalCount={count} loading={loading} />
       </div>
 
       {error && (
@@ -85,13 +93,13 @@ function TutorsContent() {
 
       {!loading && count > PAGE_SIZE && (
         <nav aria-label="Tutor pages" className="mt-10 flex items-center justify-center gap-4">
-          <button type="button" className={pageButton} disabled={page === 1} onClick={() => setPage(page - 1)}>
+          <button type="button" className={pageButton} disabled={page === 1} onClick={() => handlePageChange(page - 1)}>
             Previous
           </button>
           <span className="text-base text-ink-muted">
             Page {page} of {pages}
           </span>
-          <button type="button" className={pageButton} disabled={page >= pages} onClick={() => setPage(page + 1)}>
+          <button type="button" className={pageButton} disabled={page >= pages} onClick={() => handlePageChange(page + 1)}>
             Next
           </button>
         </nav>

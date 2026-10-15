@@ -8,6 +8,7 @@ interface TutorFiltersProps {
   filters: TutorFilterState;
   onFilterChange: (newFilters: TutorFilterState) => void;
   totalCount: number;
+  loading: boolean;
 }
 
 // Plain labels: flag emoji render as bare letters ("ZA", "GB") on Windows, so they are not used.
@@ -35,7 +36,7 @@ const chip = (active: boolean) =>
     active ? "bg-cocoa text-white" : "border border-divider bg-white text-ink hover:border-cocoa hover:bg-cream-surface"
   }`;
 
-export function TutorFilters({ filters, onFilterChange, totalCount }: TutorFiltersProps) {
+export function TutorFilters({ filters, onFilterChange, totalCount, loading }: TutorFiltersProps) {
   const [searchTerm, setSearchTerm] = useState(filters.search);
 
   useEffect(() => {
@@ -159,7 +160,7 @@ export function TutorFilters({ filters, onFilterChange, totalCount }: TutorFilte
       </div>
 
       <p className="text-base text-ink-muted" aria-live="polite">
-        Showing <strong className="text-ink">{totalCount}</strong> {totalCount === 1 ? "tutor" : "tutors"}
+        {loading ? <>Updating tutors…</> : <>Showing <strong className="text-ink">{totalCount}</strong> {totalCount === 1 ? "tutor" : "tutors"}</>}
       </p>
     </div>
   );

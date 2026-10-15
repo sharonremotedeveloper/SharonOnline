@@ -535,6 +535,12 @@ This section is historical and does not describe the current hosted state. The c
 - The owner confirmed that the Vercel Logs page opens in the Sharon-signed-in browser. The connected observability tool still returns 403, so this narrows ERR-534 to the connector/scoped API path rather than proving logs unavailable to the account; no runtime-error scan was completed through the dashboard here.
 - A subsequent read-only inspection of that signed-in dashboard found no entries in **Runtime Logs** for the selected last hour. **CDN Requests** did display a 50-row visible sample, all HTTP 200, including two production `/api/proxy/teachers` requests. The HTTP status-filter choices remained loading, preventing a comprehensive 5xx filter. These are bounded UI observations, not proof that all runtime requests were error-free; the connected observability tool's 403 remains open (ERR-534).
 
+#### 2026-10-15 tutor Preview browser acceptance and loading-state correction
+
+- The Sharon-authenticated protected development Preview `/tutors` rendered three actual development tutor cards. The next-24-hour filter retained three matches; adding backup power returned zero matches with the correct filtered-empty message. Clearing filters restored the three cards. This verifies the visible development controls and result transitions, not production tutor approval or booking.
+- One transient false “No tutors available yet” message appeared during clear-all before the fetch resolved (ERR-540). The shared `develop` checkout now sets loading synchronously on filter and page changes and reports “Updating tutors…” instead of a stale count during the request. Local frontend tests 265/265, TypeScript, API contract drift, and lint passed. The local production build remained blocked by the previously recorded Google Fonts DNS and `.next` permission environment failures; hosted CI and a fresh Preview browser recheck are still required before this correction is accepted. No production release is claimed.
+- The owner said a real tutor is ready to apply. The owner was asked to have that person use the public `/teach` → “Apply to Teach” path, complete registration and verification, and report when the application has been submitted. No fictional tutor, approval, checkout, or production account mutation was created by the agent. Real tutor-to-booking acceptance remains open; production checkout remains intentionally disabled.
+
 ---
 
 ## 6. Technical-debt remediation batches (started 2026-10-02)
