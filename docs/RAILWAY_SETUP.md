@@ -122,8 +122,9 @@ should page an operator, not restart an otherwise healthy API. The production
 uptime GitHub Actions workflow on the repository default branch checks the
 public site, `/api/ready/`, and `/api/scheduler-ready/` every ten minutes.
 It is credential-free and best-effort: scheduled Actions can be delayed or
-skipped, so it is not a strict availability SLA. The Sharon GitHub account has
-Actions notifications for failed workflows enabled on GitHub and by email.
+skipped, so it is not a strict availability SLA. The Sharon GitHub account's
+failed-workflow notification settings were previously observed enabled;
+delivery must be confirmed separately for each channel.
 Workflow `384771384` was active and manual dispatch `38631600839` succeeded
 on 2026-10-15. Scheduled run `38674318881` subsequently passed all three
 checks, but recent runs were spaced about 30-40 minutes apart despite the
@@ -131,10 +132,11 @@ ten-minute cron. Manual dispatch supports `notification_drill=true` to fail a
 separate, clearly labeled job while still running the three real public checks.
 Drill run `38676564882` at `fc87461` completed with all public checks green and
 only the intentional drill job failed. That verifies the workflow's failure
-signal, not delivery to the owner's GitHub or email inbox; owner confirmation
-of receipt remains pending. Normal manual run `38676699986` at the same SHA
-subsequently succeeded with the drill job skipped. Never interpret the drill
-run as a site outage.
+signal; the owner confirmed its failure notification arrived by email, but not
+in GitHub's in-app notifications. A scheduled-run failure has not been induced,
+so its delivery is not separately proven. Normal manual run `38676699986` at
+the same SHA subsequently succeeded with the drill job skipped. Never
+interpret the drill run as a site outage.
 
 On a failed check, inspect the exact workflow run and time, then the canonical
 Railway project/service IDs and deployment-specific API, worker, and Beat logs.
