@@ -7,6 +7,12 @@ on:
   schedule:
     - cron: '7,17,27,37,47,57 * * * *'
   workflow_dispatch:
+    inputs:
+      notification_drill:
+        description: 'Fail a separate job on purpose to test workflow-failure notifications; public checks still run'
+        type: boolean
+        required: false
+        default: false
 
 permissions: {}
 
@@ -39,3 +45,13 @@ jobs:
             https://api.topteacheracademy.com/api/scheduler-ready/)
           printf '%s' "$body" | python3 -c \
             'import json, sys; data = json.load(sys.stdin); sys.exit(0 if data.get("status") == "ready" else 1)'
+
+  notification-drill:
+    if: github.repository == 'sharonremotedeveloper/SharonOnline' && github.event_name == 'workflow_dispatch' && inputs.notification_drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Intentional failure for notification delivery drill
+        run: |
+          echo 'Notification drill only: production availability checks run in a separate job.'
+          exit 1
