@@ -1,10 +1,29 @@
-import type { PublicTutor } from "@/types/tutor";
+import type { PublicTutor, TutorFilterState } from "@/types/tutor";
 
-export function buildTutorQuery(input: { search?: string; accent?: string; specialty?: string; page?: number; pageSize?: number }): string {
+export function getTutorDirectoryEmptyState(filters: TutorFilterState) {
+  const hasActiveFilters = Boolean(
+    filters.search.trim() || filters.accent || filters.specialty || filters.only_power_guard || filters.only_today,
+  );
+  return hasActiveFilters
+    ? {
+        heading: "No tutors match these filters",
+        description: "Try changing your search or removing a filter.",
+        showReset: true,
+      }
+    : {
+        heading: "No tutors available yet",
+        description: "We're preparing the tutor directory. Please check back soon.",
+        showReset: false,
+      };
+}
+
+export function buildTutorQuery(input: Partial<Pick<TutorFilterState, "search" | "accent" | "specialty" | "only_power_guard" | "only_today">> & { page?: number; pageSize?: number }): string {
   const query = new URLSearchParams();
   if (input.search?.trim()) query.set("search", input.search.trim());
   if (input.accent) query.set("accent", input.accent);
   if (input.specialty) query.set("specialty", input.specialty);
+  if (input.only_power_guard) query.set("backup_power", "true");
+  if (input.only_today) query.set("free_next_24h", "true");
   if (input.page && input.page > 1) query.set("page", String(input.page));
   if (input.pageSize) query.set("page_size", String(input.pageSize));
   return query.toString();

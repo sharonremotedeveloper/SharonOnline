@@ -905,3 +905,15 @@ def configure_test_settings(settings):
 - **Root cause:** `gh auth status` showed `anesu-metabox` had become the active GitHub CLI account while the Sharon account remained stored but inactive. The reason the active choice changed since the prior Sharon-authenticated push was not established.
 - **Resolution:** Switched the active CLI identity to `sharonremotedeveloper`, confirmed it with `gh auth status`, then atomically pushed the same reviewed commit `93a8c04` to `develop` and `main`. Manual monitor run `38678134567` succeeded at that SHA. Always recheck the active account before GitHub writes in this shared repository.
 - **Environment/resource touched:** Local GitHub CLI active-account selection and the authorized repository branches; no credentials were printed or changed, and no Railway/DNS/secrets changed.
+
+### ERR-536: Public tutor-directory controls did not apply their advertised filters
+
+- **Observed:** On 2026-10-15, the production teacher list returned `count: 0` and the unfiltered `/tutors` UI described this as a search mismatch. Source inspection found the visible backup-power and next-24-hour controls did not add API query parameters; the backend teacher list did not implement those parameters. This could mislead visitors about an empty catalog and make the controls appear functional when they were not.
+- **Resolution in progress:** In the shared `develop` checkout, wired both controls to real backend filtering, corrected empty/error copy, added the public declaration field, and updated the OpenAPI/generated TypeScript contract. The availability filter returns a defined 503 if its fixed scan budget is exceeded, or a retryable 503 if the required cache cannot produce an exact result; it does not silently truncate a count or claim a locked slot is free. Directory pagination now honors the UI's 12-item `page_size` request.
+- **Verification:** Local focused backend/API-contract tests passed 40/40; frontend tests passed 265/265; lint, contract-drift check, and production build passed. Independent read-only review found no blocking issue. Hosted Preview/production checks remain pending. No commit, push, or provider write had been performed at this checkpoint.
+
+### ERR-537: Chrome automation focus timed out during authenticated acceptance
+
+- **Observed:** On 2026-10-15, Chrome inventory exposed tabs, but two attempts to select the existing student tab timed out at `Emulation.setFocusEmulationEnabled` before page inspection. No production account or application error was observed from the timeout.
+- **Resolution:** Stopped the browser automation path for this checkpoint. Retain the owner's earlier mobile-dashboard acceptance and production API/worker evidence as separately labeled evidence; do not describe the new directory change as browser-accepted.
+- **Environment/resource touched:** Read-only browser selection only; no form submission or provider-state change.

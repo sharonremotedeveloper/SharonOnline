@@ -38,6 +38,10 @@ const chip = (active: boolean) =>
 export function TutorFilters({ filters, onFilterChange, totalCount }: TutorFiltersProps) {
   const [searchTerm, setSearchTerm] = useState(filters.search);
 
+  useEffect(() => {
+    setSearchTerm(filters.search);
+  }, [filters.search]);
+
   // Debounced search input
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -135,7 +139,7 @@ export function TutorFilters({ filters, onFilterChange, totalCount }: TutorFilte
             className="h-5 w-5 accent-cocoa"
           />
           <Zap className="h-5 w-5" aria-hidden="true" />
-          <span>Tutors with backup power</span>
+          <span>Tutors reporting backup power</span>
         </label>
 
         <label

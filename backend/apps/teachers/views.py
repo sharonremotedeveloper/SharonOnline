@@ -1,7 +1,7 @@
 from datetime import timedelta
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
-from rest_framework import generics, permissions, filters, status
+from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view, inline_serializer
+from rest_framework import generics, permissions, filters, serializers, status
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
@@ -12,7 +12,7 @@ from apps.common.throttles import (
 )
 from rest_framework.views import APIView
 from django.db.models import Q
-from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from apps.common import clock
 from apps.users.permissions import IsTeacher
 from .models import TeacherProfile, TeacherAvailability, TeacherDateOverride, TeacherTimeOff
@@ -28,15 +28,70 @@ from .serializers import (
     TeacherOwnProfileSerializer, TeacherAssetCommitSerializer, TeacherAssetCommitResponseSerializer,
 )
 from .services import availability
+from .services.directory import DirectoryUnavailable, free_teacher_ids
 
+
+def _directory_boolean(request, name):
+    values = request.query_params.getlist(name)
+    if not values:
+        return False
+    if len(values) != 1 or values[0] not in ('true', 'false'):
+        raise ValidationError({name: 'Use true or false.'})
+    return values[0] == 'true'
+
+
+class TeacherDirectoryPagination(PageNumberPagination):
+    page_size_query_param = 'page_size'
+    max_page_size = 50
+
+
+@extend_schema_view(get=extend_schema(parameters=[
+    OpenApiParameter('backup_power', bool, description='Only tutors who declared inverter backup.'),
+    OpenApiParameter('free_next_24h', bool, description='Only tutors with a bookable lesson fully within the next 24 hours.'),
+    OpenApiParameter('page_size', int, description='Tutors per page (maximum 50).'),
+], responses={
+    200: TeacherListSerializer(many=True),
+    503: inline_serializer(name='TeacherDirectoryUnavailable', fields={
+        'code': serializers.ChoiceField(choices=['directory_budget_exceeded', 'directory_cache_unavailable']),
+        'detail': serializers.CharField(),
+    }),
+}))
 class TeacherListView(generics.ListAPIView):
     serializer_class = TeacherListSerializer
+    pagination_class = TeacherDirectoryPagination
     permission_classes = (permissions.AllowAny,)
     throttle_classes = (ObservedScopedRateThrottle,)
     throttle_scope = 'public_teacher_directory'
 
+    def list(self, request, *args, **kwargs):
+        free_next_24h = _directory_boolean(request, 'free_next_24h')
+        queryset = self.filter_queryset(self.get_queryset())
+        if not free_next_24h:
+            return super().list(request, *args, **kwargs)
+
+        # Keep the full filtered count and stable ordering before selecting a page.
+        try:
+            ids = free_teacher_ids(queryset)
+        except DirectoryUnavailable as exc:
+            if exc.code == 'directory_budget_exceeded':
+                return Response({'code': exc.code, 'detail': 'Too many tutors or slots to search. Refine your filters.'},
+                                status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return Response({'code': exc.code, 'detail': 'Tutor availability is temporarily unavailable. Please retry.'},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE, headers={'Retry-After': '30'})
+        page_ids = self.paginate_queryset(ids)
+        selected = ids if page_ids is None else page_ids
+        teachers_by_id = {teacher.id: teacher for teacher in TeacherProfile.objects.bookable().filter(
+            pk__in=selected).select_related('user')}
+        teachers = [teachers_by_id[pk] for pk in selected if pk in teachers_by_id]
+        serializer = self.get_serializer(teachers, many=True)
+        if page_ids is not None:
+            return self.get_paginated_response(serializer.data)
+        return Response(serializer.data)
+
     def get_queryset(self):
         queryset = TeacherProfile.objects.bookable().select_related('user')
+        if _directory_boolean(self.request, 'backup_power'):
+            queryset = queryset.filter(has_inverter_backup=True)
         
         # Accent filter
         accent = self.request.query_params.get('accent')
@@ -69,7 +124,7 @@ class TeacherListView(generics.ListAPIView):
                 Q(bio__icontains=search)
             )
 
-        return queryset.order_by('-rating_avg', '-rating_count')
+        return queryset.order_by('-rating_avg', '-rating_count', 'pk')
 
 class TeacherDetailView(generics.RetrieveAPIView):
     serializer_class = TeacherDetailSerializer

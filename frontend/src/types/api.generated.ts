@@ -2136,6 +2136,12 @@ export interface components {
          * @enum {string}
          */
         CefrLevelEnum: "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+        /**
+         * @description * `directory_budget_exceeded` - directory_budget_exceeded
+         *     * `directory_cache_unavailable` - directory_cache_unavailable
+         * @enum {string}
+         */
+        CodeEnum: "directory_budget_exceeded" | "directory_cache_unavailable";
         Conflict: {
             /** Format: uuid */
             booking_id: string;
@@ -3049,11 +3055,16 @@ export interface components {
             specialties?: unknown;
             readonly country: string;
             readonly is_verified: boolean;
+            has_inverter_backup?: boolean;
             bio?: string;
             /** @description Cloudflare Stream HLS or preview MP4 URL */
             intro_video_url?: string;
             readonly timezone: string;
             readonly availabilities: components["schemas"]["TeacherAvailability"][];
+        };
+        TeacherDirectoryUnavailable: {
+            code: components["schemas"]["CodeEnum"];
+            detail: string;
         };
         TeacherList: {
             /** Format: uuid */
@@ -3083,6 +3094,7 @@ export interface components {
             specialties?: unknown;
             readonly country: string;
             readonly is_verified: boolean;
+            has_inverter_backup?: boolean;
         };
         TeacherOwnProfile: {
             /** Format: uuid */
@@ -6154,8 +6166,14 @@ export interface operations {
     v1_teachers_list: {
         parameters: {
             query?: {
+                /** @description Only tutors who declared inverter backup. */
+                backup_power?: boolean;
+                /** @description Only tutors with a bookable lesson fully within the next 24 hours. */
+                free_next_24h?: boolean;
                 /** @description A page number within the paginated result set. */
                 page?: number;
+                /** @description Tutors per page (maximum 50). */
+                page_size?: number;
             };
             header?: never;
             path?: never;
@@ -6169,6 +6187,14 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedTeacherListList"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeacherDirectoryUnavailable"];
                 };
             };
         };
