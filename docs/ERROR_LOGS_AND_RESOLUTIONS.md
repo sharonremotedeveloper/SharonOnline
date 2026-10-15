@@ -890,4 +890,11 @@ def configure_test_settings(settings):
 - **Observed:** On 2026-10-15, two Chrome browser inventory attempts failed before exposing tabs with `Unable to load browser request-header policy`.
 - **Root cause:** The browser-control connection failed before a page could be selected; no application failure was observed from this error.
 - **Resolution:** Stopped trying to access the signed-in Chrome session. Opened the public `/forgot-password` page in an in-app browser and inspected it read-only. Asked the account owner to complete the sensitive reset-email/password path without sharing credentials or tokens.
-- **Verification:** The public reset form rendered. Account-specific recovery, email delivery, and password change remain unverified; no account form was submitted by the agent.
+- **Verification:** The public reset form rendered and no account form was submitted by the agent. Subsequently, the owner confirmed receiving the reset email, completing the new-password step, and opening the student dashboard after sign-in. Production API/worker logs corroborated the request, email send, successful confirmation, and login; see the 2026-10-15 password-recovery checkpoint in `PROGRESS_AND_ROADMAP.md`. Chrome automation access itself remains unresolved, but did not block the owner-completed recovery acceptance.
+
+### ERR-534: Vercel project-scoped observability reads denied
+
+- **Observed:** On 2026-10-15, Vercel identified `sharonremotedeveloper@gmail.com` and listed the Sharon Online project, current production/Preview deployments, and production aliases. Explicit team-scoped `get_project`, deployment-event logs, and grouped runtime-error reads returned HTTP 403 for the Sharon team.
+- **Root cause:** The connected Vercel credential lacks permission for those project-scoped observability endpoints, or the connector applies a scope that is not authorized. The exact provider-side permission gap is not established. `get_project` without an explicit team scope did work; do not infer that the 403 is an application runtime error.
+- **Resolution/workaround:** Used the account-scoped Vercel deployment and alias reads, plus public read-only HTTP checks, to verify current release alignment and health. The local `vercel` CLI fallback was not installed, so no alternate runtime-error scan was available. Do not claim runtime-error aggregation is clean.
+- **Environment/resource touched:** Read-only provider/API and public HTTP checks; no Vercel settings, deployments, DNS, or secrets changed.

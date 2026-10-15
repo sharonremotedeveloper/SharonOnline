@@ -505,6 +505,12 @@ This section is historical and does not describe the current hosted state. The c
 - [Drill run `38676564882`](https://github.com/sharonremotedeveloper/SharonOnline/actions/runs/38676564882) finished `failure` at 03:30 UTC, as intended. Its `check-public-path` job passed the site, API dependency, and Beat-to-worker checks; only `notification-drill` failed. The owner confirmed receiving the failure notification by **email**, but not in GitHub's in-app notifications. This verifies email delivery for this manually triggered failure without an outage; scheduled-run failure delivery was not separately induced. Do not count this test run as a production incident.
 - A second manual [normal run `38676699986`](https://github.com/sharonremotedeveloper/SharonOnline/actions/runs/38676699986) at the same SHA finished `success` at 03:31 UTC: all three public checks passed and `notification-drill` was skipped. This confirms the default execution path remains green after the test hook was added.
 
+#### 2026-10-15 Vercel production alignment recheck
+
+- The authenticated Vercel user was `sharonremotedeveloper@gmail.com`. Project `sharon-online` (`prj_MykRDbBeFJm2Oypwf9SUIojqizK6`) had production deployment `dpl_A5PFrJHdxeAvkQUHsA2vxDR2Tzzv` in `READY` state from `main` SHA `32dbd0a184db34fcc24e89724cd96ea453f5555e`; its aliases included `topteacheracademy.com` and `www.topteacheracademy.com`. The latest `develop` Preview `dpl_bY2BiH2UCXqe76c6ApVKksHvqYbB` was also `READY` at the same SHA. These recent Git pushes changed only monitoring/docs; Railway's API, worker and Beat remained `SUCCESS` on pinned application SHA `d5608dd8019d9a1169052b3e81b83c30698dbaa0`. Distinguish repository tip from the Railway application release.
+- Public read-only checks at about 03:38 UTC returned HTTP 200 for `/pricing`, `/api/proxy/teachers?page_size=3`, API `/api/ready/`, and `/api/scheduler-ready/`. The live pricing HTML still contained “New purchases are temporarily unavailable.” This confirms the observed public path and paused-checkout copy, not payment, booking or video acceptance.
+- Vercel deployment listing and aliases were readable without an explicit team scope. Project-scoped deployment event logs and grouped runtime errors returned 403 for the Sharon team; no local Vercel CLI fallback was installed. Runtime-error aggregation remains unverified, and no Vercel settings, aliases, or deployments were changed during this recheck (see ERR-534).
+
 ---
 
 ## 6. Technical-debt remediation batches (started 2026-10-02)
