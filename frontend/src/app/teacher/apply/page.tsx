@@ -2,11 +2,11 @@
 import { AlertTriangle } from "lucide-react";
 
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/lib/http";
 import { useAuth } from "@/context/AuthContext";
-import { buildApplicationPayload, hydrateTutorAssetProgress, isSpeedTestPassing, resolveTutorAssetContentType, validateApplicationStep } from "@/lib/tutorApplication";
+import { TutorApplicationOutcome } from "@/components/teacher/TutorApplicationOutcome";
+import { buildApplicationPayload, getTutorApplicationOutcome, hydrateTutorAssetProgress, isSpeedTestPassing, recoverTutorApplicationOutcome, resolveTutorAssetContentType, TutorApplicationOutcome as ApplicationOutcome, validateApplicationStep } from "@/lib/tutorApplication";
 
 const ASSET_LABELS: Record<string, string> = {
   avatar: "Profile photo", accent_audio: "Accent audio", intro_video: "Intro video", tefl_certificate: "TEFL certificate", identity_document: "Identity document",
@@ -17,10 +17,10 @@ type Draft = { headline: string; bio: string; specialties: string[]; power: bool
 const EMPTY: Draft = { headline: "", bio: "", specialties: [], power: false, inverter: false, lte: false, download: 0, upload: 0, accepted: false, committed: [] };
 
 export default function TutorApplicationPage() {
-  const router = useRouter();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [step, setStep] = useState(1);
   const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [outcome, setOutcome] = useState<ApplicationOutcome | null>(null);
   const [requiredKinds, setRequiredKinds] = useState<string[]>(DEFAULT_REQUIRED_KINDS);
   const [feedback, setFeedback] = useState<string[]>([]);
   const [accent, setAccent] = useState("");
@@ -30,14 +30,18 @@ export default function TutorApplicationPage() {
 
   useEffect(() => { void (async () => {
     try {
-      const [application, profile] = await Promise.all([api.getTeacherApplication(), api.getMyTeacherProfile()]);
+      const application = await api.getTeacherApplication();
+      const loadedOutcome = getTutorApplicationOutcome(application);
+      setOutcome(loadedOutcome);
+      if (loadedOutcome) { void refreshUser(); return; }
+      const profile = await api.getMyTeacherProfile();
       const uploads = hydrateTutorAssetProgress(application, DEFAULT_REQUIRED_KINDS);
       setRequiredKinds(uploads.requiredKinds);
       setDraft((old) => ({ ...old, headline: profile.headline || "", bio: profile.bio || "", specialties: profile.specialties || [], inverter: !!profile.has_inverter_backup, lte: !!profile.has_lte_failover, committed: uploads.committedKinds }));
       setAccent(profile.accent_display || profile.accent || "Not yet assigned");
       setFeedback(profile.review_feedback?.requested_changes || []);
     } catch (err) { setMessage(errorMessage(err)); } finally { setLoading(false); }
-  })(); }, []);
+  })(); }, [refreshUser]);
 
   const errors = useMemo(() => validateApplicationStep(step, { headline: draft.headline, bio: draft.bio, specialties: draft.specialties, committedKinds: draft.committed, requiredKinds, powerConfirmed: draft.power, download: draft.download, upload: draft.upload, accepted: draft.accepted }), [step, draft, requiredKinds]);
   const set = (patch: Partial<Draft>) => setDraft((old) => ({ ...old, ...patch }));
@@ -58,8 +62,23 @@ export default function TutorApplicationPage() {
   async function submit() {
     if (errors.length) { setMessage(errors[0]); return; }
     setBusy(true); setMessage("");
-    try { await api.updateTeacherApplication(buildApplicationPayload({ accepted: true })); await api.submitTeacherApplication(); router.push("/teacher/application-submitted"); }
-    catch (err) { setMessage(errorMessage(err)); } finally { setBusy(false); }
+    try {
+      await api.updateTeacherApplication(buildApplicationPayload({ accepted: true }));
+      const application = await api.submitTeacherApplication();
+      const submittedOutcome = getTutorApplicationOutcome(application);
+      if (submittedOutcome) setOutcome(submittedOutcome);
+      else setMessage("Your application was submitted. Refresh this page to load its review status.");
+      void refreshUser();
+    }
+    catch (err) {
+      try {
+        const recoveredOutcome = await recoverTutorApplicationOutcome(() => api.getTeacherApplication());
+        if (recoveredOutcome) { setOutcome(recoveredOutcome); void refreshUser(); return; }
+      } catch (recoveryError) {
+        console.warn("Could not re-check the tutor application after submission failure", recoveryError instanceof Error ? recoveryError.name : "UnknownError");
+      }
+      setMessage(errorMessage(err));
+    } finally { setBusy(false); }
   }
   async function upload(kind: string, event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]; if (!file || !user) return;
@@ -93,6 +112,7 @@ export default function TutorApplicationPage() {
   }
 
   if (loading) return <main className="mx-auto max-w-3xl px-6 py-20">Loading your application…</main>;
+  if (outcome) return <TutorApplicationOutcome outcome={outcome} />;
   return <main className="min-h-screen bg-cream px-5 py-10 text-ink"><div className="mx-auto max-w-3xl">
     <p className="text-sm font-semibold uppercase tracking-[.18em] text-ink-muted">Tutor application</p>
     <h1 className="mt-3 font-['Lora'] text-4xl font-medium">Build your teaching profile</h1>

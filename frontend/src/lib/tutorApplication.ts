@@ -1,6 +1,57 @@
 export const APPLICATION_MIN_DOWNLOAD_MBPS = 10;
 export const APPLICATION_MIN_UPLOAD_MBPS = 5;
 
+export type TutorApplicationOverview = {
+  status?: unknown;
+  editable?: unknown;
+  submitted_at?: unknown;
+};
+
+export type TutorApplicationOutcome = {
+  status: string;
+  title: string;
+  summary: string;
+  submittedAt: string | null;
+};
+
+const APPLICATION_OUTCOME_COPY: Record<string, Pick<TutorApplicationOutcome, "title" | "summary">> = {
+  submitted: {
+    title: "Application submitted successfully",
+    summary: "Your application is safely in the review queue. You do not need to submit it again.",
+  },
+  in_review: {
+    title: "Your application is under review",
+    summary: "Our review team is assessing your profile and uploaded documents.",
+  },
+  approved: {
+    title: "Your tutor application is approved",
+    summary: "Congratulations — you can continue with the tutor onboarding steps.",
+  },
+  rejected: {
+    title: "A decision has been made",
+    summary: "Check your notifications or email for the review decision and any available next steps.",
+  },
+  suspended: {
+    title: "Your tutor access is paused",
+    summary: "Check your notifications or email for details and contact support if you need help.",
+  },
+};
+
+export function getTutorApplicationOutcome(application: TutorApplicationOverview | null | undefined): TutorApplicationOutcome | null {
+  if (!application || application.editable === true || typeof application.status !== "string") return null;
+  const copy = APPLICATION_OUTCOME_COPY[application.status];
+  if (!copy) return null;
+  return {
+    status: application.status,
+    ...copy,
+    submittedAt: typeof application.submitted_at === "string" ? application.submitted_at : null,
+  };
+}
+
+export async function recoverTutorApplicationOutcome(fetchOverview: () => Promise<TutorApplicationOverview>): Promise<TutorApplicationOutcome | null> {
+  return getTutorApplicationOutcome(await fetchOverview());
+}
+
 const MB = 1024 * 1024;
 const ASSET_FORMATS: Record<string, { types: string[]; extensions: Record<string, string>; hint: string; maxBytes: number }> = {
   avatar: { types: ["image/jpeg", "image/png", "image/webp"], extensions: { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" }, hint: "JPG, PNG or WebP", maxBytes: 5 * MB },

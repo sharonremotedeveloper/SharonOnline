@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildApplicationPayload, hydrateTutorAssetProgress, isSpeedTestPassing, resolveTutorAssetContentType, validateApplicationStep } from "../src/lib/tutorApplication";
+import { buildApplicationPayload, getTutorApplicationOutcome, hydrateTutorAssetProgress, isSpeedTestPassing, recoverTutorApplicationOutcome, resolveTutorAssetContentType, validateApplicationStep } from "../src/lib/tutorApplication";
 
 test("T5b speed threshold requires 10/5 Mbps", () => {
   assert.equal(isSpeedTestPassing(10, 5), true);
@@ -44,4 +44,35 @@ test("tutor application resumes committed uploads from the API contract", () => 
     requiredKinds: ["avatar"],
     committedKinds: [],
   });
+});
+
+test("submitted tutor applications resolve to a durable success state", () => {
+  assert.deepEqual(getTutorApplicationOutcome({
+    status: "submitted",
+    editable: false,
+    submitted_at: "2026-10-16T01:21:31Z",
+  }), {
+    status: "submitted",
+    title: "Application submitted successfully",
+    summary: "Your application is safely in the review queue. You do not need to submit it again.",
+    submittedAt: "2026-10-16T01:21:31Z",
+  });
+});
+
+test("editable applications keep the form while later review states get honest outcomes", () => {
+  assert.equal(getTutorApplicationOutcome({ status: "changes_requested", editable: true, submitted_at: null }), null);
+  assert.equal(getTutorApplicationOutcome({ status: "in_review", editable: false, submitted_at: "2026-10-16T01:21:31Z" })?.title, "Your application is under review");
+  assert.equal(getTutorApplicationOutcome({ status: "approved", editable: false, submitted_at: "2026-10-16T01:21:31Z" })?.title, "Your tutor application is approved");
+  assert.equal(getTutorApplicationOutcome({ status: "rejected", editable: false, submitted_at: "2026-10-16T01:21:31Z" })?.title, "A decision has been made");
+});
+
+test("an ambiguous submit failure recovers an already-committed outcome from the server", async () => {
+  let calls = 0;
+  const outcome = await recoverTutorApplicationOutcome(async () => {
+    calls += 1;
+    return { status: "submitted", editable: false, submitted_at: "2026-10-16T01:21:31Z" };
+  });
+  assert.equal(calls, 1);
+  assert.equal(outcome?.status, "submitted");
+  assert.equal(outcome?.title, "Application submitted successfully");
 });
