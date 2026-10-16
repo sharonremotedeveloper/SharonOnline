@@ -171,7 +171,7 @@ export default function StudentClassroomPage() {
         {/* Dual Split Layout */}
         <ClassroomSplitLayout material={material}>
           {/* Left Pane Cockpit Content */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">
+          <div className="bg-white rounded-3xl p-3 sm:p-6 lg:p-8 border border-divider shadow-card space-y-4 sm:space-y-6">
             {/* Tutor Profile Summary */}
             <div className="flex items-start gap-4 border-b border-divider pb-6">
               <div className="w-16 h-16 rounded-2xl overflow-hidden bg-cream-surface border border-divider shrink-0">

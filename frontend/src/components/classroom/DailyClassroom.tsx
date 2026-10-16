@@ -119,11 +119,11 @@ export function DailyClassroom({
         iframeStyle: {
           width: "100%",
           height: "100%",
-          minHeight: "540px",
           border: "0",
           borderRadius: "1rem",
         },
-        showLeaveButton: true,
+        // Our "Leave lesson" button runs finishLeave(); a second Daily leave button duplicated it.
+        showLeaveButton: false,
         showFullscreenButton: true,
         theme: {
           colors: {
@@ -143,6 +143,10 @@ export function DailyClassroom({
       callFrame.on("joined-meeting", () => {
         setJoined(true);
         setConnecting(false);
+        // Phones: send a lighter video stream to cut encode CPU/heat and data; a 1-on-1 lesson does not need HD.
+        if (window.matchMedia?.("(pointer: coarse)").matches) {
+          callFrame.updateSendSettings?.({ video: "bandwidth-optimized" })?.catch?.(() => undefined);
+        }
       });
 
       callFrame.on("participant-joined", (event: any) => {
@@ -225,44 +229,45 @@ export function DailyClassroom({
 
       {/* In-Meeting Live Video Frame */}
       <div
-        className={`relative w-full rounded-3xl overflow-hidden bg-neutral-900 border border-divider shadow-card ${
+        className={`w-full space-y-2 ${
           // Visible while connecting too: Daily's permission and device prompts live inside the frame (display:none can swallow them).
           joined || connecting ? "block" : "hidden"
         }`}
       >
-        {/* Floating Top Status Bar */}
-        <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between pointer-events-none">
-          <div className="flex items-center gap-2 pointer-events-auto bg-neutral-900/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-neutral-700 text-white text-xs font-semibold shadow-md">
+        {/* Status bar sits ABOVE the video: overlaid, it covered Daily's own tiles on phones, and a blurred overlay
+            over live video is re-composited every frame (costly on mobile). */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 bg-neutral-900 px-3 py-1.5 rounded-full text-white text-xs font-semibold">
             <span
-              className={`w-2 h-2 rounded-full ${
-                remoteUserJoined ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
-              }`}
+              aria-hidden="true"
+              className={`w-2 h-2 rounded-full shrink-0 ${remoteUserJoined ? "bg-emerald-400" : "bg-amber-400"}`}
             />
-            <span>
+            <span className="truncate">
               {remoteUserJoined ? `${partnerName} in classroom` : `Waiting for ${partnerName}...`}
             </span>
           </div>
 
-          <div className="flex items-center gap-2 pointer-events-auto">
+          <div className="flex items-center gap-2">
             {networkQuality === "low" && (
-              <span className="flex items-center gap-1 bg-amber-900/80 backdrop-blur-md px-2.5 py-1 rounded-full border border-amber-600 text-amber-200 text-xs font-semibold">
-                <Wifi className="w-3 h-3 animate-pulse" /> Low Bandwidth
+              <span className="flex items-center gap-1 bg-amber-900 px-2.5 py-1 rounded-full text-amber-100 text-xs font-semibold">
+                <Wifi className="w-3 h-3" aria-hidden="true" /> Low bandwidth
               </span>
             )}
             <button
               type="button"
               onClick={handleLeave}
-              className="min-h-9 px-3 py-1 rounded-full bg-red-600/90 hover:bg-red-700 text-white text-xs font-bold transition-colors flex items-center gap-1.5 shadow-md"
+              className="min-h-11 px-4 py-2 rounded-full bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors flex items-center gap-1.5"
             >
-              <PhoneOff className="w-3.5 h-3.5" /> Leave Lesson
+              <PhoneOff className="w-3.5 h-3.5" aria-hidden="true" /> Leave lesson
             </button>
           </div>
         </div>
 
-        {/* Daily Container Frame */}
+        {/* Daily Container Frame: viewport-bound on phones so the page around it can still be scrolled (the iframe
+            swallows touch scrolling, and a 500-600px frame filled the whole screen). */}
         <div
           ref={containerRef}
-          className="w-full min-h-[500px] sm:min-h-[560px] lg:min-h-[600px] bg-neutral-950"
+          className="w-full h-[62dvh] min-h-[340px] max-h-[640px] sm:h-[560px] lg:h-[600px] rounded-2xl sm:rounded-3xl overflow-hidden bg-neutral-950 border border-divider"
         />
       </div>
 
