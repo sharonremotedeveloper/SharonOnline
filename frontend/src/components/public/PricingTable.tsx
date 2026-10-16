@@ -9,6 +9,7 @@ import { useApiData } from "@/hooks/useApiData";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { CurrencySwitcher } from "./CurrencySwitcher";
 import { Check, Shield, Zap, Sparkles } from "lucide-react";
+import { PAYMENTS_ENABLED } from "@/lib/paymentsEnabled";
 
 export function PricingTable() {
   const [currency, setCurrency] = useState<CurrencyCode>("USD");
@@ -34,7 +35,11 @@ export function PricingTable() {
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-divider">
         <div className="text-center sm:text-left">
           <div className="text-lg font-bold text-ink font-serif">Show prices in your currency</div>
-          <div className="text-sm text-ink-muted">You pay in USD, EUR or JPY with PayPal, or ZAR with PayFast.</div>
+          <div className="text-sm text-ink-muted">
+            {PAYMENTS_ENABLED
+              ? "You pay in USD, EUR or JPY with PayPal, or ZAR with PayFast."
+              : "Online purchases are temporarily unavailable. Prices are shown for reference."}
+          </div>
         </div>
         <CurrencySwitcher variant="inline" onCurrencyChange={(c) => setCurrency(c)} />
       </div>
@@ -114,16 +119,22 @@ export function PricingTable() {
                 </div>
 
                 <div className="pt-6">
-                  <Link
-                    href={`/register?bundle=${encodeURIComponent(pack.code)}&currency=${currency}`}
-                    className={`w-full min-h-[48px] rounded-full font-bold text-base flex items-center justify-center gap-2 transition-colors ${
-                      popular
-                        ? "bg-cocoa hover:bg-cocoa-hover text-white shadow-sm"
-                        : "bg-cream-surface hover:bg-cream-deep text-ink border border-divider"
-                    }`}
-                  >
-                    <Zap className="w-4 h-4" aria-hidden="true" /> Buy {pack.credits} lesson{pack.credits > 1 ? "s" : ""}
-                  </Link>
+                  {PAYMENTS_ENABLED ? (
+                    <Link
+                      href={`/register?bundle=${encodeURIComponent(pack.code)}&currency=${currency}`}
+                      className={`w-full min-h-[48px] rounded-full font-bold text-base flex items-center justify-center gap-2 transition-colors ${
+                        popular
+                          ? "bg-cocoa hover:bg-cocoa-hover text-white shadow-sm"
+                          : "bg-cream-surface hover:bg-cream-deep text-ink border border-divider"
+                      }`}
+                    >
+                      <Zap className="w-4 h-4" aria-hidden="true" /> Buy {pack.credits} lesson{pack.credits > 1 ? "s" : ""}
+                    </Link>
+                  ) : (
+                    <p className="rounded-full border border-divider bg-cream-surface px-4 py-3 text-center text-sm font-semibold text-ink-muted">
+                      Purchases paused
+                    </p>
+                  )}
                 </div>
               </div>
             );
@@ -145,11 +156,13 @@ export function PricingTable() {
           </div>
         </div>
 
-        <ul className="flex flex-wrap items-center justify-center gap-2 text-sm font-semibold text-ink" aria-label="Payment methods">
-          <li className="px-3 py-2 rounded-lg bg-white border border-divider">PayPal</li>
-          <li className="px-3 py-2 rounded-lg bg-white border border-divider">PayFast</li>
-          <li className="px-3 py-2 rounded-lg bg-white border border-divider">Visa &amp; Mastercard</li>
-        </ul>
+        {PAYMENTS_ENABLED ? (
+          <ul className="flex flex-wrap items-center justify-center gap-2 text-sm font-semibold text-ink" aria-label="Payment methods">
+            <li className="px-3 py-2 rounded-lg bg-white border border-divider">PayPal</li>
+            <li className="px-3 py-2 rounded-lg bg-white border border-divider">PayFast</li>
+            <li className="px-3 py-2 rounded-lg bg-white border border-divider">Visa &amp; Mastercard</li>
+          </ul>
+        ) : null}
       </div>
     </div>
   );

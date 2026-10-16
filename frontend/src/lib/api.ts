@@ -69,7 +69,7 @@ export interface InquiryPayload {
   user_type?: "student" | "teacher" | "other";
 }
 
-export async function fetchFeaturedTutors(): Promise<FeaturedTeacher[]> {
+export async function fetchFeaturedTutors(): Promise<FeaturedTeacher[] | null> {
   // Server component: never throw (a marketing page must still render) and never invent tutors.
   // The backend has no "featured" flag yet, so take the first few verified tutors it returns.
   try {
@@ -90,7 +90,7 @@ export async function fetchFeaturedTutors(): Promise<FeaturedTeacher[]> {
   } catch (err) {
     if (USE_MOCKS) return FALLBACK_TUTORS;
     console.error("Could not load featured tutors:", err);
-    return [];
+    return null;
   }
 }
 
@@ -701,8 +701,8 @@ export const api = {
     return [];
   },
 
-  async getCreditPurchase(purchaseId: string) {
-    const live = await liveRequest(`${API_BASE}/payments/credit-purchases/${purchaseId}/`, {});
+  async getCreditPurchase(purchaseId: string, init: RequestInit = {}) {
+    const live = await liveRequest(`${API_BASE}/payments/credit-purchases/${purchaseId}/`, init);
     if (live !== MOCK) return live;
     throw new Error("Credit purchase status is unavailable in mock mode.");
   },

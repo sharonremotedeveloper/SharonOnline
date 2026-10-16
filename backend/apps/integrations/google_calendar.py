@@ -171,19 +171,36 @@ def external_busy_intervals(teacher):
     connection and left "block my busy times" on (read live, so turning it off takes effect at once). A cache that cannot be
     read hides nothing.
     """
-    if not CalendarCredential.objects.filter(user_id=teacher.user_id, revoked_at__isnull=True, block_busy=True).exists():
-        return []
+    return external_busy_intervals_for_teachers([teacher]).get(teacher.id, [])
+
+
+def external_busy_intervals_for_teachers(teachers, *, strict=False):
+    """Read the same optional public busy hints for a batch without contacting Google."""
+    teachers = list(teachers)
+    active_users = set(CalendarCredential.objects.filter(
+        user_id__in=[teacher.user_id for teacher in teachers], revoked_at__isnull=True, block_busy=True,
+    ).values_list('user_id', flat=True))
+    selected = {busy_cache_key(teacher.id): teacher.id for teacher in teachers if teacher.user_id in active_users}
+    if not selected:
+        return {}
     try:
-        cached = cache.get(busy_cache_key(teacher.id)) or []
-    except Exception:       # a cache outage must not take the listing down: the hint is optional by design
-        logger.warning('Busy-hint cache unreadable for teacher %s; listing without it', teacher.id)
-        return []
-    intervals = []
-    for start, end in cached:
-        first, last = parse_datetime(str(start)), parse_datetime(str(end))
-        if first and last and first < last:
-            intervals.append((first, last))
-    return intervals
+        cached = cache.get_many(selected)
+    except Exception:
+        if strict:
+            # The directory's "free" filter needs this hint to agree with public slots.
+            # The ordinary slot listing retains its established optional-hint behavior.
+            raise
+        logger.warning('Busy-hint cache unreadable for directory batch; listing without it')
+        return {}
+    result = {}
+    for key, rows in cached.items():
+        intervals = []
+        for start, end in rows:
+            first, last = parse_datetime(str(start)), parse_datetime(str(end))
+            if first and last and first < last:
+                intervals.append((first, last))
+        result[selected[key]] = intervals
+    return result
 
 
 def refresh_busy_hint(teacher) -> str:

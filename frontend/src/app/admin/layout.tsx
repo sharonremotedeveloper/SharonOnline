@@ -15,7 +15,6 @@ import {
   ExternalLink,
   ChevronRight,
   Sparkles,
-  Zap,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -128,10 +127,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-success-surface text-success-hover border border-success-border text-xs font-bold">
-              <Zap className="w-3.5 h-3.5 text-success fill-success" />
-              <span>Power Guard monitoring enabled</span>
-            </div>
           </div>
         </header>
 

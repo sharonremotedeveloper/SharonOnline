@@ -90,7 +90,8 @@ def validate_production_settings(env=os.environ):
     elif len(daily_webhook_secret) < 16:
         errors.append('DAILY_WEBHOOK_SECRET must be at least 16 characters')
 
-    if not env.get('ESKOMSEPUSH_API_KEY'):
+    eskom_enabled = (env.get('ESKOMSEPUSH_ENABLED', 'true') or '').strip().lower() in ('1', 'true', 'yes')
+    if eskom_enabled and not env.get('ESKOMSEPUSH_API_KEY'):
         errors.append('ESKOMSEPUSH_API_KEY must be set so Power Guard never fabricates provider status')
 
     try:
@@ -120,8 +121,18 @@ def validate_production_settings(env=os.environ):
                 Fernet(str(key).encode('ascii'))
         except (ValueError, UnicodeError):
             errors.append('Every INTEGRATION_DATA_KEYS value must be a valid Fernet key')
-    if not env.get('CLOUDFLARE_R2_PRIVATE_BUCKET_NAME'):
-        errors.append('CLOUDFLARE_R2_PRIVATE_BUCKET_NAME must be set for private vetting assets')
+    for name in ('CLOUDFLARE_R2_ACCOUNT_ID', 'CLOUDFLARE_R2_ACCESS_KEY_ID',
+                 'CLOUDFLARE_R2_SECRET_ACCESS_KEY', 'CLOUDFLARE_R2_BUCKET_NAME',
+                 'CLOUDFLARE_R2_PRIVATE_BUCKET_NAME', 'CLOUDFLARE_R2_PUBLIC_DOMAIN'):
+        if not (env.get(name) or '').strip():
+            errors.append(f'{name} must be set for production tutor asset storage')
+    r2_public_domain = (env.get('CLOUDFLARE_R2_PUBLIC_DOMAIN') or '').strip()
+    if r2_public_domain and (not r2_public_domain.startswith('https://') or _is_local_origin(r2_public_domain)):
+        errors.append('CLOUDFLARE_R2_PUBLIC_DOMAIN must be a public https:// origin')
+    r2_public_bucket = (env.get('CLOUDFLARE_R2_BUCKET_NAME') or '').strip()
+    r2_private_bucket = (env.get('CLOUDFLARE_R2_PRIVATE_BUCKET_NAME') or '').strip()
+    if r2_public_bucket and r2_public_bucket == r2_private_bucket:
+        errors.append('CLOUDFLARE_R2_PRIVATE_BUCKET_NAME must differ from CLOUDFLARE_R2_BUCKET_NAME')
 
     truthy = ('1', 'true', 'yes')
     no_proxy = env.get('BEHIND_NO_PROXY', '').lower() in truthy

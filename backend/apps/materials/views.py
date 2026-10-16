@@ -3,9 +3,10 @@ from django.db import models
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+from apps.common.throttles import ResilientScopedRateThrottle as ScopedRateThrottle
 from rest_framework.views import APIView
 
+from apps.common.throttles import ObservedScopedRateThrottle
 from apps.users.permissions import IsPlatformAdmin
 
 from .assets import AssetRejected, commit_material_asset
@@ -18,6 +19,8 @@ from .serializers import (
 class MaterialListView(generics.ListAPIView):
     serializer_class = MaterialListSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'public_materials_directory'
 
     def get_queryset(self):
         queryset = Material.objects.filter(is_approved=True)
@@ -40,6 +43,8 @@ class MaterialDetailView(generics.RetrieveAPIView):
     queryset = Material.objects.filter(is_approved=True)
     serializer_class = MaterialDetailSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'public_materials_detail'
     lookup_field = 'slug'
 
 

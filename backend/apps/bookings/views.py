@@ -7,7 +7,8 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.throttling import ScopedRateThrottle
+from apps.common.throttles import ResilientScopedRateThrottle as ScopedRateThrottle
+from apps.common.throttles import ObservedScopedRateThrottle
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from datetime import timedelta
@@ -48,6 +49,8 @@ class TeacherSlotsView(APIView):
     Returns concrete 25-minute slots for a given teacher projected into the requested timezone.
     """
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'public_slots'
 
     def get(self, request, teacher_id):
         # Same visibility rule as reserve: a tutor you cannot book has no public slots.
@@ -117,6 +120,14 @@ class ReserveSlotView(APIView):
     ]))
 class BookingListCreateView(generics.ListCreateAPIView):
     permission_classes = (permissions.IsAuthenticated,)
+    throttle_scope = 'booking_write'
+
+    def get_throttles(self):
+        # GET already has the authenticated-user default. POST reserves a slot
+        # and therefore needs the narrower booking-write bucket.
+        if self.request.method == 'POST':
+            return [ObservedScopedRateThrottle()]
+        return super().get_throttles()
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -238,6 +249,8 @@ class SubmitMemoView(APIView):
     the validated memo, the booking's move to COMPLETED, and the student's flashcards.
     """
     permission_classes = (permissions.IsAuthenticated,)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'lesson_write'
 
     def post(self, request, booking_id):
         booking = get_object_or_404(Booking.objects.select_related('teacher__user', 'student', 'material'), id=booking_id)
@@ -312,6 +325,8 @@ class ReportOutageView(APIView):
     3. A lesson the tutor already taught for the minimum lesson time is a delivered lesson, not an outage.
     """
     permission_classes = (permissions.IsAuthenticated,)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'lesson_write'
 
     def post(self, request, booking_id):
         booking = get_object_or_404(Booking, id=booking_id)

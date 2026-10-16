@@ -2800,12 +2800,27 @@ paths:
     get:
       operationId: v1_teachers_list
       parameters:
+      - in: query
+        name: backup_power
+        schema:
+          type: boolean
+        description: Only tutors who declared inverter backup.
+      - in: query
+        name: free_next_24h
+        schema:
+          type: boolean
+        description: Only tutors with a bookable lesson fully within the next 24 hours.
       - name: page
         required: false
         in: query
         description: A page number within the paginated result set.
         schema:
           type: integer
+      - in: query
+        name: page_size
+        schema:
+          type: integer
+        description: Tutors per page (maximum 50).
       tags:
       - v1
       security:
@@ -2817,6 +2832,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedTeacherListList'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherDirectoryUnavailable'
           description: ''
   /api/v1/teachers/{id}/:
     get:
@@ -4114,6 +4135,14 @@ components:
         * `B2` - Upper-Intermediate B2
         * `C1` - Advanced C1
         * `C2` - Proficient C2
+    CodeEnum:
+      enum:
+      - directory_budget_exceeded
+      - directory_cache_unavailable
+      type: string
+      description: |-
+        * `directory_budget_exceeded` - directory_budget_exceeded
+        * `directory_cache_unavailable` - directory_cache_unavailable
     Conflict:
       type: object
       properties:
@@ -6211,6 +6240,8 @@ components:
         is_verified:
           type: boolean
           readOnly: true
+        has_inverter_backup:
+          type: boolean
         bio:
           type: string
         intro_video_url:
@@ -6242,6 +6273,15 @@ components:
       - price_per_25min_usd
       - timezone
       - user_id
+    TeacherDirectoryUnavailable:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/CodeEnum'
+        detail:
+          type: string
+      required:
+      - detail
     TeacherList:
       type: object
       properties:
@@ -6307,6 +6347,8 @@ components:
         is_verified:
           type: boolean
           readOnly: true
+        has_inverter_backup:
+          type: boolean
       required:
       - avatar_url
       - country

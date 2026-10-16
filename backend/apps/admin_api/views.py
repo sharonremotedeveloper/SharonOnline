@@ -12,7 +12,8 @@ from datetime import timedelta
 from decimal import Decimal
 
 from apps.users.permissions import IsPlatformAdmin
-from rest_framework.throttling import ScopedRateThrottle
+from apps.common.throttles import ResilientScopedRateThrottle as ScopedRateThrottle
+from apps.common.throttles import ObservedScopedRateThrottle
 from apps.teachers import review as teacher_review, rubric as rubric_rules, vetting
 from apps.teachers.models import TeacherProfile
 from apps.bookings.models import Booking
@@ -117,6 +118,8 @@ def pending_vetting_queue():
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class PendingTeachersListView(APIView):
     permission_classes = [IsPlatformAdmin]
+    throttle_classes = [ObservedScopedRateThrottle]
+    throttle_scope = 'admin_read'
 
     def get(self, request):
         serializer = PendingTeacherApplicationSerializer(pending_vetting_queue().select_related('user'), many=True)
@@ -130,7 +133,7 @@ class VerifyTeacherView(APIView):
     # (suspend first), as is approving a suspended / rejected one (use reactivate / reopen); rejecting a SUSPENDED tutor is
     # allowed (the staff-only suspended -> rejected edge). (A comment, not a docstring: it would leak into OpenAPI.)
     permission_classes = [IsPlatformAdmin]
-    throttle_classes = (ScopedRateThrottle,)
+    throttle_classes = (ObservedScopedRateThrottle,)
     throttle_scope = 'admin_teacher_review'
 
     def patch(self, request, pk):
@@ -176,6 +179,8 @@ class LiveSessionsView(APIView):
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class DisputesListView(APIView):
     permission_classes = [IsPlatformAdmin]
+    throttle_classes = [ObservedScopedRateThrottle]
+    throttle_scope = 'admin_read'
 
     def get(self, request):
         disputes = DisputeCase.objects.all().select_related('booking', 'student', 'teacher', 'teacher__user')
@@ -186,6 +191,8 @@ class DisputesListView(APIView):
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class ResolveDisputeView(APIView):
     permission_classes = [IsPlatformAdmin]
+    throttle_classes = [ObservedScopedRateThrottle]
+    throttle_scope = 'admin_write'
 
     def post(self, request, pk):
         serializer = ResolveDisputeSerializer(data=request.data)
@@ -381,6 +388,8 @@ class EscrowLedgerView(APIView):
 @extend_schema(responses=PayoutBatchItemSerializer(many=True))
 class PayoutBatchView(APIView):
     permission_classes = [IsPlatformAdmin]
+    throttle_classes = [ObservedScopedRateThrottle]
+    throttle_scope = 'admin_read'
 
     def get(self, request):
         from apps.payments.serializers import masked_payout_account
@@ -419,6 +428,8 @@ class PayoutBatchView(APIView):
 
 class ExecutePayoutBatchView(APIView):
     permission_classes = [IsPlatformAdmin]
+    throttle_classes = [ObservedScopedRateThrottle]
+    throttle_scope = 'admin_write'
 
     @extend_schema(request=OpenApiTypes.OBJECT, responses={503: OpenApiTypes.OBJECT})
     def post(self, request):

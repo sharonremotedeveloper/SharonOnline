@@ -183,7 +183,7 @@ class TeacherListSerializer(serializers.ModelSerializer):
             'id', 'user_id', 'full_name', 'first_name', 'last_name', 'headline',
             'accent', 'intro_video_thumbnail', 'avatar_url', 'intro_audio_url',
             'rating_avg', 'rating_count', 'price_per_25min_usd', 'specialties',
-            'country', 'is_verified'
+            'country', 'is_verified', 'has_inverter_backup'
         )
 
     def get_full_name(self, obj) -> str:

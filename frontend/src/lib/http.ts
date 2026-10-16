@@ -33,15 +33,23 @@ export const MOCK = Symbol("mock");
 export class ApiError extends Error {
   readonly status: number;
   readonly body: unknown;
+  readonly retryAfter?: string;
   /** Per-field validation messages from DRF (`{field: ["msg"]}`), flattened. */
   readonly fieldErrors: Record<string, string[]>;
 
-  constructor(status: number, message: string, body: unknown = null, fieldErrors: Record<string, string[]> = {}) {
+  constructor(
+    status: number,
+    message: string,
+    body: unknown = null,
+    fieldErrors: Record<string, string[]> = {},
+    retryAfter?: string,
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.body = body;
     this.fieldErrors = fieldErrors;
+    this.retryAfter = retryAfter;
   }
 
   /** True when the server could not be reached at all (status 0) or answered 502/504 from the proxy. */
@@ -69,6 +77,22 @@ export function parseDrfError(status: number, body: unknown): { message: string;
   const fieldErrors: Record<string, string[]> = {};
   let message = `Request failed (${status})`;
 
+  const collectFieldErrors = (value: unknown, path: string): string[] => {
+    if (typeof value === "string") {
+      fieldErrors[path] = [...(fieldErrors[path] || []), value];
+      return [value];
+    }
+    if (Array.isArray(value)) return value.flatMap((item) => collectFieldErrors(item, path));
+    if (!value || typeof value !== "object") return [];
+    const messages: string[] = [];
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      const childPath = path ? `${path}.${key}` : key;
+      const childMessages = collectFieldErrors(child, childPath);
+      messages.push(...childMessages);
+    }
+    return messages;
+  };
+
   if (typeof body === "string" && body.trim() && !body.trim().startsWith("<")) {
     message = body.trim().slice(0, 300);
   } else if (Array.isArray(body)) {
@@ -78,10 +102,11 @@ export function parseDrfError(status: number, body: unknown): { message: string;
     const parts: string[] = [];
     for (const [key, value] of Object.entries(obj)) {
       const msgs = (Array.isArray(value) ? value : [value]).filter((v) => typeof v === "string") as string[];
-      if (!msgs.length) continue;
       if (key === "detail" || key === "error" || key === "message" || key === "non_field_errors") {
         parts.push(...msgs);
-      } else {
+      } else if (value && typeof value === "object" && !Array.isArray(value)) {
+        parts.push(...collectFieldErrors(value, key));
+      } else if (msgs.length) {
         fieldErrors[key] = msgs;
         parts.push(...msgs);
       }
@@ -166,7 +191,7 @@ export async function request<T = any>(url: string, init: RequestInit & { skipAu
       throw new ApiError(401, "Your session has expired. Please sign in again.", body);
     }
     const { message, fieldErrors } = parseDrfError(res.status, body);
-    throw new ApiError(res.status, message, body, fieldErrors);
+    throw new ApiError(res.status, message, body, fieldErrors, res.headers.get("retry-after") || undefined);
   }
   return body as T;
 }
@@ -191,7 +216,7 @@ export async function downloadFile(url: string, filename: string, init: RequestI
       throw new ApiError(401, "Your session has expired. Please sign in again.", body);
     }
     const { message, fieldErrors } = parseDrfError(res.status, body);
-    throw new ApiError(res.status, message, body, fieldErrors);
+    throw new ApiError(res.status, message, body, fieldErrors, res.headers.get("retry-after") || undefined);
   }
   const href = URL.createObjectURL(await res.blob());
   const link = document.createElement("a");
