@@ -77,6 +77,22 @@ export function parseDrfError(status: number, body: unknown): { message: string;
   const fieldErrors: Record<string, string[]> = {};
   let message = `Request failed (${status})`;
 
+  const collectFieldErrors = (value: unknown, path: string): string[] => {
+    if (typeof value === "string") {
+      fieldErrors[path] = [...(fieldErrors[path] || []), value];
+      return [value];
+    }
+    if (Array.isArray(value)) return value.flatMap((item) => collectFieldErrors(item, path));
+    if (!value || typeof value !== "object") return [];
+    const messages: string[] = [];
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      const childPath = path ? `${path}.${key}` : key;
+      const childMessages = collectFieldErrors(child, childPath);
+      messages.push(...childMessages);
+    }
+    return messages;
+  };
+
   if (typeof body === "string" && body.trim() && !body.trim().startsWith("<")) {
     message = body.trim().slice(0, 300);
   } else if (Array.isArray(body)) {
@@ -86,10 +102,11 @@ export function parseDrfError(status: number, body: unknown): { message: string;
     const parts: string[] = [];
     for (const [key, value] of Object.entries(obj)) {
       const msgs = (Array.isArray(value) ? value : [value]).filter((v) => typeof v === "string") as string[];
-      if (!msgs.length) continue;
       if (key === "detail" || key === "error" || key === "message" || key === "non_field_errors") {
         parts.push(...msgs);
-      } else {
+      } else if (value && typeof value === "object" && !Array.isArray(value)) {
+        parts.push(...collectFieldErrors(value, key));
+      } else if (msgs.length) {
         fieldErrors[key] = msgs;
         parts.push(...msgs);
       }

@@ -66,7 +66,7 @@ export function validateApplicationStep(step: number, input: {
 
 export function buildApplicationPayload(input: { download?: number; upload?: number; powerConfirmed?: boolean; accepted?: boolean }) {
   return {
-    ...(input.download !== undefined && input.upload !== undefined ? { speed_test: { download_mbps: input.download.toFixed(2), upload_mbps: input.upload.toFixed(2) } } : {}),
+    ...(input.download !== undefined && input.upload !== undefined ? { speed_test: { download_mbps: input.download.toFixed(1), upload_mbps: input.upload.toFixed(1) } } : {}),
     ...(input.powerConfirmed !== undefined ? { confirm_power_backup: input.powerConfirmed } : {}),
     ...(input.accepted !== undefined ? { accept_declaration: input.accepted } : {}),
   };

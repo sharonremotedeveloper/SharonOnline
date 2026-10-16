@@ -13,9 +13,9 @@ test("T5b validates required uploads and declarations", () => {
   assert.deepEqual(validateApplicationStep(5, { accepted: false }), ["Accept the legal declarations to submit your application."]);
 });
 
-test("T5b emits only the typed application PATCH fields", () => {
-  assert.deepEqual(buildApplicationPayload({ download: 12.5, upload: 6, powerConfirmed: true, accepted: true }), {
-    speed_test: { download_mbps: "12.50", upload_mbps: "6.00" }, confirm_power_backup: true, accept_declaration: true,
+test("T5b emits speed results at the backend's one-decimal precision", () => {
+  assert.deepEqual(buildApplicationPayload({ download: 12.56, upload: 6.04, powerConfirmed: true, accepted: true }), {
+    speed_test: { download_mbps: "12.6", upload_mbps: "6.0" }, confirm_power_backup: true, accept_declaration: true,
   });
 });
 

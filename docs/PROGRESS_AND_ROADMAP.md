@@ -1,5 +1,12 @@
 # Engineering Delivery Roadmap & Progress Tracking
 
+## 2026-10-16 tutor application speed-test 400 — repair in progress
+
+- **Production evidence:** A real tutor completed registration and all five required storage uploads. Canonical Railway HTTP logs show five successful presign requests and five successful asset commits between `00:52:36Z` and `00:53:34Z`, followed by successful power-backup writes and then two `400` responses from `PATCH /api/v1/teachers/me/application/` at `00:53:49Z` and `00:53:53Z`. This closes the earlier upload acceptance gap and isolates the current failure to the speed-test application update.
+- **Root cause:** The browser measured and displayed speed values to two decimal places and `buildApplicationPayload` also transmitted two-decimal strings. The authoritative Django `SpeedTestSerializer` accepts one decimal place, matching the database model and OpenAPI contract, so every otherwise valid browser-produced speed result was rejected before persistence. Nested serializer errors were not decoded by the shared HTTP client, leaving the tutor with only `Request failed (400)`.
+- **Implementation:** The frontend now rounds transmitted speed results to the API's one-decimal precision and the shared DRF error parser recursively surfaces nested serializer messages with dotted field paths. Regression tests cover both the exact payload contract and nested error reporting.
+- **Verification so far:** The deliberate tests-first run failed on both mismatches (266/268 passed), then the corrected frontend suite passed **268/268**. ESLint passed with zero warnings, the production build passed after supplying its required server-only `INTERNAL_API_URL`, the focused backend application suite passed 37/37, Django check passed, and migration drift was clean. CI, deployment, and a real tutor retry are still pending; do not call the speed-test journey accepted until the production PATCH returns 200 and the application can be submitted.
+
 ## 2026-10-15 public tutor-directory correction — implementation checkpoint
 
 - **Branch and release state:** Work was implemented in the shared `develop` checkout, verified in development, and subsequently promoted to production; the exact checkpoints are below. The production directory still returns an honest empty list because no tutor has been approved; do not treat an empty list alone as proof of a working tutor journey.

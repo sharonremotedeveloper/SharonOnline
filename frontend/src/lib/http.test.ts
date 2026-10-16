@@ -152,6 +152,19 @@ describe("request (browser)", () => {
     assert.match(http.errorMessage(err), /couldn't reach the server/i);
   });
 
+  it("surfaces nested DRF serializer errors instead of a generic 400", () => {
+    const http = load();
+    const parsed = http.parseDrfError(400, {
+      speed_test: {
+        download_mbps: ["Ensure that there are no more than 1 decimal places."],
+      },
+    });
+    assert.equal(parsed.message, "Ensure that there are no more than 1 decimal places.");
+    assert.deepEqual(parsed.fieldErrors, {
+      "speed_test.download_mbps": ["Ensure that there are no more than 1 decimal places."],
+    });
+  });
+
   it("treats proxy 502/504 as network errors too", () => {
     const http = load();
     assert.equal(new http.ApiError(502, "x").isNetworkError, true);
