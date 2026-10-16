@@ -24,7 +24,7 @@ class TestFulfilmentEmailStepAgainstTheRealSender:
         dispatch_booking_fulfillment(str(b.id))
         d = FulfillmentDispatch.objects.get(booking=b)
         assert (d.status, d.email_state) == (FD.SUCCEEDED, St.DONE)
-        assert len(resend.calls) == 1 and resend.calls[0].headers['Idempotency-Key'].startswith(f'booking-confirmed:{b.id}:')
+        assert len(resend.calls) == 1 and resend.calls[0].headers['Idempotency-Key'].startswith(f'booking-confirmed-invite:{b.id}:')
 
     def test_a_rejected_confirmation_is_terminal_without_a_second_room(self, resend, teacher_user, student_user, fake_daily):
         resend.response = FakeResponse(422, {'name': 'validation_error'})

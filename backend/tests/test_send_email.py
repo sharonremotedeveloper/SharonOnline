@@ -312,7 +312,7 @@ class TestBookingConfirmation:
         result = legacy.send_booking_confirmation_email(booking)
         assert result.status == 'sent'
         call, = resend.calls
-        assert call.headers['Idempotency-Key'] == f'booking-confirmed:{booking.id}:0:student'
+        assert call.headers['Idempotency-Key'] == f'booking-confirmed-invite:{booking.id}:0:student'
         assert call.json['to'] == [ADDRESS]
         att, = call.json['attachments']
         assert att['filename'] == 'lesson-invite.ics' and att['content_type'].startswith('text/calendar')
@@ -343,3 +343,13 @@ class TestBookingConfirmation:
         legacy.send_booking_confirmation_email(fake_booking())
         message, = mail.outbox
         assert message.attachments[0][0] == 'lesson-invite.ics'
+
+
+@pytest.mark.django_db
+def test_confirmation_email_key_never_equals_the_booking_confirmed_notification_key():
+    """Same Resend key + different body = 409 invalid_idempotent_request; the student's notification was stuck on it (2026-10-16)."""
+    import factories as f
+    from apps.integrations.email import booking_confirmation_key
+    from apps.notifications.service import booking_key
+    booking = f.make_booking()
+    assert booking_confirmation_key(booking) != booking_key('booking-confirmed', booking, 'student')

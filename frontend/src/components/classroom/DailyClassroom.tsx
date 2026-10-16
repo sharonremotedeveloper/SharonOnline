@@ -226,7 +226,8 @@ export function DailyClassroom({
       {/* In-Meeting Live Video Frame */}
       <div
         className={`relative w-full rounded-3xl overflow-hidden bg-neutral-900 border border-divider shadow-card ${
-          joined ? "block" : "hidden"
+          // Visible while connecting too: Daily's permission and device prompts live inside the frame (display:none can swallow them).
+          joined || connecting ? "block" : "hidden"
         }`}
       >
         {/* Floating Top Status Bar */}

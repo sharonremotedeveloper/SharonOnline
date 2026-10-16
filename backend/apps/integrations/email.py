@@ -79,8 +79,12 @@ _CONFIRMATION_HTML = (
 
 
 def booking_confirmation_key(booking) -> str:
-    """Resend idempotency key: one confirmation per booking generation (a reschedule bumps `reschedule_count`)."""
-    return f'booking-confirmed:{booking.id}:{booking.reschedule_count}:student'
+    """Resend idempotency key: one confirmation per booking generation (a reschedule bumps `reschedule_count`).
+
+    Must differ from the `booking_confirmed` NOTIFICATION key (`booking-confirmed:<id>:<n>:student`): Resend rejects the same
+    key with a different body (409 invalid_idempotent_request), which left that notification retrying until it went stale.
+    """
+    return f'booking-confirmed-invite:{booking.id}:{booking.reschedule_count}:student'
 
 
 def build_booking_confirmation(booking):
