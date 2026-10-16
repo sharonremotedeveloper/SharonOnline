@@ -18,6 +18,22 @@ Whenever an error, test breakage, build failure, or unexpected API behavior occu
 
 ## 📋 Historical Error & Resolution Ledger
 
+### ERR-547: Daily classroom stuck on "Connecting to Live Stage" (Permissions-Policy blocked the iframe's devices)
+
+- **Observed (2026-10-16 14:25Z):** tutor and student both received `GET /bookings/5cdec1b2-.../video-token/` 200, but no Daily `participant.joined` webhook arrived and both browsers stayed on "Connecting to Live Stage". The Daily domain and room URL answered (302 dashboard / 200 room page).
+- **Root cause:** `next.config.mjs` sent `Permissions-Policy: camera=(self), microphone=(self)`. That header caps what any iframe may be delegated, so Daily's cross-origin frame (`https://topscholaracademy.daily.co`) was denied the camera and microphone even though daily-js sets `allow="microphone; camera; ..."`; `callFrame.join()` never completed.
+- **Fix:** delegate camera, microphone and display-capture to the Daily domain (+ `https://*.daily.co`); `frontend/test/permissionsPolicy.test.ts` pins it. develop `68d4367`, main `3132d1b`; live header verified. Two-device acceptance is still pending.
+
+### ERR-546: Daily iframe was display:none until joined
+
+- **Observed:** pre-flight review found the frame wrapper hidden until `joined-meeting`, so Daily's device/permission UI rendered in a hidden frame. **Fix:** show it while connecting (develop `92756c9`, main `83a6d27`).
+
+### ERR-545: Booking confirmation notification stuck on Resend 409 invalid_idempotent_request
+
+- **Observed (2026-10-16 11:57Z):** first production test booking `1a3e6dfe` provisioned its Daily room and sent the .ics e-mail, but the student's `booking_confirmed` notification retried with `http_409:invalid_idempotent_request`.
+- **Root cause:** the .ics e-mail key `booking-confirmed:<id>:<n>:student` was identical to the notification key `booking_key('booking-confirmed', booking, 'student')`; Resend rejects a reused key with a different body.
+- **Fix:** e-mail key is now `booking-confirmed-invite:...`; regression test asserts the two keys differ (develop `92756c9`, main `83a6d27`, Railway API `2839b47a`). The already-stuck notification keeps failing until Resend's 24 h key window lapses.
+
 ### ERR-544: Successful tutor submission returned to the editable application wizard
 
 - **Observed:** A real production tutor completed the repaired application journey. Railway recorded the final submission POST as HTTP 200 at `2026-10-16T01:21:31Z`, but the browser remained on the application wizard. Two subsequent attempts from that stale form generated HTTP 409 PATCH responses because the server had correctly locked the submitted application.
