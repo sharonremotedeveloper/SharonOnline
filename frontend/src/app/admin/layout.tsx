@@ -122,7 +122,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               Admin Mode
             </span>
             <span className="text-xs text-ink-muted hidden sm:inline">
-              Sharon Mupesa &middot; Chief Operating Executive
+              Sharon Ncube
             </span>
           </div>
 
