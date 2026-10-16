@@ -312,7 +312,10 @@ class DailyWebhookReceiverView(APIView):
         except (ValueError, TypeError):
             return False, "Invalid timestamp format in Daily webhook header"
 
-        if abs(int(time.time()) - timestamp_int) > 300:
+        # Daily sends X-Webhook-Timestamp in MILLISECONDS; comparing it to time.time() as seconds rejected every real
+        # delivery (2026-10-16). Normalise for the window only: the signature is computed over the header value as sent.
+        timestamp_seconds = timestamp_int / 1000 if timestamp_int > 10**11 else timestamp_int
+        if abs(time.time() - timestamp_seconds) > 300:
             return False, "Request timestamp out of allowable window (replay guard)"
 
         secret = self.get_webhook_secret()
@@ -320,7 +323,7 @@ class DailyWebhookReceiverView(APIView):
             logger.error("[DAILY_WEBHOOK] DAILY_WEBHOOK_SECRET is not configured; rejecting webhook")
             return False, "Daily webhook secret not configured"
 
-        message = f"{timestamp_int}.".encode('utf-8') + raw_body
+        message = f"{timestamp_str}.".encode('utf-8') + raw_body
         expected_signatures = self._expected_signatures(secret, message)
         received_signatures = self._received_signatures(signature)
         if not any(

@@ -281,6 +281,32 @@ class TestTier1FeatureCoverage:
             live_booking.refresh_from_db()
             assert live_booking.status == Booking.Status.IN_PROGRESS
 
+    def test_t1_webhook_accepts_daily_millisecond_timestamp(self, daily_settings, live_booking):
+        """Real Daily deliveries carry X-Webhook-Timestamp in milliseconds (production 401s on 2026-10-16)."""
+        payload = {"type": "participant.joined", "id": "evt_join_tutor_ms", "payload": {
+            "room": f"lesson-{live_booking.id}", "user_id": str(live_booking.teacher.user_id),
+            "session_id": "sess_tutor_ms", "joined_at": timezone.now().timestamp()}}
+        body = json.dumps(payload).encode('utf-8')
+        ts_ms = int(time.time() * 1000)
+        res = APIClient().post(WEBHOOK_ENDPOINT, data=body, content_type='application/json',
+                               HTTP_X_WEBHOOK_SIGNATURE=make_daily_signature(body, DAILY_WEBHOOK_SECRET, ts_ms),
+                               HTTP_X_WEBHOOK_TIMESTAMP=str(ts_ms))
+        assert res.status_code == 200, res.content
+        live_booking.refresh_from_db()
+        assert live_booking.status == Booking.Status.IN_PROGRESS
+
+    def test_t1_webhook_rejects_stale_millisecond_timestamp(self, daily_settings, live_booking):
+        body = json.dumps({"type": "participant.joined", "id": "evt_old_ms", "payload": {
+            "room": f"lesson-{live_booking.id}", "user_id": str(live_booking.teacher.user_id),
+            "session_id": "sess_old_ms"}}).encode('utf-8')
+        ts_ms = int((time.time() - 3600) * 1000)
+        res = APIClient().post(WEBHOOK_ENDPOINT, data=body, content_type='application/json',
+                               HTTP_X_WEBHOOK_SIGNATURE=make_daily_signature(body, DAILY_WEBHOOK_SECRET, ts_ms),
+                               HTTP_X_WEBHOOK_TIMESTAMP=str(ts_ms))
+        assert res.status_code == 401
+        live_booking.refresh_from_db()
+        assert live_booking.status == Booking.Status.CONFIRMED
+
     def test_t1_webhook_student_join_keeps_confirmed(self, daily_settings, live_booking):
         assert live_booking.status == Booking.Status.CONFIRMED
         c = APIClient()
