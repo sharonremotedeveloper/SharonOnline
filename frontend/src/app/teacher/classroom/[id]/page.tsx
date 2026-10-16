@@ -191,7 +191,7 @@ export default function TeacherClassroomPage() {
         {/* Dual Split Layout */}
         <ClassroomSplitLayout material={material} isTeacher={true}>
           {/* Left Pane Tutor Host Controls */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">
+          <div className="bg-white rounded-3xl p-3 sm:p-6 lg:p-8 border border-divider shadow-card space-y-4 sm:space-y-6">
             {/* Student Dossier Overview */}
             <div className="p-4 rounded-2xl bg-cream-surface border border-divider space-y-3">
               <div className="flex items-center justify-between">
