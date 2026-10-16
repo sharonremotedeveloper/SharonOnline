@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { BatteryCharging, ArrowRight } from "lucide-react";
+import { POWER_GUARD_UI_ENABLED } from "@/lib/features";
 
 /**
  * A single calm reassurance line. It used to be a full-width "100% uninterrupted, guaranteed" banner: that overclaimed
  * and made overseas students think about power cuts. The detail now lives on /trust-safety.
  */
 export function PowerGuardCallout() {
+  if (!POWER_GUARD_UI_ENABLED) return null;
+
   return (
     <aside className="flex flex-col gap-4 rounded-3xl focus-cocoa bg-sky p-5 sm:flex-row sm:items-center sm:p-6">
       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-cocoa text-sun">

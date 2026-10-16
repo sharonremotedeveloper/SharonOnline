@@ -9,19 +9,16 @@ import {
   DollarSign,
   ArrowRight,
   Send,
-  Zap,
   Star,
   Award,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { listBookings } from "@/lib/bookings";
 import { BookingDetail } from "@/types/booking";
-import { EskomStageBanner } from "@/components/teacher/EskomStageBanner";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
 import { useAuth } from "@/context/AuthContext";
 import { viewerPeriodBounds } from "@/lib/dashboardTime";
-import { classifyEskomProblem } from "@/lib/repairHelpers";
 
 /** The server filters and counts, so nothing here depends on how many lessons the tutor has had. */
 async function loadTeacherBookings(timezone: string): Promise<{
@@ -53,10 +50,8 @@ export default function TeacherDashboardPage() {
   const { user } = useAuth();
   const viewerTimezone = user?.timezone || "UTC";
   // Each data source loads independently so one failing source never blanks the others.
-  const eskom = useApiData(() => api.getEskomStatus(), []);
   const walletQ = useApiData(() => api.getTeacherWallet(), []);
   const bookingsQ = useApiData(() => loadTeacherBookings(viewerTimezone), [viewerTimezone]);
-  const eskomStatus = eskom.data;
   const wallet = walletQ.data;
 
   const upcoming = bookingsQ.data?.upcoming ?? [];
@@ -85,7 +80,7 @@ export default function TeacherDashboardPage() {
               Your tutor dashboard
             </h1>
             <p className="text-sm sm:text-sm text-ink-muted">
-              Manage your upcoming synchronous classes, submit lesson memos, and monitor Eskom Power Guard.
+              Manage your upcoming synchronous classes, submit lesson memos, and track your tutor wallet.
             </p>
           </div>
 
@@ -99,14 +94,6 @@ export default function TeacherDashboardPage() {
             </Link>
 
             <Link
-              href="/teacher/power-guard"
-              className="min-h-11 px-4 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-1.5 transition-colors"
-            >
-              <Zap className="w-3.5 h-3.5 text-warning fill-warning" />
-              <span>Power Guard</span>
-            </Link>
-
-            <Link
               href="/teacher/wallet"
               className="min-h-11 px-4 py-2.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-xl shadow-sm flex items-center gap-1.5 transition-colors"
             >
@@ -115,57 +102,6 @@ export default function TeacherDashboardPage() {
             </Link>
           </div>
         </div>
-
-        {/* Eskom Stage Banner */}
-        {eskom.loading ? (
-          <div className="h-16 rounded-2xl bg-white border border-divider animate-pulse" />
-        ) : eskom.error ? (
-          (() => {
-            const problem = classifyEskomProblem(eskom.error);
-            if (problem.kind === "area_not_configured") {
-              return (
-                <div className="p-4 rounded-2xl bg-cream-surface border border-divider text-xs text-ink flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-warning" />
-                    <span>
-                      <strong>Load Shedding Area Not Set:</strong> Add your suburb or municipal zone in your profile for automated lesson protection.
-                    </span>
-                  </div>
-                  <Link
-                    href="/teacher/profile"
-                    className="min-h-11 inline-flex items-center text-xs font-bold text-cocoa hover:underline shrink-0"
-                  >
-                    Set area &rarr;
-                  </Link>
-                </div>
-              );
-            }
-            if (problem.kind === "provider_unavailable") {
-              return (
-                <div className="p-4 rounded-2xl bg-cream-surface border border-divider text-xs text-ink flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-ink-muted" />
-                    <span>
-                      <strong>Power Guard Telemetry Offline:</strong> Grid provider is currently unreachable. Lesson protections remain active.
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={eskom.reload}
-                    className="min-h-11 px-3 py-1.5 rounded-xl bg-white border border-divider text-xs font-bold text-ink hover:bg-cream-surface shrink-0"
-                  >
-                    Retry
-                  </button>
-                </div>
-              );
-            }
-            return (
-              <ErrorState error={eskom.error} title="Eskom Power Guard status isn't available" onRetry={eskom.reload} />
-            );
-          })()
-        ) : (
-          eskomStatus && <EskomStageBanner status={eskomStatus} />
-        )}
 
         {bookingsQ.error != null && (
           <ErrorState error={bookingsQ.error} title="We couldn't load your lessons" onRetry={bookingsQ.reload} />

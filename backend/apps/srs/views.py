@@ -16,6 +16,7 @@ from apps.srs.serializers import (
     FlashcardMasteryUpdateSerializer,
     StudentLessonItemSerializer,
 )
+from apps.common.throttles import ObservedScopedRateThrottle
 
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class StudentLessonsListView(APIView):
@@ -42,6 +43,8 @@ class StudentFlashcardsListView(APIView):
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class UpdateFlashcardMasteryView(APIView):
     permission_classes = [IsStudent]
+    throttle_classes = [ObservedScopedRateThrottle]
+    throttle_scope = 'student_write'
 
     def post(self, request, pk):
         card = get_object_or_404(StudentFlashcard, pk=pk, student=request.user)
@@ -73,6 +76,14 @@ class UpdateFlashcardMasteryView(APIView):
 @extend_schema(request=StudentProfileSerializer, responses=StudentProfileSerializer)
 class StudentProfileView(APIView):
     permission_classes = [IsStudent]
+    throttle_scope = 'student_write'
+
+    def get_throttles(self):
+        # Profile reads use the normal authenticated-user limit; only PATCH is
+        # a student write and needs the narrower mutation scope.
+        if self.request.method == 'PATCH':
+            return [ObservedScopedRateThrottle()]
+        return super().get_throttles()
 
     def get(self, request):
         return Response(StudentProfileSerializer(request.user).data)

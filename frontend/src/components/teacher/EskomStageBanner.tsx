@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Zap, ShieldCheck, AlertTriangle, ArrowRight, BatteryCharging, Radio } from "lucide-react";
 import { EskomStatus } from "@/types/teacher";
+import { POWER_GUARD_UI_ENABLED } from "@/lib/features";
 
 interface EskomStageBannerProps {
   status: EskomStatus;
@@ -11,6 +12,8 @@ interface EskomStageBannerProps {
 }
 
 export function EskomStageBanner({ status, className = "" }: EskomStageBannerProps) {
+  if (!POWER_GUARD_UI_ENABLED) return null;
+
   const isOutageRisk = status.stage > 0 && !status.has_inverter_backup;
 
   return (

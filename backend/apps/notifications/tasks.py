@@ -1,8 +1,17 @@
-"""Celery tasks of the notifications app; all route to the `notifications` queue (config/celery_schedule.py)."""
+"""Notifications and operational Celery tasks; routes live in config/celery_schedule.py."""
 from celery import shared_task
 
 from apps.common import clock
 from apps.common.locks import distributed_task_lock
+from config import scheduler_heartbeat
+
+
+@shared_task(name='apps.notifications.tasks.scheduler_heartbeat_task', ignore_result=True)
+def scheduler_heartbeat_task():
+    """Prove that Beat dispatched a task which the worker actually executed."""
+    if not scheduler_heartbeat.run_child("write"):
+        raise RuntimeError("Scheduler heartbeat write failed")
+    return True
 
 
 @shared_task(name='apps.notifications.tasks.deliver_notification_task')

@@ -4,6 +4,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from apps.common.throttles import ObservedScopedRateThrottle
 
 from apps.users.permissions import IsStudent
 from .models import RefundRequest
@@ -23,6 +24,8 @@ class RefundSerializer(serializers.ModelSerializer):
 class RefundListView(generics.ListAPIView):
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = RefundSerializer
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'student_refund_read'
 
     def get_queryset(self):
         return RefundRequest.objects.filter(user=self.request.user)
@@ -35,6 +38,8 @@ class ConvertRefundToWalletView(APIView):
     gateway has been asked: afterwards the money may already be on its way, and the answer is 409 `refund_in_progress`.
     """
     permission_classes = (IsStudent,)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'refund_write'
 
     def post(self, request, refund_id):
         refund = get_object_or_404(RefundRequest, pk=refund_id, user=request.user)

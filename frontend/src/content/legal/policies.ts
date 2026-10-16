@@ -130,7 +130,7 @@ To contact our Data Protection Officer, email **privacy@sharonesl.com**.
     title: "Lesson Cancellation, Rescheduling & Refund Policy",
     shortTitle: "Refund Policy",
     lastUpdated: "October 6, 2026",
-    summary: "Transparent rules governing student cancellations, tutor rescheduling, 24-hour escrow release, and Eskom load shedding protections.",
+    summary: "Transparent rules governing student cancellations, tutor rescheduling, and 24-hour escrow release.",
     markdownContent: `
 ## 1. Principles of Fair Booking
 
@@ -163,15 +163,7 @@ We hold our educators to strict professional attendance standards:
   2. The student receives one **Complimentary Goodwill Bonus Credit** added to their account.
   3. The tutor receives an automatic platform SLA strike. Tutors accumulating 3 strikes within a rolling 90-day window are automatically suspended pending administrative review.
 
-## 4. Eskom Load Shedding & Power Outage Shield
-
-Because our educators reside in South Africa, our platform features the **Eskom Load Shedding Shield**:
-- All verified tutors are required to maintain a battery inverter/UPS backup and secondary LTE cellular failover.
-- If an unscheduled electrical grid failure or severe weather disrupts a tutor's connection during a class:
-  1. The student receives an immediate full credit refund.
-  2. The occurrence is audited against municipal Eskom grid schedules. If verified as an involuntary infrastructure outage, the tutor's account is protected from SLA strikes.
-
-## 5. Credit Pack Purchases and Monetary Refunds
+## 4. Credit Pack Purchases and Monetary Refunds
 
 1. **Unused Credit Packs**: If you purchase a lesson pack and change your mind, you may request a full monetary refund to your original payment method within **7 calendar days** of purchase, provided that zero credits from the pack have been consumed.
 2. **Partially Used Packs**: Once any credit from a pack has been used, monetary refunds are not available; however, remaining credits remain valid for the full 30-day lifecycle.

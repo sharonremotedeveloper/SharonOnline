@@ -1,9 +1,9 @@
 import hashlib
 
-from rest_framework.throttling import SimpleRateThrottle
+from apps.common.throttles import ResilientSimpleRateThrottle
 
 
-class _HashedBodyFieldThrottle(SimpleRateThrottle):
+class _HashedBodyFieldThrottle(ResilientSimpleRateThrottle):
     """Throttle per value of one body field (hashed), independent of client IP, so a distributed attack on one target is still limited."""
     field = ''
 

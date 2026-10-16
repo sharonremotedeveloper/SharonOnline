@@ -54,7 +54,8 @@ CLOUDFLARE_R2_BUCKET_NAME=esl-platform-assets
 
 # Transactional Email (Resend API)
 RESEND_API_KEY=re_123456789
-DEFAULT_FROM_EMAIL=Sharon's ESL Platform <noreply@sharon-esl.com>
+# Production sender; use a separately verified sender for other environments.
+DEFAULT_FROM_EMAIL=Sharon Online <no-reply@topteacheracademy.com>
 ```
 
 ---

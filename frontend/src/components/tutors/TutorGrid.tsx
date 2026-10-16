@@ -7,10 +7,11 @@ import { SearchX } from "lucide-react";
 interface TutorGridProps {
   tutors: PublicTutor[];
   loading: boolean;
+  emptyState: { heading: string; description: string; showReset: boolean };
   onResetFilters?: () => void;
 }
 
-export function TutorGrid({ tutors, loading, onResetFilters }: TutorGridProps) {
+export function TutorGrid({ tutors, loading, emptyState, onResetFilters }: TutorGridProps) {
   if (loading) {
     return (
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Loading tutors">
@@ -34,11 +35,11 @@ export function TutorGrid({ tutors, loading, onResetFilters }: TutorGridProps) {
         <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sun">
           <SearchX className="h-8 w-8 text-ink" aria-hidden="true" />
         </span>
-        <h3 className="font-serif text-2xl font-bold text-ink">No tutors match your search</h3>
+        <h3 className="font-serif text-2xl font-bold text-ink">{emptyState.heading}</h3>
         <p className="mx-auto max-w-md text-base text-ink-muted">
-          Try a shorter search, or remove a filter to see more tutors.
+          {emptyState.description}
         </p>
-        {onResetFilters && (
+        {emptyState.showReset && onResetFilters && (
           <button
             type="button"
             onClick={onResetFilters}

@@ -16,10 +16,11 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema
 from rest_framework import serializers, status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+from apps.common.throttles import ResilientScopedRateThrottle as ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.common.money import money_str
+from apps.common.throttles import ObservedScopedRateThrottle
 from apps.payments.models import RefundAttempt, RefundRequest
 from apps.payments.services import refunds
 from apps.users.permissions import IsPlatformAdmin
@@ -149,6 +150,8 @@ def _buckets(now) -> dict:
     responses=_PAGE_SCHEMA)
 class AdminRefundListView(APIView):
     permission_classes = [IsPlatformAdmin]
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'admin_refund_read'
 
     @staticmethod
     def _flag(request, name):

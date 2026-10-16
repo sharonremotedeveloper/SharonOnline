@@ -102,7 +102,7 @@ Stream ownership follows the code each agent already holds, so context is not re
 | C4 | **G2** | Busy times as a hint: `generate_teacher_slots(..., blocked_intervals=[...])` for the public list only, fail open, per-tutor fan-out, event update keeps the event id. | G1, T2 | 310 |
 | C5 | **N4, T3b** | Wrap Eskom/refund/payment-failure senders in `notify()`; admin material PDFs/audio commit. | N1a / T3 | 350 / 470 |
 
-Infrastructure status for live checks: Cloudflare private bucket `esl-platform-private-vetting` and Google Cloud project/OAuth client are provisioned (2026-10-05). Resend domain SPF/DKIM remains blocked: no domain is currently owned/configured, and no DNS provider zone is available. Once a domain and DNS provider are supplied, add the Resend records and update this handoff.
+Infrastructure status for live checks (original 2026-10-05 handoff): Cloudflare private bucket `esl-platform-private-vetting` and Google Cloud project/OAuth client were provisioned. The original Resend-domain blocker was cleared on 2026-10-14: `topteacheracademy.com` is Resend-verified with Cloudflare sending DNS and a production sender; the owner received and used a real student confirmation email, and the dashboard's unverified banner disappeared after refresh. Recovery-mail UAT remains open. See `PROGRESS_AND_ROADMAP.md` for current evidence.
 
 ### Antigravity: classroom (Video SDK) and frontend stream
 

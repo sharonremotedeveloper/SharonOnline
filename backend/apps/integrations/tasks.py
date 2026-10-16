@@ -49,6 +49,11 @@ def sync_eskom_stages_task():
     confirmed lessons within the next 4 hours for tutors lacking battery backup,
     dispatching proactive advance reschedule warnings.
     """
+    if not settings.ESKOMSEPUSH_ENABLED:
+        logger.info('EskomSePush synchronization disabled by ESKOMSEPUSH_ENABLED')
+        return {'disabled': True, 'synced_areas': 0, 'failed_areas': 0,
+                'vulnerable_bookings_flagged': 0, 'notifications_created': 0}
+
     from apps.common.locks import distributed_task_lock
 
     @distributed_task_lock('lock:beat:sync_eskom_stages', timeout_seconds=800)
