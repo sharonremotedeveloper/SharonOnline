@@ -221,6 +221,27 @@ class TestAllowlistedTestBooking:
         assert response.status_code == 503
         assert booking.status == Booking.Status.PENDING_PAYMENT and queued == []
 
+    def test_all_students_switch_still_requires_a_listed_tutor(
+        self, student_user, teacher_user, django_capture_on_commit_callbacks, monkeypatch, settings
+    ):
+        settings.PAYMENTS_ENABLED = False
+        settings.TEST_BOOKINGS_ENABLED = False
+        settings.TEST_BOOKING_ALL_STUDENTS = True
+        settings.TEST_BOOKING_ALLOWED_EMAILS = frozenset({'someone-else@example.com'})
+        response, booking, _ = self._post(student_user, teacher_user, monkeypatch, django_capture_on_commit_callbacks)
+        assert response.status_code == 503 and booking.status == Booking.Status.PENDING_PAYMENT
+
+    def test_all_students_switch_allows_unlisted_student_with_listed_tutor(
+        self, student_user, teacher_user, django_capture_on_commit_callbacks, monkeypatch, settings
+    ):
+        settings.PAYMENTS_ENABLED = False
+        settings.TEST_BOOKINGS_ENABLED = False
+        settings.TEST_BOOKING_ALL_STUDENTS = True
+        settings.TEST_BOOKING_ALLOWED_EMAILS = frozenset({teacher_user.user.email.lower()})
+        response, booking, queued = self._post(student_user, teacher_user, monkeypatch, django_capture_on_commit_callbacks)
+        assert response.status_code == 200, response.data
+        assert booking.status == Booking.Status.CONFIRMED and queued == [str(booking.id)]
+
     def test_allowlist_never_applies_while_payments_are_enabled(
         self, student_user, teacher_user, django_capture_on_commit_callbacks, monkeypatch, settings
     ):

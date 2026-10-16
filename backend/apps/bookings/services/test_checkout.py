@@ -25,7 +25,8 @@ def booking_test_mode(student, teacher_user) -> str:
     if settings.TEST_BOOKINGS_ENABLED:
         return 'switch'
     allowed = settings.TEST_BOOKING_ALLOWED_EMAILS
-    if allowed and (student.email or '').strip().lower() in allowed and (teacher_user.email or '').strip().lower() in allowed:
+    student_ok = settings.TEST_BOOKING_ALL_STUDENTS or (student.email or '').strip().lower() in allowed
+    if allowed and student_ok and (teacher_user.email or '').strip().lower() in allowed:
         return 'allowlist'
     return ''
 

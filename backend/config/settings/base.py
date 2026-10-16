@@ -468,6 +468,8 @@ TEST_BOOKINGS_ENABLED = _env_bool('TEST_BOOKINGS_ENABLED', not PAYMENTS_ENABLED)
 # depend on TEST_BOOKINGS_ENABLED, which production hard-disables (docs/TEST_BOOKINGS.md).
 TEST_BOOKING_ALLOWED_EMAILS = frozenset(
     e.strip().lower() for e in os.environ.get('TEST_BOOKING_ALLOWED_EMAILS', '').split(',') if e.strip())
+# True lets ANY student use the allowlist route, but the tutor must still be in TEST_BOOKING_ALLOWED_EMAILS. Off by default.
+TEST_BOOKING_ALL_STUDENTS = _env_bool('TEST_BOOKING_ALL_STUDENTS', False)
 
 PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', '')
 PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', '')
