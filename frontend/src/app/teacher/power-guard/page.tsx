@@ -18,8 +18,10 @@ import { api } from "@/lib/api";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
 import { classifyEskomProblem } from "@/lib/repairHelpers";
+import { POWER_GUARD_UI_ENABLED } from "@/lib/features";
+import { notFound } from "next/navigation";
 
-export default function TeacherPowerGuardPage() {
+function PowerGuardClientPage() {
   const { data: status, error: loadError, loading, reload } = useApiData(() => api.getEskomStatus(), []);
   const [hasInverter, setHasInverter] = useState(false);
   const [hasLte, setHasLte] = useState(false);
@@ -358,4 +360,9 @@ export default function TeacherPowerGuardPage() {
       </div>
     </div>
   );
+}
+
+export default function TeacherPowerGuardPage() {
+  if (!POWER_GUARD_UI_ENABLED) notFound();
+  return <PowerGuardClientPage />;
 }

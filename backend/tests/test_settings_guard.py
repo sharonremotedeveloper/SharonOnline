@@ -24,7 +24,12 @@ GOOD = {
     'PAYOUT_DATA_ACTIVE_KEY': 'v1',
     'INTEGRATION_DATA_KEYS': json.dumps({'v1': Fernet.generate_key().decode()}),
     'INTEGRATION_DATA_ACTIVE_KEY': 'v1',
+    'CLOUDFLARE_R2_ACCOUNT_ID': 'r2-account',
+    'CLOUDFLARE_R2_ACCESS_KEY_ID': 'r2-access-key',
+    'CLOUDFLARE_R2_SECRET_ACCESS_KEY': 'r2-secret-key',
+    'CLOUDFLARE_R2_BUCKET_NAME': 'esl-public',
     'CLOUDFLARE_R2_PRIVATE_BUCKET_NAME': 'esl-private',
+    'CLOUDFLARE_R2_PUBLIC_DOMAIN': 'https://assets.sharonesl.com',
     'REFUND_GATEWAY_BACKEND': 'apps.payments.services.refund_gateways.RoutingRefundGateway',
     # Daily.co video conferencing credentials (Decision D-14 / Requirement R4)
     'DAILY_API_KEY': 'daily-live-api-key-test-value-0123456789',
@@ -35,6 +40,20 @@ GOOD = {
 
 def test_valid_env_passes():
     validate_production_settings(dict(GOOD))
+
+
+def test_public_and_private_r2_buckets_must_be_distinct():
+    env = dict(GOOD)
+    env['CLOUDFLARE_R2_PRIVATE_BUCKET_NAME'] = env['CLOUDFLARE_R2_BUCKET_NAME']
+    with pytest.raises(ImproperlyConfigured, match='must differ'):
+        validate_production_settings(env)
+
+
+def test_valid_env_passes_when_eskom_is_temporarily_disabled_without_provider_key():
+    env = dict(GOOD)
+    env['ESKOMSEPUSH_ENABLED'] = 'false'
+    env.pop('ESKOMSEPUSH_API_KEY')
+    validate_production_settings(env)
 
 
 @pytest.mark.parametrize('key,value', [
@@ -57,6 +76,14 @@ def test_valid_env_passes():
     ('ESKOMSEPUSH_API_KEY', ''),
     ('PAYOUT_DATA_KEYS', '{}'),
     ('PAYOUT_DATA_ACTIVE_KEY', ''),
+    ('CLOUDFLARE_R2_ACCOUNT_ID', ''),
+    ('CLOUDFLARE_R2_ACCESS_KEY_ID', ''),
+    ('CLOUDFLARE_R2_SECRET_ACCESS_KEY', ''),
+    ('CLOUDFLARE_R2_BUCKET_NAME', ''),
+    ('CLOUDFLARE_R2_PRIVATE_BUCKET_NAME', ''),
+    ('CLOUDFLARE_R2_PUBLIC_DOMAIN', ''),
+    ('CLOUDFLARE_R2_PUBLIC_DOMAIN', 'http://assets.sharonesl.com'),
+    ('CLOUDFLARE_R2_PUBLIC_DOMAIN', 'https://localhost:9000'),
     ('DAILY_API_KEY', ''),
     ('DAILY_API_KEY', '   '),
     ('DAILY_API_KEY', 'test-fake-key'),
@@ -381,6 +408,14 @@ def test_throwaway_environment_contains_valid_daily_credentials():
         assert name in env, f"{name} missing from throwaway_environment()"
         assert (env[name] or '').strip() != '', f"{name} is empty in throwaway_environment()"
     assert script.daily_credentials_problems(env) == []
+
+
+def test_throwaway_environment_contains_complete_r2_configuration():
+    env = _load_check_deploy().throwaway_environment()
+    for name in ('CLOUDFLARE_R2_ACCOUNT_ID', 'CLOUDFLARE_R2_ACCESS_KEY_ID',
+                 'CLOUDFLARE_R2_SECRET_ACCESS_KEY', 'CLOUDFLARE_R2_BUCKET_NAME',
+                 'CLOUDFLARE_R2_PRIVATE_BUCKET_NAME', 'CLOUDFLARE_R2_PUBLIC_DOMAIN'):
+        assert (env.get(name) or '').strip(), f"{name} missing from throwaway_environment()"
 
 
 def _run_check_deploy(extra_env=None):

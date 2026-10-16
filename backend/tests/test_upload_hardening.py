@@ -52,6 +52,25 @@ class TestUploadPolicy:
         for bad in (f'students/avatars/{student_user.id}//x.png', f'students/avatars/{student_user.id}/%2e%2e/x.png'):
             assert client.post(URL, _body(student_user, key=bad), format='json').status_code == 400
 
+    def test_teacher_uploads_must_use_private_quarantine(self, teacher_user):
+        teacher_client = APIClient()
+        teacher_client.force_authenticate(teacher_user.user)
+        body = {'action': 'upload', 'content_type': 'image/png', 'size': 1000}
+
+        for direct_key in (
+            f'teachers/avatars/{teacher_user.user_id}/me.png',
+            f'teachers/audio/{teacher_user.user_id}/me.mp3',
+            f'private/vetting/certificates/{teacher_user.user_id}/certificate.png',
+            f'students/avatars/{teacher_user.user_id}/me.png',
+        ):
+            assert teacher_client.post(URL, {**body, 'key': direct_key}, format='json').status_code == 403
+
+        response = teacher_client.post(
+            URL, {**body, 'key': f'incoming/{teacher_user.user_id}/me.png'}, format='json')
+        assert response.status_code == 200
+        assert 'upload_url' in response.data
+        assert 'public_cdn_url' not in response.data
+
     def test_expiry_is_clamped(self):
         assert clamp_expires(10**9) == 900
         assert clamp_expires(1) == 60

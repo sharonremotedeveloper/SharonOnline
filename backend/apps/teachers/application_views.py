@@ -11,7 +11,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, serializers, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+from apps.common.throttles import ResilientScopedRateThrottle as ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.common.schema import ErrorCodeSerializer

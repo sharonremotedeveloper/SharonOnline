@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { DollarSign, ShieldCheck, Zap, ArrowRight, CheckCircle2 } from "lucide-react";
+import { DollarSign, ShieldCheck, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default function TeachPage() {
   const [lessonsPerDay, setLessonsPerDay] = useState(6);
@@ -94,14 +94,6 @@ export default function TeachPage() {
           <h4 className="text-base font-bold text-ink font-serif">Direct Bank EFT</h4>
           <p className="text-sm text-ink-muted leading-relaxed">
             No international transfer fees. Receive funds directly into your South African bank account every 1st and 15th of the month.
-          </p>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl border border-divider shadow-card space-y-3">
-          <Zap className="w-8 h-8 text-primary" />
-          <h4 className="text-base font-bold text-ink font-serif">Power Guard Support</h4>
-          <p className="text-sm text-ink-muted leading-relaxed">
-            Connect your provider area to Power Guard. Cached outage windows identify vulnerable upcoming lessons and trigger proactive warnings.
           </p>
         </div>
 

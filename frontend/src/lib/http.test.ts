@@ -48,8 +48,11 @@ function installBrowser() {
   });
 }
 
-function json(status: number, body: unknown): Response {
-  return new Response(body === null ? null : JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+function json(status: number, body: unknown, headers: Record<string, string> = {}): Response {
+  return new Response(body === null ? null : JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...headers },
+  });
 }
 
 /** Fresh module instance so module-level constants (USE_MOCKS, API_BASE) are re-evaluated per test. */
@@ -129,6 +132,15 @@ describe("request (browser)", () => {
     assert.deepEqual(err.fieldErrors.username, ["Taken."]);
   });
 
+  it("preserves Retry-After for callers that can back off", async () => {
+    const http = load();
+    globalThis.fetch = (async () => json(429, { detail: "Throttled" }, { "Retry-After": "17" })) as any;
+    const err: any = await http.request("/payments/credit-purchases/1/").catch((e) => e);
+    assert.ok(err instanceof http.ApiError);
+    assert.equal(err.status, 429);
+    assert.equal(err.retryAfter, "17");
+  });
+
   it("reports an unreachable server as a network error, never as data", async () => {
     const http = load();
     globalThis.fetch = (async () => {
@@ -138,6 +150,19 @@ describe("request (browser)", () => {
     assert.ok(err instanceof http.ApiError);
     assert.equal(err.isNetworkError, true);
     assert.match(http.errorMessage(err), /couldn't reach the server/i);
+  });
+
+  it("surfaces nested DRF serializer errors instead of a generic 400", () => {
+    const http = load();
+    const parsed = http.parseDrfError(400, {
+      speed_test: {
+        download_mbps: ["Ensure that there are no more than 1 decimal places."],
+      },
+    });
+    assert.equal(parsed.message, "Ensure that there are no more than 1 decimal places.");
+    assert.deepEqual(parsed.fieldErrors, {
+      "speed_test.download_mbps": ["Ensure that there are no more than 1 decimal places."],
+    });
   });
 
   it("treats proxy 502/504 as network errors too", () => {

@@ -24,7 +24,6 @@ import { MaterialDetail } from "@/types/material";
 import { HardwareCheckModal } from "@/components/classroom/HardwareCheckModal";
 import { DailyClassroom } from "@/components/classroom/DailyClassroom";
 import { LessonCountDownClock } from "@/components/classroom/LessonCountDownClock";
-import { EskomReportButton } from "@/components/classroom/EskomReportButton";
 import { ClassroomSplitLayout } from "@/components/classroom/ClassroomSplitLayout";
 
 export default function TeacherClassroomPage() {
@@ -131,7 +130,6 @@ export default function TeacherClassroomPage() {
   }
 
   const isConfirmed = booking.status === "confirmed" || booking.status === "in_progress";
-  const isInterrupted = booking.status === "interrupted_power";
 
   return (
     <div className="min-h-screen bg-cream py-8 sm:py-12">
@@ -181,11 +179,6 @@ export default function TeacherClassroomPage() {
               )}
             </button>
 
-            <EskomReportButton
-              bookingId={booking.id}
-              isInterrupted={isInterrupted}
-              onReported={() => setBooking({ ...booking, status: "interrupted_power" })}
-            />
           </div>
         </div>
 

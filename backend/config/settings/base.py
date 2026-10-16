@@ -124,8 +124,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
     'DEFAULT_THROTTLE_CLASSES': (
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
+        'apps.common.throttles.ResilientAnonRateThrottle',
+        'apps.common.throttles.ResilientUserRateThrottle',
     ),
     'DEFAULT_THROTTLE_RATES': {
         'anon': '60/min',
@@ -159,6 +159,32 @@ REST_FRAMEWORK = {
         'admin_teacher_review': '300/hour',   # slice T1b: staff review actions + admin cancel of a suspended tutor's lessons
         'daily_video_token': '120/hour',      # Daily.co video token provisioning (Decision D-14 / R4)
         'sar_export': '10/hour',              # GDPR/POPIA SAR export
+        # Targeted protection for expensive public reads, booking writes, financial documents,
+        # provider integrations, and staff mutations. These remain DRF/Redis-backed.
+        'public_slots': '30/min',
+        'public_teacher_directory': '120/min',
+        'public_teacher_availability': '12/min',
+        'public_teacher_detail': '120/min',
+        'public_materials_directory': '120/min',
+        'public_materials_detail': '120/min',
+        'credit_pack_list': '120/min',
+        'booking_write': '10/min',
+        'purchase_status': '30/min',
+        'financial_read': '60/min',
+        'financial_export': '10/hour',
+        'financial_document': '20/hour',
+        'private_asset': '30/hour',
+        'lesson_write': '30/hour',
+        'student_write': '120/hour',
+        'student_refund_read': '60/min',
+        'crm_write': '60/hour',
+        'refund_write': '30/hour',
+        'teacher_settings': '30/hour',
+        'integration_write': '20/hour',
+        'integration_callback': '20/hour',
+        'admin_read': '120/min',
+        'admin_refund_read': '60/min',
+        'admin_write': '60/hour',
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
     # NEVER map 0 to None: DRF treats None as "trust the whole client-supplied X-Forwarded-For header", which lets
@@ -310,6 +336,7 @@ REFUND_SWEEP_BUDGET_SECONDS = int(os.environ.get('REFUND_SWEEP_BUDGET_SECONDS', 
 REFUND_POLL_INTERVAL_MINUTES = int(os.environ.get('REFUND_POLL_INTERVAL_MINUTES', '60'))           # lookup cadence for SUBMITTED refunds
 REFUND_FIRST_ATTEMPT_DELAY_MINUTES = int(os.environ.get('REFUND_FIRST_ATTEMPT_DELAY_MINUTES', '60'))   # the student's window to convert to wallet credit (provisional, Anesu to confirm)
 # EskomSePush provider. The periodic task is the only provider caller; request paths read durable cached status.
+ESKOMSEPUSH_ENABLED = os.environ.get('ESKOMSEPUSH_ENABLED', 'true').strip().lower() in ('1', 'true', 'yes')
 ESKOMSEPUSH_API_KEY = os.environ.get('ESKOMSEPUSH_API_KEY', '')
 ESKOMSEPUSH_BASE_URL = os.environ.get('ESKOMSEPUSH_BASE_URL', 'https://developer.sepush.co.za/business/2.0')
 ESKOMSEPUSH_TIMEOUT_SECONDS = int(os.environ.get('ESKOMSEPUSH_TIMEOUT_SECONDS', '10'))

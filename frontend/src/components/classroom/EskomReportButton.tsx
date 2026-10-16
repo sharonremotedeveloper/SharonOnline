@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Zap, AlertTriangle, ShieldCheck, X, CheckCircle2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { POWER_GUARD_UI_ENABLED } from "@/lib/features";
 import { InlineError } from "@/components/ui/ErrorState";
 
 interface EskomReportButtonProps {
@@ -23,6 +24,8 @@ export function EskomReportButton({
   const [reported, setReported] = useState(isInterrupted);
   const [reportError, setReportError] = useState<unknown>(null);
   const [reportNote, setReportNote] = useState("Sudden municipal load shedding / power trip");
+
+  if (!POWER_GUARD_UI_ENABLED) return null;
 
   const handleConfirmReport = async () => {
     setSubmitting(true);

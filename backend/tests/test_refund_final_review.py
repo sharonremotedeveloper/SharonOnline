@@ -101,7 +101,10 @@ GOOD = {
     'ESKOMSEPUSH_API_KEY': 'eskom-provider-key', 'THROTTLE_NUM_PROXIES': '1', 'FRONTEND_BASE_URL': 'https://sharonesl.com',
     'RESEND_API_KEY': 're_live_abcdefghijklmnop', 'PAYOUT_DATA_KEYS': json.dumps({'v1': Fernet.generate_key().decode()}),
     'PAYOUT_DATA_ACTIVE_KEY': 'v1', 'INTEGRATION_DATA_KEYS': json.dumps({'v1': Fernet.generate_key().decode()}),
-    'INTEGRATION_DATA_ACTIVE_KEY': 'v1', 'CLOUDFLARE_R2_PRIVATE_BUCKET_NAME': 'esl-private',
+    'INTEGRATION_DATA_ACTIVE_KEY': 'v1', 'CLOUDFLARE_R2_ACCOUNT_ID': 'r2-account',
+    'CLOUDFLARE_R2_ACCESS_KEY_ID': 'r2-access-key', 'CLOUDFLARE_R2_SECRET_ACCESS_KEY': 'r2-secret-key',
+    'CLOUDFLARE_R2_BUCKET_NAME': 'esl-public', 'CLOUDFLARE_R2_PRIVATE_BUCKET_NAME': 'esl-private',
+    'CLOUDFLARE_R2_PUBLIC_DOMAIN': 'https://assets.sharonesl.com',
     'REFUND_GATEWAY_BACKEND': 'apps.payments.services.refund_gateways.RoutingRefundGateway',
     # Daily.co video conferencing credentials (M1 / Requirement R4)
     'DAILY_API_KEY': 'daily-live-api-key-test-value-0123456789',

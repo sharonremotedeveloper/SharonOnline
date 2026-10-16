@@ -1,13 +1,13 @@
 "use client";
 
 import { AlertCircle } from "lucide-react";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { TutorFilters } from "@/components/tutors/TutorFilters";
 import { TutorGrid } from "@/components/tutors/TutorGrid";
 import type { PublicTutor, TutorFilterState } from "@/types/tutor";
 import { api } from "@/lib/api";
-import { buildTutorQuery, toPublicTutor } from "@/lib/tutorsDirectory";
+import { buildTutorQuery, getTutorDirectoryEmptyState, toPublicTutor } from "@/lib/tutorsDirectory";
 import { errorMessage } from "@/lib/http";
 
 const PAGE_SIZE = 12;
@@ -26,10 +26,18 @@ function TutorsContent() {
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  useEffect(() => {
+  const handleFiltersChange = useCallback((next: TutorFilterState) => {
+    setLoading(true);
+    setError("");
+    setFilters(next);
     setPage(1);
-  }, [filters.search, filters.accent, filters.specialty]);
+  }, []);
+
+  const handlePageChange = (nextPage: number) => {
+    setLoading(true);
+    setError("");
+    setPage(nextPage);
+  };
 
   useEffect(() => {
     let active = true;
@@ -70,7 +78,7 @@ function TutorsContent() {
       <p className="mt-4 max-w-2xl text-lg text-ink-muted">Search by name or topic. Open a tutor to see their free times.</p>
 
       <div className="mt-8">
-        <TutorFilters filters={filters} onFilterChange={setFilters} totalCount={count} />
+        <TutorFilters filters={filters} onFilterChange={handleFiltersChange} totalCount={count} loading={loading} />
       </div>
 
       {error && (
@@ -80,18 +88,18 @@ function TutorsContent() {
       )}
 
       <div className="mt-8">
-        <TutorGrid tutors={tutors} loading={loading} onResetFilters={() => setFilters(EMPTY)} />
+        {!error && <TutorGrid tutors={tutors} loading={loading} emptyState={getTutorDirectoryEmptyState(filters)} onResetFilters={() => handleFiltersChange(EMPTY)} />}
       </div>
 
       {!loading && count > PAGE_SIZE && (
         <nav aria-label="Tutor pages" className="mt-10 flex items-center justify-center gap-4">
-          <button type="button" className={pageButton} disabled={page === 1} onClick={() => setPage(page - 1)}>
+          <button type="button" className={pageButton} disabled={page === 1} onClick={() => handlePageChange(page - 1)}>
             Previous
           </button>
           <span className="text-base text-ink-muted">
             Page {page} of {pages}
           </span>
-          <button type="button" className={pageButton} disabled={page >= pages} onClick={() => setPage(page + 1)}>
+          <button type="button" className={pageButton} disabled={page >= pages} onClick={() => handlePageChange(page + 1)}>
             Next
           </button>
         </nav>

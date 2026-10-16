@@ -1,4 +1,5 @@
 import { PricingTable } from "@/components/public/PricingTable";
+import { PAYMENTS_ENABLED } from "@/lib/paymentsEnabled";
 
 export default function PricingPage() {
   return (
@@ -9,7 +10,9 @@ export default function PricingPage() {
           Transparent, Flexible Pricing
         </h1>
         <p className="text-base text-cocoa-600">
-          No mandatory monthly recurring subscriptions. Pay per lesson or save with lesson credit packs.
+          {PAYMENTS_ENABLED
+            ? "No mandatory monthly recurring subscriptions. Pay per lesson or save with lesson credit packs."
+            : "Browse our lesson prices. New purchases are temporarily unavailable."}
         </p>
       </div>
 

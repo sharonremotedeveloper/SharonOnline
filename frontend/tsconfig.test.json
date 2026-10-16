@@ -25,6 +25,7 @@
     "src/lib/fx.ts",
     "src/lib/paypalOutcome.ts",
     "src/lib/pendingPayment.ts",
+    "src/lib/purchasePolling.ts",
     "src/lib/refunds.ts",
     "src/lib/adminRefunds.ts",
     "src/lib/server/upstream.ts",
