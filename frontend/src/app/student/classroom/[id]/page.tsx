@@ -22,7 +22,6 @@ import { MaterialDetail } from "@/types/material";
 import { HardwareCheckModal } from "@/components/classroom/HardwareCheckModal";
 import { DailyClassroom } from "@/components/classroom/DailyClassroom";
 import { LessonCountDownClock } from "@/components/classroom/LessonCountDownClock";
-import { EskomReportButton } from "@/components/classroom/EskomReportButton";
 import { ClassroomSplitLayout } from "@/components/classroom/ClassroomSplitLayout";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 
@@ -110,7 +109,6 @@ export default function StudentClassroomPage() {
   }
 
   const isConfirmed = booking.status === "confirmed" || booking.status === "in_progress";
-  const isInterrupted = booking.status === "interrupted_power";
 
   return (
     <div className="min-h-screen bg-cream py-8 sm:py-12">
@@ -137,7 +135,7 @@ export default function StudentClassroomPage() {
             </div>
           </div>
 
-          {/* Quick Hardware Check Trigger & Eskom Button */}
+          {/* Quick Hardware Check Trigger */}
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -161,11 +159,6 @@ export default function StudentClassroomPage() {
               )}
             </button>
 
-            <EskomReportButton
-              bookingId={booking.id}
-              isInterrupted={isInterrupted}
-              onReported={() => setBooking({ ...booking, status: "interrupted_power" })}
-            />
           </div>
         </div>
 

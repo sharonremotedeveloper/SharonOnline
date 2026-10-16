@@ -44,7 +44,7 @@ export function TutorCard({ tutor }: TutorCardProps) {
         )}
         {tutor.has_inverter_backup && (
           <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-sun px-3 py-1 text-sm font-bold text-ink">
-            <Zap className="h-4 w-4" aria-hidden="true" /> Backup power
+            <Zap className="h-4 w-4" aria-hidden="true" /> Reports backup power
           </span>
         )}
       </div>

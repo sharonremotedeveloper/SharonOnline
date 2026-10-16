@@ -10,7 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from apps.bookings.models import Booking
 from apps.integrations.models import EskomAreaStatus, EskomNotificationAttempt
 from apps.integrations.services.eskom import EskomProviderError, EskomQuotaError, EskomSePushClient
-from apps.integrations.tasks import send_eskom_notification_task, sync_eskom_statuses
+from apps.integrations.tasks import send_eskom_notification_task, sync_eskom_statuses, sync_eskom_stages_task
 from apps.payments.models import PaymentTransaction
 from apps.payments.services.funding import ensure_gateway_funding
 
@@ -64,6 +64,12 @@ def fund(item):
 
 @pytest.mark.django_db
 class TestEskomSync:
+    def test_scheduled_sync_is_noop_when_provider_is_disabled(self, settings):
+        settings.ESKOMSEPUSH_ENABLED = False
+        result = sync_eskom_stages_task()
+        assert result['disabled'] is True
+        assert result['synced_areas'] == 0
+
     def test_real_stage_zero_is_cached_without_fabrication(self, teacher_user):
         teacher_user.eskom_area_id = 'area-zero'
         teacher_user.save(update_fields=['eskom_area_id'])
@@ -103,6 +109,12 @@ class TestEskomSync:
 
 @pytest.mark.django_db
 class TestEskomApi:
+    def test_status_endpoint_is_disabled_without_provider_access(self, teacher_user, settings):
+        settings.ESKOMSEPUSH_ENABLED = False
+        response = client(teacher_user.user).get(STATUS_URL)
+        assert response.status_code == 404
+        assert response.json() == {'code': 'eskom_disabled'}
+
     def test_fresh_and_stale_status_are_explicit(self, teacher_user):
         teacher_user.eskom_area_id = 'api-area'
         teacher_user.save(update_fields=['eskom_area_id'])

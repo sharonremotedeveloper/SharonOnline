@@ -355,7 +355,7 @@ export default function StudentCheckoutPage() {
             )}
             {!PAYMENTS_ENABLED && (
               <div className="text-sm text-ink-muted bg-cream-surface border border-divider rounded-xl px-4 py-3 space-y-3">
-                <p>Payments are switched off in this test environment.</p>
+                <p>Online payments are temporarily unavailable.</p>
                 {TEST_BOOKINGS_ENABLED ? (
                   <>
                     <p>This development booking will be confirmed without payment or wallet credits.</p>

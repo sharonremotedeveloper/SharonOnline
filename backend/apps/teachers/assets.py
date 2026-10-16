@@ -18,15 +18,25 @@ MAGIC = {
     'image/webp': (b'RIFF',), 'application/pdf': (b'%PDF-',),
     'audio/mpeg': (b'ID3', b'\xff\xfb', b'\xff\xf3', b'\xff\xf2'),
     'audio/mp4': (b'ftyp',), 'audio/wav': (b'RIFF',), 'audio/webm': (b'\x1a\x45\xdf\xa3',),
+    'audio/ogg': (b'OggS',),
     'video/mp4': (b'ftyp',), 'video/webm': (b'\x1a\x45\xdf\xa3',),
 }
 
 KIND_TYPES = {
     TeacherAsset.Kind.AVATAR: {'image/jpeg', 'image/png', 'image/webp'},
-    TeacherAsset.Kind.ACCENT_AUDIO: {'audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/webm'},
+    TeacherAsset.Kind.ACCENT_AUDIO: {'audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/webm', 'audio/ogg'},
     TeacherAsset.Kind.TEFL_CERTIFICATE: {'application/pdf', 'image/jpeg', 'image/png'},
     TeacherAsset.Kind.INTRO_VIDEO: {'video/mp4', 'video/webm'},
     TeacherAsset.Kind.IDENTITY_DOCUMENT: {'application/pdf', 'image/jpeg', 'image/png'},
+}
+
+MB = 1024 * 1024
+KIND_MAX_BYTES = {
+    TeacherAsset.Kind.AVATAR: 5 * MB,
+    TeacherAsset.Kind.ACCENT_AUDIO: 10 * MB,
+    TeacherAsset.Kind.TEFL_CERTIFICATE: 10 * MB,
+    TeacherAsset.Kind.INTRO_VIDEO: 50 * MB,
+    TeacherAsset.Kind.IDENTITY_DOCUMENT: 10 * MB,
 }
 
 
@@ -78,6 +88,8 @@ def commit_asset(teacher, *, actor, kind, quarantine_key, expected_etag='', _cop
     local_mode = getattr(settings, 'DEBUG', False) or getattr(settings, 'SIMULATE_WITHOUT_CREDENTIALS', False)
     if private and not local_mode and not getattr(settings, 'CLOUDFLARE_R2_PRIVATE_BUCKET_NAME', ''):
         raise RuntimeError('A separate private R2 bucket is required for vetting assets.')
+    if not local_mode and not expected_etag:
+        raise ValueError('Upload verification metadata is missing. Please upload the file again.')
     metadata = r2_client.head_object(quarantine_key, private=True)
     if metadata is None:
         if not local_mode:
@@ -92,6 +104,8 @@ def commit_asset(teacher, *, actor, kind, quarantine_key, expected_etag='', _cop
     policy = policy_for_key('incoming/')
     if policy and size and (content_type not in policy[0] or size > policy[1]):
         raise ValueError('The uploaded asset violates the quarantine size or content-type policy.')
+    if size and size > KIND_MAX_BYTES[kind]:
+        raise ValueError('The uploaded asset is too large for this tutor asset type.')
     prefix = r2_client.read_object_prefix(quarantine_key, etag=etag_header, private=True) or b''
     if metadata.get('ContentLength', 0) and not _matches(kind, content_type, prefix):
         raise ValueError('The uploaded bytes do not match the declared content type.')

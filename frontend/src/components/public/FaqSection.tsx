@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { SectionHeading } from "./SectionHeading";
+import { PAYMENTS_ENABLED } from "@/lib/paymentsEnabled";
 
 // Plain English (about B1), written for readers who learn English as a second language.
 export const FAQS = [
@@ -26,7 +27,9 @@ export const FAQS = [
   },
   {
     q: "Is it safe to pay?",
-    a: "Yes. You pay through PayPal or PayFast. We never see or store your card number.",
+    a: PAYMENTS_ENABLED
+      ? "Yes. You pay through PayPal or PayFast. We never see or store your card number."
+      : "Online payments are temporarily unavailable. We will show the available methods when checkout reopens.",
   },
 ];
 

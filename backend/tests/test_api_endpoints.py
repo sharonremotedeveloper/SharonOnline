@@ -12,6 +12,38 @@ def test_health_check_endpoint():
     assert response.json()["status"] == "healthy"
     assert response.json()["service"] == "esl_backend"
 
+
+def test_health_check_reports_dependency_failure_without_details(monkeypatch):
+    from config import health
+
+    monkeypatch.setattr(health, "check_dependencies", lambda: False)
+    client = APIClient()
+    response = client.get('/api/ready/')
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "unavailable", "service": "esl_backend"}
+
+
+def test_health_check_reports_dependency_success(monkeypatch):
+    from config import health
+
+    monkeypatch.setattr(health, "check_dependencies", lambda: True)
+    response = APIClient().get('/api/ready/')
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ready"
+
+
+def test_readiness_rejects_unsafe_methods_without_probing(monkeypatch):
+    from config import health
+
+    calls = []
+    monkeypatch.setattr(health, "check_dependencies", lambda: calls.append(True))
+    response = APIClient().post('/api/ready/')
+
+    assert response.status_code == 405
+    assert calls == []
+
 @pytest.mark.django_db
 def test_materials_catalog_endpoint():
     Material.objects.create(

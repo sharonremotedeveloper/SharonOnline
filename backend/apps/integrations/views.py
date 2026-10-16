@@ -17,7 +17,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
 from rest_framework.permissions import AllowAny
-from rest_framework.throttling import ScopedRateThrottle
+from apps.common.throttles import ResilientScopedRateThrottle as ScopedRateThrottle
+from apps.common.throttles import ObservedScopedRateThrottle
 
 from apps.admin_api.models import DisputeCase
 from apps.bookings.models import AttendanceAudit, Booking
@@ -41,6 +42,8 @@ class EskomStatusView(APIView):
     permission_classes = (permissions.IsAuthenticated, IsTeacher)
 
     def get(self, request):
+        if not settings.ESKOMSEPUSH_ENABLED:
+            return Response({'code': 'eskom_disabled'}, status=status.HTTP_404_NOT_FOUND)
         profile = getattr(request.user, 'teacher_profile', None)
         if profile is None or not profile.eskom_area_id:
             return Response({'code': 'eskom_area_not_configured'}, status=status.HTTP_409_CONFLICT)
@@ -81,6 +84,8 @@ class EskomStatusView(APIView):
 @extend_schema(responses=OpenApiTypes.OBJECT)
 class GoogleCalendarConnectView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsTeacher]
+    throttle_classes = [ObservedScopedRateThrottle]
+    throttle_scope = 'integration_write'
 
     def get(self, request):
         try:
@@ -94,6 +99,8 @@ class GoogleCalendarCallbackView(APIView):
     # Google redirects may not preserve the API session. The single-use state
     # nonce is the authentication binding for this callback.
     permission_classes = [AllowAny]
+    throttle_classes = [ObservedScopedRateThrottle]
+    throttle_scope = 'integration_callback'
 
     def get(self, request):
         serializer = GoogleCalendarCallbackSerializer(data=request.query_params)
@@ -120,6 +127,8 @@ class GoogleCalendarCallbackView(APIView):
 @extend_schema(exclude=True)
 class GoogleCalendarDisconnectView(APIView):
     permission_classes = [permissions.IsAuthenticated, IsTeacher]
+    throttle_classes = [ObservedScopedRateThrottle]
+    throttle_scope = 'integration_write'
 
     @extend_schema(responses=OpenApiTypes.OBJECT)
     def post(self, request):
@@ -170,14 +179,10 @@ class PresignedUploadURLView(APIView):
                 allowed_prefixes = []
                 user_role = getattr(user, 'role', '')
                 if user_role == 'teacher' or getattr(user, 'teacher_profile', None):
-                    allowed_prefixes.extend([
-                        f"incoming/{user_id_str}",
-                        f"teachers/avatars/{user_id_str}",
-                        f"teachers/audio/{user_id_str}",
-                        f"private/vetting/certificates/{user_id_str}",
-                        f"private/vetting/{user_id_str}",
-                    ])
-                if user_role in ['student', 'teacher']:
+                    # Tutor media and vetting documents must enter the private quarantine bucket.
+                    # Only the audited asset-commit flow may copy validated objects to final public/private keys.
+                    allowed_prefixes.append(f"incoming/{user_id_str}")
+                if user_role == 'student':
                     allowed_prefixes.append(f"students/avatars/{user_id_str}")
 
                 if not any(key.startswith(p + '/') for p in allowed_prefixes):

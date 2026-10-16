@@ -11,6 +11,7 @@ from apps.crm.serializers import TeacherStudentDossierSerializer, DossierUpdateS
 from apps.users.models import User
 from apps.bookings.models import Booking
 from apps.teachers.models import TeacherProfile
+from apps.common.throttles import ObservedScopedRateThrottle
 
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class TeacherStudentDossierListView(APIView):
@@ -31,6 +32,8 @@ class TeacherStudentDossierListView(APIView):
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)  # TODO(8.8+): replace with typed serializers
 class TeacherStudentDossierUpdateView(APIView):
     permission_classes = [IsTeacherOrAdmin]
+    throttle_classes = [ObservedScopedRateThrottle]
+    throttle_scope = 'crm_write'
 
     def patch(self, request, student_id):
         serializer = DossierUpdateSerializer(data=request.data)

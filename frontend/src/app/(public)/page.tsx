@@ -3,7 +3,6 @@ import { ArrowRight, Clock, UserRound, BadgeCheck, Wallet } from "lucide-react";
 import { HeroSection } from "@/components/public/HeroSection";
 import { GoalSelector } from "@/components/public/GoalSelector";
 import { HowItWorksSteps } from "@/components/public/HowItWorksSteps";
-import { PowerGuardCallout } from "@/components/public/PowerGuardCallout";
 import { PricingTable } from "@/components/public/PricingTable";
 import { SectionHeading } from "@/components/public/SectionHeading";
 import { FeaturedTutorCard } from "@/components/public/FeaturedTutorCard";
@@ -13,6 +12,7 @@ import { FaqSection, FAQS } from "@/components/public/FaqSection";
 import { fetchFeaturedTutors } from "@/lib/api";
 import { LessonPriceLabel } from "@/components/ui/LessonPriceLabel";
 import { SITE_URL } from "@/lib/siteUrl";
+import { PAYMENTS_ENABLED } from "@/lib/paymentsEnabled";
 
 
 // Only facts that are true of the product. No rating or review count appears here unless it comes from real data.
@@ -51,7 +51,7 @@ export default async function HomePage() {
     <div className="pb-20">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
-      <HeroSection tutors={featuredTutors} />
+      <HeroSection tutors={featuredTutors ?? []} />
 
       {/* Facts about the lesson, in a yellow bar like the best tutoring sites. No self-awarded numbers. */}
       <section aria-label="Lesson basics" className="focus-cocoa bg-sun">
@@ -96,12 +96,16 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          {featuredTutors.length === 0 ? (
+          {featuredTutors === null ? (
             <div className="rounded-2xl border border-divider bg-white p-8 text-center">
               <p className="text-base text-ink-muted">We cannot show our tutors right now. Please try again in a moment.</p>
               <Link href="/tutors" className="mt-3 inline-flex min-h-[44px] items-center gap-2 text-base font-bold text-cocoa">
                 Go to the tutor list <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
+            </div>
+          ) : featuredTutors.length === 0 ? (
+            <div className="rounded-2xl border border-divider bg-white p-8 text-center">
+              <p className="text-base text-ink-muted">No tutors are available to book yet. Please check back later.</p>
             </div>
           ) : (
             <div className="mx-auto grid max-w-2xl grid-cols-1 gap-4 xl:max-w-none xl:grid-cols-3 xl:gap-5">
@@ -122,7 +126,6 @@ export default async function HomePage() {
       {/* Why South Africa */}
       <section className="mx-auto mt-20 max-w-7xl space-y-8 px-4 sm:px-6 lg:px-8">
         <WhySouthAfrica />
-        <PowerGuardCallout />
       </section>
 
       {/* Goals */}
@@ -167,7 +170,7 @@ export default async function HomePage() {
           id="pricing-heading"
           eyebrow="Pricing"
           title="Simple prices. No subscription."
-          description="Buy one lesson or a pack. Bigger packs cost less per lesson."
+          description={PAYMENTS_ENABLED ? "Buy one lesson or a pack. Bigger packs cost less per lesson." : "You can browse lesson prices, but new purchases are temporarily unavailable."}
         />
         <PricingTable />
       </section>

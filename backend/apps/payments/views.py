@@ -18,7 +18,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import permissions, serializers, status
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+from apps.common.throttles import ResilientScopedRateThrottle as ScopedRateThrottle
 from rest_framework.views import APIView
 
 from django.utils import timezone
@@ -47,6 +47,7 @@ from .services.fx import FxRateStale, FxRateUnavailable, current_rate, fx_source
 from .services.pricing import CURRENCY_EXPONENT, PriceNotConfigured, lesson_price, quantize_money
 from .services.payout_crypto import PayoutDataError
 from .throttles import WritesOnlyScopedThrottle
+from apps.common.throttles import ObservedScopedRateThrottle
 from .services.receipts import render_receipt_pdf
 from .services import bank_change_code
 from .services.statements import statement_csv
@@ -558,6 +559,8 @@ class PayPalCaptureView(APIView):
 @extend_schema(responses=WalletSerializer)
 class CreditBalanceView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'financial_read'
 
     def get(self, request):
         bundles = CreditBundle.objects.filter(user=request.user).order_by('created_at', 'id')
@@ -617,6 +620,8 @@ class LessonPriceListView(APIView):
 @extend_schema(responses=OpenApiTypes.OBJECT)
 class CreditPackListView(APIView):
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'credit_pack_list'
 
     def get(self, request):
         return Response([
@@ -637,6 +642,8 @@ class CreditPackListView(APIView):
 @extend_schema(responses=OpenApiTypes.OBJECT)
 class CreditPurchaseStatusView(APIView):
     permission_classes = (permissions.IsAuthenticated,)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'purchase_status'
 
     def get(self, request, purchase_id):
         purchase = get_object_or_404(
@@ -654,6 +661,8 @@ class CreditPurchaseStatusView(APIView):
 @extend_schema(responses=TutorWalletSerializer)
 class TutorWalletView(APIView):
     permission_classes = (IsTeacher,)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'financial_read'
 
     def get(self, request):
         payload = tutor_wallet_payload(request.user)
@@ -710,6 +719,8 @@ class PayoutSettingsView(APIView):
 class TutorStatementView(APIView):
     """P2: the tutor's own earnings and payouts as a CSV with a running balance (ledger 2020)."""
     permission_classes = (IsTeacher,)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'financial_export'
 
     def get(self, request):
         try:
@@ -755,6 +766,8 @@ class ReceiptSerializer(serializers.Serializer):
 class ReceiptListView(APIView):
     """Task 10.8: the signed-in student's own receipts, newest first."""
     permission_classes = (permissions.IsAuthenticated,)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'financial_read'
 
     def get(self, request):
         rows = []
@@ -777,6 +790,8 @@ class ReceiptListView(APIView):
 class ReceiptPdfView(APIView):
     """The receipt as a PDF. Scoped to its owner in the query, so someone else's id is a plain 404 (no existence oracle)."""
     permission_classes = (permissions.IsAuthenticated,)
+    throttle_classes = (ObservedScopedRateThrottle,)
+    throttle_scope = 'financial_document'
 
     def get(self, request, receipt_id):
         receipt = get_object_or_404(

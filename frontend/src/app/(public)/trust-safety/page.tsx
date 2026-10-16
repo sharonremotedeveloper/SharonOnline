@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ShieldCheck, Lock, Award, Radio, RefreshCw, CheckCircle } from "lucide-react";
-import { PowerGuardCallout } from "@/components/public/PowerGuardCallout";
 
 export const metadata: Metadata = {
   title: "Trust and Safety | Sharon Online",
@@ -21,14 +20,13 @@ export default function TrustSafetyPage() {
           </div>
           <h1 className="text-3xl sm:text-5xl font-extrabold font-serif">Trust, Safety & Escrow Protection</h1>
           <p className="text-sm sm:text-base text-white/80 max-w-2xl mx-auto">
-            From 4-stage tutor screening to Eskom load shedding resilience and 24-hour escrow release guarantees.
+            From 4-stage tutor screening to 24-hour escrow release guarantees.
           </p>
         </div>
       </section>
 
       {/* Main Content */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-        <PowerGuardCallout />
 
         {/* 4 Pillars of Safety */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

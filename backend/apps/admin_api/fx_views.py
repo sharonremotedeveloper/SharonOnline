@@ -7,6 +7,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from apps.common.throttles import ObservedScopedRateThrottle
 
 from apps.payments.models import FxRate
 from apps.payments.services.fx import FxRateSanityError, latest_row, max_age, record_rate
@@ -25,6 +26,12 @@ def _row(row, now):
 @extend_schema(request=OpenApiTypes.OBJECT, responses=OpenApiTypes.OBJECT)
 class FxRateView(APIView):
     permission_classes = [IsPlatformAdmin]
+    throttle_scope = 'admin_write'
+
+    def get_throttles(self):
+        if self.request.method == 'POST':
+            return [ObservedScopedRateThrottle()]
+        return super().get_throttles()
 
     def get(self, request):
         now = timezone.now()
