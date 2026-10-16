@@ -18,6 +18,17 @@ Whenever an error, test breakage, build failure, or unexpected API behavior occu
 
 ## 📋 Historical Error & Resolution Ledger
 
+### ERR-549: Mobile classroom hard to scroll, overlay covered video, high phone CPU
+
+- **Observed (2026-10-16, Android Chrome, first two-device call):** our status pill and Leave button overlaid Daily's self-view tile; a fixed 500-600px video frame filled the screen so touch scrolling landed inside the iframe; the owner reported high CPU.
+- **Fix:** controls moved above the video (no backdrop blur over live video), Daily's duplicate leave button hidden, frame `62dvh` on phones, phones send `bandwidth-optimized` video after joining, tighter mobile padding (develop `728ae00`, main `91e8960`). CPU reduction is not measured yet.
+
+### ERR-548: Every real Daily webhook rejected with 401 (millisecond timestamp)
+
+- **Observed (2026-10-16 14:49Z):** the first real `participant.joined` deliveries got 401 "Request timestamp out of allowable window"; no attendance was recorded.
+- **Root cause:** Daily sends `X-Webhook-Timestamp` in milliseconds; the replay guard compared it with `time.time()` seconds. Tests only used second timestamps.
+- **Fix:** normalise to seconds for the window; HMAC still over the header value as sent; tests for accepted current-ms and rejected stale-ms timestamps (develop `3621a07`, main `37a9790`, Railway API `7e252c6d`). Also re-pointed the Daily webhook from the (FAILED) development URL to production and rotated `DAILY_WEBHOOK_SECRET` (the old value was exposed in a session log and was not padded base64, which Daily requires).
+
 ### ERR-547: Daily classroom stuck on "Connecting to Live Stage" (Permissions-Policy blocked the iframe's devices)
 
 - **Observed (2026-10-16 14:25Z):** tutor and student both received `GET /bookings/5cdec1b2-.../video-token/` 200, but no Daily `participant.joined` webhook arrived and both browsers stayed on "Connecting to Live Stage". The Daily domain and room URL answered (302 dashboard / 200 room page).
