@@ -1,4 +1,4 @@
-"""Explicitly gated development booking confirmation for provider/browser E2E tests."""
+"""Explicitly gated test-booking confirmation (no payment) for provider/browser E2E tests."""
 
 from django.conf import settings
 from django.db import transaction
@@ -18,10 +18,22 @@ class TestBookingError(Exception):
         super().__init__(message)
 
 
+def booking_test_mode(student, teacher_user) -> str:
+    """'switch' (non-production TEST_BOOKINGS_ENABLED), 'allowlist' (both e-mails listed) or '' (refused)."""
+    if settings.PAYMENTS_ENABLED:
+        return ''
+    if settings.TEST_BOOKINGS_ENABLED:
+        return 'switch'
+    allowed = settings.TEST_BOOKING_ALLOWED_EMAILS
+    if allowed and (student.email or '').strip().lower() in allowed and (teacher_user.email or '').strip().lower() in allowed:
+        return 'allowlist'
+    return ''
+
+
 @transaction.atomic
 def confirm_test_booking(*, booking, student):
-    """Confirm a held booking without money only when the test switch is explicitly enabled."""
-    if settings.PAYMENTS_ENABLED or not settings.TEST_BOOKINGS_ENABLED:
+    """Confirm a held booking without money only when a test switch or the student+tutor allowlist permits it."""
+    if settings.PAYMENTS_ENABLED:
         raise TestBookingError(503, 'Test bookings are not enabled in this environment.')
 
     booking = (Booking.objects.select_for_update(of=('self',))
@@ -29,6 +41,9 @@ def confirm_test_booking(*, booking, student):
                .get(pk=booking.pk))
     if booking.student_id != student.id:
         raise TestBookingError(404, 'Booking not found.')
+    mode = booking_test_mode(student, booking.teacher.user)
+    if not mode:
+        raise TestBookingError(503, 'Test bookings are not enabled for this booking.')
     if booking.status == Booking.Status.CONFIRMED:
         return booking, False
     if booking.status != Booking.Status.PENDING_PAYMENT:
@@ -50,7 +65,8 @@ def confirm_test_booking(*, booking, student):
         raise TestBookingError(409, 'This time slot has just been taken. Please choose another.')
     try:
         transition_booking(booking, Booking.Status.CONFIRMED, actor=student,
-                           reason='development test booking confirmed')
+                           reason=('allowlisted test booking confirmed without payment' if mode == 'allowlist'
+                                       else 'development test booking confirmed'))
     except InvalidTransition as exc:
         raise TestBookingError(409, str(exc)) from exc
 

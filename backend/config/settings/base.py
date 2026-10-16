@@ -463,6 +463,11 @@ PAYMENTS_ENABLED = _env_bool('PAYMENTS_ENABLED', True)
 # Development environments with payments disabled can use the browser test flow by default.
 # Set TEST_BOOKINGS_ENABLED=false to keep the flow disabled explicitly; production overrides this below.
 TEST_BOOKINGS_ENABLED = _env_bool('TEST_BOOKINGS_ENABLED', not PAYMENTS_ENABLED)
+# Production-safe test window: with payments off, a held booking may be confirmed without payment ONLY when both the student's
+# and the tutor's e-mail are in this comma-separated list. Empty (the default) keeps the flow off for everyone; it does not
+# depend on TEST_BOOKINGS_ENABLED, which production hard-disables (docs/TEST_BOOKINGS.md).
+TEST_BOOKING_ALLOWED_EMAILS = frozenset(
+    e.strip().lower() for e in os.environ.get('TEST_BOOKING_ALLOWED_EMAILS', '').split(',') if e.strip())
 
 PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID', '')
 PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET', '')

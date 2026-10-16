@@ -181,6 +181,56 @@ class TestDevelopmentTestBooking:
         assert not CreditWalletEntry.objects.filter(booking=booking).exists()
 
 
+@pytest.mark.django_db(transaction=True)
+class TestAllowlistedTestBooking:
+    """Production route (docs/TEST_BOOKINGS.md): payments off, TEST_BOOKINGS_ENABLED hard-off, both e-mails listed."""
+
+    def _post(self, student_user, teacher_user, monkeypatch, capture):
+        booking = held_booking(teacher_user, student_user)
+        queued = []
+        monkeypatch.setattr('apps.payments.services.webhook_handler.dispatch_fulfillment',
+                            lambda booking_id: queued.append(booking_id))
+        with capture(execute=True):
+            response = client(student_user).post(f'/api/v1/bookings/{booking.id}/confirm-test/')
+        booking.refresh_from_db()
+        return response, booking, queued
+
+    def test_both_listed_confirms_without_money_and_records_reason(
+        self, student_user, teacher_user, django_capture_on_commit_callbacks, monkeypatch, settings
+    ):
+        settings.PAYMENTS_ENABLED = False
+        settings.TEST_BOOKINGS_ENABLED = False
+        settings.TEST_BOOKING_ALLOWED_EMAILS = frozenset({student_user.email.upper(), teacher_user.user.email}) | {
+            student_user.email.lower()}
+        response, booking, queued = self._post(student_user, teacher_user, monkeypatch, django_capture_on_commit_callbacks)
+        assert response.status_code == 200, response.data
+        assert booking.status == Booking.Status.CONFIRMED and queued == [str(booking.id)]
+        assert not BookingFunding.objects.filter(booking=booking).exists()
+        assert booking.status_changes.filter(reason__startswith='allowlisted test booking').exists()
+
+    @pytest.mark.parametrize('listed', ['student_only', 'teacher_only', 'nobody'])
+    def test_partial_or_empty_allowlist_is_refused(
+        self, listed, student_user, teacher_user, django_capture_on_commit_callbacks, monkeypatch, settings
+    ):
+        settings.PAYMENTS_ENABLED = False
+        settings.TEST_BOOKINGS_ENABLED = False
+        settings.TEST_BOOKING_ALLOWED_EMAILS = frozenset({
+            'student_only': {student_user.email.lower()}, 'teacher_only': {teacher_user.user.email.lower()}, 'nobody': set(),
+        }[listed])
+        response, booking, queued = self._post(student_user, teacher_user, monkeypatch, django_capture_on_commit_callbacks)
+        assert response.status_code == 503
+        assert booking.status == Booking.Status.PENDING_PAYMENT and queued == []
+
+    def test_allowlist_never_applies_while_payments_are_enabled(
+        self, student_user, teacher_user, django_capture_on_commit_callbacks, monkeypatch, settings
+    ):
+        settings.PAYMENTS_ENABLED = True
+        settings.TEST_BOOKINGS_ENABLED = False
+        settings.TEST_BOOKING_ALLOWED_EMAILS = frozenset({student_user.email.lower(), teacher_user.user.email.lower()})
+        response, booking, _ = self._post(student_user, teacher_user, monkeypatch, django_capture_on_commit_callbacks)
+        assert response.status_code == 503 and booking.status == Booking.Status.PENDING_PAYMENT
+
+
 @pytest.mark.django_db
 def test_payment_transaction_database_constraint_requires_one_target(student_user, teacher_user):
     with pytest.raises(IntegrityError), transaction.atomic():

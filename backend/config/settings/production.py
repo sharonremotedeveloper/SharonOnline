@@ -6,6 +6,7 @@ from config.database import production_database_config
 DEBUG = False
 # Production must never permit free test bookings, even if an environment variable is copied accidentally.
 TEST_BOOKINGS_ENABLED = False
+# The only production route to a no-payment booking is TEST_BOOKING_ALLOWED_EMAILS (both parties listed, payments off).
 
 from .guard import validate_production_settings
 
