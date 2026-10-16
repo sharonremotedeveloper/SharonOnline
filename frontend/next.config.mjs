@@ -15,14 +15,21 @@ const nextConfig = {
   async headers() {
     // One-time reset / verification links carry their credential in the URL: never leak it through the Referer header.
     const noReferrer = [{ key: 'Referrer-Policy', value: 'no-referrer' }, { key: 'Cache-Control', value: 'no-store' }];
-    // Baseline hardening for every page. The camera and microphone stay allowed for our own origin because the
-    // in-browser classroom needs them. A Content-Security-Policy is deliberately not set here yet: it needs a
+    // Baseline hardening for every page. A Content-Security-Policy is deliberately not set here yet: it needs a
     // nonce and a test pass against Daily, PayPal and PayFast first.
+    // Camera/microphone: this header is the ceiling for every iframe, and the classroom runs inside Daily's iframe on
+    // https://<domain>.daily.co. With only `(self)` the browser refused Daily the devices and the join hung on
+    // "Connecting to Live Stage" (2026-10-16). Name Daily's origins explicitly; the wildcard covers other Daily domains.
+    const dailyOrigins = '"https://topscholaracademy.daily.co" "https://*.daily.co"';
     const baseline = [
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'X-Frame-Options', value: 'DENY' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-      { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(), payment=(self)' },
+      {
+        key: 'Permissions-Policy',
+        value: `camera=(self ${dailyOrigins}), microphone=(self ${dailyOrigins}), display-capture=(self ${dailyOrigins}), `
+          + 'geolocation=(), payment=(self)',
+      },
       ...(process.env.NODE_ENV === 'production'
         ? [{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' }]
         : []),
