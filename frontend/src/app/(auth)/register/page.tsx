@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
+import { countryOptions, guessCountry } from "@/lib/countries";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Mail, User, Globe, ArrowRight, Zap, CheckCircle2, ShieldCheck, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { UserRole } from "@/types/auth";
+
+const COUNTRY_OPTIONS = countryOptions();
 
 function RegisterForm() {
   const router = useRouter();
@@ -21,7 +24,7 @@ function RegisterForm() {
     last_name: "",
     password: "",
     password_confirm: "",
-    country: "JP",
+    country: "",
     timezone: "Asia/Tokyo",
     phone_number: "",
     has_power_backup: false,
@@ -44,15 +47,7 @@ function RegisterForm() {
         setFormData((prev) => ({
           ...prev,
           timezone: detected,
-          country: detected.includes("Johannesburg")
-            ? "ZA"
-            : detected.includes("Tokyo")
-            ? "JP"
-            : detected.includes("Seoul")
-            ? "KR"
-            : detected.includes("Europe")
-            ? "DE"
-            : "US",
+          country: guessCountry(detected, navigator.languages ?? []),
         }));
       }
     } catch (e) {
@@ -68,7 +63,7 @@ function RegisterForm() {
       ["last_name", "f-last-name", "Enter your last name."],
       ["username", "f-username", "Choose a username."],
       ["email", "f-email-address", "Enter your e-mail address."],
-      ["country", "f-country-code", "Enter your country code, for example JP."],
+      ["country", "f-country-code", "Choose your country."],
       ["password", "f-password", "Choose a password."],
       ["password_confirm", "f-confirm-password", "Type the password again to confirm it."],
     ];
@@ -167,7 +162,7 @@ function RegisterForm() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <label htmlFor="f-first-name" className="text-sm font-bold text-ink">First Name</label>
-            <input id="f-first-name" aria-invalid={fieldErrors.first_name?.length ? true : undefined} aria-describedby={fieldErrors.first_name?.length ? "err-first_name" : undefined}
+            <input id="f-first-name" autoComplete="given-name" aria-invalid={fieldErrors.first_name?.length ? true : undefined} aria-describedby={fieldErrors.first_name?.length ? "err-first_name" : undefined}
               type="text"
               required
               value={formData.first_name}
@@ -178,7 +173,7 @@ function RegisterForm() {
           </div>
           <div className="space-y-1">
             <label htmlFor="f-last-name" className="text-sm font-bold text-ink">Last Name</label>
-            <input id="f-last-name" aria-invalid={fieldErrors.last_name?.length ? true : undefined} aria-describedby={fieldErrors.last_name?.length ? "err-last_name" : undefined}
+            <input id="f-last-name" autoComplete="family-name" aria-invalid={fieldErrors.last_name?.length ? true : undefined} aria-describedby={fieldErrors.last_name?.length ? "err-last_name" : undefined}
               type="text"
               required
               value={formData.last_name}
@@ -192,7 +187,7 @@ function RegisterForm() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <label htmlFor="f-username" className="text-sm font-bold text-ink">Username</label>
-            <input id="f-username" aria-invalid={fieldErrors.username?.length ? true : undefined} aria-describedby={fieldErrors.username?.length ? "err-username" : undefined}
+            <input id="f-username" autoComplete="username" autoCapitalize="none" aria-invalid={fieldErrors.username?.length ? true : undefined} aria-describedby={fieldErrors.username?.length ? "err-username" : undefined}
               type="text"
               required
               value={formData.username}
@@ -204,7 +199,7 @@ function RegisterForm() {
           </div>
           <div className="space-y-1">
             <label htmlFor="f-email-address" className="text-sm font-bold text-ink">Email Address</label>
-            <input id="f-email-address" aria-invalid={fieldErrors.email?.length ? true : undefined} aria-describedby={fieldErrors.email?.length ? "err-email" : undefined}
+            <input id="f-email-address" autoComplete="email" inputMode="email" aria-invalid={fieldErrors.email?.length ? true : undefined} aria-describedby={fieldErrors.email?.length ? "err-email" : undefined}
               type="email"
               required
               value={formData.email}
@@ -227,15 +222,17 @@ function RegisterForm() {
             />
           </div>
           <div className="space-y-1">
-            <label htmlFor="f-country-code" className="text-sm font-bold text-ink">Country Code</label>
-            <input id="f-country-code" aria-invalid={fieldErrors.country?.length ? true : undefined} aria-describedby={fieldErrors.country?.length ? "err-country" : undefined}
-              type="text"
+            <label htmlFor="f-country-code" className="text-sm font-bold text-ink">Country</label>
+            <select id="f-country-code" aria-invalid={fieldErrors.country?.length ? true : undefined} aria-describedby={fieldErrors.country?.length ? "err-country" : undefined}
               required
+              autoComplete="country"
               value={formData.country}
-              onChange={(e) => setFormData({ ...formData, country: e.target.value.toUpperCase() })}
-              placeholder="e.g. JP, ZA, KR, DE"
+              onChange={(e) => setFormData({ ...formData, country: e.target.value })}
               className="min-h-11 w-full px-4 py-2.5 rounded-xl border border-strong text-base sm:text-sm text-ink bg-cream-surface focus:outline-none focus:ring-2 focus:ring-cocoa"
-            />
+            >
+              <option value="">Select your country</option>
+              {COUNTRY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
             {fieldError("country")}
           </div>
         </div>
@@ -243,7 +240,7 @@ function RegisterForm() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1">
             <label htmlFor="f-password" className="text-sm font-bold text-ink">Password</label>
-            <input id="f-password" aria-invalid={fieldErrors.password?.length ? true : undefined} aria-describedby={fieldErrors.password?.length ? "err-password" : undefined}
+            <input id="f-password" autoComplete="new-password" aria-invalid={fieldErrors.password?.length ? true : undefined} aria-describedby={fieldErrors.password?.length ? "err-password" : undefined}
               type="password"
               required
               value={formData.password}
@@ -255,7 +252,7 @@ function RegisterForm() {
           </div>
           <div className="space-y-1">
             <label htmlFor="f-confirm-password" className="text-sm font-bold text-ink">Confirm Password</label>
-            <input id="f-confirm-password" aria-invalid={fieldErrors.password_confirm?.length ? true : undefined} aria-describedby={fieldErrors.password_confirm?.length ? "err-password_confirm" : undefined}
+            <input id="f-confirm-password" autoComplete="new-password" aria-invalid={fieldErrors.password_confirm?.length ? true : undefined} aria-describedby={fieldErrors.password_confirm?.length ? "err-password_confirm" : undefined}
               type="password"
               required
               value={formData.password_confirm}

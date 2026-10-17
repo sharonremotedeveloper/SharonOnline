@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangePasswordCard } from "@/components/account/ChangePasswordCard";
+import { countryOptions } from "@/lib/countries";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -19,6 +20,8 @@ import {
 import { studentApi } from "@/lib/api";
 import { StudentProfileData } from "@/types/student";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
+
+const COUNTRY_OPTIONS = countryOptions();
 
 const TIMEZONES = [
   { value: "Asia/Tokyo", label: "Asia/Tokyo (JST - UTC+9)" },
@@ -158,7 +161,7 @@ export default function StudentProfilePage() {
       <InlineError id="profile-error" error={saveError} />
 
       {/* Profile Form */}
-      <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-cream-200 shadow-sm overflow-hidden">
+      <form onSubmit={handleSubmit} className="bg-white rounded-3xl border border-cream-200 shadow-sm sm:overflow-hidden">
         <div className="p-6 sm:p-8 space-y-6">
           <h2 className="text-base font-bold text-ink-900 border-b border-cream-100 pb-3 flex items-center gap-2">
             <User className="w-4 h-4 text-cocoa-600" />
@@ -196,13 +199,20 @@ export default function StudentProfilePage() {
               <label htmlFor="f-country-of-residence" className="text-sm font-bold text-ink-500 uppercase tracking-wider block mb-1.5">
                 Country of Residence
               </label>
-              <input aria-invalid={saveError ? true : undefined} aria-describedby={saveError ? "profile-error" : undefined} id="f-country-of-residence"
-                type="text"
+              <select aria-invalid={saveError ? true : undefined} aria-describedby={saveError ? "profile-error" : undefined} id="f-country-of-residence"
                 value={formData.country}
                 onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                autoComplete="country"
                 className="min-h-11 w-full text-base sm:text-sm rounded-xl border border-strong p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
                 required
-              />
+              >
+                <option value="">Select your country</option>
+                {/* Keep a stored value the list does not know (older free-text entries) instead of silently changing it. */}
+                {formData.country && !COUNTRY_OPTIONS.some((c) => c.value === formData.country) && (
+                  <option value={formData.country}>{formData.country}</option>
+                )}
+                {COUNTRY_OPTIONS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
             </div>
 
             <div>
@@ -214,6 +224,11 @@ export default function StudentProfilePage() {
                 onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
                 className="min-h-11 w-full text-base sm:text-sm rounded-xl border border-strong p-3 text-ink-900 bg-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cocoa-500"
               >
+                {/* The user's own zone must stay selectable: Indian/Mauritius was missing, so the select showed Asia/Tokyo
+                    and a save would have silently moved every lesson time. */}
+                {formData.timezone && !TIMEZONES.some((tz) => tz.value === formData.timezone) && (
+                  <option value={formData.timezone}>{formData.timezone}</option>
+                )}
                 {TIMEZONES.map((tz) => (
                   <option key={tz.value} value={tz.value}>
                     {tz.label}
@@ -265,15 +280,16 @@ export default function StudentProfilePage() {
         </div>
 
         {/* Footer */}
-        <div className="p-6 bg-cream-50 border-t border-cream-200 flex items-center justify-between">
-          <span className="text-sm text-ink-500">
+        {/* Phones: Save stays in reach above the bottom tab bar; the account ID (support detail) shows from sm. */}
+        <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] rounded-b-3xl p-4 bg-cream-50 border-t border-cream-200 flex items-center justify-between sm:static sm:rounded-none sm:p-6">
+          <span className="hidden text-sm text-ink-500 sm:inline">
             Account ID: <strong className="font-mono text-ink-700">{profile.id}</strong>
           </span>
 
           <button
             type="submit"
             disabled={isSaving}
-            className="min-h-11 inline-flex items-center gap-2 px-6 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
+            className="min-h-11 w-full justify-center inline-flex items-center gap-2 px-6 py-2.5 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors shadow-sm sm:w-auto"
           >
             {isSaving ? (
               <>Saving...</>
