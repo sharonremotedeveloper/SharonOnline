@@ -76,7 +76,7 @@ script time, plus one screenshot per screen of scrolling.
 Each phase is one small commit set on `develop`, verified, then promoted on approval.
 
 1. **[x] Phase 1 - global shell (G1, G2, G6, G7)** - *Implemented, tested (362 frontend tests), deployed (develop `c84827c`, main `36eb63e`), verified on the Redmi at 360 px and at 1440 px emulation, and on the live site (admin redirect, compact footer).* compact footer for app areas + 2-column public footer on phones; student/tutor bottom tab bar (`lg:hidden`); compact cookie banner; signed-in redirect off auth pages.
-2. **Phase 2 - tutor core (T1, T2, T3, A1 LaTeX):** availability day-picker on phones; markdown heading fix; memo sticky submit + short ref; rubric text.
+2. **[x] Phase 2 - tutor core (T1, T2, T3, A1)** - *Implemented, tested (366 frontend tests), deployed (develop `15c6aa9`, main `98d5859`); verified on the Redmi at 360 px and at 1440 px (local build), live rubric re-checked on the phone (44x44 buttons, plain text).* availability day-picker on phones; markdown heading fix; memo sticky submit + short ref; rubric text.
 3. **Phase 3 - discovery (P1-P4, P8, P5):** shorter mobile home, card photo ratio, chips, filter bottom sheet for tutors/materials; slot API performance (backend).
 4. **Phase 4 - forms and keyboards (G5, P9, S4, T5):** `inputMode`/`autoComplete`, country/timezone selects, sticky save bars, stacked code fields.
 5. **Phase 5 - polish (G3, G4, G8, S1-S3, S5, S6, T4, T6, P6, P7, A2-A4):** shared `PageHeader`, card padding, copy pass, history card layout, legal page collapse, admin tables/nav, dispute confirmations.
