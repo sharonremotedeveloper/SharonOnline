@@ -20,7 +20,7 @@ export function FeaturedTutorCard({ tutor }: { tutor: FeaturedTeacher }) {
         <TutorPortrait
           src={tutor.avatar}
           name={tutor.name}
-          className="aspect-[4/5] w-full"
+          className="aspect-[4/3] w-full sm:aspect-[4/5]"
           sizes="(min-width: 1280px) 300px, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 384px"
         />
       </Link>

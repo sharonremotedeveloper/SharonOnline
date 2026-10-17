@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, RotateCcw, Zap, Calendar } from "lucide-react";
+import { Search, RotateCcw, Zap, Calendar, SlidersHorizontal, ChevronDown } from "lucide-react";
 import type { TutorFilterState } from "@/types/tutor";
 
 interface TutorFiltersProps {
@@ -38,6 +38,8 @@ const chip = (active: boolean) =>
 
 export function TutorFilters({ filters, onFilterChange, totalCount, loading }: TutorFiltersProps) {
   const [searchTerm, setSearchTerm] = useState(filters.search);
+  // Phones: the filter groups fold behind one button (they took ~1.5 screens before the first tutor). md+: always open.
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     setSearchTerm(filters.search);
@@ -60,6 +62,7 @@ export function TutorFilters({ filters, onFilterChange, totalCount, loading }: T
 
   const hasActiveFilters =
     filters.search || filters.accent || filters.specialty || filters.learning_goal || filters.only_power_guard || filters.only_today;
+  const activeFilterCount = [filters.accent, filters.specialty, filters.learning_goal, filters.only_power_guard, filters.only_today].filter(Boolean).length;
 
   return (
     <div className="space-y-6 rounded-3xl border border-divider bg-white p-5 shadow-card sm:p-6">
@@ -90,6 +93,24 @@ export function TutorFilters({ filters, onFilterChange, totalCount, loading }: T
         )}
       </div>
 
+      <button
+        type="button"
+        aria-expanded={filtersOpen}
+        aria-controls="tutor-filter-panel"
+        onClick={() => setFiltersOpen((open) => !open)}
+        className="flex min-h-[48px] w-full items-center justify-between rounded-2xl border border-divider bg-cream-surface px-4 text-base font-bold text-ink md:hidden"
+      >
+        <span className="flex items-center gap-2">
+          <SlidersHorizontal className="h-5 w-5" aria-hidden="true" />
+          Filters
+          {activeFilterCount > 0 && (
+            <span className="rounded-full bg-cocoa px-2 py-0.5 text-xs font-bold text-white">{activeFilterCount}</span>
+          )}
+        </span>
+        <ChevronDown className={`h-5 w-5 transition-transform ${filtersOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+      </button>
+
+      <div id="tutor-filter-panel" className={`space-y-6 ${filtersOpen ? "" : "hidden"} md:block`}>
       <fieldset>
         <legend className="mb-2 text-sm font-bold uppercase tracking-wider text-ink-muted">Accent</legend>
         <div className="flex flex-wrap gap-2">
@@ -157,6 +178,7 @@ export function TutorFilters({ filters, onFilterChange, totalCount, loading }: T
           <Calendar className="h-5 w-5" aria-hidden="true" />
           <span>Free in the next 24 hours</span>
         </label>
+      </div>
       </div>
 
       <p className="text-base text-ink-muted" aria-live="polite">

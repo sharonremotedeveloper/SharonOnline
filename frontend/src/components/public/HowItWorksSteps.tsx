@@ -29,24 +29,24 @@ const STEPS = [
 
 export function HowItWorksSteps() {
   return (
-    <ol className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
       {STEPS.map((step, idx) => {
         const Icon = step.icon;
         return (
           <li
             key={step.title}
-            className={`relative rounded-3xl p-6 ${step.tone}`}
+            className={`relative rounded-3xl p-4 sm:p-6 ${step.tone}`}
           >
             <div className="flex items-center justify-between">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-cocoa text-sun">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-cocoa text-sun sm:h-12 sm:w-12">
                 <Icon className="h-6 w-6" aria-hidden="true" />
               </span>
               {/* Step numbers use the brand colour, not the pale divider tone (it was 1.46:1 against white). */}
-              <span className="font-serif text-4xl font-extrabold text-cocoa" aria-hidden="true">
+              <span className="font-serif text-3xl font-extrabold text-cocoa sm:text-4xl" aria-hidden="true">
                 {idx + 1}
               </span>
             </div>
-            <h3 className="mt-4 font-serif text-xl font-bold text-ink">
+            <h3 className="mt-3 font-serif text-xl font-bold text-ink sm:mt-4">
               <span className="sr-only">Step {idx + 1}: </span>
               {step.title}
             </h3>
