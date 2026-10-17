@@ -18,6 +18,15 @@ Whenever an error, test breakage, build failure, or unexpected API behavior occu
 
 ## 📋 Historical Error & Resolution Ledger
 
+### ERR-550: Antigravity core-algorithm push failed API-contract and frontend quality gates
+
+- **Observed (2026-10-17):** Shared `develop` commit `3b46cb65ebd916d7387c11211a1873b1f713ca91` failed [Quality-gates run 39011583703](https://github.com/sharonremotedeveloper/SharonOnline/actions/runs/39011583703) and [API-contract run 39011583697](https://github.com/sharonremotedeveloper/SharonOnline/actions/runs/39011583697). The backend job had one failure after 4,293 passes, the API-contract job had one failure after 13 passes, and frontend tests passed 328/328 before lint stopped the job with eight `react-hooks/refs` errors.
+- **Root cause:** Tutor ranking and lesson-memo serializer changes altered the generated OpenAPI schema, but `docs/api/openapi.yaml` and `frontend/src/types/api.generated.ts` were not regenerated. The new classroom synchronization hook also initialized its external coordinator by reading and writing `useRef.current` during render, which React 19 lint rejects. After regenerating the contract, the build exposed a third seam: the local booking fallback omitted the newly required read-only `ranking_score` and `lessons_completed` tutor fields.
+- **Resolution:** Initialize `ClassroomSyncCoordinator` once with a lazy `useState` initializer; regenerate the OpenAPI schema and generated TypeScript types; and add deterministic ranking fields to the local fallback fixture. No lint rule, contract guard, test, or production safety check was weakened.
+- **Verification:** Frontend tests passed 356/356, ESLint passed with zero warnings, generated API types matched, and the complete 51-route production build passed using the same server-only `INTERNAL_API_URL` placeholder as CI. Django check and migration drift passed; Ruff passed; the OpenAPI contract suite passed 14/14; and the full non-Redis/non-Postgres backend CI-equivalent suite passed 4,294 tests with 25 deselected and 94% coverage. Local recurrences of the known Windows `.next` permission/Google Fonts DNS issue and pytest default-temp exhaustion were handled through the already documented ERR-525/ERR-539 procedures, without source workarounds.
+- **Status:** `RESOLVED LOCALLY; HOSTED CI PENDING`
+- **Logged By:** Codex
+
 ### ERR-549: Mobile classroom hard to scroll, overlay covered video, high phone CPU
 
 - **Observed (2026-10-16, Android Chrome, first two-device call):** our status pill and Leave button overlaid Daily's self-view tile; a fixed 500-600px video frame filled the screen so touch scrolling landed inside the iframe; the owner reported high CPU.

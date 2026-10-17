@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import {
   ClassroomSyncCoordinator,
   ClassroomSyncOptions,
@@ -39,12 +39,10 @@ export function useClassroomSyncContext(): ClassroomSyncContextValue | null {
 }
 
 export function useClassroomSync(options: ClassroomSyncOptions): ClassroomSyncContextValue {
-  const coordinatorRef = useRef<ClassroomSyncCoordinator | null>(null);
-
-  if (!coordinatorRef.current) {
-    coordinatorRef.current = new ClassroomSyncCoordinator(options);
-  }
-  const coordinator = coordinatorRef.current;
+  // The coordinator is an external state container whose identity must remain
+  // stable for the lifetime of this hook. A lazy state initializer creates it
+  // once without reading or mutating a ref during render (React 19 lint rule).
+  const [coordinator] = useState(() => new ClassroomSyncCoordinator(options));
 
   const [syncState, setSyncState] = useState<ClassroomSyncState>(() => coordinator.getState());
 

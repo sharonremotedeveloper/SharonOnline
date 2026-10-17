@@ -584,6 +584,8 @@ export const api = {
         country: "ZA",
         accent: "ZA",
         is_verified: true,
+        ranking_score: 5.05,
+        lessons_completed: 0,
       },
       student: {
         id: "usr-student-01",

@@ -2290,23 +2290,29 @@ export interface components {
             readonly teacher: string;
             /** Format: uuid */
             readonly student: string;
-            /** @description Grammar corrections, speaking feedback, overall commentary */
-            feedback_text: string;
+            feedback_text?: string;
+            general_feedback?: string;
             /** @description List of words: [{'word': 'resilience', 'definition': '...'}] */
             vocabulary_words?: unknown;
-            pronunciation_notes?: string;
-            /** @description Grammar points to remember (shown to the student next to the vocabulary) */
-            grammar_notes?: string;
-            homework?: string;
+            /** @default  */
+            pronunciation_notes: string;
+            /** @default  */
+            grammar_notes: string;
+            grammar_corrections?: string;
+            /** @default  */
+            homework: string;
+            homework_assigned?: string;
+            /** @default  */
+            next_lesson_recommendation: string;
             /** Format: date-time */
             readonly submitted_at: string;
         };
         /**
-         * @description What a tutor may submit after a lesson. Unknown keys (e.g. the UI's `booking_id`, `next_steps`) are ignored.
-         *     (DRF's CharField already rejects NUL characters - PostgreSQL cannot store them; the vocabulary items are checked by hand.)
+         * @description What a tutor may submit after a lesson. Supports canonical model field names
+         *     and descriptive aliases with contact-guard sanitization.
          */
         LessonMemoInputRequest: {
-            feedback_text: string;
+            feedback_text?: string;
             vocabulary_words?: unknown[];
             /** @default  */
             pronunciation_notes: string;
@@ -2314,6 +2320,11 @@ export interface components {
             grammar_notes: string;
             /** @default  */
             homework: string;
+            general_feedback?: string;
+            grammar_corrections?: string;
+            homework_assigned?: string;
+            /** @default  */
+            next_lesson_recommendation: string;
         };
         LogoutRequestRequest: {
             refresh: string;
@@ -3046,6 +3057,13 @@ export interface components {
             /** Format: int64 */
             rating_count?: number;
             /**
+             * Format: double
+             * @default 0
+             */
+            readonly ranking_score: number;
+            /** @default 0 */
+            readonly lessons_completed: number;
+            /**
              * Format: decimal
              * @deprecated
              * @description Deprecated. USD catalog price only. Do not display; use `/payments/lesson-prices/` for the student's currency. null when no USD price is configured.
@@ -3084,6 +3102,13 @@ export interface components {
             rating_avg?: string;
             /** Format: int64 */
             rating_count?: number;
+            /**
+             * Format: double
+             * @default 0
+             */
+            readonly ranking_score: number;
+            /** @default 0 */
+            readonly lessons_completed: number;
             /**
              * Format: decimal
              * @deprecated
@@ -4904,7 +4929,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": components["schemas"]["LessonMemoInputRequest"];
                 "application/x-www-form-urlencoded": components["schemas"]["LessonMemoInputRequest"];

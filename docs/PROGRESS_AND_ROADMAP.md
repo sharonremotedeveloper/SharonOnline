@@ -1,5 +1,12 @@
 # Engineering Delivery Roadmap & Progress Tracking
 
+## 2026-10-17 Antigravity core-algorithm integration — CI repair checkpoint
+
+- **Starting revision:** Shared `develop` commit `3b46cb65ebd916d7387c11211a1873b1f713ca91`, ten commits after the previously clean `abeeb53` checkpoint. The push adds tutor ranking, off-platform contact guarding, Daily classroom material synchronization, credit-expiry warnings, test-booking support, and preceding Daily/mobile fixes. It changes 48 files relative to `abeeb53`; the latest algorithm commit alone adds substantial adversarial and integration coverage.
+- **CI failure:** [Quality-gates run 39011583703](https://github.com/sharonremotedeveloper/SharonOnline/actions/runs/39011583703) failed only the stale OpenAPI drift test and frontend React-ref lint; [API-contract run 39011583697](https://github.com/sharonremotedeveloper/SharonOnline/actions/runs/39011583697) failed the same stale contract. PostgreSQL, Redis, Ruff, dependency audit, frontend tests, Django checks, migration drift, production settings checks, and scheduled production uptime were green at the pushed SHA.
+- **Minimal repair:** Keep the synchronization coordinator stable with lazy state initialization, regenerate `docs/api/openapi.yaml` and `frontend/src/types/api.generated.ts`, and align the local booking fixture with the new required ranking fields. No provider, deployment, database, secret, DNS, checkout, or production state was changed.
+- **Local verification:** Frontend 356/356 tests, zero-warning lint, generated-type drift check, and 51-route production build passed. Backend Django check, migration drift, Ruff, OpenAPI 14/14, and the full CI-equivalent non-Redis/non-Postgres suite passed 4,294 tests with 25 deselected and 94% coverage. Hosted CI and commit evidence are pending the repair push; production acceptance of ranking/contact filtering/classroom synchronization/expiry delivery is not claimed from local tests.
+
 ## 2026-10-16 tutor application submission confirmation — production accepted
 
 - **Production acceptance:** The real tutor retry completed the repaired network step. Canonical Railway HTTP logs record three successful application PATCHes at `01:21:18Z`, `01:21:22Z`, and `01:21:29Z`, followed by `POST /api/v1/teachers/me/application/submit/` HTTP 200 at `01:21:31Z`. The application is submitted and safely in the review queue. Two later PATCHes returned the expected 409 because the old form remained visible and attempted to edit the now-locked application.

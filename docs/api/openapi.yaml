@@ -1581,7 +1581,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/LessonMemoInputRequest'
-        required: true
       security:
       - jwtAuth: []
       responses:
@@ -4477,25 +4476,41 @@ components:
           readOnly: true
         feedback_text:
           type: string
-          description: Grammar corrections, speaking feedback, overall commentary
+          maxLength: 5000
+        general_feedback:
+          type: string
+          maxLength: 5000
         vocabulary_words:
           description: 'List of words: [{''word'': ''resilience'', ''definition'':
             ''...''}]'
         pronunciation_notes:
           type: string
+          default: ''
+          maxLength: 5000
         grammar_notes:
           type: string
-          description: Grammar points to remember (shown to the student next to the
-            vocabulary)
+          default: ''
+          maxLength: 5000
+        grammar_corrections:
+          type: string
+          maxLength: 5000
         homework:
           type: string
+          default: ''
+          maxLength: 5000
+        homework_assigned:
+          type: string
+          maxLength: 5000
+        next_lesson_recommendation:
+          type: string
+          default: ''
+          maxLength: 5000
         submitted_at:
           type: string
           format: date-time
           readOnly: true
       required:
       - booking
-      - feedback_text
       - id
       - student
       - submitted_at
@@ -4503,8 +4518,8 @@ components:
     LessonMemoInputRequest:
       type: object
       description: |-
-        What a tutor may submit after a lesson. Unknown keys (e.g. the UI's `booking_id`, `next_steps`) are ignored.
-        (DRF's CharField already rejects NUL characters - PostgreSQL cannot store them; the vocabulary items are checked by hand.)
+        What a tutor may submit after a lesson. Supports canonical model field names
+        and descriptive aliases with contact-guard sanitization.
       properties:
         feedback_text:
           type: string
@@ -4526,8 +4541,20 @@ components:
           type: string
           default: ''
           maxLength: 5000
-      required:
-      - feedback_text
+        general_feedback:
+          type: string
+          minLength: 1
+          maxLength: 5000
+        grammar_corrections:
+          type: string
+          maxLength: 5000
+        homework_assigned:
+          type: string
+          maxLength: 5000
+        next_lesson_recommendation:
+          type: string
+          default: ''
+          maxLength: 5000
     LogoutRequestRequest:
       type: object
       properties:
@@ -6223,6 +6250,15 @@ components:
           maximum: 9223372036854775807
           minimum: 0
           format: int64
+        ranking_score:
+          type: number
+          format: double
+          readOnly: true
+          default: 0.0
+        lessons_completed:
+          type: integer
+          readOnly: true
+          default: 0
         price_per_25min_usd:
           type: string
           format: decimal
@@ -6270,7 +6306,9 @@ components:
       - intro_audio_url
       - is_verified
       - last_name
+      - lessons_completed
       - price_per_25min_usd
+      - ranking_score
       - timezone
       - user_id
     TeacherDirectoryUnavailable:
@@ -6330,6 +6368,15 @@ components:
           maximum: 9223372036854775807
           minimum: 0
           format: int64
+        ranking_score:
+          type: number
+          format: double
+          readOnly: true
+          default: 0.0
+        lessons_completed:
+          type: integer
+          readOnly: true
+          default: 0
         price_per_25min_usd:
           type: string
           format: decimal
@@ -6358,7 +6405,9 @@ components:
       - intro_audio_url
       - is_verified
       - last_name
+      - lessons_completed
       - price_per_25min_usd
+      - ranking_score
       - user_id
     TeacherOwnProfile:
       type: object
