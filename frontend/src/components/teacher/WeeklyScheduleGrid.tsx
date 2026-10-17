@@ -49,6 +49,8 @@ export function WeeklyScheduleGrid() {
   // Matrix state: dayIdx (0-6) -> array of boolean blocks, built from the availability saved on the server.
   const { data: availability, error: loadError, loading, reload } = useApiData(loadAvailability, []);
   const [schedule, setSchedule] = useState<WeeklyMatrix>({});
+  // Phone view edits one day at a time (the 7-column table showed 1.5 days on a 360px screen). Starts on today (Mon = 0).
+  const [mobileDay, setMobileDay] = useState(() => (new Date().getDay() + 6) % 7);
 
   useEffect(() => {
     if (!availability) return;
@@ -160,7 +162,7 @@ export function WeeklyScheduleGrid() {
   });
 
   return (
-    <div className="bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">
+    <div className="bg-white rounded-3xl p-3 sm:p-8 border border-divider shadow-card space-y-6">
       {/* Controls & Quick Actions Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-divider pb-6">
         <div>
@@ -283,8 +285,54 @@ export function WeeklyScheduleGrid() {
         </span>
       </div>
 
-      {/* 7-Day Matrix Table */}
-      <div className="overflow-x-auto scroll-cue rounded-2xl border border-divider">
+      {/* Phone: day picker + that day's hours as full-width toggles. Same state, toggles and save as the table. */}
+      <div className="space-y-3 md:hidden">
+        <div role="tablist" aria-label="Day" className="-mx-2 grid grid-cols-7 gap-px">
+          {DAYS.map((d) => {
+            const open = (schedule[d.id] || []).filter(Boolean).length;
+            const selected = mobileDay === d.id;
+            return (
+              <button
+                key={d.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-label={`${d.full}, ${open} open hour${open === 1 ? "" : "s"}`}
+                onClick={() => setMobileDay(d.id)}
+                className={`flex min-h-12 flex-col items-center justify-center rounded-xl text-xs font-bold transition-colors ${
+                  selected ? "bg-cocoa text-white" : "bg-cream-surface text-ink border border-divider"
+                }`}
+              >
+                {d.label}
+                <span className={`mt-0.5 text-xs font-semibold ${selected ? "text-white/80" : "text-ink-muted"}`}>{open}h</span>
+              </button>
+            );
+          })}
+        </div>
+        <ul aria-label={`${DAYS[mobileDay]?.full ?? ""} hours`} className="divide-y divide-divider rounded-2xl border border-divider">
+          {TIME_BLOCKS.map((timeRange, blockIdx) => {
+            const isOpen = Boolean(schedule[mobileDay]?.[blockIdx]);
+            return (
+              <li key={timeRange}>
+                <button
+                  type="button"
+                  aria-pressed={isOpen}
+                  onClick={() => toggleSlot(mobileDay, blockIdx)}
+                  className="flex min-h-12 w-full items-center justify-between px-4 text-sm"
+                >
+                  <span className="font-mono font-bold text-ink">{timeRange}</span>
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${isOpen ? "bg-cocoa text-white" : "bg-cream-surface text-ink-muted border border-divider"}`}>
+                    {isOpen ? "Open" : "Closed"}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      {/* 7-Day Matrix Table (md and up) */}
+      <div className="hidden md:block overflow-x-auto scroll-cue rounded-2xl border border-divider">
         <table className="w-full min-w-[700px] border-collapse text-sm">
           <thead>
             <tr className="bg-cream-surface border-b border-divider">
