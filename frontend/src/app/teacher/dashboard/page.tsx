@@ -239,14 +239,15 @@ export default function TeacherDashboardPage() {
         </div>
 
         {/* Today's Full Roster */}
-        <div className="bg-white rounded-3xl border border-divider shadow-card p-6 sm:p-8 space-y-6">
-          <div className="flex items-center justify-between border-b border-divider pb-4">
-            <div>
+        <div className="bg-white rounded-3xl border border-divider shadow-card p-4 sm:p-8 space-y-6">
+          {/* Phones: the count pill sits under the title instead of squeezing it into 3 lines (mobile audit T6). */}
+          <div className="flex flex-col items-start gap-2 border-b border-divider pb-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <h3 className="text-lg font-black text-ink font-serif">Today&apos;s Class Schedule</h3>
               <p className="text-sm text-ink-muted">All sessions synchronized across timezones</p>
             </div>
             {bookingsQ.data && (
-              <span className="text-xs font-bold text-cocoa bg-cocoa/10 px-3 py-1 rounded-full">
+              <span className="shrink-0 whitespace-nowrap text-xs font-bold text-cocoa bg-cocoa/10 px-3 py-1 rounded-full">
                 {todayCount} Scheduled {todayCount === 1 ? "Lesson" : "Lessons"}
               </span>
             )}

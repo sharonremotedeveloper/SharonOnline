@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
   CheckCircle2,
   XCircle,
   Video,
@@ -40,6 +39,7 @@ import {
 import { PendingTeacherApplication } from "@/types/admin";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
 import { Button } from "@/components/ui/Button";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 const ASSET_CHANGE_OPTIONS = [
   { kind: "video_reel", label: "Video Audition Reel (60s)" },
@@ -221,27 +221,16 @@ export default function AdminVettingPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/admin/dashboard"
-            className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-md">
-                TUTOR VETTING &amp; RUBRIC STUDIO (T4b)
-              </span>
-              <span className="text-xs font-bold text-ink-muted">{applications.length} In Queue</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-ink font-serif">
-              Tutor Audition &amp; Rubric Evaluation Studio
-            </h1>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        backHref="/admin/dashboard"
+        eyebrow={
+          <>
+            <span className="text-xs font-mono font-bold text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-md">TUTOR VETTING &amp; RUBRIC STUDIO (T4b)</span>
+            <span className="text-xs font-bold text-ink-muted">{applications.length} In Queue</span>
+          </>
+        }
+        title={<>Tutor Audition &amp; Rubric Evaluation Studio</>}
+      />
 
       <InlineError error={actionError} />
 

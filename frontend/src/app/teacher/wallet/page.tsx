@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { formatRand } from "@/lib/currency";
 import {
-  ArrowLeft,
   DollarSign,
   Building2,
   Calendar,
@@ -19,6 +18,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { useApiData } from "@/hooks/useApiData";
 import { EarningsBreakdownCard } from "@/components/teacher/EarningsBreakdownCard";
 import { StatementButton } from "@/components/teacher/StatementButton";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export default function TeacherWalletPage() {
   const { data: wallet, error, loading, reload } = useApiData(() => api.getTeacherWallet(), []);
@@ -53,39 +53,29 @@ export default function TeacherWalletPage() {
     <div className="min-h-screen bg-cream py-8 sm:py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/teacher/dashboard"
-              className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-success-hover bg-success-surface px-2 py-0.5 rounded-md">
-                  RAND EARNINGS
-                </span>
-                <span className="hidden sm:inline text-xs font-bold text-ink-muted">Tutor Financial Center</span>
+        <PageHeader
+          backHref="/teacher/dashboard"
+          eyebrow={
+            <span className="text-xs font-mono font-bold text-success-hover bg-success-surface px-2 py-0.5 rounded-md">RAND EARNINGS</span>
+          }
+          secondary="Tutor Financial Center"
+          title={<>Earnings &amp; Payout Wallet</>}
+          actions={
+            <>
+              <div className="flex flex-wrap items-start gap-2.5 self-start sm:self-auto">
+                <StatementButton />
+                <Link
+                  href="/teacher/wallet/payout-settings"
+                  className="min-h-11 px-5 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-2 transition-all"
+                >
+                  <Building2 className="w-4 h-4 text-cocoa" />
+                  <span>Manage EFT Payout Bank</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-ink-muted" />
+                </Link>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-ink font-serif">
-                Earnings &amp; Payout Wallet
-              </h1>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-start gap-2.5 self-start sm:self-auto">
-            <StatementButton />
-            <Link
-              href="/teacher/wallet/payout-settings"
-              className="min-h-11 px-5 py-2.5 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-2 transition-all"
-            >
-              <Building2 className="w-4 h-4 text-cocoa" />
-              <span>Manage EFT Payout Bank</span>
-              <ArrowRight className="w-3.5 h-3.5 text-ink-muted" />
-            </Link>
-          </div>
-        </div>
+            </>
+          }
+        />
 
         {/* Earnings Metric Cards & Fair Revenue Callout */}
         <EarningsBreakdownCard wallet={wallet} />
