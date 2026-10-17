@@ -86,10 +86,18 @@ export function CookieBanner() {
           <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-6">
             <p className="flex-1 text-sm text-ink-muted leading-snug">
               <Cookie className="mr-1.5 -mt-0.5 inline h-4 w-4 text-cocoa" aria-hidden="true" />
-              We use essential cookies to keep you signed in and lessons running. Optional analytics cookies help us improve the site, and only run if you say yes.{" "}
+              We use essential cookies to keep you signed in and lessons running.
+              <span className="hidden sm:inline"> Optional analytics cookies help us improve the site, and only run if you say yes.</span>{" "}
               <Link href="/legal/cookies" className="text-cocoa font-semibold underline underline-offset-2 hover:text-cocoa-hover">
                 Cookie policy
               </Link>
+              {/* Phones: "Choose" is an inline link so the bar is two short rows, not three (it covered ~29% of the screen). */}
+              <span className="sm:hidden">
+                {" · "}
+                <button type="button" onClick={() => setShowCustomize(true)} className="font-semibold text-cocoa underline underline-offset-2">
+                  Choose
+                </button>
+              </span>
             </p>
 
             <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 shrink-0">
@@ -110,7 +118,7 @@ export function CookieBanner() {
               <button
                 type="button"
                 onClick={() => setShowCustomize(true)}
-                className="col-span-2 sm:col-span-1 min-h-[44px] px-3 rounded-xl text-sm font-semibold text-cocoa underline underline-offset-2 hover:text-cocoa-hover flex items-center justify-center gap-1.5 focus-visible:ring-2 focus-visible:ring-cocoa focus:outline-none"
+                className="hidden sm:flex sm:col-span-1 min-h-[44px] px-3 rounded-xl text-sm font-semibold text-cocoa underline underline-offset-2 hover:text-cocoa-hover items-center justify-center gap-1.5 focus-visible:ring-2 focus-visible:ring-cocoa focus:outline-none"
               >
                 <Settings2 className="w-4 h-4" aria-hidden="true" />
                 <span>Choose</span>

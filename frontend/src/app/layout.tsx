@@ -6,6 +6,7 @@ import { Footer } from "../components/Footer";
 import { AuthProvider } from "@/context/AuthContext";
 import { VerifyEmailBanner } from "@/components/account/VerifyEmailBanner";
 import { CookieBanner } from "@/components/legal/CookieBanner";
+import { AppTabBar } from "@/components/AppTabBar";
 import { SITE_URL } from "@/lib/siteUrl";
 
 // Self-hosted by next/font: no render-blocking @import and no visitor IP sent to Google (GDPR).
@@ -53,6 +54,7 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
+          <AppTabBar />
           <CookieBanner />
         </AuthProvider>
       </body>

@@ -1,14 +1,39 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
+import { isCompactFooterArea } from "@/lib/appTabs";
 
 const linkClass =
   "inline-flex min-h-[44px] items-center text-base text-white/80 transition-colors hover:text-gold-bright";
 
-export function Footer() {
+const compactLink = "inline-flex min-h-[44px] items-center px-1 text-sm text-white/85 hover:text-gold-bright";
+
+/** One short row for signed-in areas and account pages on phones/tablets (the full footer was 2-3 screens tall there). */
+function CompactFooter() {
   return (
-    <footer className="on-dark border-t border-white/10 bg-cocoa-hover text-white/80">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-5 lg:px-8">
-        <div className="space-y-4 lg:col-span-2">
+    <footer className="on-dark border-t border-white/10 bg-cocoa-hover px-4 py-4 text-white/85 lg:hidden">
+      <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-x-3">
+        <Link href="/support" className={compactLink}>Help</Link>
+        <Link href="/legal/terms" className={compactLink}>Terms</Link>
+        <Link href="/legal/privacy" className={compactLink}>Privacy</Link>
+        <Link href="/legal/refunds" className={compactLink}>Refunds</Link>
+      </nav>
+      <p className="text-center text-xs text-white/75">© {new Date().getFullYear()} Sharon Online</p>
+    </footer>
+  );
+}
+
+export function Footer() {
+  const compact = isCompactFooterArea(usePathname() || "/");
+  return (
+    <>
+    {compact && <CompactFooter />}
+    <footer className={`on-dark border-t border-white/10 bg-cocoa-hover text-white/80 ${compact ? "hidden lg:block" : ""}`}>
+      {/* Phones: brand full width, link groups two per row (one column made this 2-3 screens tall). sm+ unchanged. */}
+      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-x-6 gap-y-8 px-4 py-10 sm:grid-cols-2 sm:gap-10 sm:px-6 sm:py-14 lg:grid-cols-5 lg:px-8">
+        <div className="col-span-2 space-y-4 sm:col-span-1 lg:col-span-2">
           <div className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gold font-serif text-lg font-bold text-cocoa">S</span>
             <span className="font-serif text-xl font-extrabold tracking-tight text-white">
@@ -65,5 +90,6 @@ export function Footer() {
         © {new Date().getFullYear()} Sharon Online. All rights reserved.
       </div>
     </footer>
+    </>
   );
 }
