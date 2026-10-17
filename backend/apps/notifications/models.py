@@ -70,3 +70,8 @@ class NotificationPreference(models.Model):
 
     def __str__(self):
         return f'Notification preferences of {self.user_id}'
+
+
+# Alias compatibility
+NotificationLog = Notification
+

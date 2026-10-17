@@ -247,22 +247,34 @@ def expire_credits_task():
 
 @shared_task(name='apps.payments.tasks.warn_expiring_credits_task')
 def warn_expiring_credits_task():
-    """Daily: warn students when credit bundles are expiring within 7 days (slice N2b)."""
+    """Daily: warn students when credit bundles/purchases are expiring within 7 days (slice N2b / R4)."""
     from apps.notifications.service import notify
     now = timezone.now()
-    window_start = now + timedelta(days=6, hours=12)
-    window_end = now + timedelta(days=7, hours=12)
+    window_end = now + timedelta(days=7)
     expiring = CreditBundle.objects.filter(
         remaining_credits__gt=0,
-        expires_at__gte=window_start,
+        expires_at__gt=now,
         expires_at__lte=window_end,
     ).select_related('user')
     count = 0
     for bundle in expiring:
-        notify(bundle.user, 'credit_expiring', key=f'credit-expiring:{bundle.id}',
-               payload={'credits': bundle.remaining_credits, 'days_remaining': 7})
+        ref_id = str(bundle.credit_purchase_id or bundle.id)
+        key = f'credit_expiry_7d:{ref_id}'
+        from apps.notifications.models import Notification
+        if Notification.objects.filter(idempotency_key=key).exists():
+            continue
+        notify(
+            bundle.user,
+            'credit_expiring',
+            key=key,
+            payload={'credits': bundle.remaining_credits, 'days_remaining': 7},
+        )
         count += 1
     return {'warned_count': count}
+
+
+# Specification alias compatibility
+expire_stale_student_credits = expire_credits_task
 
 
 

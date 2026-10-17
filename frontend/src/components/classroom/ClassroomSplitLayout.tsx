@@ -2,24 +2,76 @@
 
 import { useState } from "react";
 import { MaterialDetail } from "@/types/material";
-import { SplitScreenReader } from "@/components/materials/SplitScreenReader";
+import { SplitScreenReader, ReaderTab } from "@/components/materials/SplitScreenReader";
 import { Maximize2, Minimize2, BookOpen, Video, Columns } from "lucide-react";
+import { ClassroomSyncCoordinator } from "@/lib/classroomSync";
+import { ClassroomSyncProvider, useClassroomSync, ClassroomSyncContextValue } from "@/lib/ClassroomSyncContext";
 
-interface ClassroomSplitLayoutProps {
+export interface ClassroomSplitLayoutProps {
   material: MaterialDetail | null;
   children: React.ReactNode; // Staging / Video Stage Content
   isTeacher?: boolean;
+
+  // --- Optional Controlled Sync Props ---
+  activeTab?: ReaderTab;
+  onTabChange?: (tab: ReaderTab) => void;
+  highlightedVocabIndex?: number | null;
+  onHighlightVocab?: (index: number | null) => void;
+  followTutor?: boolean;
+  onToggleFollowTutor?: (enabled: boolean) => void;
+
+  // --- Optional External Coordinator / Context Override ---
+  syncCoordinator?: ClassroomSyncCoordinator;
+  syncContextValue?: ClassroomSyncContextValue;
 }
 
 export function ClassroomSplitLayout({
   material,
   children,
   isTeacher = false,
+  activeTab: controlledTab,
+  onTabChange,
+  highlightedVocabIndex: controlledVocabIndex,
+  onHighlightVocab,
+  followTutor: controlledFollowTutor,
+  onToggleFollowTutor,
+  syncCoordinator,
+  syncContextValue: externalSyncValue,
 }: ClassroomSplitLayoutProps) {
   const [viewMode, setViewMode] = useState<"split" | "video_focus" | "material_focus">("split");
 
+  // Instantiates the sync coordinator if external value not passed
+  const internalSync = useClassroomSync({
+    role: isTeacher ? "teacher" : "student",
+    initialMaterialId: material?.slug ?? null,
+  });
+
+  const sync = externalSyncValue ?? internalSync;
+
+  const effectiveActiveTab: ReaderTab = controlledTab ?? sync.activeTab;
+  const effectiveVocabIndex: number | null =
+    controlledVocabIndex !== undefined ? controlledVocabIndex : sync.highlightedVocabIndex;
+  const effectiveFollowTutor: boolean =
+    controlledFollowTutor !== undefined ? controlledFollowTutor : sync.followTutor;
+
+  const handleTabChange = (tab: ReaderTab) => {
+    onTabChange?.(tab);
+    sync.syncTab(tab);
+  };
+
+  const handleHighlightVocab = (idx: number | null) => {
+    onHighlightVocab?.(idx);
+    sync.syncHighlight(idx !== null ? "set" : "clear", { vocabIndex: idx });
+  };
+
+  const handleToggleFollow = (enabled: boolean) => {
+    onToggleFollowTutor?.(enabled);
+    sync.setFollowTutor(enabled);
+  };
+
   return (
-    <div className="space-y-4">
+    <ClassroomSyncProvider value={sync}>
+      <div className="space-y-4">
       {/* Layout Control Bar */}
       <div className="flex items-center justify-between bg-white px-5 py-2.5 rounded-2xl border border-divider shadow-sm">
         <span className="text-xs font-bold text-ink-muted flex items-center gap-2">
@@ -99,10 +151,21 @@ export function ClassroomSplitLayout({
                 : "lg:col-span-6"
             } min-h-[500px] lg:min-h-[680px] flex flex-col`}
           >
-            <SplitScreenReader material={material} className="flex-1 h-full shadow-card" />
+            <SplitScreenReader
+              material={material}
+              isTeacher={isTeacher}
+              activeTab={effectiveActiveTab}
+              onTabChange={handleTabChange}
+              highlightedVocabIndex={effectiveVocabIndex}
+              onHighlightVocab={handleHighlightVocab}
+              followTutor={effectiveFollowTutor}
+              onToggleFollowTutor={handleToggleFollow}
+              className="flex-1 h-full shadow-card"
+            />
           </div>
         )}
       </div>
     </div>
-  );
+  </ClassroomSyncProvider>
+);
 }

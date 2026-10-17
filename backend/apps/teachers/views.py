@@ -29,6 +29,7 @@ from .serializers import (
 )
 from .services import availability
 from .services.directory import DirectoryUnavailable, free_teacher_ids
+from .services.ranking import annotate_ranking_score, apply_directory_ordering
 
 
 def _directory_boolean(request, name):
@@ -91,8 +92,7 @@ class TeacherListView(generics.ListAPIView):
                             status=status.HTTP_503_SERVICE_UNAVAILABLE, headers={'Retry-After': '30'})
         page_ids = self.paginate_queryset(ids)
         selected = ids if page_ids is None else page_ids
-        teachers_by_id = {teacher.id: teacher for teacher in TeacherProfile.objects.bookable().filter(
-            pk__in=selected).select_related('user')}
+        teachers_by_id = {teacher.id: teacher for teacher in queryset.filter(pk__in=selected)}
         teachers = [teachers_by_id[pk] for pk in selected if pk in teachers_by_id]
         serializer = self.get_serializer(teachers, many=True)
         if page_ids is not None:
@@ -135,7 +135,8 @@ class TeacherListView(generics.ListAPIView):
                 Q(bio__icontains=search)
             )
 
-        return queryset.order_by('-rating_avg', '-rating_count', 'pk')
+        ordering_param = self.request.query_params.get('ordering')
+        return annotate_ranking_score(queryset, ordering=ordering_param)
 
 class TeacherDetailView(generics.RetrieveAPIView):
     serializer_class = TeacherDetailSerializer

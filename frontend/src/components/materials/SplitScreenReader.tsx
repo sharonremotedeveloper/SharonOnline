@@ -1,18 +1,79 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MaterialDetail } from "@/types/material";
 import { CefrLevelBadge } from "./CefrLevelBadge";
-import { BookOpen, MessageSquare, Volume2, Type } from "lucide-react";
+import { BookOpen, MessageSquare, Volume2, Type, Compass, Sparkles } from "lucide-react";
 
-interface SplitScreenReaderProps {
+export type ReaderTab = "article" | "vocab" | "questions";
+
+export interface SplitScreenReaderProps {
   material: MaterialDetail;
   className?: string;
+
+  // --- Milestone 3 Controlled Props ---
+  activeTab?: ReaderTab;
+  onTabChange?: (tab: ReaderTab) => void;
+  highlightedVocabIndex?: number | null;
+  onHighlightVocab?: (index: number | null) => void;
+  followTutor?: boolean;
+  onToggleFollowTutor?: (enabled: boolean) => void;
+  isTeacher?: boolean;
 }
 
-export function SplitScreenReader({ material, className = "" }: SplitScreenReaderProps) {
-  const [activeTab, setActiveTab] = useState<"article" | "vocab" | "questions">("article");
+export function SplitScreenReader({
+  material,
+  className = "",
+  activeTab: controlledTab,
+  onTabChange,
+  highlightedVocabIndex: controlledVocabIndex,
+  onHighlightVocab,
+  followTutor: controlledFollowTutor,
+  onToggleFollowTutor,
+  isTeacher = false,
+}: SplitScreenReaderProps) {
+  // Local fallbacks when rendered uncontrolled
+  const [localTab, setLocalTab] = useState<ReaderTab>("article");
+  const [localVocabIndex, setLocalVocabIndex] = useState<number | null>(null);
+  const [localFollowTutor, setLocalFollowTutor] = useState<boolean>(true);
   const [fontSize, setFontSize] = useState<"sm" | "base" | "lg">("base");
+
+  // Effective values
+  const activeTab: ReaderTab = controlledTab !== undefined ? controlledTab : localTab;
+  const highlightedVocabIndex: number | null =
+    controlledVocabIndex !== undefined ? controlledVocabIndex : localVocabIndex;
+  const followTutor: boolean =
+    controlledFollowTutor !== undefined ? controlledFollowTutor : localFollowTutor;
+
+  const vocabRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Action Handlers
+  const handleTabChange = (tab: ReaderTab) => {
+    setLocalTab(tab);
+    onTabChange?.(tab);
+  };
+
+  const handleVocabClick = (idx: number) => {
+    const nextIdx = highlightedVocabIndex === idx ? null : idx;
+    setLocalVocabIndex(nextIdx);
+    onHighlightVocab?.(nextIdx);
+  };
+
+  const handleToggleFollow = () => {
+    const nextVal = !followTutor;
+    setLocalFollowTutor(nextVal);
+    onToggleFollowTutor?.(nextVal);
+  };
+
+  // Auto-scroll to active vocabulary card (headless/SSR safe)
+  useEffect(() => {
+    if (activeTab === "vocab" && highlightedVocabIndex !== null && highlightedVocabIndex !== undefined) {
+      const cardEl = vocabRefs.current[highlightedVocabIndex];
+      if (cardEl && typeof cardEl.scrollIntoView === "function") {
+        cardEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+  }, [activeTab, highlightedVocabIndex]);
 
   const fontClass = {
     sm: "text-sm leading-relaxed",
@@ -30,6 +91,38 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {/* Teacher Broadcast Indicator */}
+          {isTeacher && (
+            <div className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-cocoa/10 text-cocoa text-xs font-bold border border-cocoa/20">
+              <span className="w-2 h-2 rounded-full bg-cocoa animate-pulse" />
+              <span>Broadcasting</span>
+            </div>
+          )}
+
+          {/* Student "Follow Tutor" Toggle Badge */}
+          {!isTeacher && (
+            <button
+              type="button"
+              onClick={handleToggleFollow}
+              aria-pressed={followTutor}
+              aria-label={followTutor ? "Tutor sync active. Click to browse independently." : "Independent browsing. Click to follow tutor."}
+              className={`min-h-9 px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs ${
+                followTutor
+                  ? "bg-cocoa text-white hover:bg-cocoa-hover border border-cocoa shadow-xs"
+                  : "bg-white text-ink-muted hover:text-ink border border-divider hover:bg-cream-surface"
+              }`}
+              title={
+                followTutor
+                  ? "Tutor view synchronization active (Click to browse independently)"
+                  : "Independent reading mode (Click to snap back to tutor)"
+              }
+            >
+              <Compass className={`w-3.5 h-3.5 ${followTutor ? "text-amber-300" : "text-ink-muted"}`} />
+              <span>{followTutor ? "Follow Tutor: ON" : "Follow Tutor: OFF"}</span>
+            </button>
+          )}
+
+          {/* Font Resizing */}
           <div className="flex items-center bg-white rounded-xl border border-divider p-0.5">
             <button
               onClick={() => setFontSize(fontSize === "lg" ? "base" : "sm")}
@@ -52,7 +145,7 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
       {/* Tabs bar */}
       <div className="flex border-b border-divider bg-white text-sm font-bold">
         <button
-          onClick={() => setActiveTab("article")}
+          onClick={() => handleTabChange("article")}
           className={`flex-1 py-2.5 text-center transition-colors flex items-center justify-center gap-1.5 ${
             activeTab === "article"
               ? "text-cocoa border-b-2 border-cocoa bg-cream-surface/40"
@@ -64,7 +157,7 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
         </button>
 
         <button
-          onClick={() => setActiveTab("vocab")}
+          onClick={() => handleTabChange("vocab")}
           className={`flex-1 py-2.5 text-center transition-colors flex items-center justify-center gap-1.5 ${
             activeTab === "vocab"
               ? "text-cocoa border-b-2 border-cocoa bg-cream-surface/40"
@@ -76,7 +169,7 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
         </button>
 
         <button
-          onClick={() => setActiveTab("questions")}
+          onClick={() => handleTabChange("questions")}
           className={`flex-1 py-2.5 text-center transition-colors flex items-center justify-center gap-1.5 ${
             activeTab === "questions"
               ? "text-cocoa border-b-2 border-cocoa bg-cream-surface/40"
@@ -105,18 +198,36 @@ export function SplitScreenReader({ material, className = "" }: SplitScreenReade
 
         {activeTab === "vocab" && (
           <div className="space-y-3">
-            {material.vocabulary?.map((v) => (
-              <div key={v.id} className="p-3 rounded-xl bg-cream-surface border border-cream-deep space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-ink font-serif">{v.word}</span>
-                  <span className="text-sm text-cocoa font-semibold">
-                    {v.phonetic} · {v.part_of_speech}
-                  </span>
+            {material.vocabulary?.map((v, idx) => {
+              const isHighlighted = highlightedVocabIndex === idx;
+              return (
+                <div
+                  key={v.id || idx}
+                  ref={(el) => { vocabRefs.current[idx] = el; }}
+                  onClick={() => handleVocabClick(idx)}
+                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none space-y-1.5 ${
+                    isHighlighted
+                      ? "bg-amber-50/80 border-cocoa ring-2 ring-cocoa/30 shadow-xs"
+                      : "bg-cream-surface border-cream-deep hover:border-cocoa/40"
+                  }`}
+                >
+                  {isHighlighted && (
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-cocoa">
+                      <Sparkles className="w-3.5 h-3.5 text-cocoa animate-pulse" />
+                      <span>Active Vocabulary Focus</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-ink font-serif">{v.word}</span>
+                    <span className="text-sm text-cocoa font-semibold">
+                      {v.phonetic} · {v.part_of_speech}
+                    </span>
+                  </div>
+                  <p className="text-sm text-ink leading-relaxed">{v.definition}</p>
+                  <p className="text-sm text-ink-muted italic">&ldquo;{v.example_sentence}&rdquo;</p>
                 </div>
-                <p className="text-sm text-ink leading-relaxed">{v.definition}</p>
-                <p className="text-sm text-ink-muted italic">"{v.example_sentence}"</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

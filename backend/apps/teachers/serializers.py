@@ -1,6 +1,7 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
+from apps.common.contact_guard import validate_no_off_platform_contact
 from apps.common.money import money_str
 from apps.payments.services.pricing import PriceNotConfigured, lesson_price
 from .models import TeacherProfile, TeacherAvailability, TeacherDateOverride, TeacherTimeOff
@@ -176,13 +177,16 @@ class TeacherListSerializer(serializers.ModelSerializer):
     # Generated from status (teachers/vetting.py); never writable through an API.
     is_verified = serializers.BooleanField(read_only=True)
     price_per_25min_usd = serializers.SerializerMethodField()
+    ranking_score = serializers.FloatField(read_only=True, default=0.0)
+    lessons_completed = serializers.IntegerField(source='completed_lessons_count', read_only=True, default=0)
 
     class Meta:
         model = TeacherProfile
         fields = (
             'id', 'user_id', 'full_name', 'first_name', 'last_name', 'headline',
             'accent', 'intro_video_thumbnail', 'avatar_url', 'intro_audio_url',
-            'rating_avg', 'rating_count', 'price_per_25min_usd', 'specialties',
+            'rating_avg', 'rating_count', 'ranking_score', 'lessons_completed',
+            'price_per_25min_usd', 'specialties',
             'country', 'is_verified', 'has_inverter_backup'
         )
 
@@ -232,8 +236,14 @@ class TeacherOwnProfileSerializer(serializers.ModelSerializer):
     # `GET|PATCH /teachers/me/` (T1c). Only WRITABLE_FIELDS are accepted; any other key (vetted, service-owned, staff-owned,
     # unknown) is a 400 naming the field, never silently ignored. Private document locations are never returned.
     # (Comments, not a docstring, so nothing internal is published in the OpenAPI file.)
-    headline = serializers.CharField(max_length=255, allow_blank=True, required=False)
-    bio = serializers.CharField(max_length=BIO_MAX_LENGTH, allow_blank=True, required=False, trim_whitespace=True)
+    headline = serializers.CharField(
+        max_length=255, allow_blank=True, required=False,
+        validators=[validate_no_off_platform_contact]
+    )
+    bio = serializers.CharField(
+        max_length=BIO_MAX_LENGTH, allow_blank=True, required=False, trim_whitespace=True,
+        validators=[validate_no_off_platform_contact]
+    )
     specialties = serializers.ListField(
         child=_TagField(max_length=SPECIALTY_MAX_LENGTH, allow_blank=False),
         max_length=SPECIALTY_MAX_ITEMS, allow_empty=True, required=False)
@@ -281,9 +291,61 @@ class TeacherOwnProfileSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(errors)
         return super().to_internal_value(data)
 
+    def validate_headline(self, value):
+        if value:
+            validate_no_off_platform_contact(value)
+        return value
+
+    def validate_bio(self, value):
+        if value:
+            validate_no_off_platform_contact(value)
+        return value
+
     def validate_specialties(self, value):
         cleaned = []                       # each tag is already trimmed and non-blank (_TagField)
         for tag in value:
             if tag not in cleaned:
                 cleaned.append(tag)
         return cleaned
+
+
+class ApplicationDraftSerializer(serializers.ModelSerializer):
+    """
+    Validates draft tutor application profile submissions (headline, bio, specialties)
+    with contact guard enforcement before application submission.
+    """
+    headline = serializers.CharField(
+        max_length=255, allow_blank=True, required=False,
+        validators=[validate_no_off_platform_contact]
+    )
+    bio = serializers.CharField(
+        max_length=BIO_MAX_LENGTH, allow_blank=True, required=False, trim_whitespace=True,
+        validators=[validate_no_off_platform_contact]
+    )
+    specialties = serializers.ListField(
+        child=_TagField(max_length=SPECIALTY_MAX_LENGTH, allow_blank=False),
+        max_length=SPECIALTY_MAX_ITEMS, allow_empty=True, required=False,
+    )
+
+    class Meta:
+        model = TeacherProfile
+        fields = ('id', 'headline', 'bio', 'specialties')
+        read_only_fields = ('id',)
+
+    def validate_headline(self, value):
+        if value:
+            validate_no_off_platform_contact(value)
+        return value
+
+    def validate_bio(self, value):
+        if value:
+            validate_no_off_platform_contact(value)
+        return value
+
+    def validate_specialties(self, value):
+        cleaned = []
+        for tag in value:
+            if tag not in cleaned:
+                cleaned.append(tag)
+        return cleaned
+

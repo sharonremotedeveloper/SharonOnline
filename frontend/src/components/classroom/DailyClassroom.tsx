@@ -22,8 +22,17 @@ import {
   Wifi,
 } from "lucide-react";
 import { fetchVideoSessionToken, videoSessionProblem, VideoSessionProblem, VideoSessionToken } from "../../lib/classroomSession";
+import { useClassroomSyncContext } from "../../lib/ClassroomSyncContext";
 
-interface DailyClassroomProps {
+export interface DailyClassroomAppMessageEvent {
+  action?: "app-message";
+  data: any;
+  fromId?: string;
+}
+
+export type DailySendAppMessageFn = (data: any, to?: string) => void;
+
+export interface DailyClassroomProps {
   bookingId: string;
   isHost?: boolean;
   partnerName: string;
@@ -31,6 +40,13 @@ interface DailyClassroomProps {
   onLeave?: () => void;
   tokenFetcher?: () => Promise<VideoSessionToken>;
   joinLabel?: string;
+
+  // --- Milestone 3 DataChannel Props ---
+  onAppMessage?: (event: DailyClassroomAppMessageEvent) => void;
+  onReceiveAppMessage?: (data: any, fromId?: string) => void;
+  onSendAppMessageReady?: (sendFn: DailySendAppMessageFn | null) => void;
+  onSendAppMessage?: (sendFn: DailySendAppMessageFn | null) => void;
+  onCallFrameCreated?: (callFrame: any) => void;
 }
 
 export function DailyClassroom({
@@ -41,6 +57,11 @@ export function DailyClassroom({
   onLeave,
   tokenFetcher,
   joinLabel,
+  onAppMessage,
+  onReceiveAppMessage,
+  onSendAppMessageReady,
+  onSendAppMessage,
+  onCallFrameCreated,
 }: DailyClassroomProps) {
   const [joined, setJoined] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -52,17 +73,40 @@ export function DailyClassroom({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const callFrameRef = useRef<any>(null);
 
+  const syncContext = useClassroomSyncContext();
+
+  const boundSendAppMessage = useCallback((data: any, to: string = "*") => {
+    if (callFrameRef.current) {
+      try {
+        callFrameRef.current.sendAppMessage(data, to);
+      } catch (err) {
+        console.warn("DailyClassroom: sendAppMessage failed:", err);
+      }
+    } else {
+      console.warn("DailyClassroom: callFrame not ready to sendAppMessage");
+    }
+  }, []);
+
+  const notifyTeardown = useCallback(() => {
+    onCallFrameCreated?.(null);
+    onSendAppMessageReady?.(null);
+    onSendAppMessage?.(null);
+    syncContext?.registerTransport(null);
+  }, [onCallFrameCreated, onSendAppMessageReady, onSendAppMessage, syncContext]);
+
   const finishLeave = useCallback(() => {
+    notifyTeardown();
     callFrameRef.current = null;
     setJoined(false);
     setConnecting(false);
     setRemoteUserJoined(false);
     onLeave?.();
-  }, [onLeave]);
+  }, [notifyTeardown, onLeave]);
 
   // Clean up Daily call frame on unmount
   useEffect(() => {
     return () => {
+      notifyTeardown();
       if (callFrameRef.current) {
         try {
           callFrameRef.current.destroy();
@@ -72,7 +116,7 @@ export function DailyClassroom({
         callFrameRef.current = null;
       }
     };
-  }, []);
+  }, [notifyTeardown]);
 
   const handleLeave = useCallback(async () => {
     if (callFrameRef.current) {
@@ -140,6 +184,23 @@ export function DailyClassroom({
 
       callFrameRef.current = callFrame;
 
+      // Expose frame & bound sender to parent props and context
+      onCallFrameCreated?.(callFrame);
+      onSendAppMessageReady?.(boundSendAppMessage);
+      onSendAppMessage?.(boundSendAppMessage);
+      syncContext?.registerTransport(boundSendAppMessage);
+
+      // Register inbound DataChannel message listener
+      callFrame.on("app-message", (event: any) => {
+        try {
+          onAppMessage?.(event);
+          onReceiveAppMessage?.(event?.data, event?.fromId);
+          syncContext?.handleAppMessage(event);
+        } catch (err) {
+          console.error("Error in DailyClassroom app-message listener:", err);
+        }
+      });
+
       callFrame.on("joined-meeting", () => {
         setJoined(true);
         setConnecting(false);
@@ -202,7 +263,18 @@ export function DailyClassroom({
       setConnecting(false);
       setJoined(false);
     }
-  }, [bookingId, finishLeave, tokenFetcher]);
+  }, [
+    bookingId,
+    finishLeave,
+    tokenFetcher,
+    onCallFrameCreated,
+    onSendAppMessageReady,
+    onSendAppMessage,
+    syncContext,
+    boundSendAppMessage,
+    onAppMessage,
+    onReceiveAppMessage,
+  ]);
 
   return (
     <div className="space-y-4">

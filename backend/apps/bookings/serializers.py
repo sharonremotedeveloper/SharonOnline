@@ -1,6 +1,7 @@
 from typing import Optional
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
+from apps.common.contact_guard import validate_no_off_platform_contact
 from .models import Booking, LessonMemo
 from .services.reviews import REVIEW_TAGS
 from apps.teachers.serializers import TeacherListSerializer
@@ -12,28 +13,211 @@ from apps.payments.services.pricing import lesson_price
 from apps.common.money import money_str
 from django.utils.dateparse import parse_datetime
 
-class LessonMemoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = LessonMemo
-        fields = ('id', 'booking', 'teacher', 'student', 'feedback_text', 'vocabulary_words', 'pronunciation_notes',
-                  'grammar_notes', 'homework', 'submitted_at')
-        read_only_fields = ('id', 'booking', 'teacher', 'student', 'submitted_at')
-
 MAX_NOTE_LENGTH = 5000
 MAX_VOCAB_WORDS = 30
 VOCAB_LIMITS = {'word': 128, 'definition': 1000, 'phonetic': 128, 'part_of_speech': 64}  # word/phonetic/pos mirror StudentFlashcard columns
 
 
+class LessonMemoSerializer(serializers.ModelSerializer):
+    feedback_text = serializers.CharField(
+        max_length=MAX_NOTE_LENGTH, required=False, allow_blank=False,
+        validators=[validate_no_off_platform_contact]
+    )
+    general_feedback = serializers.CharField(
+        max_length=MAX_NOTE_LENGTH, required=False, allow_blank=False,
+        validators=[validate_no_off_platform_contact]
+    )
+    pronunciation_notes = serializers.CharField(
+        max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True, default='',
+        validators=[validate_no_off_platform_contact]
+    )
+    grammar_notes = serializers.CharField(
+        max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True, default='',
+        validators=[validate_no_off_platform_contact]
+    )
+    grammar_corrections = serializers.CharField(
+        max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True,
+        validators=[validate_no_off_platform_contact]
+    )
+    homework = serializers.CharField(
+        max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True, default='',
+        validators=[validate_no_off_platform_contact]
+    )
+    homework_assigned = serializers.CharField(
+        max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True,
+        validators=[validate_no_off_platform_contact]
+    )
+    next_lesson_recommendation = serializers.CharField(
+        max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True, default='',
+        validators=[validate_no_off_platform_contact]
+    )
+
+    class Meta:
+        model = LessonMemo
+        fields = (
+            'id', 'booking', 'teacher', 'student', 'feedback_text', 'general_feedback',
+            'vocabulary_words', 'pronunciation_notes', 'grammar_notes', 'grammar_corrections',
+            'homework', 'homework_assigned', 'next_lesson_recommendation', 'submitted_at'
+        )
+        read_only_fields = ('id', 'booking', 'teacher', 'student', 'submitted_at')
+
+    def validate_feedback_text(self, val):
+        if val: validate_no_off_platform_contact(val)
+        return val
+
+    def validate_general_feedback(self, val):
+        if val: validate_no_off_platform_contact(val)
+        return val
+
+    def validate_pronunciation_notes(self, val):
+        if val: validate_no_off_platform_contact(val)
+        return val
+
+    def validate_grammar_notes(self, val):
+        if val: validate_no_off_platform_contact(val)
+        return val
+
+    def validate_grammar_corrections(self, val):
+        if val: validate_no_off_platform_contact(val)
+        return val
+
+    def validate_homework(self, val):
+        if val: validate_no_off_platform_contact(val)
+        return val
+
+    def validate_homework_assigned(self, val):
+        if val: validate_no_off_platform_contact(val)
+        return val
+
+    def validate_next_lesson_recommendation(self, val):
+        if val: validate_no_off_platform_contact(val)
+        return val
+
+    def validate(self, attrs):
+        if not attrs.get('feedback_text') and not attrs.get('general_feedback'):
+            raise serializers.ValidationError({'feedback_text': ['This field is required.']})
+        if not attrs.get('feedback_text') and attrs.get('general_feedback'):
+            attrs['feedback_text'] = attrs['general_feedback']
+        elif attrs.get('feedback_text') and not attrs.get('general_feedback'):
+            attrs['general_feedback'] = attrs['feedback_text']
+
+        if not attrs.get('homework') and attrs.get('homework_assigned'):
+            attrs['homework'] = attrs['homework_assigned']
+        elif attrs.get('homework') and not attrs.get('homework_assigned'):
+            attrs['homework_assigned'] = attrs['homework']
+
+        if not attrs.get('grammar_notes') and attrs.get('grammar_corrections'):
+            attrs['grammar_notes'] = attrs['grammar_corrections']
+        elif attrs.get('grammar_notes') and not attrs.get('grammar_corrections'):
+            attrs['grammar_corrections'] = attrs['grammar_notes']
+
+        return attrs
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        ret['general_feedback'] = ret.get('feedback_text', '')
+        ret['homework_assigned'] = ret.get('homework', '')
+        ret['grammar_corrections'] = ret.get('grammar_notes', '')
+        ret['next_lesson_recommendation'] = getattr(instance, 'next_lesson_recommendation', '')
+        return ret
+
+    def create(self, validated_data):
+        validated_data.pop('general_feedback', None)
+        validated_data.pop('homework_assigned', None)
+        validated_data.pop('grammar_corrections', None)
+        validated_data.pop('next_lesson_recommendation', None)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data.pop('general_feedback', None)
+        validated_data.pop('homework_assigned', None)
+        validated_data.pop('grammar_corrections', None)
+        validated_data.pop('next_lesson_recommendation', None)
+        return super().update(instance, validated_data)
+
+
 class LessonMemoInputSerializer(serializers.Serializer):
     """
-    What a tutor may submit after a lesson. Unknown keys (e.g. the UI's `booking_id`, `next_steps`) are ignored.
-    (DRF's CharField already rejects NUL characters - PostgreSQL cannot store them; the vocabulary items are checked by hand.)
+    What a tutor may submit after a lesson. Supports canonical model field names
+    and descriptive aliases with contact-guard sanitization.
     """
-    feedback_text = serializers.CharField(max_length=MAX_NOTE_LENGTH)
-    vocabulary_words = serializers.ListField(child=serializers.JSONField(), required=False, default=list, max_length=MAX_VOCAB_WORDS)
-    pronunciation_notes = serializers.CharField(max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True, default='')
-    grammar_notes = serializers.CharField(max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True, default='')
-    homework = serializers.CharField(max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True, default='')
+    feedback_text = serializers.CharField(
+        max_length=MAX_NOTE_LENGTH, required=False,
+        validators=[validate_no_off_platform_contact]
+    )
+    vocabulary_words = serializers.ListField(
+        child=serializers.JSONField(), required=False, default=list, max_length=MAX_VOCAB_WORDS
+    )
+    pronunciation_notes = serializers.CharField(
+        max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True, default='',
+        validators=[validate_no_off_platform_contact]
+    )
+    grammar_notes = serializers.CharField(
+        max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True, default='',
+        validators=[validate_no_off_platform_contact]
+    )
+    homework = serializers.CharField(
+        max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True, default='',
+        validators=[validate_no_off_platform_contact]
+    )
+
+    # Descriptive field aliases (R2 specification)
+    general_feedback = serializers.CharField(
+        max_length=MAX_NOTE_LENGTH, required=False,
+        validators=[validate_no_off_platform_contact]
+    )
+    grammar_corrections = serializers.CharField(
+        max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True,
+        validators=[validate_no_off_platform_contact]
+    )
+    homework_assigned = serializers.CharField(
+        max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True,
+        validators=[validate_no_off_platform_contact]
+    )
+    next_lesson_recommendation = serializers.CharField(
+        max_length=MAX_NOTE_LENGTH, required=False, allow_blank=True, default='',
+        validators=[validate_no_off_platform_contact]
+    )
+
+    def validate_feedback_text(self, val):
+        if val:
+            validate_no_off_platform_contact(val)
+        return val
+
+    def validate_general_feedback(self, val):
+        if val:
+            validate_no_off_platform_contact(val)
+        return val
+
+    def validate_pronunciation_notes(self, val):
+        if val:
+            validate_no_off_platform_contact(val)
+        return val
+
+    def validate_grammar_notes(self, val):
+        if val:
+            validate_no_off_platform_contact(val)
+        return val
+
+    def validate_grammar_corrections(self, val):
+        if val:
+            validate_no_off_platform_contact(val)
+        return val
+
+    def validate_homework(self, val):
+        if val:
+            validate_no_off_platform_contact(val)
+        return val
+
+    def validate_homework_assigned(self, val):
+        if val:
+            validate_no_off_platform_contact(val)
+        return val
+
+    def validate_next_lesson_recommendation(self, val):
+        if val:
+            validate_no_off_platform_contact(val)
+        return val
 
     def validate_vocabulary_words(self, items):
         """Normalise to [{word, definition, phonetic, part_of_speech}], one entry per word (case-insensitive)."""
@@ -61,6 +245,41 @@ class LessonMemoInputSerializer(serializers.Serializer):
             seen.add(fields['word'].casefold())
             cleaned.append(fields)
         return cleaned
+
+    def validate(self, attrs):
+        # 1. Require feedback_text or general_feedback
+        if not attrs.get('feedback_text') and not attrs.get('general_feedback'):
+            raise serializers.ValidationError({'feedback_text': ['This field is required.']})
+
+        # 2. Reconcile feedback aliases
+        if not attrs.get('feedback_text') and attrs.get('general_feedback'):
+            attrs['feedback_text'] = attrs['general_feedback']
+        elif attrs.get('feedback_text') and not attrs.get('general_feedback'):
+            attrs['general_feedback'] = attrs['feedback_text']
+
+        # 3. Reconcile homework aliases
+        if not attrs.get('homework') and attrs.get('homework_assigned'):
+            attrs['homework'] = attrs['homework_assigned']
+        elif attrs.get('homework') and not attrs.get('homework_assigned'):
+            attrs['homework_assigned'] = attrs['homework']
+
+        # 4. Reconcile grammar aliases
+        if not attrs.get('grammar_notes') and attrs.get('grammar_corrections'):
+            attrs['grammar_notes'] = attrs['grammar_corrections']
+        elif attrs.get('grammar_notes') and not attrs.get('grammar_corrections'):
+            attrs['grammar_corrections'] = attrs['grammar_notes']
+
+        # Ensure canonical fields have their defaults if omitted
+        if 'pronunciation_notes' not in attrs:
+            attrs['pronunciation_notes'] = ''
+        if 'grammar_notes' not in attrs:
+            attrs['grammar_notes'] = ''
+        if 'homework' not in attrs:
+            attrs['homework'] = ''
+        if 'vocabulary_words' not in attrs:
+            attrs['vocabulary_words'] = []
+
+        return attrs
 
 
 class BookingStudentSerializer(serializers.Serializer):

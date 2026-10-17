@@ -64,6 +64,13 @@ CELERY_BEAT_SCHEDULE = {
         'options': {'queue': 'financial_escrow', 'expires': 3600},
     },
 
+    # 9b. Warn students when credits expire within 7 days (Daily, 08:00 UTC)
+    'warn-expiring-credits-daily': {
+        'task': 'apps.payments.tasks.warn_expiring_credits_task',
+        'schedule': crontab(hour=8, minute=0),
+        'options': {'queue': 'notifications', 'expires': 3600},
+    },
+
     # 10. Hand pending refunds to the payment gateway (Every 15 minutes)
     'process-pending-refunds-15min': {
         'task': 'apps.payments.tasks.process_pending_refunds_task',
@@ -109,6 +116,8 @@ CELERY_TASK_ROUTES = {
     'apps.bookings.tasks.dispatch_pre_lesson_reminders_task': {'queue': 'notifications'},
     'apps.bookings.tasks.enforce_memo_sla_task': {'queue': 'scheduler_beat'},
     'apps.payments.tasks.release_cleared_escrow_task': {'queue': 'financial_escrow'},
+    'apps.payments.tasks.expire_credits_task': {'queue': 'financial_escrow'},
+    'apps.payments.tasks.warn_expiring_credits_task': {'queue': 'notifications'},
     'apps.payments.tasks.reconcile_pending_transactions_task': {'queue': 'financial_escrow'},
     'apps.integrations.tasks.sync_eskom_stages_task': {'queue': 'scheduler_beat'},
     'apps.integrations.tasks.reconcile_teacher_gcal_task': {'queue': 'scheduler_beat'},

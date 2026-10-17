@@ -13,6 +13,8 @@ max-complexity = 12
 [lint.per-file-ignores]
 # Tests: `assert` is the point, and fixture passwords / tokens are fake by construction.
 "tests/**/*.py" = ["S101", "S105", "S106"]
+"apps/**/tests/**/*.py" = ["S101", "S105", "S106"]
+"apps/**/tests/*.py" = ["S101", "S105", "S106"]
 # Django settings modules layer on each other with star imports by design.
 "config/settings/local.py" = ["F403", "F405"]
 "config/settings/production.py" = ["F403", "F405"]
