@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { dashboardFor, SESSION_COOKIE, verifySession } from "@/lib/session";
+import { signedInAuthRedirect } from "@/lib/appTabs";
 
 /**
  * Route guard (Next 16 `proxy`, formerly `middleware`) for /student, /teacher and /admin (UI routing only - the Django API re-checks the role from the
@@ -14,6 +15,16 @@ import { dashboardFor, SESSION_COOKIE, verifySession } from "@/lib/session";
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const claims = await verifySession(request.cookies.get(SESSION_COOKIE)?.value);
+
+  // /login and /register: a signed-in user goes to their dashboard; everyone else sees the page (no renew bounce).
+  if (pathname === "/login" || pathname === "/register") {
+    const target = signedInAuthRedirect(pathname, claims?.role);
+    if (!target) return NextResponse.next();
+    const home = request.nextUrl.clone();
+    home.pathname = target;
+    home.search = "";
+    return NextResponse.redirect(home);
+  }
 
   if (!claims) {
     const renew = request.nextUrl.clone();
@@ -47,5 +58,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/student/:path*", "/teacher/:path*", "/admin/:path*"],
+  matcher: ["/student/:path*", "/teacher/:path*", "/admin/:path*", "/login", "/register"],
 };
