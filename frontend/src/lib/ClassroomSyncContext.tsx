@@ -29,7 +29,7 @@ export interface ClassroomSyncContextValue {
 
   // Transport integration
   registerTransport: (sendFn: ((data: any, to?: string) => void) | null) => void;
-  handleAppMessage: (eventOrData: any, fromId?: string) => boolean;
+  handleAppMessage: (eventOrData: any, fromId?: string, authenticatedRole?: SyncRole) => boolean;
 }
 
 const ClassroomSyncContext = createContext<ClassroomSyncContextValue | null>(null);
@@ -79,11 +79,14 @@ export function useClassroomSync(options: ClassroomSyncOptions): ClassroomSyncCo
   );
 
   const handleAppMessage = useCallback(
-    (eventOrData: any, fromId?: string) => {
-      return coordinator.handleAppMessage(
+    (eventOrData: any, fromId?: string, authenticatedRole?: SyncRole) => {
+      const event =
         eventOrData && typeof eventOrData === "object" && "data" in eventOrData
           ? eventOrData
-          : { data: eventOrData, fromId }
+          : { data: eventOrData, fromId };
+      return coordinator.handleAppMessage(
+        event,
+        fromId && authenticatedRole ? { senderId: fromId, role: authenticatedRole } : undefined
       );
     },
     [coordinator]

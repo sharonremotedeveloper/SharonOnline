@@ -195,7 +195,18 @@ export function DailyClassroom({
         try {
           onAppMessage?.(event);
           onReceiveAppMessage?.(event?.data, event?.fromId);
-          syncContext?.handleAppMessage(event);
+          const participant = event?.fromId
+            ? callFrame.participants?.()?.[event.fromId]
+            : undefined;
+          if (!event?.fromId || !participant) {
+            console.warn("DailyClassroom: rejected app message from an unknown participant");
+            return;
+          }
+          syncContext?.handleAppMessage(
+            event,
+            event.fromId,
+            participant.owner === true ? "teacher" : "student"
+          );
         } catch (err) {
           console.error("Error in DailyClassroom app-message listener:", err);
         }

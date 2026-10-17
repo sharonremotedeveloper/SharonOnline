@@ -15,6 +15,11 @@
 export type SyncRole = "teacher" | "student";
 export type UserRole = SyncRole;
 
+export interface TrustedSyncSender {
+  senderId: string;
+  role: SyncRole;
+}
+
 export type CurriculumTabId = "article" | "vocab" | "questions";
 export type ReaderTab = CurriculumTabId;
 
@@ -702,8 +707,8 @@ export class ClassroomSyncCoordinator {
   }
 
   // --- Inbound AppMessage Processing ---
-  public handleAppMessage(eventOrEnvelope: any): boolean {
-    const envelope = this.parseEnvelope(eventOrEnvelope);
+  public handleAppMessage(eventOrEnvelope: any, trustedSender?: TrustedSyncSender): boolean {
+    const envelope = this.parseEnvelope(eventOrEnvelope, trustedSender);
     if (!envelope) return false;
 
     // Discard loopback reflection
@@ -877,18 +882,32 @@ export class ClassroomSyncCoordinator {
   }
 
   // --- Envelope Normalizer ---
-  private parseEnvelope(raw: any): SyncEnvelope | null {
+  private parseEnvelope(raw: any, trustedSender?: TrustedSyncSender): SyncEnvelope | null {
     if (!raw) return null;
     const data = raw.data ? raw.data : raw;
+
+    // Daily assigns the top-level fromId. Wrapped provider messages must be
+    // bound to participant metadata supplied by the Daily SDK, never to role
+    // or sender fields controlled by the remote peer.
+    if (raw.fromId && !trustedSender) return null;
+    if (
+      trustedSender &&
+      (!trustedSender.senderId ||
+        (trustedSender.role !== "teacher" && trustedSender.role !== "student") ||
+        (raw.fromId && raw.fromId !== trustedSender.senderId))
+    ) {
+      return null;
+    }
 
     if (typeof data !== "object" || data === null || Array.isArray(data)) return null;
 
     // Standard envelope structure
     if (data.type && typeof data.timestamp === "number" && Number.isFinite(data.timestamp) && data.timestamp > 0 && data.payload !== undefined && data.payload !== null) {
       if (!VALID_MESSAGE_TYPES.includes(data.type)) return null;
-      const senderId = String(data.senderId || raw.fromId || "").trim();
+      if (data.role !== "teacher" && data.role !== "student") return null;
+      const senderId = String(trustedSender?.senderId || data.senderId || "").trim();
       if (!senderId) return null;
-      const role: SyncRole = data.role === "student" ? "student" : "teacher";
+      const role: SyncRole = trustedSender?.role || data.role;
 
       return {
         type: String(data.type),
@@ -901,7 +920,9 @@ export class ClassroomSyncCoordinator {
 
     // Support flat CLASSROOM_MATERIAL_SYNC packets
     if (data.type === "CLASSROOM_MATERIAL_SYNC") {
-      const senderId = String(data.senderId || raw.fromId || "").trim() || "peer";
+      if (!trustedSender && data.senderRole !== "teacher" && data.senderRole !== "student") return null;
+      const senderId = String(trustedSender?.senderId || data.senderId || "").trim();
+      if (!senderId) return null;
       const ts = Number(data.timestamp || this.now());
       if (ts <= 0 || !Number.isFinite(ts)) return null;
 
@@ -914,7 +935,7 @@ export class ClassroomSyncCoordinator {
           allowStudentControl: !!data.allowStudentControl,
         },
         senderId,
-        role: data.senderRole === "student" ? "student" : "teacher",
+        role: trustedSender?.role || data.senderRole,
         timestamp: ts,
       };
     }

@@ -18,6 +18,15 @@ Whenever an error, test breakage, build failure, or unexpected API behavior occu
 
 ## 📋 Historical Error & Resolution Ledger
 
+### ERR-551: Daily classroom messages trusted peer-declared teacher authority
+
+- **Observed (2026-10-17):** Independent review of Antigravity's classroom synchronization found a passing challenger test that deliberately proved an invalid or student-controlled packet could be interpreted as a teacher message and change shared classroom state.
+- **Root cause:** `ClassroomSyncCoordinator` normalized every non-`student` role to `teacher`, and the Daily listener forwarded peer-controlled `senderId` and `role` fields without binding them to Daily's authenticated top-level `fromId` and participant `owner` metadata.
+- **Resolution:** Reject invalid roles; require wrapped Daily messages to carry trusted sender authority supplied by the integration; resolve the sender from Daily's participant roster; derive teacher/student authority from Daily's provider-owned `owner` flag; reject unknown participants; and ignore peer-declared identity for authorization. The former exploit assertion is now a rejection regression, with an additional forged-teacher packet test.
+- **Verification:** Frontend tests passed 357/357, ESLint passed with zero warnings, generated API types matched, and the 51-route production build passed. Hosted CI remains the release authority after push.
+- **Status:** `RESOLVED LOCALLY; HOSTED CI PENDING`
+- **Logged By:** Codex
+
 ### ERR-550: Antigravity core-algorithm push failed API-contract and frontend quality gates
 
 - **Observed (2026-10-17):** Shared `develop` commit `3b46cb65ebd916d7387c11211a1873b1f713ca91` failed [Quality-gates run 39011583703](https://github.com/sharonremotedeveloper/SharonOnline/actions/runs/39011583703) and [API-contract run 39011583697](https://github.com/sharonremotedeveloper/SharonOnline/actions/runs/39011583697). The backend job had one failure after 4,293 passes, the API-contract job had one failure after 13 passes, and frontend tests passed 328/328 before lint stopped the job with eight `react-hooks/refs` errors.

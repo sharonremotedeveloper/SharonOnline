@@ -198,10 +198,36 @@ describe("Milestone 3: Classroom Material Synchronization (Requirement R3)", () 
       };
 
       assert.equal(isValidEnvelope(dailyEvent), true);
-      const handled = studentCoordinator.handleAppMessage(dailyEvent);
+      const handled = studentCoordinator.handleAppMessage(dailyEvent, {
+        senderId: "teacher-peer-1",
+        role: "teacher",
+      });
       assert.equal(handled, true);
       assert.equal(studentCoordinator.getState().activeTab, "questions");
       assert.equal(studentCoordinator.getState().sectionIndex, 2);
+    });
+
+    it("1.8b: Uses Daily's authenticated participant role instead of the packet claim", () => {
+      const initialMaterialId = teacherCoordinator.getState().materialId;
+      const forgedTeacherEvent = {
+        action: "app-message",
+        fromId: "student-peer-1",
+        data: {
+          type: "CLASSROOM_MATERIAL_SYNC",
+          payload: { materialId: "forged", sectionIndex: 2 },
+          senderId: "pretend-teacher",
+          role: "teacher",
+          timestamp: 1100,
+        },
+      };
+
+      const handled = teacherCoordinator.handleAppMessage(forgedTeacherEvent, {
+        senderId: "student-peer-1",
+        role: "student",
+      });
+
+      assert.equal(handled, false);
+      assert.equal(teacherCoordinator.getState().materialId, initialMaterialId);
     });
 
     it("1.9: Parses legacy flat CLASSROOM_MATERIAL_SYNC packet format", () => {

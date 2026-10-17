@@ -345,7 +345,7 @@ describe("Milestone 3 Challenger: Adversarial Stress & Empirical Verification", 
       }
     });
 
-    it("2.8: EMPIRICAL PROOF OF VULNERABILITY: Role spoofing & dead-code isValidEnvelope allows unprivileged peer to hijack teacher authority", () => {
+    it("2.8: Rejects invalid roles instead of granting teacher authority", () => {
       // Contract test: isValidEnvelope strictly requires role to be 'teacher' or 'student'
       const spoofedRoleEnv: SyncEnvelope = {
         type: "SYNC_TAB",
@@ -358,13 +358,10 @@ describe("Milestone 3 Challenger: Adversarial Stress & Empirical Verification", 
       // 1. Protocol validator correctly detects this envelope as INVALID
       assert.equal(isValidEnvelope(spoofedRoleEnv), false, "isValidEnvelope must reject role: 'admin'");
 
-      // 2. EMPIRICAL VULNERABILITY: handleAppMessage does NOT invoke isValidEnvelope
-      // Instead, parseEnvelope falls back to: role = data.role === 'student' ? 'student' : 'teacher'
-      // granting 'admin' full TEACHER authority!
       const studentHandled = studentCoordinator.handleAppMessage(spoofedRoleEnv);
-      assert.equal(studentHandled, true, "VULNERABILITY: coordinator accepts invalid role");
-      assert.equal(studentCoordinator.getState().activeTab, "questions");
-      assert.equal(studentCoordinator.getState().latestTutorState?.activeTab, "questions");
+      assert.equal(studentHandled, false, "coordinator must reject invalid role");
+      assert.equal(studentCoordinator.getState().activeTab, "article");
+      assert.equal(studentCoordinator.getState().latestTutorState, null);
 
       // 3. EMPIRICAL VULNERABILITY ON TEACHER: Teacher with student control DISABLED has screen hijacked
       const strictTeacher = new ClassroomSyncCoordinator({
@@ -381,8 +378,8 @@ describe("Milestone 3 Challenger: Adversarial Stress & Empirical Verification", 
         timestamp: 160000,
       });
 
-      assert.equal(teacherHijacked, true, "VULNERABILITY: teacher coordinator accepts hijacked role packet");
-      assert.equal(strictTeacher.getState().activeTab, "questions", "Teacher screen was hijacked despite allowStudentControl: false");
+      assert.equal(teacherHijacked, false, "teacher coordinator must reject invalid role packets");
+      assert.equal(strictTeacher.getState().activeTab, "article");
     });
   });
 
