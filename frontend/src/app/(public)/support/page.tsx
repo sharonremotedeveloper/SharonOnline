@@ -172,6 +172,7 @@ export default function SupportPage() {
                   type="text"
                   required
                   placeholder="e.g. Aiko Tanaka"
+                  autoComplete="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="min-h-11 w-full bg-cream-surface border border-strong rounded-xl px-4 py-2.5 text-base sm:text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
@@ -185,6 +186,7 @@ export default function SupportPage() {
                   type="email"
                   required
                   placeholder="aiko@example.com"
+                  autoComplete="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="min-h-11 w-full bg-cream-surface border border-strong rounded-xl px-4 py-2.5 text-base sm:text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"
@@ -197,7 +199,7 @@ export default function SupportPage() {
                 <input id="f-subject" aria-invalid={fieldErrors.subject || submitError ? true : undefined} aria-describedby={fieldErrors.subject ? "support-subject-error" : submitError ? "support-error" : undefined}
                   type="text"
                   required
-                  placeholder="e.g. Question about PayPal checkout or slot booking"
+                  placeholder="e.g. Booking a lesson"
                   value={formData.subject}
                   onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                   className="min-h-11 w-full bg-cream-surface border border-strong rounded-xl px-4 py-2.5 text-base sm:text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-cocoa"

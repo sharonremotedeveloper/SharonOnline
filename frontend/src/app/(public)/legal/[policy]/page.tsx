@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ShieldCheck, FileText, ArrowLeft, Calendar, Clock, ChevronRight } from "lucide-react";
+import { ShieldCheck, FileText, ArrowLeft, Calendar, Clock, ChevronRight, ChevronDown } from "lucide-react";
 import { LEGAL_POLICIES } from "@/content/legal/policies";
 import { PrintButton } from "@/components/legal/PrintButton";
 
@@ -166,8 +166,8 @@ export default async function LegalPolicyPage({ params }: LegalPageProps) {
             <Link href="/" className="min-h-11 inline-flex items-center hover:text-ink transition-colors">
               Home
             </Link>
-            <ChevronRight className="w-3.5 h-3.5" />
-            <span className="font-semibold text-ink">Legal Hub</span>
+            <ChevronRight className="hidden w-3.5 h-3.5 sm:block" />
+            <span className="hidden font-semibold text-ink sm:inline">Legal Hub</span>
             <ChevronRight className="w-3.5 h-3.5" />
             <span className="text-cocoa font-bold">{policy.shortTitle}</span>
           </div>
@@ -177,15 +177,48 @@ export default async function LegalPolicyPage({ params }: LegalPageProps) {
             className="min-h-11 inline-flex items-center gap-1.5 text-sm font-bold text-ink-muted hover:text-ink transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Return to Sharon Online</span>
+            <span className="sr-only sm:not-sr-only">Return to Sharon Online</span>
           </Link>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+        {/* Below lg: policies as one swipeable row and the contents folded away, so the text starts on screen one
+            (the menu + table of contents took ~1.5 screens on a phone, and the sticky contents covered 40-60% of it). */}
+        <div className="mb-6 space-y-3 lg:hidden print:hidden">
+          <nav aria-label="Policies" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+            {Object.values(LEGAL_POLICIES).map((item) => (
+              <Link
+                key={item.slug}
+                href={`/legal/${item.slug}`}
+                aria-current={item.slug === policy.slug ? "page" : undefined}
+                className={`inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full px-4 text-sm font-bold ${
+                  item.slug === policy.slug ? "bg-cocoa text-white" : "border border-divider bg-white text-ink"
+                }`}
+              >
+                {item.shortTitle}
+              </Link>
+            ))}
+          </nav>
+          {toc.length > 0 && (
+            <details className="group rounded-2xl border border-divider bg-white px-4">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between text-sm font-extrabold uppercase tracking-wider text-ink-muted [&::-webkit-details-marker]:hidden">
+                On this page
+                <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <nav className="space-y-1 pb-3 text-sm">
+                {toc.map((item) => (
+                  <a key={item.id} href={`#${item.id}`} className={`flex min-h-11 items-center leading-snug text-ink-muted hover:text-cocoa ${item.level === 3 ? "pl-3" : "font-semibold"}`}>
+                    {item.title}
+                  </a>
+                ))}
+              </nav>
+            </details>
+          )}
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Policy Navigation Sidebar */}
-          <aside className="lg:col-span-1 space-y-6 print:hidden">
+          <aside className="hidden lg:block lg:col-span-1 space-y-6 print:hidden">
             <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-4">
               <div className="flex items-center gap-2 pb-3 border-b border-divider text-sm font-extrabold uppercase tracking-wider text-ink-muted">
                 <ShieldCheck className="w-4 h-4 text-cocoa" />
@@ -237,7 +270,7 @@ export default async function LegalPolicyPage({ params }: LegalPageProps) {
 
           {/* Main Document Content */}
           <main className="lg:col-span-3">
-            <article className="bg-white rounded-3xl p-8 sm:p-12 border border-divider shadow-card print:border-none print:shadow-none print:p-0">
+            <article className="bg-white rounded-3xl p-5 sm:p-12 border border-divider shadow-card print:border-none print:shadow-none print:p-0">
               {/* Document Header */}
               <div className="space-y-4 pb-8 border-b border-divider">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cream-surface border border-divider text-sm font-bold text-cocoa">

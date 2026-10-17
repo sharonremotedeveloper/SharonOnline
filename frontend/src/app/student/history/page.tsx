@@ -145,31 +145,38 @@ export default function StudentHistoryPage() {
             </p>
           </div>
         ) : (
-          filteredLessons.map((lesson) => (
+          filteredLessons.map((lesson) => {
+            const materialHref = canonicalMaterialLink(lesson.material_slug);
+            // A cancelled lesson has no subject, memo or actions: skip the empty row and its divider.
+            const hasBody = Boolean(
+              lesson.material_cefr || lesson.material_title || lesson.memo || lesson.status === "completed" || materialHref
+            );
+            return (
             <div
               key={lesson.id}
-              className="bg-white rounded-3xl border border-cream-200 p-6 shadow-sm hover:shadow-md transition-shadow space-y-4"
+              className="bg-white rounded-3xl border border-cream-200 p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow space-y-4"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-cream-100 pb-4">
+              <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${hasBody ? "border-b border-cream-100 pb-4" : ""}`}>
                 <div className="flex items-center gap-4">
                   <img
                     src={lesson.teacher.avatar}
                     alt={lesson.teacher.name}
-                    className="w-14 h-14 rounded-2xl object-cover border border-cream-200 shadow-xs"
+                    className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 rounded-2xl object-cover border border-cream-200 shadow-xs"
                   />
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div className="min-w-0">
+                    {/* Phones: name, accent and date wrap as whole pieces (the date broke into 4 lines). */}
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <h3 className="font-extrabold text-base text-ink-900">{lesson.teacher.name}</h3>
                       <span className="text-sm bg-cream-100 text-ink-700 px-2 py-0.5 rounded-md font-medium">
                         {lesson.teacher.accent}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-ink-400 mt-1">
-                      <span className="flex items-center gap-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-ink-400 mt-1">
+                      <span className="flex items-center gap-1 whitespace-nowrap">
                         <Calendar className="w-3.5 h-3.5" /> {lesson.local_date}
                       </span>
-                      <span>•</span>
-                      <span className="flex items-center gap-1">
+                      <span aria-hidden="true">•</span>
+                      <span className="flex items-center gap-1 whitespace-nowrap">
                         <Clock className="w-3.5 h-3.5" /> {lesson.local_start_time} - {lesson.local_end_time} ({lesson.viewer_timezone})
                       </span>
                     </div>
@@ -214,14 +221,19 @@ export default function StudentHistoryPage() {
               </div>
 
               {/* Lesson Subject & Action Row */}
+              {hasBody && (
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-cocoa-100 text-cocoa-800 text-sm font-bold rounded-md">
-                      CEFR {lesson.material_cefr}
-                    </span>
-                    <h4 className="font-bold text-sm text-ink-900">{lesson.material_title}</h4>
-                  </div>
+                  {(lesson.material_cefr || lesson.material_title) && (
+                    <div className="flex items-center gap-2">
+                      {lesson.material_cefr && (
+                        <span className="px-2 py-0.5 bg-cocoa-100 text-cocoa-800 text-sm font-bold rounded-md">
+                          CEFR {lesson.material_cefr}
+                        </span>
+                      )}
+                      <h4 className="font-bold text-sm text-ink-900">{lesson.material_title}</h4>
+                    </div>
+                  )}
                   {lesson.memo && (
                     <p className="text-sm text-ink-600 line-clamp-1 italic max-w-xl">
                       &ldquo;{lesson.memo.feedback_text}&rdquo;
@@ -237,9 +249,9 @@ export default function StudentHistoryPage() {
                     >
                       <FileText className="w-3.5 h-3.5" /> Read Memo & Vocab
                     </button>
-                  ) : (
-                    <span className="text-sm text-ink-400 italic">No memo available</span>
-                  )}
+                  ) : lesson.status === "completed" ? (
+                    <span className="text-sm text-ink-400 italic">No memo yet</span>
+                  ) : null}
 
                   {lesson.status === "completed" && (
                     <>
@@ -259,19 +271,17 @@ export default function StudentHistoryPage() {
                     </>
                   )}
 
-                  {(() => {
-                    const materialHref = canonicalMaterialLink(lesson.material_slug);
-                    return materialHref ? (
-                      <Link
-                        href={materialHref}
-                        className="min-h-11 inline-flex items-center gap-1 px-3 py-2 bg-cream-100 hover:bg-cream-200 text-ink-700 text-sm font-medium rounded-xl transition-colors"
-                      >
-                        <BookOpen className="w-3.5 h-3.5" /> Open Sheet
-                      </Link>
-                    ) : null;
-                  })()}
+                  {materialHref && (
+                    <Link
+                      href={materialHref}
+                      className="min-h-11 inline-flex items-center gap-1 px-3 py-2 bg-cream-100 hover:bg-cream-200 text-ink-700 text-sm font-medium rounded-xl transition-colors"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" /> Open Sheet
+                    </Link>
+                  )}
                 </div>
               </div>
+              )}
 
               {/* Acquired Vocabulary Chip Bar */}
               {lesson.memo?.vocabulary_words && lesson.memo.vocabulary_words.length > 0 && (
@@ -288,7 +298,8 @@ export default function StudentHistoryPage() {
                 </div>
               )}
             </div>
-          ))
+            );
+          })
         )}
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { formatRand } from "@/lib/currency";
 import {
   ArrowLeft,
   DollarSign,
@@ -63,9 +64,9 @@ export default function TeacherWalletPage() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono font-bold text-success-hover bg-success-surface px-2 py-0.5 rounded-md">
-                  ZAR CLEARING LEDGER
+                  RAND EARNINGS
                 </span>
-                <span className="text-xs font-bold text-ink-muted">Tutor Financial Center</span>
+                <span className="hidden sm:inline text-xs font-bold text-ink-muted">Tutor Financial Center</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-ink font-serif">
                 Earnings &amp; Payout Wallet
@@ -161,7 +162,7 @@ export default function TeacherWalletPage() {
                     <td className="py-3 px-4 font-bold text-ink">{tx.student_name}</td>
                     <td className="py-3 px-4 font-medium text-ink-muted">{tx.gross_amount.toFixed(2)} {tx.currency}</td>
                     <td className="py-3 px-4 font-extrabold text-ink font-serif text-sm">
-                      R{tx.net_zar.toFixed(2)}
+                      {formatRand(tx.net_zar)}
                     </td>
                     <td className="py-3 px-4">
                       {tx.status === "cleared" ? (
