@@ -95,7 +95,7 @@ function LoginForm() {
           <label htmlFor="f-username-or-email" className="text-sm font-bold text-ink">Username or Email</label>
           <div className="relative">
             <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
-            <input id="f-username-or-email"
+            <input id="f-username-or-email" autoComplete="username" autoCapitalize="none" spellCheck={false}
               type="text"
               required
               aria-required="true"
@@ -119,7 +119,7 @@ function LoginForm() {
           </div>
           <div className="relative">
             <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
-            <input id="f-password"
+            <input id="f-password" autoComplete="current-password"
               type="password"
               required
               aria-required="true"

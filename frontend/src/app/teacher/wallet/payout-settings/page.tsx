@@ -196,6 +196,8 @@ export default function TeacherPayoutSettingsPage() {
               </label>
               <input aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined} id="f-universal-branch-code-6-"
                 type="text"
+                inputMode="numeric"
+                autoComplete="off"
                 maxLength={6}
                 value={branchCode}
                 onChange={(e) => setBranchCode(e.target.value)}
@@ -223,7 +225,8 @@ export default function TeacherPayoutSettingsPage() {
             <label className="text-xs font-bold uppercase tracking-wider text-ink block" htmlFor="verification-code">
               E-mailed Verification Code
             </label>
-            <div className="flex gap-2">
+            {/* Phones: code field and its button stack (the code box was squeezed to a few characters). */}
+            <div className="flex flex-col gap-2 sm:flex-row">
               <input aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined}
                 id="verification-code"
                 type="text"
@@ -241,7 +244,7 @@ export default function TeacherPayoutSettingsPage() {
                 type="button"
                 onClick={handleSendCode}
                 disabled={codeSending}
-                className="min-h-11 inline-flex items-center px-4 py-3 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider disabled:opacity-60"
+                className="min-h-11 inline-flex items-center justify-center px-4 py-3 bg-white hover:bg-cream-surface text-ink text-sm sm:text-xs font-bold rounded-xl border border-divider disabled:opacity-60"
               >
                 {codeSending ? "Sending..." : codeSent ? "Send a new code" : "E-mail me a code"}
               </button>
@@ -261,7 +264,7 @@ export default function TeacherPayoutSettingsPage() {
                 type="text"
                 value={accountHolder}
                 onChange={(e) => setAccountHolder(e.target.value)}
-                placeholder="e.g. Sharon Mupesa"
+                placeholder="Name on the bank account"
                 className="min-h-11 w-full p-3 bg-cream-surface rounded-xl border border-strong text-base sm:text-sm font-bold text-ink focus:outline-none focus:ring-2 focus:ring-cocoa/30"
                 required
               />
@@ -272,6 +275,8 @@ export default function TeacherPayoutSettingsPage() {
               <label htmlFor="f-account-number" className="text-xs font-bold uppercase tracking-wider text-ink block">Account Number</label>
               <input aria-invalid={error ? true : undefined} aria-describedby={error ? "payout-error" : undefined} id="f-account-number"
                 type="text"
+                inputMode="numeric"
+                autoComplete="off"
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)}
                 placeholder="e.g. 1234567890"
