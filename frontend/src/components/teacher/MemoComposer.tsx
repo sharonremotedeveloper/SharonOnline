@@ -115,14 +115,15 @@ ${initialScratchpad}` : ""
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-6 sm:p-10 border border-divider shadow-card space-y-8">
+    <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-4 sm:p-10 border border-divider shadow-card space-y-8">
       {/* Header */}
       <div className="border-b border-divider pb-6 space-y-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono font-bold text-cocoa bg-cocoa/10 px-2.5 py-0.5 rounded-full">
-            BOOKING: {bookingId}
+            {/* Short reference (the full UUID wrapped onto two lines on phones). */}
+            BK-{bookingId.split("-")[0].toUpperCase()}
           </span>
-          <span className="text-xs font-bold text-ink-muted">Post-Lesson Memo Studio</span>
+          <span className="hidden text-xs font-bold text-ink-muted sm:inline">Post-Lesson Memo Studio</span>
         </div>
         <h2 className="text-2xl font-black text-ink font-serif">
           Evaluate Session with {studentName}
@@ -267,15 +268,15 @@ ${initialScratchpad}` : ""
         />
       </div>
 
-      {/* Submit Action Bar */}
-      <div className="pt-4 border-t border-divider flex items-center justify-end gap-3">
+      {/* Submit Action Bar: on phones it stays in reach above the bottom tab bar while the tutor writes; sm+ unchanged. */}
+      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] -mx-4 bg-white px-4 py-3 pt-4 border-t border-divider flex items-center justify-end gap-3 sm:static sm:mx-0 sm:px-0 sm:py-0 sm:pt-4 lg:bottom-0">
         <button
           type="submit"
           disabled={submitting}
-          className="min-h-11 px-8 py-3.5 bg-cocoa hover:bg-cocoa-hover text-white text-xs font-black rounded-2xl flex items-center gap-2 shadow-md transition-all hover:scale-[1.01]"
+          className="min-h-11 w-full justify-center px-8 py-3.5 bg-cocoa hover:bg-cocoa-hover text-white text-sm sm:text-xs font-black rounded-2xl flex items-center gap-2 shadow-md transition-all hover:scale-[1.01] sm:w-auto"
         >
           <Send className="w-4 h-4" />
-          <span>{submitting ? "Publishing Memo..." : "Submit Memo & Send to Student"}</span>
+          <span>{submitting ? "Publishing Memo..." : <><span className="sm:hidden">Submit memo</span><span className="hidden sm:inline">Submit Memo &amp; Send to Student</span></>}</span>
         </button>
       </div>
     </form>

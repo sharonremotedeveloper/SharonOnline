@@ -131,7 +131,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </header>
 
         {/* Content Body */}
-        <div className="p-6 sm:p-10 flex-1">{children}</div>
+        <div className="p-4 sm:p-10 flex-1">{children}</div>
       </main>
     </div>
   );

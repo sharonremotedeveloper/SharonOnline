@@ -330,7 +330,7 @@ export default function AdminVettingPage() {
 
           {/* Right Column: Detailed Vetting & Rubric Studio (8 cols) */}
           {selectedApp && (
-            <div className="lg:col-span-8 bg-white rounded-3xl p-6 sm:p-8 border border-divider shadow-card space-y-6">
+            <div className="lg:col-span-8 bg-white rounded-3xl p-4 sm:p-8 border border-divider shadow-card space-y-6">
               {/* Candidate Bio Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-divider pb-6">
                 <div>
@@ -461,7 +461,7 @@ export default function AdminVettingPage() {
               </div>
 
               {/* Interactive Rubric Studio (T4a / T4b) */}
-              <div className="p-6 bg-cream-surface/70 rounded-3xl border border-divider space-y-5">
+              <div className="p-3 sm:p-6 bg-cream-surface/70 rounded-3xl border border-divider space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-divider pb-4">
                   <div>
                     <div className="flex items-center gap-2">
@@ -469,7 +469,7 @@ export default function AdminVettingPage() {
                       <h4 className="text-base font-bold text-ink">4-Criterion Vetting Rubric</h4>
                     </div>
                     <p className="text-sm text-ink-muted">
-                      Score candidate from 1 (Unacceptable) to 5 (Mastery). Passing requires $\ge 3$ per criterion and total $\ge 12/20$.
+                      Score candidate from 1 (Unacceptable) to 5 (Mastery). Passing requires 3 or more on every criterion and a total of at least 12 / 20.
                     </p>
                   </div>
 
@@ -505,7 +505,7 @@ export default function AdminVettingPage() {
                     return (
                       <div
                         key={criterion}
-                        className={`p-4 rounded-2xl border transition-all ${
+                        className={`p-3 sm:p-4 rounded-2xl border transition-all ${
                           isDeficient
                             ? "bg-warning-surface/50 border-warning-border"
                             : "bg-white border-divider"
@@ -519,8 +519,8 @@ export default function AdminVettingPage() {
                             </p>
                           </div>
 
-                          {/* 1-5 Radio Buttons */}
-                          <div className="flex items-center gap-1.5">
+                          {/* 1-5 score buttons: a full-width 5-column grid on phones (flex squeezed them to ~32px) */}
+                          <div className="grid grid-cols-5 gap-1.5 sm:flex sm:items-center">
                             {[1, 2, 3, 4, 5].map((score) => {
                               const isSelected = currentScore === score;
                               return (
@@ -528,7 +528,7 @@ export default function AdminVettingPage() {
                                   key={score}
                                   type="button"
                                   onClick={() => handleScoreChange(criterion, score)}
-                                  className={`w-11 h-11 rounded-xl font-bold text-xs transition-all flex items-center justify-center ${
+                                  className={`h-11 w-full sm:w-11 sm:shrink-0 rounded-xl font-bold text-sm sm:text-xs transition-all flex items-center justify-center ${
                                     isSelected
                                       ? "bg-cocoa text-white shadow-xs scale-105"
                                       : "bg-cream-surface border border-divider text-ink-muted hover:bg-cream-deep hover:text-ink"
