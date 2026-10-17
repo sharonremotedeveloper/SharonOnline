@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import {
-  ArrowLeft,
   Scale,
   CheckCircle2,
   AlertTriangle,
@@ -16,6 +14,7 @@ import {
 import { api } from "@/lib/api";
 import { DisputeCase } from "@/types/admin";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
+import { PageHeader } from "@/components/ui/PageHeader";
 
 export default function AdminDisputesPage() {
   type ResolveAction = "full_refund_student" | "release_tutor" | "split_50_50";
@@ -106,27 +105,16 @@ export default function AdminDisputesPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/admin/dashboard"
-            className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-error-hover bg-error-surface px-2 py-0.5 rounded-md">
-                ESCROW ARBITRATION
-              </span>
-              <span className="text-xs font-bold text-ink-muted">{openCases.length} Cases Requiring Decision</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-ink font-serif">
-              Dispute Adjudication Tribunal
-            </h1>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        backHref="/admin/dashboard"
+        eyebrow={
+          <>
+            <span className="text-xs font-mono font-bold text-error-hover bg-error-surface px-2 py-0.5 rounded-md">ESCROW ARBITRATION</span>
+            <span className="text-xs font-bold text-ink-muted">{openCases.length} Cases Requiring Decision</span>
+          </>
+        }
+        title="Dispute Adjudication Tribunal"
+      />
 
       {successNote && (
         <div className="p-4 rounded-2xl bg-success-surface border border-success-border text-xs font-bold text-success-hover flex items-center gap-2.5">

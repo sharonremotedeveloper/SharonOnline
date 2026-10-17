@@ -25,10 +25,10 @@ const SKIP_REASON: Record<string, string> = {
 function LineRow({ line, canReturn, onReturn }: { line: PayoutRunLine; canReturn: boolean; onReturn: (line: PayoutRunLine) => void }) {
   return (
     <tr className="border-t border-divider">
-      <td className="py-2.5 px-4 font-bold text-ink">{line.teacher_name}</td>
-      <td className="py-2.5 px-4 font-mono text-ink-muted">{line.account_last_four ? `****${line.account_last_four}` : "-"}</td>
-      <td className="py-2.5 px-4 font-black text-success-hover font-serif">R{line.amount_zar}</td>
-      <td className="py-2.5 px-4 text-ink-muted">
+      <td data-primary="" className="py-2.5 px-4 font-bold text-ink">{line.teacher_name}</td>
+      <td data-label="Account" className="py-2.5 px-4 font-mono text-ink-muted">{line.account_last_four ? `****${line.account_last_four}` : "-"}</td>
+      <td data-label="Amount" className="py-2.5 px-4 font-black text-success-hover font-serif">R{line.amount_zar}</td>
+      <td data-label="Status" className="py-2.5 px-4 text-ink-muted">
         {line.status}
         {line.skip_reason ? `: ${SKIP_REASON[line.skip_reason] ?? line.skip_reason}` : ""}
       </td>
@@ -178,7 +178,7 @@ export function PayoutRuns({ onChanged }: { onChanged?: () => void }) {
             )}
 
             <div className="overflow-x-auto scroll-cue">
-              <table className="w-full min-w-[560px] text-xs">
+              <table className="stack-table w-full md:min-w-[560px] text-xs">
                 <thead>
                   <tr className="text-left text-ink-muted uppercase tracking-wider font-bold">
                     <th className="py-2 px-4">Tutor</th>

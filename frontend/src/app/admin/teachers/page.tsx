@@ -94,7 +94,7 @@ export default function AdminTeachersPage() {
           </p>
         )}
         <div className="overflow-x-auto scroll-cue">
-          <table className="w-full min-w-[700px] border-collapse text-xs">
+          <table className="stack-table w-full md:min-w-[700px] border-collapse text-xs">
             <thead>
               <tr className="bg-cream-surface border-b border-divider text-ink-muted uppercase font-bold tracking-wider text-left">
                 <th className="py-3.5 px-6">Tutor Name</th>
@@ -108,7 +108,7 @@ export default function AdminTeachersPage() {
             <tbody className="divide-y divide-divider bg-white">
               {filtered.map((tutor) => (
                 <tr key={tutor.id} className="hover:bg-cream-surface/40 transition-colors">
-                  <td className="py-4 px-6">
+                  <td data-primary="" className="py-4 px-6">
                     <div className="flex items-center gap-3">
                       <img
                         src={tutor.avatar ?? tutor.avatar_url}
@@ -122,9 +122,9 @@ export default function AdminTeachersPage() {
                     </div>
                   </td>
 
-                  <td className="py-4 px-4 font-semibold text-ink-muted">{tutor.accent}</td>
+                  <td data-label="Accent / Dialect" className="py-4 px-4 font-semibold text-ink-muted">{tutor.accent}</td>
 
-                  <td className="py-4 px-4">
+                  <td data-label="Rating" className="py-4 px-4">
                     <div className="flex items-center gap-1 font-bold text-ink">
                       <Star className="w-3.5 h-3.5 text-star fill-star" />
                       <span>{tutor.rating ?? tutor.rating_avg ?? "—"}</span>
@@ -132,11 +132,11 @@ export default function AdminTeachersPage() {
                     </div>
                   </td>
 
-                  <td className="py-4 px-4 font-extrabold text-cocoa font-serif text-sm">
+                  <td data-label="Price / 25m" className="py-4 px-4 font-extrabold text-cocoa font-serif text-sm">
                     <LessonPriceLabel /> <span className="text-xs text-ink-muted font-sans">platform price</span>
                   </td>
 
-                  <td className="py-4 px-4">
+                  <td data-label="Verification" className="py-4 px-4">
                     {tutor.is_verified === false ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-warning-surface text-warning-hover text-xs font-bold border border-warning-border">
                         Not Verified
@@ -148,7 +148,7 @@ export default function AdminTeachersPage() {
                     )}
                   </td>
 
-                  <td className="py-4 px-6 text-right">
+                  <td data-label="Actions" className="py-4 px-6 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Link
                         href={`/tutors/${tutor.slug || tutor.id}`}

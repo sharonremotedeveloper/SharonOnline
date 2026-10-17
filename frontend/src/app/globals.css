@@ -119,3 +119,53 @@ h1, h2, h3 {
   background-repeat: no-repeat;
   background-attachment: local, local, scroll, scroll;
 }
+
+/*
+ * Stacked tables (admin roster / ledger / payouts): below md each row becomes a card and each cell shows its column name
+ * from data-label, so phones read the data instead of scrolling a 700 px table sideways. One markup for both widths;
+ * from md up it is the plain table again. A cell marked data-primary (the row's name) spans the card without a label.
+ */
+@media (max-width: 767.98px) {
+  .stack-table,
+  .stack-table tbody {
+    display: block;
+    min-width: 0;
+  }
+  .stack-table thead {
+    display: none;
+  }
+  .stack-table tbody > tr {
+    display: block;
+    padding: 0.75rem 1rem;
+  }
+  .stack-table td {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.25rem 0.75rem;
+    padding: 0.375rem 0;
+    text-align: right;
+  }
+  .stack-table td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    margin-right: auto; /* label left, the cell's content right as one group */
+    text-align: left;
+    font-family: var(--font-dm-sans), "DM Sans", system-ui, sans-serif;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #6b5b53;
+  }
+  .stack-table td[data-primary] {
+    display: block;
+    padding-bottom: 0.5rem;
+    text-align: left;
+  }
+  .stack-table td[data-primary]::before,
+  .stack-table td:not([data-label])::before {
+    content: none;
+  }
+}

@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import {
-  ArrowLeft,
   CheckCircle2,
   Building2,
   ShieldCheck,
@@ -17,6 +15,7 @@ import { PayoutRuns } from "@/components/admin/PayoutRuns";
 import { ErrorState } from "@/components/ui/ErrorState";
 
 import { groupMoney, sumMoney } from "@/lib/moneyString";
+import { PageHeader } from "@/components/ui/PageHeader";
 export default function AdminPayoutsPage() {
   const [batch, setBatch] = useState<PayoutBatchItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,28 +72,14 @@ export default function AdminPayoutsPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/admin/dashboard"
-            className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-success-hover bg-success-surface px-2 py-0.5 rounded-md">
-                ACB / EFT ORCHESTRATOR
-              </span>
-              <span className="text-xs font-bold text-ink-muted">Preview of what is owed now</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-ink font-serif">
-              Bank Batch Payout Orchestrator
-            </h1>
-          </div>
-        </div>
-
-      </div>
+      <PageHeader
+        backHref="/admin/dashboard"
+        eyebrow={
+          <span className="text-xs font-mono font-bold text-success-hover bg-success-surface px-2 py-0.5 rounded-md">ACB / EFT ORCHESTRATOR</span>
+        }
+        secondary="Preview of what is owed now"
+        title="Bank Batch Payout Orchestrator"
+      />
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -138,7 +123,7 @@ export default function AdminPayoutsPage() {
           <p className="p-8 text-center text-sm text-ink-muted">No cleared balances are waiting for payout.</p>
         ) : (
         <div className="overflow-x-auto scroll-cue">
-          <table className="w-full min-w-[750px] border-collapse text-xs">
+          <table className="stack-table w-full md:min-w-[750px] border-collapse text-xs">
             <thead>
               <tr className="bg-cream-surface border-b border-divider text-ink-muted uppercase font-bold tracking-wider text-left">
                 <th className="py-3.5 px-6">Tutor Recipient</th>
@@ -153,15 +138,15 @@ export default function AdminPayoutsPage() {
             <tbody className="divide-y divide-divider bg-white">
               {batch.map((b) => (
                 <tr key={b.id} className="hover:bg-cream-surface/40 transition-colors">
-                  <td className="py-4 px-6 font-extrabold text-ink">{b.teacher_name}</td>
-                  <td className="py-4 px-4 font-semibold text-ink-muted">{b.bank_name}</td>
-                  <td className="py-4 px-4 font-mono font-bold text-cocoa">{b.branch_code}</td>
-                  <td className="py-4 px-4 font-mono text-ink-muted">{b.account_number_masked}</td>
-                  <td className="py-4 px-4 font-bold text-ink">{b.cleared_lessons_count} Lessons</td>
-                  <td className="py-4 px-4 font-black text-success-hover font-serif text-sm">
+                  <td data-primary="" className="py-4 px-6 font-extrabold text-ink">{b.teacher_name}</td>
+                  <td data-label="Bank Institution" className="py-4 px-4 font-semibold text-ink-muted">{b.bank_name}</td>
+                  <td data-label="Branch Code" className="py-4 px-4 font-mono font-bold text-cocoa">{b.branch_code}</td>
+                  <td data-label="Masked Account" className="py-4 px-4 font-mono text-ink-muted">{b.account_number_masked}</td>
+                  <td data-label="Cleared Classes" className="py-4 px-4 font-bold text-ink">{b.cleared_lessons_count} Lessons</td>
+                  <td data-label="Payout Total" className="py-4 px-4 font-black text-success-hover font-serif text-sm">
                     R{b.payout_amount_zar}
                   </td>
-                  <td className="py-4 px-6">
+                  <td data-label="Status" className="py-4 px-6">
                     {b.status === "processed" ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-success-surface text-success-hover text-xs font-bold border border-success-border">
                         <CheckCircle2 className="w-3 h-3 text-success" /> Settled

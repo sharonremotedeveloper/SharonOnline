@@ -1,10 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import {
   Radio,
-  ArrowLeft,
   Clock,
   Video,
   User,
@@ -18,6 +16,7 @@ import {
 import { api } from "@/lib/api";
 import { LiveSessionRadarItem } from "@/types/admin";
 import { ErrorState, InlineError } from "@/components/ui/ErrorState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { formatRadarTelemetry } from "@/lib/repairHelpers";
 
 export default function AdminLiveSessionsPage() {
@@ -74,40 +73,30 @@ export default function AdminLiveSessionsPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/admin/dashboard"
-            className="min-w-11 justify-center min-h-11 inline-flex items-center p-2.5 rounded-xl bg-white border border-divider text-ink-muted hover:text-ink hover:bg-cream-surface transition-colors shadow-xs"
+      <PageHeader
+        backHref="/admin/dashboard"
+        eyebrow={
+          <>
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-error"></span>
+            </span>
+            <span className="text-xs font-mono font-bold text-error uppercase tracking-wider">LIVE CLASSROOM RADAR</span>
+            <span className="text-xs font-bold text-ink-muted">· {sessions.length} Active Classes</span>
+          </>
+        }
+        title={<>Real-Time Attendance &amp; Dwell Telemetry</>}
+        actions={
+          <button
+            type="button"
+            onClick={fetchSessions}
+            className="min-h-11 px-4 py-2 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-2 transition-all"
           >
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-error"></span>
-              </span>
-              <span className="text-xs font-mono font-bold text-error uppercase tracking-wider">
-                LIVE CLASSROOM RADAR
-              </span>
-              <span className="text-xs font-bold text-ink-muted">· {sessions.length} Active Classes</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-ink font-serif">
-              Real-Time Attendance &amp; Dwell Telemetry
-            </h1>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={fetchSessions}
-          className="min-h-11 px-4 py-2 bg-white hover:bg-cream-surface text-ink text-xs font-bold rounded-xl border border-divider shadow-xs flex items-center gap-2 transition-all self-start sm:self-auto"
-        >
-          <RefreshCw className="w-3.5 h-3.5 text-cocoa" />
-          <span>{lastRefreshed ? `Updated ${lastRefreshed.toLocaleTimeString()}` : "Refresh"}</span>
-        </button>
-      </div>
+            <RefreshCw className="w-3.5 h-3.5 text-cocoa" />
+            <span>{lastRefreshed ? `Updated ${lastRefreshed.toLocaleTimeString()}` : "Refresh"}</span>
+          </button>
+        }
+      />
 
       {error != null && (
         <InlineError error={`Live updates failed, so the cards below may be out of date. ${typeof error === "object" && error && "message" in error ? String((error as Error).message) : ""}`} />
