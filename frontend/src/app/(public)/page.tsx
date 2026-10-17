@@ -108,7 +108,7 @@ export default async function HomePage() {
               <p className="text-base text-ink-muted">No tutors are available to book yet. Please check back later.</p>
             </div>
           ) : (
-            <div className="mx-auto grid max-w-2xl grid-cols-1 gap-4 xl:max-w-none xl:grid-cols-3 xl:gap-5">
+            <div className="mx-auto grid max-w-2xl grid-cols-1 gap-4 lg:max-w-none lg:grid-cols-2 lg:gap-6">
               {featuredTutors.map((tutor) => (
                 <FeaturedTutorCard key={tutor.id} tutor={tutor} />
               ))}
