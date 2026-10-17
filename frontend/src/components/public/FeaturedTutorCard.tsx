@@ -15,19 +15,19 @@ export function FeaturedTutorCard({ tutor }: { tutor: FeaturedTeacher }) {
   const hasReviews = tutor.review_count > 0 && tutor.rating > 0;
 
   return (
-    <article className="flex gap-4 rounded-3xl border border-divider bg-white p-4 shadow-card transition-shadow hover:shadow-card-hover">
+    <article className="flex gap-5 rounded-3xl border border-divider bg-white p-5 shadow-card transition-shadow hover:shadow-card-hover">
       <Link href={href} tabIndex={-1} aria-label={`View ${tutor.name}'s profile`} className="shrink-0 self-start">
         <TutorPortrait
           src={tutor.avatar}
           name={tutor.name}
-          className="aspect-square w-24 rounded-2xl sm:w-28"
+          className="aspect-square w-28 rounded-2xl sm:w-32"
           sizes="112px"
         />
       </Link>
 
       <div className="flex min-w-0 flex-1 flex-col gap-2">
         <div>
-          <h3 className="font-serif text-lg font-bold leading-tight text-ink">
+          <h3 className="font-serif text-xl font-bold leading-tight text-ink">
             <Link href={href} className="inline-flex min-h-11 items-center hover:text-primary">
               {tutor.name}
             </Link>
