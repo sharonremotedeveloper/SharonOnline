@@ -7,7 +7,7 @@ from django.db.models import Q
 
 from apps.bookings.models import Booking
 from apps.bookings.services.holds import live_hold_q
-from apps.bookings.services.lock_service import is_slot_locked
+from apps.bookings.services.lock_service import locked_slots
 from apps.bookings.services.notice import min_notice
 from apps.common import clock
 from apps.common.timezones import get_zone
@@ -109,7 +109,7 @@ def generate_teacher_slots(
                                   boundary_utc(start_date + timedelta(days=days_ahead + 1), time.min, teacher_tz), now_utc)
     earliest = now_utc + min_notice()           # a slot must start MORE than the notice from now
 
-    slots, seen = [], set()
+    candidates, seen = [], set()
     for day_offset in range(days_ahead):
         day = start_date + timedelta(days=day_offset)
         for window_start, window_end in plan.raw_windows(day):
@@ -120,20 +120,28 @@ def generate_teacher_slots(
                 seen.add(iso)  # overlapping availability rows must not list one slot twice
                 if _overlaps(booked, start_utc, end_utc):
                     state = 'booked'
-                elif _overlaps(held, start_utc, end_utc) or is_slot_locked(str(teacher.id), iso):
+                elif _overlaps(held, start_utc, end_utc):
                     state = 'reserved'
                 else:
-                    state = 'available'
-                viewer_start, viewer_end = start_utc.astimezone(viewer_tz), end_utc.astimezone(viewer_tz)
-                slots.append({
-                    "start_time_utc": iso,
-                    "end_time_utc": end_utc.isoformat(),
-                    "local_date": viewer_start.strftime("%Y-%m-%d"),
-                    "local_start_time": viewer_start.strftime("%H:%M"),
-                    "local_end_time": viewer_end.strftime("%H:%M"),
-                    "viewer_timezone": getattr(viewer_tz, 'key', 'UTC'),
-                    "status": state,
-                    "is_bookable": state == 'available',
-                })
+                    state = None  # decided by the Redis hold below
+                candidates.append((start_utc, end_utc, iso, state))
+
+    # One MGET for every still-open candidate instead of one GET per slot.
+    locked = locked_slots(str(teacher.id), [iso for _, _, iso, state in candidates if state is None])
+    slots = []
+    for start_utc, end_utc, iso, state in candidates:
+        if state is None:
+            state = 'reserved' if iso in locked else 'available'
+        viewer_start, viewer_end = start_utc.astimezone(viewer_tz), end_utc.astimezone(viewer_tz)
+        slots.append({
+            "start_time_utc": iso,
+            "end_time_utc": end_utc.isoformat(),
+            "local_date": viewer_start.strftime("%Y-%m-%d"),
+            "local_start_time": viewer_start.strftime("%H:%M"),
+            "local_end_time": viewer_end.strftime("%H:%M"),
+            "viewer_timezone": getattr(viewer_tz, 'key', 'UTC'),
+            "status": state,
+            "is_bookable": state == 'available',
+        })
     slots.sort(key=lambda s: s["start_time_utc"])
     return slots

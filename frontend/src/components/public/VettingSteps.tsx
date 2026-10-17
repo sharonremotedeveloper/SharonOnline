@@ -10,16 +10,16 @@ const STEPS = [
 
 export function VettingSteps() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <SectionHeading
         eyebrow="Safe and trusted"
         title="How we choose our tutors"
         description="Not everyone who applies can teach on Sharon Online. Here is what every tutor goes through."
       />
-      <ol className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <ol className="grid gap-3 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
         {STEPS.map(({ icon: Icon, title, text }, i) => (
-          <li key={title} className="flex gap-4 rounded-3xl border-2 border-cocoa/10 bg-white p-5 lg:block">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sun text-cocoa">
+          <li key={title} className="flex gap-4 rounded-3xl border-2 border-cocoa/10 bg-white p-4 sm:p-5 lg:block">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sun text-cocoa sm:h-12 sm:w-12">
               <Icon className="h-6 w-6" aria-hidden="true" />
             </span>
             <div className="lg:mt-4">

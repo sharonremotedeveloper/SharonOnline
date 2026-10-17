@@ -54,7 +54,8 @@ export default async function HomePage() {
       <HeroSection tutors={featuredTutors ?? []} />
 
       {/* Facts about the lesson, in a yellow bar like the best tutoring sites. No self-awarded numbers. */}
-      <section aria-label="Lesson basics" className="focus-cocoa bg-sun">
+      {/* Phones: hidden, the hero already lists these facts (the home page was ~19 screens long). */}
+      <section aria-label="Lesson basics" className="focus-cocoa hidden bg-sun sm:block">
         <ul className="mx-auto grid max-w-7xl grid-cols-1 gap-x-4 gap-y-3 px-4 py-5 sm:grid-cols-2 sm:px-6 md:grid-cols-4 lg:px-8">
           <li className="flex items-center gap-3 text-ink">
             <Clock className="h-6 w-6 shrink-0" aria-hidden="true" />
@@ -79,7 +80,7 @@ export default async function HomePage() {
 
       {/* Tutors */}
       <section aria-labelledby="tutors-heading" className="mt-20 bg-sky-soft px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[76rem] space-y-10">
+        <div className="mx-auto max-w-[76rem] space-y-6 sm:space-y-10">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row sm:items-end">
             <SectionHeading
               id="tutors-heading"
@@ -118,18 +119,18 @@ export default async function HomePage() {
       </section>
 
       {/* How it works */}
-      <section aria-labelledby="how-heading" className="mx-auto mt-20 max-w-7xl space-y-10 px-4 sm:px-6 lg:px-8">
+      <section aria-labelledby="how-heading" className="mx-auto mt-12 sm:mt-20 max-w-7xl space-y-6 sm:space-y-10 px-4 sm:px-6 lg:px-8">
         <SectionHeading id="how-heading" eyebrow="Simple steps" title="How Sharon Online works" />
         <HowItWorksSteps />
       </section>
 
       {/* Why South Africa */}
-      <section className="mx-auto mt-20 max-w-7xl space-y-8 px-4 sm:px-6 lg:px-8">
+      <section className="mx-auto mt-12 sm:mt-20 max-w-7xl space-y-8 px-4 sm:px-6 lg:px-8">
         <WhySouthAfrica />
       </section>
 
       {/* Goals */}
-      <section aria-labelledby="goals-heading" className="mx-auto mt-20 max-w-7xl space-y-10 px-4 sm:px-6 lg:px-8">
+      <section aria-labelledby="goals-heading" className="mx-auto mt-12 sm:mt-20 max-w-7xl space-y-6 sm:space-y-10 px-4 sm:px-6 lg:px-8">
         <SectionHeading
           id="goals-heading"
           eyebrow="Your goal"
@@ -147,7 +148,8 @@ export default async function HomePage() {
       </section>
 
       {/* Statement band */}
-      <section className="focus-cocoa mt-20 bg-sun px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8">
+      {/* Phones: hidden; the closing call to action says the same thing. */}
+      <section className="focus-cocoa mt-12 hidden bg-sun px-4 py-16 text-center sm:mt-20 sm:block sm:px-6 sm:py-20 lg:px-8">
         <div className="mx-auto max-w-3xl">
           <h2 className="font-serif text-4xl font-extrabold leading-tight tracking-tight text-ink sm:text-5xl lg:text-6xl">
             Make mistakes. Learn faster.
@@ -165,31 +167,42 @@ export default async function HomePage() {
       </section>
 
       {/* Pricing */}
-      <section aria-labelledby="pricing-heading" className="mx-auto mt-20 max-w-7xl space-y-10 px-4 sm:px-6 lg:px-8">
+      <section aria-labelledby="pricing-heading" className="mx-auto mt-12 sm:mt-20 max-w-7xl space-y-6 sm:space-y-10 px-4 sm:px-6 lg:px-8">
         <SectionHeading
           id="pricing-heading"
           eyebrow="Pricing"
           title="Simple prices. No subscription."
           description={PAYMENTS_ENABLED ? "Buy one lesson or a pack. Bigger packs cost less per lesson." : "You can browse lesson prices, but new purchases are temporarily unavailable."}
         />
-        <PricingTable />
+        {/* Phones: one teaser card instead of every pack (the full table lives on /pricing). */}
+        <div className="rounded-3xl border border-divider bg-white p-6 text-center shadow-card sm:hidden">
+          <p className="text-base text-ink-muted">Lessons from</p>
+          <p className="mt-1 font-serif text-4xl font-bold text-ink"><LessonPriceLabel /></p>
+          <p className="mt-1 text-sm text-ink-muted">per 25-minute lesson. Packs cost less per lesson.</p>
+          <Link href="/pricing" className="mt-5 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-cocoa px-6 text-base font-bold text-white">
+            See all prices <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </div>
+        <div className="hidden sm:block">
+          <PricingTable />
+        </div>
       </section>
 
       {/* Levels */}
       <section aria-labelledby="levels-heading" className="mt-20 bg-peach-soft px-4 py-16 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[76rem] space-y-10">
+        <div className="mx-auto max-w-[76rem] space-y-6 sm:space-y-10">
           <SectionHeading
             id="levels-heading"
             eyebrow="All levels"
             title="From first words to fluent speech"
             description="Our lessons follow CEFR, the standard scale for language levels."
           />
-          <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          <ul className="grid grid-cols-3 gap-2 sm:gap-4 lg:grid-cols-6">
             {CEFR_LEVELS.map((c) => (
-              <li key={c.level} className="rounded-2xl border border-divider bg-white p-4 text-center shadow-card">
-                <div className="font-serif text-3xl font-bold text-cocoa">{c.level}</div>
-                <div className="mt-1 text-base font-bold text-ink">{c.name}</div>
-                <div className="mt-1 text-sm leading-snug text-ink-muted">{c.desc}</div>
+              <li key={c.level} className="rounded-2xl border border-divider bg-white p-3 text-center shadow-card sm:p-4">
+                <div className="font-serif text-2xl font-bold text-cocoa sm:text-3xl">{c.level}</div>
+                <div className="mt-1 text-sm font-bold leading-tight text-ink sm:text-base">{c.name}</div>
+                <div className="mt-1 hidden text-sm leading-snug text-ink-muted sm:block">{c.desc}</div>
               </li>
             ))}
           </ul>
@@ -205,12 +218,12 @@ export default async function HomePage() {
       </section>
 
       {/* FAQ */}
-      <section aria-labelledby="faq-heading" className="mx-auto mt-20 max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section aria-labelledby="faq-heading" className="mx-auto mt-12 sm:mt-20 max-w-7xl px-4 sm:px-6 lg:px-8">
         <FaqSection />
       </section>
 
       {/* Closing call to action */}
-      <section className="mx-auto mt-20 max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section className="mx-auto mt-12 sm:mt-20 max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="focus-cocoa rounded-[2rem] bg-sun px-6 py-14 text-center shadow-card sm:px-12 sm:py-16">
           <h2 className="font-serif text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">Ready to start speaking?</h2>
           <p className="mx-auto mt-3 max-w-xl text-lg font-medium text-ink/80">

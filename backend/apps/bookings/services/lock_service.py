@@ -49,6 +49,16 @@ def is_slot_locked(teacher_id: str, slot_timestamp_utc: str) -> bool:
     return cache.get(key) is not None
 
 
+def locked_slots(teacher_id: str, slot_timestamps_utc) -> set:
+    """The subset of `slot_timestamps_utc` that hold a live lock, in ONE cache round trip (MGET). Listing a tutor's
+    availability used to do one GET per slot (~100 Upstash round trips, ~3 s per request)."""
+    keys = {build_slot_lock_key(teacher_id, ts): ts for ts in slot_timestamps_utc}
+    if not keys:
+        return set()
+    found = cache.get_many(list(keys))
+    return {keys[k] for k, v in found.items() if v is not None}
+
+
 def extend_slot_lock(teacher_id: str, slot_timestamp_utc: str, student_id: str, seconds: int, token: str = None) -> bool:
     """
     Make sure `student_id` holds the slot lock for at least `seconds` more (used when a payment starts, Task 9.4).

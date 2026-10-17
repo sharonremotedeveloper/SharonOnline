@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, BookOpen, Clock, ArrowRight, Download, Sparkles, X, MessageSquare } from "lucide-react";
+import { Search, BookOpen, Clock, ArrowRight, Download, Sparkles, X, MessageSquare, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { MaterialDetail } from "@/types/material";
@@ -19,6 +19,8 @@ export default function MaterialsPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [cefr, setCefr] = useState("All Levels");
+  // Phones: category and level fold behind one button (they pushed the catalog ~1.5 screens down). md+: always open.
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,7 +81,7 @@ export default function MaterialsPage() {
         </div>
 
         {/* Filter Controls Bar */}
-        <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-card border border-divider space-y-6">
+        <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-card border border-divider space-y-6">
           {/* Search + Clear bar */}
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="relative flex-1 w-full">
@@ -88,7 +90,7 @@ export default function MaterialsPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search lessons by topic, title, or keywords (e.g. remote work, interview, negotiation)..."
+                placeholder="Search lessons by topic or title"
                 aria-label="Search lessons by topic, title, or keywords (e.g. remote work, interview, negotiation)..."
                 className="min-h-11 w-full pl-11 pr-10 py-3 bg-cream-surface rounded-2xl border border-strong text-base sm:text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-cocoa/30 focus:border-cocoa transition-all"
               />
@@ -112,6 +114,24 @@ export default function MaterialsPage() {
             )}
           </div>
 
+          <button
+            type="button"
+            aria-expanded={filtersOpen}
+            aria-controls="materials-filter-panel"
+            onClick={() => setFiltersOpen((open) => !open)}
+            className="flex min-h-[48px] w-full items-center justify-between rounded-2xl border border-divider bg-cream-surface px-4 text-base font-bold text-ink md:hidden"
+          >
+            <span className="flex items-center gap-2">
+              <SlidersHorizontal className="h-5 w-5" aria-hidden="true" />
+              Filters
+              {(Number(category !== "") + Number(cefr !== "All Levels")) > 0 && (
+                <span className="rounded-full bg-cocoa px-2 py-0.5 text-xs font-bold text-white">{Number(category !== "") + Number(cefr !== "All Levels")}</span>
+              )}
+            </span>
+            <ChevronDown className={`h-5 w-5 transition-transform ${filtersOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+          </button>
+
+          <div id="materials-filter-panel" className={`space-y-6 ${filtersOpen ? "" : "hidden"} md:block`}>
           {/* Category Tabs */}
           <div className="space-y-2">
             <span className="text-sm font-bold text-ink-muted uppercase tracking-wider block">Category</span>
@@ -139,6 +159,7 @@ export default function MaterialsPage() {
                 );
               })}
             </div>
+          </div>
           </div>
         </div>
 

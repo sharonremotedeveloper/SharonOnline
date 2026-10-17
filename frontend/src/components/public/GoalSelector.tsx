@@ -79,7 +79,7 @@ export function GoalSelector() {
       <div
         role="tablist"
         aria-label="Choose your learning goal"
-        className="grid grid-cols-2 gap-2 pb-4 sm:grid-cols-3 lg:grid-cols-5"
+        className="-mx-3 flex snap-x gap-2 overflow-x-auto px-3 pb-4 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-5"
       >
         {GOALS.map((goal) => {
           const GoalIcon = goal.icon;
@@ -106,7 +106,7 @@ export function GoalSelector() {
                   document.getElementById(`goal-tab-${next.id}`)?.focus();
                 }
               }}
-              className={`flex min-h-[56px] items-center justify-center gap-2 rounded-full px-3 py-2 text-center text-base font-bold transition-colors ${
+              className={`flex min-h-[52px] shrink-0 snap-start items-center justify-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-center text-base font-bold transition-colors sm:min-h-[56px] sm:shrink sm:whitespace-normal sm:px-3 ${
                 isActive ? "bg-cocoa text-white shadow-sm" : "bg-white/90 text-ink hover:bg-white"
               } ${goal.id === "travel" ? "col-span-2 sm:col-span-1" : ""}`}
             >
@@ -122,7 +122,7 @@ export function GoalSelector() {
         role="tabpanel"
         id="goal-panel"
         aria-labelledby={`goal-tab-${activeGoal.id}`}
-        className="grid items-center gap-8 rounded-3xl bg-white p-6 sm:p-8 lg:grid-cols-[1fr_auto]"
+        className="grid items-center gap-6 rounded-3xl bg-white p-5 sm:gap-8 sm:p-8 lg:grid-cols-[1fr_auto]"
       >
         <div className="space-y-4">
           <div className="flex items-center gap-3">
@@ -135,7 +135,7 @@ export function GoalSelector() {
             </div>
           </div>
           <p className="max-w-2xl text-base leading-relaxed text-ink-muted">{activeGoal.description}</p>
-          <ul className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
+          <ul className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-4">
             {activeGoal.topics.map((topic) => (
               <li key={topic} className="flex items-center gap-2 text-base font-medium text-ink">
                 <Check className="h-4 w-4 shrink-0 text-success" aria-hidden={true} />
@@ -147,7 +147,7 @@ export function GoalSelector() {
 
         <Link
           href={`/tutors?specialty=${encodeURIComponent(activeGoal.label)}`}
-          className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full bg-cocoa px-7 text-base font-bold text-white shadow-sm transition-colors hover:bg-cocoa-hover"
+          className="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-cocoa px-7 text-base font-bold text-white shadow-sm transition-colors hover:bg-cocoa-hover sm:w-auto"
         >
           Find tutors for this goal <ArrowRight className="h-5 w-5" aria-hidden={true} />
         </Link>

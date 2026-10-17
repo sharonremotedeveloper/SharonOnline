@@ -24,20 +24,20 @@ const REASONS = [
 
 export function WhySouthAfrica() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <SectionHeading
         eyebrow="Why Sharon Online"
         title="Why learn with South African tutors?"
         description="English is spoken here every day, and the time difference suits learners in Asia and Europe."
       />
-      <ul className="grid gap-5 md:grid-cols-3">
+      <ul className="grid gap-3 sm:gap-5 md:grid-cols-3">
         {REASONS.map(({ icon: Icon, title, text, tone }) => (
-          <li key={title} className={`rounded-3xl p-6 ${tone}`}>
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-cocoa text-sun">
+          <li key={title} className={`flex gap-4 rounded-3xl p-4 sm:block sm:p-6 ${tone}`}>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-cocoa text-sun sm:h-12 sm:w-12">
               <Icon className="h-6 w-6" aria-hidden="true" />
             </span>
-            <h3 className="mt-4 font-serif text-xl font-bold text-ink">{title}</h3>
-            <p className="mt-2 text-base leading-relaxed text-ink/80">{text}</p>
+            <div className="sm:mt-4"><h3 className="font-serif text-xl font-bold text-ink">{title}</h3>
+            <p className="mt-2 text-base leading-relaxed text-ink/80">{text}</p></div>
           </li>
         ))}
       </ul>
