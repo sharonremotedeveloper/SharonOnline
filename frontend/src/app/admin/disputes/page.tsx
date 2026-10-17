@@ -66,7 +66,7 @@ export default function AdminDisputesPage() {
     try {
       await api.resolveDispute(caseId, action);
       setSuccessNote(
-        `Dispute ${caseId} resolved with action [${action}]. Escrow ledger updated atomically.`
+        `Dispute ${caseId} resolved with action [${action}]. The ledger has been updated.`
       );
       setDisputes((prev) =>
         prev.map((d) => (d.id === caseId ? { ...d, status: "resolved", resolution: action } : d))
@@ -245,7 +245,7 @@ export default function AdminDisputesPage() {
               {!isResolved && (
                 <div className="pt-4 border-t border-divider flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="text-xs text-ink-muted">
-                    Executing an adjudication decision atomically credits/debits the double-entry escrow ledger.
+                    Choosing an outcome moves the held money and records it in the ledger. This cannot be undone.
                   </div>
 
                   {pendingConfirm?.caseId === c.id ? (

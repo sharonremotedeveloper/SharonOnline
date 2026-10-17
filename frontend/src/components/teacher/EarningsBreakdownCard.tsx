@@ -1,6 +1,7 @@
 "use client";
 
 import { DollarSign, ShieldCheck, TrendingUp, Info, Calendar } from "lucide-react";
+import { formatRand } from "@/lib/currency";
 import { TeacherWalletData } from "@/types/teacher";
 
 interface EarningsBreakdownCardProps {
@@ -22,7 +23,7 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
             </span>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-success-hover font-serif">
-            R{wallet.cleared_balance_zar.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}
+            {formatRand(wallet.cleared_balance_zar)}
           </div>
           <p className="text-sm text-ink-muted">Money from completed lessons that is ready to be paid out.</p>
         </div>
@@ -32,31 +33,31 @@ export function EarningsBreakdownCard({ wallet, className = "" }: EarningsBreakd
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
             <span>Held for 24 hours</span>
             <span className="text-warning-hover bg-warning-surface px-2 py-0.5 rounded-full text-xs">
-              Holding Buffer
+              Not yet payable
             </span>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-ink font-serif">
-            R{wallet.pending_escrow_zar.toFixed(2)}{" "}
-            <span className="text-xs font-normal text-ink-muted">ZAR value</span>
+            {formatRand(wallet.pending_escrow_zar)}{" "}
+            <span className="text-xs font-normal text-ink-muted">in rand</span>
           </div>
           <p className="text-sm text-ink-muted">
-            Captured funding valued at each lesson&apos;s stored FX snapshot.
+            Money from lessons that finished in the last 24 hours. It becomes payable once the review window closes.
           </p>
         </div>
 
         {/* Card 3: Payout FX Rate */}
         <div className="bg-white rounded-3xl p-6 border border-divider shadow-card space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-ink-muted">
-            <span>Capture FX Context</span>
+            <span>Paid lessons</span>
             <span className="text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-full text-xs font-bold">
-              Immutable snapshots
+              Exchange rate used
             </span>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-cocoa font-serif">
             {wallet.fx_context.length}
           </div>
           <p className="text-sm text-ink-muted">
-            {wallet.fx_context.length ? wallet.fx_context.map((fx) => `${fx.currency} @ ${fx.fx_rate_to_zar}`).join(" · ") : "No funded lessons yet"}
+            {wallet.fx_context.length ? wallet.fx_context.map((fx) => `${fx.currency} at R${fx.fx_rate_to_zar}`).join(" · ") : "No paid lessons yet"}
           </p>
         </div>
       </div>

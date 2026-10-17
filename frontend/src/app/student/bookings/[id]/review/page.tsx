@@ -47,17 +47,23 @@ export default function BookingReviewPage() {
   const [loadError, setLoadError] = useState<unknown>(null);
   const [submitError, setSubmitError] = useState<unknown>(null);
   const [reloadTick, setReloadTick] = useState(0);
+  const [notReviewable, setNotReviewable] = useState(false);
 
   useEffect(() => {
     async function loadLesson() {
       setIsLoading(true);
       setLoadError(null);
+      setNotReviewable(false);
       try {
         const lessons = await studentApi.getStudentLessons();
         const found = lessons.find((l) => l.id === bookingId);
         if (!found) {
           setLesson(null);
           setLoadError("We could not find this lesson in your history.");
+        } else if (found.status !== "completed") {
+          // Only a completed lesson can be reviewed (a disputed test lesson offered the review form).
+          setLesson(null);
+          setNotReviewable(true);
         } else {
           setLesson(found);
         }
@@ -101,6 +107,21 @@ export default function BookingReviewPage() {
       <div className="max-w-2xl mx-auto py-20 text-center space-y-3">
         <div className="w-8 h-8 border-2 border-cocoa-600 border-t-transparent rounded-full animate-spin mx-auto" />
         <p className="text-sm text-ink-500">Loading lesson details...</p>
+      </div>
+    );
+  }
+
+  if (notReviewable) {
+    // Not an error: nothing to retry, the lesson just has not finished (or ended disputed/cancelled).
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16">
+        <div className="rounded-3xl border border-divider bg-white p-6 text-center space-y-3 sm:p-8">
+          <h1 className="text-xl font-bold text-ink-900">This lesson can&apos;t be reviewed</h1>
+          <p className="text-sm text-ink-500">You can review a lesson once it has been completed.</p>
+          <Link href="/student/history" className="inline-block text-sm font-semibold text-cocoa-700 hover:underline">
+            Back to Lesson History
+          </Link>
+        </div>
       </div>
     );
   }
@@ -267,17 +288,18 @@ export default function BookingReviewPage() {
             <InlineError id="review-error" error={submitError} />
 
             {/* Actions */}
-            <div className="flex items-center justify-end gap-3 pt-2">
+            {/* Phones: full-width submit with "Skip" under it ("Skip for now" was squeezed to 3 lines). */}
+            <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
               <Link
                 href="/student/history"
-                className="min-h-11 inline-flex items-center px-5 py-2.5 text-sm font-semibold text-ink-600 hover:text-ink-900 rounded-xl"
+                className="min-h-11 inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold text-ink-600 hover:text-ink-900 rounded-xl"
               >
                 Skip for now
               </Link>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="min-h-11 inline-flex items-center gap-2 px-7 py-3 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
+                className="min-h-11 inline-flex items-center justify-center gap-2 px-7 py-3 bg-cocoa-600 hover:bg-cocoa-700 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors shadow-sm"
               >
                 {isSubmitting ? (
                   <>Submitting...</>

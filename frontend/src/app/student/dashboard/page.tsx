@@ -84,29 +84,29 @@ export default function StudentDashboardPage() {
         </div>
       </div>
 
-      {/* Navigation Sub-bar */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-cream-200 pb-3">
+      {/* Navigation Sub-bar: one swipeable row on phones (it wrapped into a vertical list); wraps from sm. */}
+      <div className="-mx-4 flex flex-nowrap items-center gap-2 overflow-x-auto border-b border-cream-200 px-4 pb-3 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
         <Link
           href="/student/dashboard"
-          className="min-h-11 inline-flex items-center px-3.5 py-1.5 bg-cocoa-50 text-cocoa-800 font-bold rounded-xl text-sm border border-cocoa-200"
+          className="shrink-0 whitespace-nowrap min-h-11 inline-flex items-center px-3.5 py-1.5 bg-cocoa-50 text-cocoa-800 font-bold rounded-xl text-sm border border-cocoa-200"
         >
           Overview
         </Link>
         <Link
           href="/student/history"
-          className="min-h-11 px-3.5 py-1.5 text-ink-600 hover:text-ink-900 hover:bg-cream-100 font-medium rounded-xl text-sm transition-colors flex items-center gap-1.5"
+          className="shrink-0 whitespace-nowrap min-h-11 px-3.5 py-1.5 text-ink-600 hover:text-ink-900 hover:bg-cream-100 font-medium rounded-xl text-sm transition-colors flex items-center gap-1.5"
         >
           <History className="w-3.5 h-3.5" /> Lesson History & Memos
         </Link>
         <Link
           href="/student/vocabulary"
-          className="min-h-11 px-3.5 py-1.5 text-ink-600 hover:text-ink-900 hover:bg-cream-100 font-medium rounded-xl text-sm transition-colors flex items-center gap-1.5"
+          className="shrink-0 whitespace-nowrap min-h-11 px-3.5 py-1.5 text-ink-600 hover:text-ink-900 hover:bg-cream-100 font-medium rounded-xl text-sm transition-colors flex items-center gap-1.5"
         >
           <Layers className="w-3.5 h-3.5 text-warning" /> Flashcard Deck{cardsQ.data ? ` (${flashcards.length})` : ""}
         </Link>
         <Link
           href="/student/profile"
-          className="min-h-11 px-3.5 py-1.5 text-ink-600 hover:text-ink-900 hover:bg-cream-100 font-medium rounded-xl text-sm transition-colors flex items-center gap-1.5"
+          className="shrink-0 whitespace-nowrap min-h-11 px-3.5 py-1.5 text-ink-600 hover:text-ink-900 hover:bg-cream-100 font-medium rounded-xl text-sm transition-colors flex items-center gap-1.5"
         >
           <User className="w-3.5 h-3.5" /> Learning Profile & Timezone
         </Link>
@@ -184,7 +184,7 @@ export default function StudentDashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Flashcard Quick Widget */}
         <div className="md:col-span-2 bg-white rounded-3xl border border-cream-200 p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-warning-surface border border-warning-border text-warning-hover flex items-center justify-center">
                 <Layers className="w-4 h-4" />
@@ -196,7 +196,7 @@ export default function StudentDashboardPage() {
             </div>
             <Link
               href="/student/vocabulary"
-              className="min-h-11 text-sm font-semibold text-cocoa-700 hover:text-cocoa-900 flex items-center gap-1"
+              className="min-h-11 shrink-0 whitespace-nowrap text-sm font-semibold text-cocoa-700 hover:text-cocoa-900 flex items-center gap-1"
             >
               Open Full Study Deck <ChevronRight className="w-3.5 h-3.5" />
             </Link>
@@ -287,14 +287,14 @@ export default function StudentDashboardPage() {
 
       {/* Completed Lessons & Memos Section */}
       <div className="bg-white rounded-3xl border border-cream-200 p-6 sm:p-8 shadow-sm space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-lg font-bold text-ink-900">Recent Completed Lessons</h3>
             <p className="text-sm text-ink-500">Access tutor feedback notes, vocabulary lists, and leave lesson ratings</p>
           </div>
           <Link
             href="/student/history"
-            className="min-h-11 text-sm font-semibold text-cocoa-700 hover:text-cocoa-900 flex items-center gap-1"
+            className="min-h-11 shrink-0 whitespace-nowrap text-sm font-semibold text-cocoa-700 hover:text-cocoa-900 flex items-center gap-1"
           >
             Full Lesson Archive{lessonsQ.data ? ` (${completedLessons.length})` : ""} <ChevronRight className="w-3.5 h-3.5" />
           </Link>

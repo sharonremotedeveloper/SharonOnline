@@ -50,3 +50,8 @@ export function detectDefaultCurrency(): CurrencyCode {
   }
   return "USD";
 }
+
+/** Rand amounts for tutor screens: "R1,234.50" everywhere (en-ZA gave "R0,00" next to "R0.00" on one page). */
+export function formatRand(amount: number): string {
+  return "R" + (Number.isFinite(amount) ? amount : 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard,
@@ -30,6 +30,7 @@ const NAV_ITEMS = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   return (
     <div className="min-h-screen bg-cream flex flex-col md:flex-row">
@@ -58,8 +59,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
 
+          {/* Phones: one section picker (the sideways strip of 8 long labels hid most sections, e.g. "Tutor Vett..."). */}
+          <label className="block md:hidden">
+            <span className="sr-only">Admin section</span>
+            <select
+              value={NAV_ITEMS.find((item) => pathname === item.href || (item.href !== "/admin/dashboard" && pathname.startsWith(item.href)))?.href ?? ""}
+              onChange={(e) => router.push(e.target.value)}
+              className="min-h-12 w-full rounded-xl border border-white/20 bg-white/10 px-4 text-base font-bold text-white focus:outline-none focus:ring-2 focus:ring-sun"
+            >
+              {NAV_ITEMS.map((item) => (
+                <option key={item.href} value={item.href} className="text-ink">
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
           {/* Navigation Links */}
-          <nav aria-label="Admin" className="flex gap-2 overflow-x-auto pb-1 md:block md:space-y-1.5 md:overflow-visible md:pb-0">
+          <nav aria-label="Admin" className="hidden md:block md:space-y-1.5">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href || (item.href !== "/admin/dashboard" && pathname.startsWith(item.href));

@@ -20,8 +20,8 @@ export function ClassroomSplitLayout({
 
   return (
     <div className="space-y-4">
-      {/* Layout Control Bar */}
-      <div className="flex items-center justify-between bg-white px-5 py-2.5 rounded-2xl border border-divider shadow-sm">
+      {/* Layout Control Bar: only meaningful where the panes sit side by side (lg+); below that they stack. */}
+      <div className="hidden lg:flex items-center justify-between bg-white px-5 py-2.5 rounded-2xl border border-divider shadow-sm">
         <span className="text-xs font-bold text-ink-muted flex items-center gap-2">
           <Columns className="w-4 h-4 text-cocoa" />
           <span>Classroom Dual-Pane Stage</span>

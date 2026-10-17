@@ -29,7 +29,7 @@ export default function TeacherSchedulePage() {
                 <span className="text-xs font-mono font-bold text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-md">
                   AVAILABILITY PLANNER
                 </span>
-                <span className="text-xs font-bold text-ink-muted">Recurring Weekly Matrix</span>
+                <span className="hidden sm:inline text-xs font-bold text-ink-muted">Recurring Weekly Matrix</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-ink font-serif">
                 Manage Weekly Teaching Hours

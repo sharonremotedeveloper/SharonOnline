@@ -127,7 +127,7 @@ export default function StudentClassroomPage() {
                 <span className="text-sm font-mono font-bold text-cocoa bg-cocoa/10 px-2 py-0.5 rounded-md">
                   {booking.booking_reference}
                 </span>
-                <span className="text-sm font-bold text-ink-muted">Synchronous Lesson Pad</span>
+                <span className="hidden sm:inline text-sm font-bold text-ink-muted">Synchronous Lesson Pad</span>
               </div>
               <h1 className="text-xl sm:text-2xl font-black text-ink font-serif">
                 Classroom Staging &amp; Live Lesson
