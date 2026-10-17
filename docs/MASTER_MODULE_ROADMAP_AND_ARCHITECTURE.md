@@ -586,6 +586,7 @@ To ensure Sharon's platform launches rapidly without compromising stability or b
 9. **Stage 8.6: Speech-to-Text & Automatic AI Grammar Transcription**: Deferred to avoid high GPU transcription infrastructure costs during MVP.
 10. **Stage 9.9: Machine Learning Fraud & Chargeback Prediction**: Deferred; standard 3D-Secure and PayPal risk mitigation provide full fraud coverage.
 11. **Stage 10.6: Multi-Cloud Warm Standby Disaster Recovery**: Deferred; single-region high availability with automated backups provides 99.9% uptime SLA.
+12. **Stage 11.1 / Phase 17: Model Context Protocol (MCP) Platform Integration & AI Agent Infrastructure**: Deferred to Phase 2 (post-launch) to ensure MVP remains concentrated on core payments, booking integrity, and WebRTC classroom stability. Provides the standardized tool and context protocol connecting AI agents to tutor availability, booking holds, CEFR materials, and automated SRS flashcards. Detailed architecture & stage mapping: [`docs/MCP_AI_AGENTS_INTEGRATION_PENDING.md`](./MCP_AI_AGENTS_INTEGRATION_PENDING.md).
 
 ---
 

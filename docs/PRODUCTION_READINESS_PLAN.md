@@ -34,8 +34,9 @@ Phases 1-6 in `PROGRESS_AND_ROADMAP.md` delivered a UI-complete, test-green **sk
 | **14** | Compliance + legal | D-12 | Legal pages, consent, erasure/export, retention jobs |
 | **15** | Missing screens, admin, SEO, quality | 8-11 | 46-view inventory closed; test pyramid in CI |
 | **16** | UAT + launch | all | SOW Milestone 3 sign-off, live gateways, DNS cutover |
+| **17** | Post-launch AI & MCP integration | 16 | Platform MCP server live; AI agent client runtime enabled; RBAC & safety invariants verified |
 
-Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done.
+Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done. Phase 17 executes immediately post-launch.
 
 ### Status and what is next (updated 2026-10-03)
 
@@ -210,6 +211,16 @@ Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done.
 - [ ] **Task 16.4 (M, ANESU)** UAT with beta tutors and students; SOW Milestone 2/3 sign-off; admin video walkthrough/handover. **Launch checklist item (T1b): set `TUTOR_TRAINING_GATE_ENABLED=True` in production (provisional default is off until the training content exists; the production guard warns while it is off) and review `ADMIN_CANCEL_BONUS_CREDITS`. Tutors approved AFTER migration 0007 have a null `training_completed_at` (only the tutors live at migration time were grandfathered): switching the gate on hides them until T6 runs an idempotent backfill (`status='approved' AND training_completed_at IS NULL` -> trained, or real training) BEFORE the gate is enabled.**
 - [ ] **Task 16.5 (M, ANESU+ARCH)** DNS/SSL cutover, HSTS preload, transfer vendor accounts to the client, move off the shared Gmail identity, enable 2FA, start the 30-day warranty clock.
 - [ ] **Task 16.6 (S, ARCH)** Post-launch monitoring runbook, on-call, error budget, backup restore drill.
+
+## Phase 17 - Post-Launch AI & Model Context Protocol (MCP) Integration
+
+**Goal:** Transform Sharon Online into an agent-ready platform by introducing Model Context Protocol (MCP) server & client architectures to drive intelligent matching, curriculum assistance, automated lesson memos, and administrative copilot tasks. Full design: [`docs/MCP_AI_AGENTS_INTEGRATION_PENDING.md`](./MCP_AI_AGENTS_INTEGRATION_PENDING.md).
+
+- [ ] **Task 17.1 (M, ARCH+AG)** Core MCP Server scaffolding in `apps/mcp/` using Python MCP SDK (`mcp` / `fastmcp`), machine-to-machine authentication, and stdio/SSE transports.
+- [ ] **Task 17.2 (S, ARCH)** Read-only MCP tool registry: expose `search_tutors`, `get_tutor_availability`, and `get_cefr_materials` tools with existing rate throttles.
+- [ ] **Task 17.3 (M, ARCH)** Transactional mutating tools with strict security fences: `reserve_booking_slot` (Redlock), `create_srs_flashcard`, `draft_lesson_memo`. Strictly NO autonomous payout/refund execution (human-in-the-loop only).
+- [ ] **Task 17.4 (L, CODEX+AG)** Frontend / Background AI Agent Client runtime: conversational student matchmaker copilot, post-lesson automated vocabulary extractor, and tutor classroom copilot.
+- [ ] **Task 17.5 (M, ARCH+AG)** Admin Ops Copilot: agent toolset for DLQ inspection, payout batch invariant auditing, and Eskom schedule monitoring.
 
 ---
 
