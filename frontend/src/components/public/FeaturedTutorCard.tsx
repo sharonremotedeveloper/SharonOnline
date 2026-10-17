@@ -7,27 +7,27 @@ import { TutorPortrait } from "./TutorPortrait";
 import { formatRating } from "@/lib/rating";
 
 /**
- * Compact tutor card: a square photo beside the details, so three fit on one row without the page becoming a wall of
- * portraits. The full portrait lives on the tutor's own page. Rating only shows when there are real reviews.
+ * Photo-first tutor card (marketplace pattern): a large portrait on top, details below, in a narrow upright card, so
+ * students choose by face first. Rating only shows when there are real reviews.
  */
 export function FeaturedTutorCard({ tutor }: { tutor: FeaturedTeacher }) {
   const href = `/tutors/${tutor.slug || tutor.id}`;
   const hasReviews = tutor.review_count > 0 && tutor.rating > 0;
 
   return (
-    <article className="flex gap-5 rounded-3xl border border-divider bg-white p-5 sm:gap-6 sm:p-6 shadow-card transition-shadow hover:shadow-card-hover">
-      <Link href={href} tabIndex={-1} aria-label={`View ${tutor.name}'s profile`} className="shrink-0 self-start">
+    <article className="flex h-full flex-col overflow-hidden rounded-3xl border border-divider bg-white shadow-card transition-shadow hover:shadow-card-hover">
+      <Link href={href} tabIndex={-1} aria-label={`View ${tutor.name}'s profile`} className="block">
         <TutorPortrait
           src={tutor.avatar}
           name={tutor.name}
-          className="aspect-square w-28 rounded-2xl sm:w-36"
-          sizes="112px"
+          className="aspect-[4/5] w-full"
+          sizes="(min-width: 1280px) 300px, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 384px"
         />
       </Link>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-2 p-5">
         <div>
-          <h3 className="font-serif text-xl font-bold leading-tight text-ink sm:text-2xl">
+          <h3 className="font-serif text-xl font-bold leading-tight text-ink">
             <Link href={href} className="inline-flex min-h-11 items-center hover:text-primary">
               {tutor.name}
             </Link>
