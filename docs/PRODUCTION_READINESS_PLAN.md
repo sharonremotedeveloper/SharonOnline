@@ -160,6 +160,14 @@ Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done.
 - [ ] **Task 12.7 (M, CODEX)** In-app notification centre + polling (SSE/WebSocket later), notification preferences.
 - [x] **Task 12.8 (S, ARCH)** Support inquiries: durable `POST /auth/inquiries/`, admin inbox, throttling, and retryable support-team notification; `/support` now reaches a real persisted workflow. *(Batch 5)*
 - [ ] **Task 12.9 (M, ARCH)** **R1 90-day attendance telemetry purge implemented locally**; recording purge remains deferred because D-8 excludes recordings from the MVP.
+- [ ] **Task 12.10 (L, ARCH) In-app chat — PENDING, design recommended 2026-10-18, not approved.** Tutor <-> student, tutor <-> admin, student <-> admin. Our own `apps/chat` (Postgres + REST through the BFF + cheap 204 sync polling; no WebSockets, no chat SaaS); off-platform contact blocked with `contact_guard`; support inbox ships first. Full design, options, decisions Q1-Q6 and risks: [`CHAT_MESSAGING_PENDING.md`](./CHAT_MESSAGING_PENDING.md). Slices:
+  - [ ] **C0 (3d)** ADR + models, `policy.py::can_message()`, single writer `send_message()` + guard. *Soft launch.*
+  - [ ] **C1 (3-4d)** `/api/v1/chat/` API, `sync/` 204 endpoint, throttles, OpenAPI + `gen:api`. *Soft launch; pin Railway/Vercel to EU + Upstash fixed plan first (Q6).*
+  - [ ] **C2 (4d)** Support inbox UI (user + admin), `chat_unread` / `support_new` notify kinds, unread digest task. *Soft launch.*
+  - [ ] **C3 (4-5d)** Student <-> tutor chat (paid booking required), report / hide / lock / restrict, audited staff read. *Public launch; needs Q2 (minors) answered.*
+  - [ ] **C4 (2d)** Retention purge, SAR export, erasure hooks (ties to 14.3). *Public launch.*
+  - [ ] **C5 (3-4d)** Attachments (images; PDFs only after a virus scanner, Q5). *Later.*
+  - [ ] **C6 (2-4d)** Optional Ably signal-only realtime. *Only if >~1,000 users online at once.*
 
 ## Phase 13 - Platform ops (parallel track)
 
@@ -181,7 +189,7 @@ Phases 13 (infra) and 14 (legal) run in parallel with 8-12 once Phase 7 is done.
 
 - [ ] **Task 14.1 (M, ANESU)** Legal copy: Terms, Privacy, Refund/Cancellation, Child-safety, cookie policy (reviewed by counsel); appoint Information Officer.
 - [ ] **Task 14.2 (M, CODEX)** `/legal/[policy]` hub + Data Subject Request form; footer links; consent/cookie banner with a consent log model (cookie, marketing, cross-border video).
-- [ ] **Task 14.3 (L, ARCH)** Data-subject rights: account export (SAR) and erasure/anonymisation pipeline that preserves ledger integrity (anonymise PII, keep immutable financial rows). *Register (Phase 11/12): `notifications.Notification` (payload, `title`/`body`, `rendered_subject/html/text` hold personal text; delete or anonymise on erasure) and `NotificationPreference` (export), alongside `CalendarCredential`, `TeacherStatusChange` and bank snapshots.*
+- [ ] **Task 14.3 (L, ARCH)** Data-subject rights: account export (SAR) and erasure/anonymisation pipeline that preserves ledger integrity (anonymise PII, keep immutable financial rows). *Register (Phase 11/12): `notifications.Notification` (payload, `title`/`body`, `rendered_subject/html/text` hold personal text; delete or anonymise on erasure) and `NotificationPreference` (export), alongside `CalendarCredential`, `TeacherStatusChange` and bank snapshots. When Task 12.10 chat lands: `chat.Message` bodies (blank on erasure, keep rows; legal hold overrides) and the user's conversations in the SAR export (slice C4).*
 - [ ] **Task 14.4 (M, ARCH)** General audit log (admin actions, PII access, impersonation) and retention jobs (raw webhook payloads, telemetry, tax archive 7 years).
 - [ ] **Task 14.5 (S, ARCH)** Parental-consent controls for the Kids specialty if retained at launch.
 - [ ] **Task 14.6 (S, ANESU)** Accountant sign-off on SARB/FX treatment and VAT; correct the "bypassed" claim in `PROJECT_MASTER_CONTEXT.md`.
