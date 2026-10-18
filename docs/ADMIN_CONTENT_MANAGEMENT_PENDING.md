@@ -127,15 +127,54 @@ Safeguards to keep: `IsPlatformAdmin`, the commit checks in `materials/assets.py
 - Admins can still presign any key (the web UI only uses `incoming/`); narrowing the admin presign allowlist is a follow-up.
 - Unpublishing and republishing a required module does not notify the same tutor twice (notification key is per module and tutor).
 
-### 6.4 Releasing Wave 2 to production
+### 6.4 Releasing Wave 2 to production (prepared 2026-10-19, NOT applied)
 
-Vercel deploys the website from `main`, but the production API on Railway is pinned to a release SHA and changes only with
-Anesu's explicit go-ahead (`RAILWAY_SETUP.md` sections 4-5). Until the backend release is done, `/admin/training` and
-`/admin/materials` show their error state (only admins see them); every other page works with the old API (the tutor video
-field is optional, the lesson HTML styling is frontend-only).
+Vercel deploys the website from `main`, but the production API on Railway only changes with Anesu's explicit go-ahead
+(`RAILWAY_SETUP.md` sections 4-5). Until the backend release is done, `/admin/training` and `/admin/materials` show their error
+state (only admins see them); every other page works with the old API.
 
-The two migrations are **expand-only**, so the old and new API can both run against the schema during the rollout:
-`teachers/0015` adds `video_youtube_id` with a database default `''`; `materials/0003` renames the field only in Django's
-state (`db_column='is_approved'`, no SQL). Order: confirm a Neon restore point, run the one-shot migration job
-(`scripts/run_production_migrations.py --plan`, then `--apply`), then release API, worker and Beat on the new SHA. The new
-`nh3` dependency is in `requirements.lock`, so the image build installs it.
+**Release SHA:** `59e3e52b` on `main` (the full SHA is in `git log main`). It contains exactly two backend commits on top of what
+production runs: `775fc05` (Wave 2) and `59e3e52` (expand-only migrations). Read-only Railway check on 2026-10-19 (project
+`sharon-online-prod` `e2b11747-...`, environment `production` `dd70ab8a-...`):
+
+| Service | ID | Running now |
+| :--- | :--- | :--- |
+| `backend-api-production` | `268c83bb-0d01-42a4-a63e-187d5fa90983` | `78226cc` (2026-10-17) |
+| `celery-worker-production` | `a1ea5a9f-ca7a-4b2a-b745-9b058237aebb` | `e534795` (2026-10-15) |
+| `celery-beat-production` | `31ce61d3-d333-4bac-9e6e-42e7f276777e` | `e534795` (2026-10-15) |
+| `production-migrations-b33743a` (one-shot) | `cdc25acb-eb33-4ded-bd90-679b4398fcfd` | `b33743a`, plan-only, `PRODUCTION_MIGRATION_APPROVED` empty |
+
+Both running SHAs are ancestors of `59e3e52`; the push of `main` did not start a Railway deployment. Production has
+`TUTOR_TRAINING_GATE_ENABLED=1`, so after this release a newly published required module hides untrained tutors from new
+bookings at once (after the admin confirms the count). The release itself re-gates nobody: only a save through
+`training.save_module` does, and the existing module `how-lessons-work` is untouched.
+
+**Expected migration plan** (production reached the migration leaf on 2026-10-14 and no migration was added between `b33743a`
+and `775fc05`):
+
+```text
+materials.0003_material_is_published   -- state-only rename (db_column='is_approved'); no SQL
+teachers.0015_training_module_video    -- ALTER TABLE "teachers_trainingmodule"
+                                           ADD COLUMN "video_youtube_id" varchar(11) DEFAULT '' NOT NULL;
+```
+
+Both are expand-only: the running `78226cc` API keeps working after they are applied. CI ran them on PostgreSQL.
+
+**Steps (each needs Anesu's go-ahead; nothing below has been done):**
+
+1. Recovery point: create a Neon child branch of `production` in project `SharonOnline` (`sweet-bonus-69458238`), as on
+   2026-10-14 (`pre-production-migrations-b33743`).
+2. Plan: deploy the migration service at commit `59e3e52` with its existing start command
+   (`python scripts/run_production_migrations.py --plan`, approval flag still empty) through `serviceInstanceDeployV2`
+   (`serviceId cdc25acb-...`, `environmentId dd70ab8a-...`, `commitSha 59e3e52...`). Read its log: it must list exactly the two
+   migrations above. Anything else: stop.
+3. Apply: set `PRODUCTION_MIGRATION_APPROVED=true` and the start command to `... --apply` on that service only, deploy it once at
+   `59e3e52`, read the log; deploy once more to see `No migrations to apply.`; then set the start command back to `--plan` and
+   clear the flag.
+4. Release: deploy `backend-api-production`, `celery-worker-production` and `celery-beat-production` at `59e3e52` (the image
+   installs the new `nh3` dependency from `requirements.lock`).
+5. Verify: `/api/health/`, `/api/ready/`, `/api/scheduler-ready/` return 200; `GET /api/v1/materials/` still lists the same
+   published materials (none today); Anesu signs in as admin on the phone and opens `/admin/training` and `/admin/materials`
+   (lists load; nothing is created or published as part of the check).
+6. Rollback: redeploy the three services at `78226cc` / `e534795`. The schema needs no rollback: both migrations are
+   expand-only and the old code ignores them.
