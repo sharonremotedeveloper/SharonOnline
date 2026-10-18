@@ -126,3 +126,16 @@ Safeguards to keep: `IsPlatformAdmin`, the commit checks in `materials/assets.py
 - Detaching or replacing a material file leaves the old object in R2 (no cleanup job yet).
 - Admins can still presign any key (the web UI only uses `incoming/`); narrowing the admin presign allowlist is a follow-up.
 - Unpublishing and republishing a required module does not notify the same tutor twice (notification key is per module and tutor).
+
+### 6.4 Releasing Wave 2 to production
+
+Vercel deploys the website from `main`, but the production API on Railway is pinned to a release SHA and changes only with
+Anesu's explicit go-ahead (`RAILWAY_SETUP.md` sections 4-5). Until the backend release is done, `/admin/training` and
+`/admin/materials` show their error state (only admins see them); every other page works with the old API (the tutor video
+field is optional, the lesson HTML styling is frontend-only).
+
+The two migrations are **expand-only**, so the old and new API can both run against the schema during the rollout:
+`teachers/0015` adds `video_youtube_id` with a database default `''`; `materials/0003` renames the field only in Django's
+state (`db_column='is_approved'`, no SQL). Order: confirm a Neon restore point, run the one-shot migration job
+(`scripts/run_production_migrations.py --plan`, then `--apply`), then release API, worker and Beat on the new SHA. The new
+`nh3` dependency is in `requirements.lock`, so the image build installs it.
