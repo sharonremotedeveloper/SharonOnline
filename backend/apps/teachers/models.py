@@ -440,7 +440,7 @@ class TrainingModule(models.Model):
     summary = models.CharField(max_length=500, blank=True)
     body = models.TextField(blank=True, help_text='Markdown shown to the tutor.')
     video_youtube_id = models.CharField(
-        max_length=11, blank=True,
+        max_length=11, blank=True, default='', db_default='',
         help_text='Optional YouTube video (the 11-character id only; set through teachers/training.py::parse_youtube_id).')
     position = models.PositiveIntegerField(default=1, db_index=True)
     estimated_minutes = models.PositiveIntegerField(default=10)

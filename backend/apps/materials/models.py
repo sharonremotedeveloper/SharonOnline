@@ -29,7 +29,7 @@ class Material(models.Model):
     audio_snippet_file = models.FileField(upload_to='materials/audio/', blank=True, null=True, help_text="Listening comprehension audio file stored on R2")
     audio_snippet_url = models.URLField(blank=True, help_text="Direct Cloudflare R2 audio stream link")
     # Draft -> Published (Anesu, 2026-10-18). New materials start as drafts; only published ones are public.
-    is_published = models.BooleanField(default=False, db_index=True)
+    is_published = models.BooleanField(default=False, db_index=True, db_column='is_approved')  # column kept: expand-only
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
