@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { adminRefundQuery } from "./adminRefunds";
+import { adminRefundQuery, adminRefundStatusLabel, failureHelp, gatewayName, REFUND_VIEWS, refundReasonLabel, retryErrorText, retryNeedsConfirmation } from "./adminRefunds";
 import { ApiError } from "./http";
 import { canConvertRefund, convertRefundErrorMessage, refundStatusLabel } from "./refunds";
 
@@ -51,5 +51,47 @@ describe("admin refund query", () => {
     assert.equal(adminRefundQuery({}), "");
     assert.equal(adminRefundQuery({ status: "failed", gateway: "", in_flight: false }), "?status=failed&in_flight=false");
     assert.equal(adminRefundQuery({ waiting_manual: true, page: 2 }), "?waiting_manual=true&page=2");
+  });
+});
+
+describe("admin refund helpers", () => {
+  it("asks for gateway confirmation only for ambiguous failures", () => {
+    assert.equal(retryNeedsConfirmation("exhausted"), true);
+    assert.equal(retryNeedsConfirmation("replay_window"), true);
+    assert.equal(retryNeedsConfirmation("already_refunded"), true);
+    assert.equal(retryNeedsConfirmation("rejected"), false);
+    assert.equal(retryNeedsConfirmation(""), false);
+    assert.equal(retryNeedsConfirmation(null), false);
+  });
+
+  it("labels statuses for staff and explains every failure kind", () => {
+    assert.equal(adminRefundStatusLabel("failed"), "Failed - needs a person");
+    assert.equal(adminRefundStatusLabel("something_new"), "something new");
+    for (const kind of ["rejected", "already_refunded", "guard", "exhausted", "replay_window", "provider_failed"]) {
+      assert.ok(failureHelp(kind), kind);
+    }
+    assert.equal(failureHelp("unknown_kind"), null);
+    assert.equal(refundReasonLabel("teacher_no_show"), "Tutor did not attend");
+    assert.equal(refundReasonLabel("new_reason"), "new reason");
+  });
+
+  it("starts the queue on the rows that need a person", () => {
+    assert.deepEqual(REFUND_VIEWS[0].params, { status: "failed" });
+    assert.equal(adminRefundQuery(REFUND_VIEWS[1].params), "?waiting_manual=true");
+  });
+});
+
+describe("admin refund display", () => {
+  it("names gateways properly", () => {
+    assert.equal(gatewayName("paypal"), "PayPal");
+    assert.equal(gatewayName("payfast"), "PayFast");
+    assert.equal(gatewayName(""), "the gateway");
+  });
+
+  it("shows the server's sentence for a refused retry, without the code", () => {
+    const err = new ApiError(409, "Check the gateway first. confirmation_required", { error: "Check the gateway first.", code: "confirmation_required" });
+    assert.equal(retryErrorText(err), "Check the gateway first.");
+    const other = new ApiError(500, "Server error", "<html>");
+    assert.equal(retryErrorText(other), other);
   });
 });

@@ -2,20 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  LayoutDashboard,
-  UserCheck,
-  Users,
-  Radio,
-  Scale,
-  FileSpreadsheet,
-  CreditCard,
-  Coins,
-  Shield,
-  ExternalLink,
-  ChevronRight,
-  Sparkles,
-} from "lucide-react";
+import { LayoutDashboard, UserCheck, Users, Radio, Scale, FileSpreadsheet, CreditCard, Coins, Shield, ExternalLink, ChevronRight, Sparkles, RotateCcw } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Executive Dashboard", icon: LayoutDashboard },
@@ -24,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/admin/sessions/live", label: "Live Attendance Radar", icon: Radio, pulse: true },
   { href: "/admin/disputes", label: "Dispute Tribunal", icon: Scale },
   { href: "/admin/finance/ledger", label: "Escrow Ledger Audit", icon: FileSpreadsheet },
+  { href: "/admin/finance/refunds", label: "Student Refunds", icon: RotateCcw },
   { href: "/admin/finance/payouts", label: "Batch Bank Payouts", icon: CreditCard },
   { href: "/admin/finance/fx-rates", label: "FX Rates (EUR/JPY)", icon: Coins },
 ];

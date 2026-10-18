@@ -221,8 +221,8 @@ describe("Notification components", () => {
         isOpen: true,
         onClose: () => {},
         preferences: {
-          email_by_kind: { lesson_reminders: true },
-          in_app_by_kind: { lesson_reminders: true },
+          email_by_kind: { reminder_24h: true },
+          in_app_by_kind: { reminder_24h: false },
           updated_at: new Date().toISOString(),
         },
         onSave: async () => {},
@@ -231,8 +231,10 @@ describe("Notification components", () => {
     );
 
     assert.ok(modalHtml.includes("Notification Preferences"));
-    assert.ok(modalHtml.includes("Lesson Reminders"));
-    assert.ok(modalHtml.includes("Booking Confirmations"));
+    assert.ok(modalHtml.includes("Lesson reminders"));
+    assert.ok(modalHtml.includes("Booking confirmations"));
+    assert.ok(modalHtml.includes("Lesson credits"), "students see credit notices");
+    assert.ok(!modalHtml.includes("Memo reminders"), "memo reminders are for tutors");
     assert.ok(modalHtml.includes("Mandatory"));
     assert.ok(modalHtml.includes("Save Preferences"));
   });

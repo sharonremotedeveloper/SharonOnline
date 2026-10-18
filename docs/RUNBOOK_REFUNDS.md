@@ -5,7 +5,7 @@ state table: `SETTLEMENT_PATHS.md`. Alerts arrive as admin e-mails and as open `
 as `reason`. Provisional/unverified: all of this has run only against mocked HTTP; verify in the PayPal sandbox before trusting it.
 
 ## Where to look
-- Queue: `GET /api/v1/admin/refunds/?status=failed` (an admin page is deferred; use the API or Django admin **Refund requests**).
+- Queue: `GET /api/v1/admin/refunds/?status=failed` or the admin page **/admin/finance/refunds** (Student Refunds: counts, views, details and retry with the gateway-check confirmation; 2026-10-18). Marking paid by hand stays in Django admin **Refund requests**.
   `buckets` gives counts per status / failure kind, `in_flight` (a worker holds a live lease) and `waiting_manual`.
 - Each row shows the last 5 `RefundAttempt` entries (kind, result, HTTP status, error code, who). Provider response bodies are never stored.
 - Never edit refund rows or ledger entries by hand. Use retry or mark-paid below; ledger rows are immutable.

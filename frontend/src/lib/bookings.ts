@@ -13,6 +13,8 @@ export interface BookingListParams {
   to?: string;
   ordering?: "start_time_utc" | "-start_time_utc";
   pageSize?: number;
+  /** 1-based page of the server's pagination. */
+  page?: number;
 }
 
 export interface BookingPage {
@@ -30,6 +32,7 @@ export function bookingListQuery(p: BookingListParams = {}): string {
   if (p.to) q.set("to", p.to);
   if (p.ordering) q.set("ordering", p.ordering);
   if (p.pageSize) q.set("page_size", String(p.pageSize));
+  if (p.page && p.page > 1) q.set("page", String(p.page));
   const s = q.toString();
   return s ? `?${s}` : "";
 }
