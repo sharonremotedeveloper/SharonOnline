@@ -10,6 +10,8 @@
 | Intended role | Hosts the Django API and Celery worker/beat (see `ENVIRONMENT_AND_TESTING.md` §4). Postgres = Neon, Redis = Upstash (not Railway add-ons unless Anesu decides otherwise). |
 | Container source | `Project-files/backend/Dockerfile` |
 
+**Update 2026-10-19 (Wave 2 release):** API, worker and Beat run `59e3e52a5bfa08784fc7109bb5c8da7f78085b3b`; migrations `materials.0003` and `teachers.0015` applied through the one-shot service (reset to plan-only, approval flag empty; it now also carries `CLOUDFLARE_R2_ACCOUNT_ID` / `CLOUDFLARE_R2_PUBLIC_DOMAIN`, ERR-555). Neon recovery branch `pre-wave2-migrations-59e3e52` expires 2026-10-26. Details: `ADMIN_CONTENT_MANAGEMENT_PENDING.md` section 6.4.
+
 **Current state checked 2026-10-15:** Railway identity is `sharonremotedeveloper@gmail.com`. The canonical production project is `sharon-online-prod` (`e2b11747-5519-4139-bd34-a658affea42a`), environment `production` (`dd70ab8a-91c2-47cb-ba27-cdab00a38d74`). API, worker, and Beat are pinned to the verified application release SHA `e696d8e8372b16d00bd73bc8df926a5588a9f0ff`; all three deployments succeeded with one running replica and zero recent failures. Repository branch tips may advance with documentation or monitoring-only commits without changing the pinned application source tree; verify both before claiming a new backend release. The API custom domain is `api.topteacheracademy.com`. Public `/api/ready/` and `/api/scheduler-ready/` both returned 200 `ready`. The historical identifiers below are audit history, not the active deployment.
 
 ---

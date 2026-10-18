@@ -1,6 +1,6 @@
 # Admin content management (materials + tutor training) - PENDING
 
-**Status: BUILT (Wave 2, 2026-10-19).** Recorded 2026-10-18 as pending; the four questions were answered the same day
+**Status: BUILT AND RELEASED (Wave 2, 2026-10-19; website `main`, API/worker/Beat `59e3e52`).** Recorded 2026-10-18 as pending; the four questions were answered the same day
 (section 5) and Wave 2 built both halves: `/admin/training` and `/admin/materials` (section 6). Sections 1-4 describe the state
 before Wave 2 and are kept for the record. What is still left for later is in section 6.3.
 Page ID ADM-07 (curriculum editor) and Task 15.4 (materials editor) are open; nothing has been started.
@@ -127,7 +127,7 @@ Safeguards to keep: `IsPlatformAdmin`, the commit checks in `materials/assets.py
 - Admins can still presign any key (the web UI only uses `incoming/`); narrowing the admin presign allowlist is a follow-up.
 - Unpublishing and republishing a required module does not notify the same tutor twice (notification key is per module and tutor).
 
-### 6.4 Releasing Wave 2 to production (prepared 2026-10-19, NOT applied)
+### 6.4 Releasing Wave 2 to production (released 2026-10-19)
 
 Vercel deploys the website from `main`, but the production API on Railway only changes with Anesu's explicit go-ahead
 (`RAILWAY_SETUP.md` sections 4-5). Until the backend release is done, `/admin/training` and `/admin/materials` show their error
@@ -210,3 +210,10 @@ Both are expand-only: the running `78226cc` API keeps working after they are app
   returned 200 (one `/api/health/` 503 right after was a single edge response; six repeats returned 200, and that handler is a
   static 200). Recovery branch `pre-wave2-migrations-59e3e52` is kept until it expires on 2026-10-26.
   Next (needs Anesu's go-ahead): step 4, deploy API, worker and Beat at `59e3e52`.
+- Step 4 done (Anesu's go-ahead, 2026-10-19): `serviceInstanceDeployV2` at `59e3e52` for `backend-api-production`
+  (deployment `6bbbc371-4713-4707-8d94-1c91d6b4ceac`, gunicorn booted 4 workers), `celery-worker-production`
+  (`82f5b044-33c3-4693-9187-ffa5525bdbbc`, ready, scheduled tasks and `scheduler_heartbeat_task` succeeded) and
+  `celery-beat-production` (`ca8cc6f4-6458-4d9e-aa12-79ace489937b`, beat started). All SUCCESS on `59e3e52`. Checks after:
+  `/api/health/`, `/api/ready/`, `/api/scheduler-ready/`, `/api/v1/materials/`, tutor directory and the website all 200;
+  `/api/v1/admin/training/modules/` and `/api/v1/admin/materials/` answer 401 to anonymous requests (routes exist, auth enforced).
+- Step 5 (admin sign-in check of `/admin/training` and `/admin/materials` on the phone) is Anesu's.
