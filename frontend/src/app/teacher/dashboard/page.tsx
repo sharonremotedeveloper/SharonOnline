@@ -246,11 +246,19 @@ export default function TeacherDashboardPage() {
               <h3 className="text-lg font-black text-ink font-serif">Today&apos;s Class Schedule</h3>
               <p className="text-sm text-ink-muted">All sessions synchronized across timezones</p>
             </div>
-            {bookingsQ.data && (
-              <span className="shrink-0 whitespace-nowrap text-xs font-bold text-cocoa bg-cocoa/10 px-3 py-1 rounded-full">
-                {todayCount} Scheduled {todayCount === 1 ? "Lesson" : "Lessons"}
-              </span>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {bookingsQ.data && (
+                <span className="shrink-0 whitespace-nowrap text-xs font-bold text-cocoa bg-cocoa/10 px-3 py-1 rounded-full">
+                  {todayCount} Scheduled {todayCount === 1 ? "Lesson" : "Lessons"}
+                </span>
+              )}
+              <Link
+                href="/teacher/bookings"
+                className="min-h-11 inline-flex items-center gap-1 whitespace-nowrap px-2 text-xs font-bold text-cocoa hover:underline"
+              >
+                All lessons <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+              </Link>
+            </div>
           </div>
 
           {bookingsQ.loading ? (

@@ -2,6 +2,7 @@
 
 import { Bell } from "lucide-react";
 import { useNotifications } from "../../hooks/useNotifications";
+import { useAuth } from "../../context/AuthContext";
 import { formatBadgeCount } from "../../lib/notifications";
 import { NotificationDrawer } from "./NotificationDrawer";
 import { NotificationPreferencesModal } from "./NotificationPreferencesModal";
@@ -11,6 +12,7 @@ interface NotificationBellProps {
 }
 
 export function NotificationBell({ className = "" }: NotificationBellProps) {
+  const { role } = useAuth();
   const {
     notifications,
     unreadCount,
@@ -80,6 +82,7 @@ export function NotificationBell({ className = "" }: NotificationBellProps) {
         preferences={preferences}
         onSave={savePreferences}
         isSaving={isSavingPreferences}
+        role={role === "teacher" ? "teacher" : "student"}
       />
     </>
   );

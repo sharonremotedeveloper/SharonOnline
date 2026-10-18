@@ -16,6 +16,10 @@ describe("bookingListQuery", () => {
     );
   });
   it("skips empty status lists", () => assert.equal(bookingListQuery({ status: [] }), ""));
+  it("adds the page only after the first", () => {
+    assert.equal(bookingListQuery({ page: 1 }), "");
+    assert.equal(bookingListQuery({ when: "past", page: 3 }), "?when=past&page=3");
+  });
 });
 
 describe("listBookings", () => {

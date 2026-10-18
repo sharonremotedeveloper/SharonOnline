@@ -6,6 +6,8 @@ import { useDialog } from "../../hooks/useDialog";
 import { X, Lock, Check, Bell, Mail } from "lucide-react";
 import { Button } from "../ui/Button";
 import type { NotificationPreference, PatchedNotificationPreferenceRequest } from "../../lib/notifications";
+import { groupsFor, isGroupOn, setGroup, type KindMap, type PrefGroup, type PrefRole } from "../../lib/notificationPrefs";
+import { errorMessage } from "../../lib/http";
 
 interface NotificationPreferencesModalProps {
   isOpen: boolean;
@@ -13,41 +15,9 @@ interface NotificationPreferencesModalProps {
   preferences: NotificationPreference | null;
   onSave: (payload: PatchedNotificationPreferenceRequest) => Promise<void>;
   isSaving: boolean;
+  /** Decides which groups are shown (tutors get memo reminders, students credits). */
+  role?: PrefRole;
 }
-
-interface CategoryConfig {
-  key: string;
-  title: string;
-  description: string;
-  isMandatory?: boolean;
-}
-
-const CATEGORIES: CategoryConfig[] = [
-  {
-    key: "lesson_reminders",
-    title: "Lesson Reminders",
-    description: "T-24h calendar check, T-1h equipment check, and T-10m classroom launch links.",
-    isMandatory: false,
-  },
-  {
-    key: "booking_lifecycle",
-    title: "Booking Confirmations & Changes",
-    description: "Instant booking confirmations with .ics calendar files, reschedules, and cancellations.",
-    isMandatory: true,
-  },
-  {
-    key: "account_alerts",
-    title: "Account & Operational Alerts",
-    description: "Security notifications, vetting status updates, tutor strikes, and banking changes.",
-    isMandatory: true,
-  },
-  {
-    key: "billing_credits",
-    title: "Billing & Wallet Credits",
-    description: "Receipts, refund confirmations, and expiring wallet credit reminders.",
-    isMandatory: false,
-  },
-];
 
 export function NotificationPreferencesModal({
   isOpen,
@@ -55,10 +25,13 @@ export function NotificationPreferencesModal({
   preferences,
   onSave,
   isSaving,
+  role = "student",
 }: NotificationPreferencesModalProps) {
-  const [emailSettings, setEmailSettings] = useState<Record<string, boolean>>({});
-  const [inAppSettings, setInAppSettings] = useState<Record<string, boolean>>({});
+  const groups = groupsFor(role);
+  const [emailSettings, setEmailSettings] = useState<KindMap>({});
+  const [inAppSettings, setInAppSettings] = useState<KindMap>({});
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<unknown>(null);
 
   useEffect(() => {
     if (preferences) {
@@ -72,21 +45,22 @@ export function NotificationPreferencesModal({
 
   if (!isOpen) return null;
 
-  const handleToggle = (type: "email" | "in_app", key: string, isMandatory?: boolean) => {
-    if (isMandatory) return; // Locked by policy
-    if (type === "email") {
-      setEmailSettings((prev) => ({ ...prev, [key]: !prev[key] }));
-    } else {
-      setInAppSettings((prev) => ({ ...prev, [key]: !prev[key] }));
-    }
+  // Preferences are stored per notification kind; a row switches every kind in its group (lib/notificationPrefs.ts).
+  const handleToggle = (type: "email" | "in_app", group: PrefGroup) => {
+    if (group.mandatory) return; // Locked by policy
+    if (type === "email") setEmailSettings((prev) => setGroup(prev, group, !isGroupOn(prev, group)));
+    else setInAppSettings((prev) => setGroup(prev, group, !isGroupOn(prev, group)));
     setSavedSuccess(false);
   };
 
   const handleSave = async () => {
-    await onSave({
-      email_by_kind: emailSettings,
-      in_app_by_kind: inAppSettings,
-    });
+    setSaveError(null);
+    try {
+      await onSave({ email_by_kind: emailSettings, in_app_by_kind: inAppSettings });
+    } catch (err) {
+      setSaveError(err);
+      return;
+    }
     setSavedSuccess(true);
     setTimeout(() => {
       setSavedSuccess(false);
@@ -136,16 +110,16 @@ export function NotificationPreferencesModal({
 
         {/* Category Rows */}
         <div className="px-4 py-2 sm:px-6 divide-y divide-ink/10 max-h-[60vh] overflow-y-auto">
-          {CATEGORIES.map((cat) => {
-            const inAppEnabled = cat.isMandatory ? true : inAppSettings[cat.key] ?? true;
-            const emailEnabled = cat.isMandatory ? true : emailSettings[cat.key] ?? true;
+          {groups.map((cat) => {
+            const inAppEnabled = isGroupOn(inAppSettings, cat);
+            const emailEnabled = isGroupOn(emailSettings, cat);
 
             return (
               <div key={cat.key} className="py-3.5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <div className="flex-1 pr-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold text-ink">{cat.title}</span>
-                    {cat.isMandatory && (
+                    {cat.mandatory && (
                       <span className="inline-flex items-center gap-0.5 px-2 py-0.5 text-xs font-bold rounded-md bg-cocoa-100 text-cocoa-700 border border-cocoa-200">
                         <Lock className="w-2.5 h-2.5" /> Mandatory
                       </span>
@@ -163,10 +137,10 @@ export function NotificationPreferencesModal({
                     type="button"
                     role="switch"
                     aria-checked={inAppEnabled}
-                    disabled={cat.isMandatory}
-                    onClick={() => handleToggle("in_app", cat.key, cat.isMandatory)}
+                    disabled={cat.mandatory}
+                    onClick={() => handleToggle("in_app", cat)}
                     className={`min-h-11 items-center gap-2 px-2 sm:px-0 sm:w-16 flex justify-start sm:justify-center py-1 rounded-md transition-colors ${
-                      cat.isMandatory
+                      cat.mandatory
                         ? "opacity-60 cursor-not-allowed"
                         : "hover:bg-cocoa-100"
                     }`}
@@ -191,10 +165,10 @@ export function NotificationPreferencesModal({
                     type="button"
                     role="switch"
                     aria-checked={emailEnabled}
-                    disabled={cat.isMandatory}
-                    onClick={() => handleToggle("email", cat.key, cat.isMandatory)}
+                    disabled={cat.mandatory}
+                    onClick={() => handleToggle("email", cat)}
                     className={`min-h-11 items-center gap-2 px-2 sm:px-0 sm:w-16 flex justify-start sm:justify-center py-1 rounded-md transition-colors ${
-                      cat.isMandatory
+                      cat.mandatory
                         ? "opacity-60 cursor-not-allowed"
                         : "hover:bg-cocoa-100"
                     }`}
@@ -218,6 +192,14 @@ export function NotificationPreferencesModal({
             );
           })}
         </div>
+
+        {saveError != null && (
+          <div className="px-4 pb-2 sm:px-6">
+            <p role="alert" className="rounded-xl border border-error-border bg-error-surface px-3 py-2 text-sm font-medium text-error">
+              {errorMessage(saveError)}
+            </p>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-4 sm:px-6 bg-cocoa-50 border-t border-ink/10">

@@ -7,6 +7,7 @@ import {
   Bell,
   BookMarked,
   CalendarDays,
+  ClipboardList,
   ChevronDown,
   Coins,
   GraduationCap,
@@ -14,6 +15,7 @@ import {
   History,
   LayoutDashboard,
   LogOut,
+  Settings,
   UserRound,
   Users,
   Wallet,
@@ -39,11 +41,13 @@ const STUDENT_LINKS: MenuLink[] = [
   { href: "/student/vocabulary", label: "Flashcards", icon: BookMarked },
   { href: "/student/favorites", label: "Favourite tutors", icon: Heart },
   { href: "/student/wallet", label: "Wallet and receipts", icon: Wallet },
-  { href: "/student/profile", label: "Profile and settings", icon: UserRound },
+  { href: "/student/profile", label: "Profile", icon: UserRound },
+  { href: "/student/settings", label: "Settings", icon: Settings },
 ];
 
 const TEACHER_LINKS: MenuLink[] = [
   { href: "/teacher/dashboard", label: "My dashboard", icon: LayoutDashboard },
+  { href: "/teacher/bookings", label: "My lessons", icon: ClipboardList },
   { href: "/teacher/schedule", label: "My hours", icon: CalendarDays },
   { href: "/teacher/students", label: "My students", icon: Users },
   { href: "/teacher/wallet", label: "Earnings and payouts", icon: Wallet },

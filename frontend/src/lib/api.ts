@@ -1133,6 +1133,10 @@ export const api = {
   async downloadReceipt(receipt: Pick<Receipt, "id" | "receipt_number">): Promise<void> {
     await downloadFile(`${API_BASE}/payments/receipts/${receipt.id}/pdf/`, `${receipt.receipt_number}.pdf`);
   },
+  /** The signed-in user's own data as a ZIP (GDPR Art. 15 / POPIA s23 access request; server throttles to 10 an hour). */
+  async downloadMyData(): Promise<void> {
+    await downloadFile(`${API_BASE}/auth/me/data-export/`, "sharon-online-my-data.zip");
+  },
   async downloadTutorStatement(): Promise<void> {
     await downloadFile(`${API_BASE}/payments/wallet/tutor/statement/`, "sharon-esl-statement.csv");
   },
