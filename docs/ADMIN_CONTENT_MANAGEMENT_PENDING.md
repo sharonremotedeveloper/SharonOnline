@@ -201,3 +201,12 @@ Both are expand-only: the running `78226cc` API keeps working after they are app
 
   Matches the expected plan. Nothing applied; the service stays plan-only with `PRODUCTION_MIGRATION_APPROVED` empty.
   Next (needs Anesu's go-ahead): step 3 apply, then step 4 release of API, worker and Beat.
+- Step 3 done (Anesu's go-ahead, 2026-10-19): set `PRODUCTION_MIGRATION_APPROVED=true` and start command `--apply` on the
+  migration service only; apply deployment `8a7074a5-bd82-4890-a465-729f76bc2248` at `59e3e52` against the direct production
+  Neon endpoint logged `Applying materials.0003_material_is_published... OK` and `Applying teachers.0015_training_module_video...
+  OK`; idempotency deployment `a2c2152e-0aac-4a51-9223-33173f3535cb` logged `No migrations to apply.` The service was then reset to
+  `--plan` with the flag empty (restart policy `NEVER`), re-read to confirm. No API, worker or Beat deployment happened: the API
+  still runs `78226cc` on the new schema; `/api/ready/`, `/api/scheduler-ready/`, `/api/v1/materials/` and the tutor directory
+  returned 200 (one `/api/health/` 503 right after was a single edge response; six repeats returned 200, and that handler is a
+  static 200). Recovery branch `pre-wave2-migrations-59e3e52` is kept until it expires on 2026-10-26.
+  Next (needs Anesu's go-ahead): step 4, deploy API, worker and Beat at `59e3e52`.
