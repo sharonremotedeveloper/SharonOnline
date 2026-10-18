@@ -194,7 +194,7 @@ class Command(BaseCommand):
                     "cefr_level": m["cefr_level"],
                     "description": m["description"],
                     "content_html": m["content_html"],
-                    "is_approved": True
+                    "is_published": True
                 }
             )
             if created:

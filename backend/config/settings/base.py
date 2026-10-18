@@ -185,6 +185,7 @@ REST_FRAMEWORK = {
         'admin_read': '120/min',
         'admin_refund_read': '60/min',
         'admin_write': '60/hour',
+        'admin_content': '600/hour',          # Wave 2: admins writing training modules and lesson materials
     },
     # Number of trusted reverse proxies in front of Django. 0 = ignore X-Forwarded-For entirely (REMOTE_ADDR only).
     # NEVER map 0 to None: DRF treats None as "trust the whole client-supplied X-Forwarded-For header", which lets

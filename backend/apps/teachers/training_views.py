@@ -30,6 +30,7 @@ class TrainingModuleItemSerializer(serializers.Serializer):
 
 class TrainingModuleDetailSerializer(TrainingModuleItemSerializer):
     body = serializers.CharField(allow_blank=True, help_text='Markdown.')
+    video_youtube_id = serializers.CharField(allow_blank=True, help_text='YouTube video id, or empty.')
 
 
 class TrainingOverviewSerializer(serializers.Serializer):
@@ -81,7 +82,8 @@ class TeacherTrainingModuleView(_TrainingView):
     def get(self, request, slug):
         teacher, module = self.teacher(request), self.module(slug)
         done = set(TrainingProgress.objects.filter(teacher=teacher, module=module).values_list('module_id', flat=True))
-        return Response(TrainingModuleDetailSerializer({**self.item(module, done), 'body': module.body}).data)
+        return Response(TrainingModuleDetailSerializer({**self.item(module, done), 'body': module.body,
+                                                       'video_youtube_id': module.video_youtube_id}).data)
 
 
 class TeacherTrainingCompleteView(_TrainingView):

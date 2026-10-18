@@ -33,8 +33,8 @@ class TestMaterialsContract:
             assert payload['discussion_questions'] == []
 
     def test_list_search_is_server_side(self, client):
-        Material.objects.create(title='Remote work', slug='remote-work', category='daily_news', cefr_level='B2', description='distributed teams')
-        Material.objects.create(title='Interview skills', slug='interview-skills', category='test_prep', cefr_level='C1', description='STAR answers')
+        Material.objects.create(title='Remote work', slug='remote-work', category='daily_news', cefr_level='B2', description='distributed teams', is_published=True)
+        Material.objects.create(title='Interview skills', slug='interview-skills', category='test_prep', cefr_level='C1', description='STAR answers', is_published=True)
 
         response = client.get('/api/v1/materials/?search=distributed')
 

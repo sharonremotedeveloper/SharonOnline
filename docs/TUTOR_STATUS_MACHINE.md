@@ -312,12 +312,15 @@ must exist before approval. Code: `teachers/rubric.py`, `teachers/review.py`, `a
 
 ## 13. Onboarding training and the gate backfill (slice T6)
 
-Infrastructure only: Sharon writes the content (Django admin: **Training modules**, publish when ready). Code:
+Admins write the content on `/admin/training` (Wave 2; Django admin also works and uses the same save path). Code:
 `teachers/training.py`, `teachers/training_views.py`, models `TrainingModule` / `TrainingProgress` (migration `teachers/0013_t6_training`).
 
 - **Counting rule.** Only `is_published AND is_required` modules count. A tutor finishes training when every such module has a
   `TrainingProgress` row; `training_completed_at` is then set **once** by a conditional UPDATE (`... WHERE training_completed_at IS
-  NULL`): a concurrent completion, a repeat or a module published later never overwrites or removes it. With **no** required
+  NULL`): a concurrent completion or a repeat never overwrites it. **Changed in Wave 2 (Anesu, 2026-10-18):** publishing a new
+  required module (or making a published one required) through `training.save_module` clears the date of every tutor who has
+  not completed that module, after staff confirm the count; they must finish it before new bookings (no grace period, lessons
+  already booked are untouched). See `ADMIN_CONTENT_MANAGEMENT_PENDING.md` sections 5.1 and 6.1. With **no** required
   published module nobody can finish: switching `TUTOR_TRAINING_GATE_ENABLED` on before the content exists would hide every
   new tutor.
 - **Who trains.** Only an `approved` tutor (409 `training_unavailable` otherwise; the gate hides approved-but-untrained tutors, and

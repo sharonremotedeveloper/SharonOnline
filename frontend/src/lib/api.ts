@@ -1,4 +1,15 @@
 import { API_BASE, MOCK, USE_MOCKS, downloadFile, liveRequest, request } from "./http";
+import {
+  materialAssetType,
+  quarantineKey,
+  type AdminMaterialDetail,
+  type AdminMaterialList,
+  type AdminTrainingList,
+  type AdminTrainingModuleDetail,
+  type MaterialAssetKind,
+  type MaterialInput,
+  type TrainingModuleInput,
+} from "./adminContent";
 import { matrixToRows, type AvailabilityRow, type LessonConflict, type WeeklyMatrix } from "./availability";
 import type { ReceiptItem } from "@/types";
 
@@ -1182,6 +1193,62 @@ export const api = {
     });
     if (live !== MOCK) return live as AdminRefund;
     throw new Error("Retrying refunds is unavailable in mock mode.");
+  },
+
+  // ---- Wave 2: admin content (training modules + lesson materials), docs/ADMIN_CONTENT_MANAGEMENT_PENDING.md ----
+  async getAdminTraining(): Promise<AdminTrainingList> {
+    return request(`${API_BASE}/admin/training/modules/`, {});
+  },
+
+  async getAdminTrainingModule(id: string): Promise<AdminTrainingModuleDetail> {
+    return request(`${API_BASE}/admin/training/modules/${encodeURIComponent(id)}/`, {});
+  },
+
+  /** 409 `regate_confirmation_required` (see lib/adminContent.ts::regateCount) until `confirm_regate` is sent. */
+  async saveAdminTrainingModule(id: string | null, data: Partial<TrainingModuleInput>): Promise<AdminTrainingModuleDetail> {
+    const url = id ? `${API_BASE}/admin/training/modules/${encodeURIComponent(id)}/` : `${API_BASE}/admin/training/modules/`;
+    return request(url, { method: id ? "PATCH" : "POST", body: JSON.stringify(data) });
+  },
+
+  async reorderAdminTraining(ids: string[]): Promise<AdminTrainingList> {
+    return request(`${API_BASE}/admin/training/reorder/`, { method: "POST", body: JSON.stringify({ ids }) });
+  },
+
+  async getAdminMaterials(params: { status?: string; search?: string } = {}): Promise<AdminMaterialList> {
+    const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]).toString();
+    return request(`${API_BASE}/admin/materials/${query ? `?${query}` : ""}`, {});
+  },
+
+  async getAdminMaterial(id: string): Promise<AdminMaterialDetail> {
+    return request(`${API_BASE}/admin/materials/${encodeURIComponent(id)}/`, {});
+  },
+
+  async saveAdminMaterial(id: string | null, data: Partial<MaterialInput>): Promise<AdminMaterialDetail> {
+    const url = id ? `${API_BASE}/admin/materials/${encodeURIComponent(id)}/` : `${API_BASE}/admin/materials/`;
+    return request(url, { method: id ? "PATCH" : "POST", body: JSON.stringify(data) });
+  },
+
+  async deleteAdminMaterial(id: string): Promise<void> {
+    await request(`${API_BASE}/admin/materials/${encodeURIComponent(id)}/`, { method: "DELETE" });
+  },
+
+  /** Quarantine upload, then the checked commit (materials/assets.py): the file is only public once the server accepts it. */
+  async uploadMaterialAsset(materialId: string, kind: MaterialAssetKind, file: File, userId: string): Promise<{ url: string }> {
+    const checked = materialAssetType(kind, file);
+    if ("error" in checked) throw new Error(checked.error);
+    const key = quarantineKey(userId, file.name, crypto.randomUUID());
+    const presigned = await request(`${API_BASE}/integrations/storage/presigned-url/`, {
+      method: "POST",
+      body: JSON.stringify({ action: "upload", key, content_type: checked.contentType, size: file.size }),
+    });
+    const put = await fetch(presigned.upload_url, { method: "PUT", body: file, headers: { "Content-Type": checked.contentType } });
+    if (!put.ok) throw new Error("The upload could not be completed. Please try again.");
+    const etag = put.headers.get("ETag");
+    if (!etag) throw new Error("The upload could not be verified. Please upload the file again.");
+    return request(`${API_BASE}/materials/${encodeURIComponent(materialId)}/assets/commit/`, {
+      method: "POST",
+      body: JSON.stringify({ kind, key, etag }),
+    });
   },
 
 };

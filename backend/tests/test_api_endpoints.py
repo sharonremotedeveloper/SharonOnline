@@ -52,7 +52,8 @@ def test_materials_catalog_endpoint():
         category=Material.Category.BUSINESS,
         cefr_level=Material.CEFRLevel.B2,
         description="Comprehensive article analyzing generative AI productivity shifts in tech firms.",
-        content_html="<p>Artificial Intelligence is transforming workplace dynamics...</p>"
+        content_html="<p>Artificial Intelligence is transforming workplace dynamics...</p>",
+        is_published=True,      # Wave 2: new materials are drafts by default
     )
 
     client = APIClient()

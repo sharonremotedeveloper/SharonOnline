@@ -269,7 +269,7 @@ export default function MaterialReaderPage() {
 
               {/* Article Content with Typography */}
               <div
-                className={`prose prose-stone max-w-none text-ink font-serif ${fontClass} leading-relaxed space-y-4`}
+                className={`lesson-html max-w-none text-ink font-serif ${fontClass} leading-relaxed`}
                 dangerouslySetInnerHTML={{ __html: material.content_html }}
               />
 

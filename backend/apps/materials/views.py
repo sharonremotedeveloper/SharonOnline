@@ -23,7 +23,7 @@ class MaterialListView(generics.ListAPIView):
     throttle_scope = 'public_materials_directory'
 
     def get_queryset(self):
-        queryset = Material.objects.filter(is_approved=True)
+        queryset = Material.objects.filter(is_published=True)
         category = self.request.query_params.get('category')
         if category:
             queryset = queryset.filter(category=category)
@@ -40,7 +40,7 @@ class MaterialListView(generics.ListAPIView):
         return queryset
 
 class MaterialDetailView(generics.RetrieveAPIView):
-    queryset = Material.objects.filter(is_approved=True)
+    queryset = Material.objects.filter(is_published=True)
     serializer_class = MaterialDetailSerializer
     permission_classes = (permissions.AllowAny,)
     throttle_classes = (ObservedScopedRateThrottle,)

@@ -99,11 +99,26 @@ class TeacherAvailabilityAdmin(admin.ModelAdmin):
 
 @admin.register(TrainingModule)
 class TrainingModuleAdmin(admin.ModelAdmin):
-    """Sharon's onboarding content (slice T6). Publish a module to show it; only published + required ones gate tutors."""
+    """Onboarding content (slice T6). The web page /admin/training is the main editor (Wave 2). Saves here also go through
+    training.save_module so publishing a required module re-gates tutors exactly as it does there; publish/required are not
+    list-editable because a list save would skip that."""
     list_display = ('slug', 'title', 'position', 'is_required', 'is_published', 'estimated_minutes')
-    list_editable = ('position', 'is_required', 'is_published')
+    list_editable = ('position',)
     prepopulated_fields = {'slug': ('title',)}
     search_fields = ('slug', 'title')
+
+    def save_model(self, request, obj, form, change):
+        from django.contrib import messages
+        from apps.teachers import training
+        fields = {name: form.cleaned_data[name] for name in training.EDITABLE_FIELDS if name in form.cleaned_data}
+        if change:
+            existing = TrainingModule.objects.get(pk=obj.pk)
+            saved, regated = training.save_module(existing, fields, confirm_regate=True)
+        else:
+            saved, regated = training.save_module(None, fields, confirm_regate=True)
+        obj.pk = saved.pk
+        if regated:
+            messages.warning(request, f'{regated} tutor(s) must complete this module before they can be booked again.')
 
 
 @admin.register(TrainingProgress)

@@ -976,3 +976,15 @@ def configure_test_settings(settings):
 - **Observed (2026-10-18, Wave 1 / STU-12):** The bell's "Notification Preferences" dialog sent `email_by_kind` / `in_app_by_kind` keyed by invented group names (`lesson_reminders`, `booking_lifecycle`, `account_alerts`, `billing_credits`). Against production the API answered `400 {"email_by_kind":{"lesson_reminders":"Unknown notification kind."}}`, and the dialog did not catch the rejected promise, so a user saw no message and no preference was ever stored.
 - **Root cause:** The server keys preferences by registered notification kind (`backend/apps/notifications/domain_kinds.py`: `reminder_24h`, `booking_confirmed`, ...) and validates every key (`NotificationPreferenceSerializer.validate`); the frontend invented a category layer that matched nothing. The modal's unit test asserted on the invented titles, so it passed.
 - **Fix:** `frontend/src/lib/notificationPrefs.ts` maps the user-facing groups to real kinds per role (students: reminders, tutor running late, bookings, credits; tutors: reminders, memo reminders, bookings; plus an always-on group for the mandatory categories), with a test that every key sent is a server-registered optional kind. The bell dialog and the new `/student/settings` card both use it; the dialog now shows save errors. Verified on production through the local proxy: the old key returns 400, the new keys save (200, all set on, i.e. no behaviour change for the test tutor).
+
+### ERR-553: Admin training list came back in random order (GROUP BY drops Meta.ordering)
+
+- **Observed (2026-10-19, Wave 2):** `tests/test_admin_training.py::test_list_shows_drafts_counts_and_the_gate` and the reorder test failed: modules came back as `['draft', 'a']` / `['b', 'c', 'a']` instead of by position.
+- **Root cause:** the admin list annotates `Count('progress')`; since Django 3.1 a model's `Meta.ordering` is not applied to queries with GROUP BY, so the order was whatever the database returned.
+- **Fix:** `apps/admin_api/training_views.py::_modules()` orders explicitly by `position, slug`. Both tests pass.
+
+### ERR-554: Lint failed on the lesson editor toolbar (react-hooks/refs)
+
+- **Observed (2026-10-19, Wave 2):** `npm run lint` reported "Cannot access refs during render" in `components/admin/LessonHtmlEditor.tsx`.
+- **Root cause:** the toolbar was built during render as an array of closures that call a function reading the editor ref; the React Compiler lint rule cannot tell that the ref is only read when a button is clicked.
+- **Fix:** the toolbar is a static module-level list of commands (`TOOLS`), and the click handler `apply(tool)` reads the ref only inside the event. Lint is clean with no rule disabled.
