@@ -1,6 +1,7 @@
 # Admin content management (materials + tutor training) - PENDING
 
 **Status: PENDING - not built. To be handled later.** Recorded 2026-10-18 at Anesu's request after a scope check.
+The four open questions were answered the same day (section 5); building is Wave 2 and has not started.
 Page ID ADM-07 (curriculum editor) and Task 15.4 (materials editor) are open; nothing has been started.
 
 Today an admin **cannot** add, edit, upload files for, publish or retire lesson materials or tutor training modules
@@ -49,20 +50,37 @@ Authors are Sharon / staff. Tutors were never meant to author content. No versio
 Safeguards to keep: `IsPlatformAdmin`, the commit checks in `materials/assets.py`, `apps/common/upload_policy.py`
 (per-prefix size/type, 60-900 s presign expiry), the presign path-traversal guard and non-admin prefix allowlist.
 
-## 4. Proposed plan (not approved yet)
+## 4. Plan (Wave 2; decisions recorded in section 5, build not started)
 
 1. **Training admin first** (small, on the launch path because training gates bookability):
-   `/admin/training` - list, create, edit, reorder, publish/unpublish; Markdown with preview; optional video and PDF
-   attachments through the safe upload flow; staff create/update API with tests.
+   `/admin/training` - list, create, edit, reorder, publish/unpublish; Markdown with preview; an optional embedded
+   YouTube video (decision 2) and an optional PDF through the safe upload flow; staff create/update API with tests;
+   re-gating of all tutors when a required module is published (section 5.1).
 2. **Materials admin second:** `/admin/materials` - draft/published state (new materials start as drafts), PDF/audio
    upload via the existing commit endpoint, server-side HTML sanitizing.
 3. Later: PDF worksheet generator, versioning, structured vocabulary/discussion fields (the API returns empty lists today),
    image uploads.
 
-## 5. Open questions for Anesu (decide before building)
+## 5. Decisions (Anesu, 2026-10-18)
 
-1. Who authors content: only Sharon, or other staff/content editors? If others, add a content-editor role with no access
-   to money, disputes or tutor approval.
-2. Training videos: upload to our storage, or embed YouTube/Vimeo links (simpler, cheaper)?
-3. Materials workflow: Draft -> Review -> Published (a second person checks), or Draft -> Published?
-4. A new required training module: must already-approved tutors complete it before their next booking, or new tutors only?
+| # | Question | Decision | What it means for the build |
+| :--- | :--- | :--- | :--- |
+| 1 | Who authors content? | **Admins only, for now.** | Reuse `IsPlatformAdmin`; no content-editor role yet. Revisit if non-admin staff start writing content. |
+| 2 | Training videos: our storage or embedded links? | **Embedded YouTube links, for now.** | No video uploads. Store a validated video ID (not free HTML or any URL): accept only `youtube.com/watch?v=`, `youtu.be/` and `youtube.com/embed/` URLs, keep the 11-character ID, render through `youtube-nocookie.com/embed/<id>` in a sandboxed iframe. The CSP (when added) must allow that origin in `frame-src`. Videos should be set to Unlisted on YouTube. |
+| 3 | Materials workflow? | **Draft -> Published** (no review step). | Replace "approved by default" with an explicit state; new materials start as **Draft** and only Published ones are public. Existing approved rows migrate to Published. HTML sanitizing on save is still required (risk 1). |
+| 4 | New required training module: who must complete it? | **All tutors**, including already-approved ones. | Changes the T6 rule "a module published later never takes a date away" (`teachers/training.py`). Design below. |
+
+### 5.1 Design for decision 4 (to confirm while building Wave 2)
+
+- When a required module is published (or an existing published module becomes required), every approved tutor who has
+  not completed it loses `training_completed_at` (cleared in `teachers/training.py`, the only writer). While the training gate is on,
+  `bookable()` then hides them from **new** bookings until they finish it. **Lessons already booked are not affected**: cancel,
+  memo, attendance, escrow and payouts never consult `bookable()`.
+- Completing the last outstanding required module stamps the date again (existing `complete_module` logic).
+- Tutors stamped by `backfill_training_completed` have no progress rows, so the backfill must also record progress for the
+  modules required at that moment; otherwise they could never be stamped again after a new module appears.
+- The admin publish screen must show how many tutors will become unbookable and ask for confirmation before publishing.
+  Tutors get a notification that new required training is waiting.
+- Open detail: whether to add a grace period (e.g. 7 days before the gate applies). Default without one: the gate applies at once.
+- Unpublishing or making a module optional never removes a tutor's completion.
+- Check the production value of `TUTOR_TRAINING_GATE_ENABLED` before shipping; with the gate off, nothing above hides anyone.
