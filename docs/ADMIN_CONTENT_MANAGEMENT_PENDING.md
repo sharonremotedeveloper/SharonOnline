@@ -133,7 +133,7 @@ Vercel deploys the website from `main`, but the production API on Railway only c
 (`RAILWAY_SETUP.md` sections 4-5). Until the backend release is done, `/admin/training` and `/admin/materials` show their error
 state (only admins see them); every other page works with the old API.
 
-**Release SHA:** `59e3e52b` on `main` (the full SHA is in `git log main`). It contains exactly two backend commits on top of what
+**Release SHA:** `59e3e52a5bfa08784fc7109bb5c8da7f78085b3b` on `main`. It contains exactly two backend commits on top of what
 production runs: `775fc05` (Wave 2) and `59e3e52` (expand-only migrations). Read-only Railway check on 2026-10-19 (project
 `sharon-online-prod` `e2b11747-...`, environment `production` `dd70ab8a-...`):
 
@@ -166,7 +166,7 @@ Both are expand-only: the running `78226cc` API keeps working after they are app
    2026-10-14 (`pre-production-migrations-b33743`).
 2. Plan: deploy the migration service at commit `59e3e52` with its existing start command
    (`python scripts/run_production_migrations.py --plan`, approval flag still empty) through `serviceInstanceDeployV2`
-   (`serviceId cdc25acb-...`, `environmentId dd70ab8a-...`, `commitSha 59e3e52...`). Read its log: it must list exactly the two
+   (`serviceId cdc25acb-...`, `environmentId dd70ab8a-...`, `commitSha 59e3e52a5bfa08784fc7109bb5c8da7f78085b3b`). Read its log: it must list exactly the two
    migrations above. Anything else: stop.
 3. Apply: set `PRODUCTION_MIGRATION_APPROVED=true` and the start command to `... --apply` on that service only, deploy it once at
    `59e3e52`, read the log; deploy once more to see `No migrations to apply.`; then set the start command back to `--plan` and
