@@ -240,3 +240,13 @@ h1, h2, h3 {
   border: 0;
   border-top: 1px solid #E4D3C6;
 }
+
+/* Admin section sheet (components/admin/AdminNav.tsx); used only under motion-safe: */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}

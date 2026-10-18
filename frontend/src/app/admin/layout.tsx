@@ -1,26 +1,12 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, UserCheck, Users, Radio, Scale, FileSpreadsheet, CreditCard, Coins, Shield, ExternalLink, ChevronRight, Sparkles, RotateCcw, GraduationCap, BookOpen } from "lucide-react";
-
-const NAV_ITEMS = [
-  { href: "/admin/dashboard", label: "Executive Dashboard", icon: LayoutDashboard },
-  { href: "/admin/teachers/vetting", label: "Tutor Vetting Studio", icon: UserCheck },
-  { href: "/admin/teachers", label: "Tutor Directory & Roster", icon: Users },
-  { href: "/admin/sessions/live", label: "Live Attendance Radar", icon: Radio, pulse: true },
-  { href: "/admin/disputes", label: "Dispute Tribunal", icon: Scale },
-  { href: "/admin/training", label: "Tutor Training", icon: GraduationCap },
-  { href: "/admin/materials", label: "Lesson Materials", icon: BookOpen },
-  { href: "/admin/finance/ledger", label: "Escrow Ledger Audit", icon: FileSpreadsheet },
-  { href: "/admin/finance/refunds", label: "Student Refunds", icon: RotateCcw },
-  { href: "/admin/finance/payouts", label: "Batch Bank Payouts", icon: CreditCard },
-  { href: "/admin/finance/fx-rates", label: "FX Rates (EUR/JPY)", icon: Coins },
-];
+import { ExternalLink, Shield } from "lucide-react";
+import { AdminSectionSheet, AdminSidebarNav, QUICK_PORTALS } from "@/components/admin/AdminNav";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
 
   return (
     <div className="min-h-screen bg-cream flex flex-col md:flex-row">
@@ -49,73 +35,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
 
-          {/* Phones: one section picker (the sideways strip of 8 long labels hid most sections, e.g. "Tutor Vett..."). */}
-          <label className="block md:hidden">
-            <span className="sr-only">Admin section</span>
-            <select
-              value={NAV_ITEMS.find((item) => pathname === item.href || (item.href !== "/admin/dashboard" && pathname.startsWith(item.href)))?.href ?? ""}
-              onChange={(e) => router.push(e.target.value)}
-              className="min-h-12 w-full rounded-xl border border-white/20 bg-white/10 px-4 text-base font-bold text-white focus:outline-none focus:ring-2 focus:ring-sun"
-            >
-              {NAV_ITEMS.map((item) => (
-                <option key={item.href} value={item.href} className="text-ink">
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          {/* Phones: a section button that opens a grouped bottom sheet (replaces the native <select> picker). */}
+          <AdminSectionSheet pathname={pathname} />
 
-          {/* Navigation Links */}
-          <nav aria-label="Admin" className="hidden md:block md:space-y-1.5">
-            {NAV_ITEMS.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href || (item.href !== "/admin/dashboard" && pathname.startsWith(item.href));
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex min-h-[44px] shrink-0 items-center justify-between gap-3 whitespace-nowrap px-4 py-2.5 rounded-full md:rounded-xl text-sm font-bold transition-all ${
-                    isActive
-                      ? "bg-cocoa text-white shadow-sm"
-                      : "text-cream/70 hover:bg-white/5 hover:text-white"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className="w-4 h-4 opacity-80" />
-                    <span>{item.label}</span>
-                  </div>
-
-                  {item.pulse && (
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sun opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-sun"></span>
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
+          {/* Desktop sidebar: the same groups as the phone sheet. */}
+          <AdminSidebarNav pathname={pathname} />
         </div>
 
         {/* Footer Navigation / Quick Switch */}
         <div className="hidden md:block p-6 border-t border-white/10 space-y-3">
           <div className="text-xs font-bold text-cream/70 uppercase tracking-wider">Quick Portals</div>
           <div className="flex flex-col gap-1.5 text-sm text-cream/80">
-            <Link
-              href="/teacher/dashboard"
-              className="min-h-11 flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
-            >
-              <span>Tutor Cockpit</span>
-              <ExternalLink className="w-3 h-3 text-cream/75" />
-            </Link>
-            <Link
-              href="/"
-              className="min-h-11 flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
-            >
-              <span>Public Storefront</span>
-              <ExternalLink className="w-3 h-3 text-cream/75" />
-            </Link>
+            {QUICK_PORTALS.map((portal) => (
+              <Link
+                key={portal.href}
+                href={portal.href}
+                className="min-h-11 flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-white/5 hover:text-white transition-colors"
+              >
+                <span>{portal.label}</span>
+                <ExternalLink className="w-3 h-3 text-cream/75" aria-hidden="true" />
+              </Link>
+            ))}
           </div>
         </div>
       </aside>
