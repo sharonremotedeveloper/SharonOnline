@@ -1033,3 +1033,9 @@ def configure_test_settings(settings):
 - **Observed (2026-10-19, Wave 2):** `npm run lint` reported "Cannot access refs during render" in `components/admin/LessonHtmlEditor.tsx`.
 - **Root cause:** the toolbar was built during render as an array of closures that call a function reading the editor ref; the React Compiler lint rule cannot tell that the ref is only read when a button is clicked.
 - **Fix:** the toolbar is a static module-level list of commands (`TOOLS`), and the click handler `apply(tool)` reads the ref only inside the event. Lint is clean with no rule disabled.
+
+### ERR-555: Production migration plan job stopped at startup (R2 settings missing on the migration service)
+
+- **Observed (2026-10-19, Wave 2 release step 2):** Railway deployment `e5d812f9-70d6-44b5-8e13-a0a460febafd` of the one-shot service `production-migrations-b33743a` at `59e3e52` (start command `--plan`, approval flag empty) ended `SUCCESS` but the container raised `ImproperlyConfigured: Unsafe production configuration: CLOUDFLARE_R2_ACCOUNT_ID must be set ...; CLOUDFLARE_R2_PUBLIC_DOMAIN must be set ...` while loading `config.settings.production`, before any database connection. No plan was printed and nothing was applied.
+- **Root cause:** the production settings guard (`config/settings/guard.py`) gained the two R2 requirements in the 2026-10-15 release `e534795` ("fix production tutor asset uploads"). The migration service was created on 2026-10-14 with a copy of the variables at that time, so it lacks them; the API, worker and Beat services have them.
+- **Fix (pending Anesu's go-ahead, a production variable change):** copy `CLOUDFLARE_R2_ACCOUNT_ID` and `CLOUDFLARE_R2_PUBLIC_DOMAIN` from `backend-api-production` to the migration service without printing values, then re-run the plan-only job. Railway reporting `SUCCESS` for a one-shot job is not evidence: always read its log.

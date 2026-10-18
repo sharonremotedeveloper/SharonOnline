@@ -178,3 +178,13 @@ Both are expand-only: the running `78226cc` API keeps working after they are app
    (lists load; nothing is created or published as part of the check).
 6. Rollback: redeploy the three services at `78226cc` / `e534795`. The schema needs no rollback: both migrations are
    expand-only and the old code ignores them.
+
+**Progress (2026-10-19):**
+
+- Step 1 done: Neon branch `pre-wave2-migrations-59e3e52` (`br-noisy-fog-b47ocuxw`) created from `production`
+  (`br-icy-rice-b45wkr17`) at 2026-10-18 21:10:18 UTC, data and schema, no compute, expires 2026-10-26. Neon CLI identity
+  `sharonremotedeveloper@gmail.com`.
+- Step 2 attempted: plan-only deployment `e5d812f9-70d6-44b5-8e13-a0a460febafd` at `59e3e52` stopped at settings load
+  (ERR-555: the migration service lacks `CLOUDFLARE_R2_ACCOUNT_ID` / `CLOUDFLARE_R2_PUBLIC_DOMAIN`). No database connection,
+  no plan, nothing applied. The service is still plan-only with the approval flag empty. Waiting for Anesu's go-ahead to copy
+  the two variables from the API service and re-run the plan.
