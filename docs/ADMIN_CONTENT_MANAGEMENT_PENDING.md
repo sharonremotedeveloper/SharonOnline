@@ -188,3 +188,16 @@ Both are expand-only: the running `78226cc` API keeps working after they are app
   (ERR-555: the migration service lacks `CLOUDFLARE_R2_ACCOUNT_ID` / `CLOUDFLARE_R2_PUBLIC_DOMAIN`). No database connection,
   no plan, nothing applied. The service is still plan-only with the approval flag empty. Waiting for Anesu's go-ahead to copy
   the two variables from the API service and re-run the plan.
+- Step 2 done (after copying the two R2 variables to the migration service on Anesu's go-ahead): plan-only deployment
+  `4ba359ac-f3ea-414d-8cd5-6b91ac203a85` at `59e3e52` against the direct production Neon endpoint printed exactly:
+
+  ```text
+  Planned operations:
+  materials.0003_material_is_published
+      Custom state/database change combination
+  teachers.0015_training_module_video
+      Add field video_youtube_id to trainingmodule
+  ```
+
+  Matches the expected plan. Nothing applied; the service stays plan-only with `PRODUCTION_MIGRATION_APPROVED` empty.
+  Next (needs Anesu's go-ahead): step 3 apply, then step 4 release of API, worker and Beat.
