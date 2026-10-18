@@ -1,6 +1,7 @@
 from django.db import models
 import uuid
 
+
 class Material(models.Model):
     class CEFRLevel(models.TextChoices):
         A1 = 'A1', 'Beginner A1'
@@ -27,7 +28,8 @@ class Material(models.Model):
     pdf_file_url = models.URLField(blank=True, help_text="Cloudflare R2 link for student/teacher worksheet download")
     audio_snippet_file = models.FileField(upload_to='materials/audio/', blank=True, null=True, help_text="Listening comprehension audio file stored on R2")
     audio_snippet_url = models.URLField(blank=True, help_text="Direct Cloudflare R2 audio stream link")
-    is_approved = models.BooleanField(default=True, db_index=True)
+    # Draft -> Published (Anesu, 2026-10-18). New materials start as drafts; only published ones are public.
+    is_published = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -51,6 +53,12 @@ class Material(models.Model):
             except Exception:
                 pass
         return self.audio_snippet_url or ""
+
+    def save(self, *args, **kwargs):
+        # Every write path (web admin, Django admin, seed data) stores cleaned HTML: the website renders it as raw HTML.
+        from .sanitize import clean_lesson_html
+        self.content_html = clean_lesson_html(self.content_html)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"[{self.cefr_level}] {self.title} ({self.get_category_display()})"

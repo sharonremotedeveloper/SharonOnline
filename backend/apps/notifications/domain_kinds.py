@@ -28,6 +28,7 @@ CREDIT_EXPIRING = 'credit_expiring'
 VETTING_OUTCOME = 'vetting_outcome'
 STRIKE_ISSUED = 'strike_issued'
 TEACHER_SUSPENDED = 'teacher_suspended'
+TRAINING_REQUIRED = 'training_required'
 
 ESKOM_SHIELD_ALERT = 'eskom_shield_alert'
 REFUND_PROCESSED = 'refund_processed'
@@ -389,6 +390,27 @@ def _render_payment_failed(user, payload, booking):
     return Rendered(subject=subject, html=html, text=text, title=title, body=body)
 
 
+def _render_training_required(user, payload, booking):
+    from apps.teachers.models import TrainingModule
+    name = first_name(user)
+    module = TrainingModule.objects.filter(pk=payload.get('module_id')).only('title').first()
+    module_title = module.title if module else 'New training module'
+    title = one_line('New required training')
+    subject = one_line('Action required: complete your new training module')
+    body = (f'Please complete "{module_title}" in Training. Until you do, students cannot book new lessons with you. '
+            'Lessons already booked are not affected.')
+    text = (f'Hi {name},\n\nA new required training module has been added: {module_title}.\n\n'
+            'Please complete it from the Training page in your tutor dashboard. Until you do, students cannot book new '
+            'lessons with you. Lessons already booked are not affected.')
+    html = render_html(
+        '<p>Hi {name},</p><p>A new required training module has been added: <strong>{module}</strong>.</p>'
+        '<p>Please complete it from the Training page in your tutor dashboard. Until you do, students cannot book new '
+        'lessons with you. Lessons already booked are not affected.</p>',
+        name=name, module=module_title
+    )
+    return Rendered(subject=subject, html=html, text=text, title=title, body=body)
+
+
 # --- Example Builders ---
 def _ex_booking(booking):
     return {'booking_id': str(booking.pk)}
@@ -416,6 +438,10 @@ def _ex_strike(booking):
 
 def _ex_suspended(booking):
     return {'reason': 'strike_limit'}
+
+
+def _ex_training_required(booking):
+    return {'module_id': '00000000-0000-4000-8000-0000000000c1'}
 
 
 def _ex_eskom(booking):
@@ -448,6 +474,9 @@ register(Kind(CREDIT_EXPIRING, 'credit', frozenset({EMAIL, IN_APP}), _render_cre
 register(Kind(VETTING_OUTCOME, 'vetting_outcome', frozenset({EMAIL, IN_APP}), _render_vetting_outcome, _ex_vetting))
 register(Kind(STRIKE_ISSUED, 'strike', frozenset({EMAIL, IN_APP}), _render_strike_issued, _ex_strike))
 register(Kind(TEACHER_SUSPENDED, 'suspension', frozenset({EMAIL, IN_APP}), _render_teacher_suspended, _ex_suspended))
+# Mandatory like the vetting outcome: it decides whether the tutor can be booked, so a preference must not mute it.
+register(Kind(TRAINING_REQUIRED, 'vetting_outcome', frozenset({EMAIL, IN_APP}), _render_training_required,
+              _ex_training_required))
 
 register(Kind(ESKOM_SHIELD_ALERT, 'system', frozenset({EMAIL, IN_APP}), _render_eskom_shield_alert, _ex_eskom))
 register(Kind(REFUND_PROCESSED, 'refund', frozenset({EMAIL, IN_APP}), _render_refund_processed, _ex_refund))

@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, UserCheck, Users, Radio, Scale, FileSpreadsheet, CreditCard, Coins, Shield, ExternalLink, ChevronRight, Sparkles, RotateCcw } from "lucide-react";
+import { LayoutDashboard, UserCheck, Users, Radio, Scale, FileSpreadsheet, CreditCard, Coins, Shield, ExternalLink, ChevronRight, Sparkles, RotateCcw, GraduationCap, BookOpen } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Executive Dashboard", icon: LayoutDashboard },
@@ -10,6 +10,8 @@ const NAV_ITEMS = [
   { href: "/admin/teachers", label: "Tutor Directory & Roster", icon: Users },
   { href: "/admin/sessions/live", label: "Live Attendance Radar", icon: Radio, pulse: true },
   { href: "/admin/disputes", label: "Dispute Tribunal", icon: Scale },
+  { href: "/admin/training", label: "Tutor Training", icon: GraduationCap },
+  { href: "/admin/materials", label: "Lesson Materials", icon: BookOpen },
   { href: "/admin/finance/ledger", label: "Escrow Ledger Audit", icon: FileSpreadsheet },
   { href: "/admin/finance/refunds", label: "Student Refunds", icon: RotateCcw },
   { href: "/admin/finance/payouts", label: "Batch Bank Payouts", icon: CreditCard },

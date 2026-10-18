@@ -1,7 +1,8 @@
 # Admin content management (materials + tutor training) - PENDING
 
-**Status: PENDING - not built. To be handled later.** Recorded 2026-10-18 at Anesu's request after a scope check.
-The four open questions were answered the same day (section 5); building is Wave 2 and has not started.
+**Status: BUILT (Wave 2, 2026-10-19).** Recorded 2026-10-18 as pending; the four questions were answered the same day
+(section 5) and Wave 2 built both halves: `/admin/training` and `/admin/materials` (section 6). Sections 1-4 describe the state
+before Wave 2 and are kept for the record. What is still left for later is in section 6.3.
 Page ID ADM-07 (curriculum editor) and Task 15.4 (materials editor) are open; nothing has been started.
 
 Today an admin **cannot** add, edit, upload files for, publish or retire lesson materials or tutor training modules
@@ -50,7 +51,7 @@ Authors are Sharon / staff. Tutors were never meant to author content. No versio
 Safeguards to keep: `IsPlatformAdmin`, the commit checks in `materials/assets.py`, `apps/common/upload_policy.py`
 (per-prefix size/type, 60-900 s presign expiry), the presign path-traversal guard and non-admin prefix allowlist.
 
-## 4. Plan (Wave 2; decisions recorded in section 5, build not started)
+## 4. Plan (Wave 2; done, see section 6)
 
 1. **Training admin first** (small, on the launch path because training gates bookability):
    `/admin/training` - list, create, edit, reorder, publish/unpublish; Markdown with preview; an optional embedded
@@ -84,3 +85,44 @@ Safeguards to keep: `IsPlatformAdmin`, the commit checks in `materials/assets.py
 - Open detail: whether to add a grace period (e.g. 7 days before the gate applies). Default without one: the gate applies at once.
 - Unpublishing or making a module optional never removes a tutor's completion.
 - Check the production value of `TUTOR_TRAINING_GATE_ENABLED` before shipping; with the gate off, nothing above hides anyone.
+
+## 6. What Wave 2 built (2026-10-19)
+
+### 6.1 Tutor training (`/admin/training`, `/admin/training/new`, `/admin/training/<id>`)
+
+- Staff API `apps/admin_api/training_views.py` (`IsPlatformAdmin`; throttle `admin_read` / new `admin_content` 600/h):
+  list with completion counts, tutor totals and the gate setting; create; edit; reorder (`POST /admin/training/reorder/`).
+- Writes go through `teachers/training.py::save_module` (also used by Django admin's save, whose publish/required columns are no
+  longer list-editable). When a module becomes published + required, every tutor holding a training date who has not completed
+  it loses the date (section 5.1, no grace period). The API answers 409 `regate_confirmation_required` with the number of tutors
+  until the admin confirms; each affected tutor gets the new mandatory notification `training_required` (e-mail + in-app).
+  Unpublishing or making a module optional never takes anything away.
+- Video: `TrainingModule.video_youtube_id` (migration `teachers/0015`). Only `parse_youtube_id` writes it (watch, youtu.be,
+  embed, shorts links; anything else is a 400). Tutors and the admin preview embed it from `youtube-nocookie.com` in a sandboxed
+  iframe (`components/training/TrainingContent.tsx`).
+- Editor: title, web address, summary, minutes, YouTube link, required switch, Markdown body with a Preview tab; Save draft /
+  Publish / Unpublish.
+
+### 6.2 Lesson materials (`/admin/materials`, `/admin/materials/new`, `/admin/materials/<id>`)
+
+- `Material.is_approved` became `is_published` with default **False** (migration `materials/0003`; existing rows keep their
+  value, so everything public stayed public). Drafts are 404 on the public API.
+- Lesson HTML is cleaned with `nh3` on every save (`Material.save`, `materials/sanitize.py`) and again when served, which fixes
+  risk 1. Allowed: headings, paragraphs, bold/italic, lists, tables, quotes, links (http/https/mailto, `rel=noopener noreferrer
+  nofollow`). Removed: scripts, styles, event handlers, forms, iframes, images.
+- Staff API `apps/admin_api/material_views.py`: list (status filter, search, counts), create, edit, detach PDF/audio, delete
+  drafts only (a published material must be unpublished first).
+- Files: the page uploads to `incoming/<admin id>/...` and commits through the existing checked endpoint (risk 3 is avoided by
+  the UI). Django admin's file fields are now read-only (risk 2).
+- Editor: a small WYSIWYG (`components/admin/LessonHtmlEditor.tsx`: heading, paragraph, bold, italic, lists, links, HTML view);
+  pasted text arrives as plain text. The public reader and the classroom reader now style lesson HTML with `.lesson-html`
+  (globals.css): before, Tailwind's reset removed list bullets and heading sizes on the live site.
+
+### 6.3 Still open (later)
+
+- PDF attachments on training modules (decision 2 covered video only).
+- PDF worksheet generator, versioning, structured vocabulary / discussion fields, image uploads (unchanged from section 4.3).
+- A content-editor role if non-admin staff start writing (decision 1).
+- Detaching or replacing a material file leaves the old object in R2 (no cleanup job yet).
+- Admins can still presign any key (the web UI only uses `incoming/`); narrowing the admin presign allowlist is a follow-up.
+- Unpublishing and republishing a required module does not notify the same tutor twice (notification key is per module and tutor).

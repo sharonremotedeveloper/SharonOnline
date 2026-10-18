@@ -84,6 +84,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/materials/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["admin_materials_list"];
+        put?: never;
+        post: operations["admin_materials_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/materials/{material_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["admin_materials_retrieve"];
+        put?: never;
+        post?: never;
+        delete: operations["admin_materials_destroy"];
+        options?: never;
+        head?: never;
+        patch: operations["admin_materials_update"];
+        trace?: never;
+    };
     "/api/v1/admin/payouts/batch/": {
         parameters: {
             query?: never;
@@ -486,6 +518,54 @@ export interface paths {
         get: operations["v1_admin_telemetry_retrieve"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/training/modules/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["admin_training_modules_list"];
+        put?: never;
+        post: operations["admin_training_modules_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/training/modules/{module_id}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["admin_training_modules_retrieve"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["admin_training_modules_update"];
+        trace?: never;
+    };
+    "/api/v1/admin/training/reorder/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["admin_training_reorder"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1898,6 +1978,58 @@ export interface components {
             outcome: components["schemas"]["OutcomeEnum"];
             status: string;
         };
+        AdminMaterial: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            slug: string;
+            category: string;
+            category_display: string;
+            cefr_level: string;
+            description: string;
+            is_published: boolean;
+            pdf_url: string;
+            audio_url: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AdminMaterialDetail: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            slug: string;
+            category: string;
+            category_display: string;
+            cefr_level: string;
+            description: string;
+            is_published: boolean;
+            pdf_url: string;
+            audio_url: string;
+            /** Format: date-time */
+            updated_at: string;
+            content_html: string;
+        };
+        AdminMaterialList: {
+            materials: components["schemas"]["AdminMaterial"][];
+            published: number;
+            drafts: number;
+        };
+        AdminMaterialWriteRequest: {
+            title: string;
+            slug: string;
+            category: components["schemas"]["CategoryEnum"];
+            cefr_level: components["schemas"]["CefrLevelEnum"];
+            /** @default  */
+            description: string;
+            /** @default  */
+            content_html: string;
+            /** @default false */
+            is_published: boolean;
+            /** @default false */
+            remove_pdf: boolean;
+            /** @default false */
+            remove_audio: boolean;
+        };
         AdminRefund: {
             /** Format: uuid */
             readonly id: string;
@@ -1967,6 +2099,70 @@ export interface components {
         AdminTeacherError: {
             error: string;
             code: string;
+        };
+        AdminTrainingList: {
+            modules: components["schemas"]["AdminTrainingModule"][];
+            approved_tutors: number;
+            /** @description Approved tutors holding a training date. */
+            trained_tutors: number;
+            /** @description TUTOR_TRAINING_GATE_ENABLED: while false nobody is hidden. */
+            gate_enabled: boolean;
+        };
+        AdminTrainingModule: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            title: string;
+            summary: string;
+            video_youtube_id: string;
+            position: number;
+            estimated_minutes: number;
+            is_required: boolean;
+            is_published: boolean;
+            /** @description Tutors who completed this module. */
+            completed_count: number;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        AdminTrainingModuleDetail: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            title: string;
+            summary: string;
+            video_youtube_id: string;
+            position: number;
+            estimated_minutes: number;
+            is_required: boolean;
+            is_published: boolean;
+            /** @description Tutors who completed this module. */
+            completed_count: number;
+            /** Format: date-time */
+            updated_at: string;
+            /** @description Markdown. */
+            body: string;
+        };
+        AdminTrainingModuleWriteRequest: {
+            slug: string;
+            title: string;
+            /** @default  */
+            summary: string;
+            /** @default  */
+            body: string;
+            /**
+             * @description A YouTube link; only the video id is stored.
+             * @default
+             */
+            video_url: string;
+            position?: number;
+            /** @default 10 */
+            estimated_minutes: number;
+            /** @default true */
+            is_required: boolean;
+            /** @default false */
+            is_published: boolean;
+            /** @default false */
+            confirm_regate: boolean;
         };
         ApplicationOverview: {
             status: string;
@@ -2359,8 +2555,7 @@ export interface components {
             readonly estimated_minutes: number;
             readonly vocabulary: unknown[];
             readonly discussion_questions: unknown[];
-            /** @description Structured HTML content: article text, vocab definitions, discussion questions */
-            content_html?: string;
+            readonly content_html: string;
             /** Format: date-time */
             readonly created_at: string;
             /** Format: date-time */
@@ -2609,6 +2804,44 @@ export interface components {
         PasswordResetRequestRequest: {
             /** Format: email */
             email: string;
+        };
+        PatchedAdminMaterialWriteRequest: {
+            title?: string;
+            slug?: string;
+            category?: components["schemas"]["CategoryEnum"];
+            cefr_level?: components["schemas"]["CefrLevelEnum"];
+            /** @default  */
+            description: string;
+            /** @default  */
+            content_html: string;
+            /** @default false */
+            is_published: boolean;
+            /** @default false */
+            remove_pdf: boolean;
+            /** @default false */
+            remove_audio: boolean;
+        };
+        PatchedAdminTrainingModuleWriteRequest: {
+            slug?: string;
+            title?: string;
+            /** @default  */
+            summary: string;
+            /** @default  */
+            body: string;
+            /**
+             * @description A YouTube link; only the video id is stored.
+             * @default
+             */
+            video_url: string;
+            position?: number;
+            /** @default 10 */
+            estimated_minutes: number;
+            /** @default true */
+            is_required: boolean;
+            /** @default false */
+            is_published: boolean;
+            /** @default false */
+            confirm_regate: boolean;
         };
         PatchedApplicationUpdateRequest: {
             speed_test?: components["schemas"]["SpeedTestRequest"];
@@ -3223,6 +3456,8 @@ export interface components {
             completed: boolean;
             /** @description Markdown. */
             body: string;
+            /** @description YouTube video id, or empty. */
+            video_youtube_id: string;
         };
         TrainingModuleItem: {
             slug: string;
@@ -3241,6 +3476,14 @@ export interface components {
             completed_at: string | null;
             /** @description False until the application is approved. */
             can_train: boolean;
+        };
+        TrainingRegateConflict: {
+            error: string;
+            code: string;
+            tutors_affected: number;
+        };
+        TrainingReorderRequest: {
+            ids: string[];
         };
         /**
          * @description * `applied` - Applied
@@ -3546,6 +3789,145 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    admin_materials_list: {
+        parameters: {
+            query?: {
+                search?: string;
+                status?: "draft" | "published";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMaterialList"];
+                };
+            };
+        };
+    };
+    admin_materials_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminMaterialWriteRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AdminMaterialWriteRequest"];
+                "multipart/form-data": components["schemas"]["AdminMaterialWriteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMaterialDetail"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+        };
+    };
+    admin_materials_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                material_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMaterialDetail"];
+                };
+            };
+        };
+    };
+    admin_materials_destroy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                material_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No response body */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+        };
+    };
+    admin_materials_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                material_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAdminMaterialWriteRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedAdminMaterialWriteRequest"];
+                "multipart/form-data": components["schemas"]["PatchedAdminMaterialWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMaterialDetail"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
                 };
             };
         };
@@ -4451,6 +4833,163 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    admin_training_modules_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTrainingList"];
+                };
+            };
+        };
+    };
+    admin_training_modules_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminTrainingModuleWriteRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["AdminTrainingModuleWriteRequest"];
+                "multipart/form-data": components["schemas"]["AdminTrainingModuleWriteRequest"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTrainingModuleDetail"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingRegateConflict"];
+                };
+            };
+        };
+    };
+    admin_training_modules_retrieve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                module_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTrainingModuleDetail"];
+                };
+            };
+        };
+    };
+    admin_training_modules_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                module_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["PatchedAdminTrainingModuleWriteRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["PatchedAdminTrainingModuleWriteRequest"];
+                "multipart/form-data": components["schemas"]["PatchedAdminTrainingModuleWriteRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTrainingModuleDetail"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrainingRegateConflict"];
+                };
+            };
+        };
+    };
+    admin_training_reorder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrainingReorderRequest"];
+                "application/x-www-form-urlencoded": components["schemas"]["TrainingReorderRequest"];
+                "multipart/form-data": components["schemas"]["TrainingReorderRequest"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTrainingList"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorCode"];
                 };
             };
         };

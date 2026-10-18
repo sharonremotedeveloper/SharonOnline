@@ -431,13 +431,17 @@ class TeacherDateOverride(models.Model):
 
 
 class TrainingModule(models.Model):
-    """One onboarding training module (slice T6). Content is written by Sharon; only published modules are shown, and only
-    published + required ones count towards `TeacherProfile.training_completed_at` (set by teachers/training.py)."""
+    """One onboarding training module (slice T6). Content is written by admins (/admin/training); only published modules are
+    shown, and only published + required ones count towards `TeacherProfile.training_completed_at` (set by teachers/training.py).
+    Publishing a required module re-gates every tutor who has not completed it (Wave 2, docs/ADMIN_CONTENT_MANAGEMENT_PENDING.md)."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     slug = models.SlugField(max_length=80, unique=True)
     title = models.CharField(max_length=200)
     summary = models.CharField(max_length=500, blank=True)
     body = models.TextField(blank=True, help_text='Markdown shown to the tutor.')
+    video_youtube_id = models.CharField(
+        max_length=11, blank=True,
+        help_text='Optional YouTube video (the 11-character id only; set through teachers/training.py::parse_youtube_id).')
     position = models.PositiveIntegerField(default=1, db_index=True)
     estimated_minutes = models.PositiveIntegerField(default=10)
     is_required = models.BooleanField(default=True)

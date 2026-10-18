@@ -33,3 +33,4 @@ cryptography>=43.0.0
 requests>=2.32.3
 icalendar>=7.3.0
 pytz>=2024.1
+nh3>=0.3.0  # HTML sanitizing for admin-edited lesson materials

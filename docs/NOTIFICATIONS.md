@@ -128,7 +128,8 @@ notify(user, kind, *, key, payload, booking=None) -> Notification | None
   alert). `alert_staff` likewise never raises and rolls back to its own savepoint, so a swallowed database error cannot
   leave the producer's PostgreSQL transaction aborted.
 - Preferences: a **mandatory** kind (category in `registry.MANDATORY_CATEGORIES`: security, payment, cancellation, refund,
-  bank_change, strike, suspension, vetting_outcome, staff_alert) always e-mails and always shows in-app; an optional
+  bank_change, strike, suspension, vetting_outcome, staff_alert) always e-mails and always shows in-app (Wave 2 added
+  `training_required` in the `vetting_outcome` category: a new required training module decides whether a tutor can be booked); an optional
   kind follows the user's opt-outs. Both channels off -> no row, returns `None`. E-mail off -> `email_state=skipped`,
   nothing rendered for e-mail. In-app off (optional kinds only) -> the row exists with `in_app=False`.
 - The e-mail is rendered once and persisted; delivery is enqueued with `transaction.on_commit` (a rolled-back caller

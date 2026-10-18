@@ -1,5 +1,9 @@
 from django.urls import path
 from apps.admin_api.fx_views import FxRateView
+from apps.admin_api.material_views import AdminMaterialDetailView, AdminMaterialListView  # Wave 2
+from apps.admin_api.training_views import (  # Wave 2: admin content (training)
+    AdminTrainingModuleDetailView, AdminTrainingModuleListView, AdminTrainingReorderView,
+)
 from apps.admin_api.refund_views import AdminRefundListView, AdminRefundRetryView
 from apps.admin_api.teacher_review_views import (  # slice T1b
     CancelTutorFutureLessonsView, SuspendedTutorsWithLessonsView, TeacherReviewActionView,
@@ -41,6 +45,11 @@ urlpatterns = [
     path('fx-rates/', FxRateView.as_view(), name='admin-fx-rates'),
     path('refunds/', AdminRefundListView.as_view(), name='admin-refunds-list'),
     path('refunds/<uuid:refund_id>/retry/', AdminRefundRetryView.as_view(), name='admin-refund-retry'),
+    path('training/modules/', AdminTrainingModuleListView.as_view(), name='admin-training-modules'),
+    path('training/modules/<uuid:module_id>/', AdminTrainingModuleDetailView.as_view(), name='admin-training-module'),
+    path('training/reorder/', AdminTrainingReorderView.as_view(), name='admin-training-reorder'),
+    path('materials/', AdminMaterialListView.as_view(), name='admin-materials'),
+    path('materials/<uuid:material_id>/', AdminMaterialDetailView.as_view(), name='admin-material'),
     path('payouts/batch/', PayoutBatchView.as_view(), name='admin-payouts-batch'),
     path('payouts/execute-batch/', ExecutePayoutBatchView.as_view(), name='admin-execute-payout'),
     # ---- P1a-c: payout batches (ADR-0003) ----

@@ -190,7 +190,7 @@ export function SplitScreenReader({
             </p>
 
             <div
-              className={`prose prose-stone max-w-none ${fontClass}`}
+              className={`lesson-html max-w-none ${fontClass}`}
               dangerouslySetInnerHTML={{ __html: material.content_html }}
             />
           </div>

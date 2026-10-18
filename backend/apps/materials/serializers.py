@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Material
+from .sanitize import clean_lesson_html
 
 class MaterialListSerializer(serializers.ModelSerializer):
     category_display = serializers.CharField(source='get_category_display', read_only=True)
@@ -33,8 +34,14 @@ class MaterialListSerializer(serializers.ModelSerializer):
         return []
 
 class MaterialDetailSerializer(MaterialListSerializer):
+    content_html = serializers.SerializerMethodField()
+
     class Meta(MaterialListSerializer.Meta):
         fields = MaterialListSerializer.Meta.fields + ('content_html', 'created_at', 'updated_at')
+
+    def get_content_html(self, obj) -> str:
+        # Cleaned on save too (Material.save); cleaning again here covers rows written before Wave 2.
+        return clean_lesson_html(obj.content_html)
 
 
 

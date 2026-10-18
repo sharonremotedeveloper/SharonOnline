@@ -1,0 +1,12 @@
+subject: Action required: complete your new training module
+title: New required training
+--- body
+Please complete "New training module" in Training. Until you do, students cannot book new lessons with you. Lessons already booked are not affected.
+--- text
+Hi Yuki,
+
+A new required training module has been added: New training module.
+
+Please complete it from the Training page in your tutor dashboard. Until you do, students cannot book new lessons with you. Lessons already booked are not affected.
+--- html
+<p>Hi Yuki,</p><p>A new required training module has been added: <strong>New training module</strong>.</p><p>Please complete it from the Training page in your tutor dashboard. Until you do, students cannot book new lessons with you. Lessons already booked are not affected.</p>

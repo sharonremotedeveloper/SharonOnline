@@ -86,7 +86,9 @@ class TestCompletion:
         training.complete_module(tutor, TrainingModule.objects.get(slug='a'))
         assert TeacherProfile.objects.get(pk=tutor.pk).training_completed_at is not None
 
-    def test_a_module_published_later_does_not_take_completion_away(self):
+    def test_a_raw_row_insert_does_not_take_completion_away(self):
+        """Only training.save_module re-gates (Wave 2: /admin/training and Django admin both call it; see
+        test_admin_training.py). A row written straight to the table, as here, changes nobody's date."""
         tutor = untrained()
         training.complete_module(tutor, module('a'))
         stamp = TeacherProfile.objects.get(pk=tutor.pk).training_completed_at
