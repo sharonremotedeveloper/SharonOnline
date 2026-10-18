@@ -18,6 +18,51 @@ Whenever an error, test breakage, build failure, or unexpected API behavior occu
 
 ## 📋 Historical Error & Resolution Ledger
 
+### ERR-551: Daily classroom messages trusted peer-declared teacher authority
+
+- **Observed (2026-10-17):** Independent review of Antigravity's classroom synchronization found a passing challenger test that deliberately proved an invalid or student-controlled packet could be interpreted as a teacher message and change shared classroom state.
+- **Root cause:** `ClassroomSyncCoordinator` normalized every non-`student` role to `teacher`, and the Daily listener forwarded peer-controlled `senderId` and `role` fields without binding them to Daily's authenticated top-level `fromId` and participant `owner` metadata.
+- **Resolution:** Reject invalid roles; require wrapped Daily messages to carry trusted sender authority supplied by the integration; resolve the sender from Daily's participant roster; derive teacher/student authority from Daily's provider-owned `owner` flag; reject unknown participants; and ignore peer-declared identity for authorization. The former exploit assertion is now a rejection regression, with an additional forged-teacher packet test.
+- **Verification:** Frontend tests passed 357/357, ESLint passed with zero warnings, generated API types matched, and the 51-route production build passed. Exact shared-`develop` commit `3b745796c9a982b4d73327063f70e4b3560a0e3d` passed [API-contract run 39019152820](https://github.com/sharonremotedeveloper/SharonOnline/actions/runs/39019152820) and every job in [Quality-gates run 39019152724](https://github.com/sharonremotedeveloper/SharonOnline/actions/runs/39019152724), including backend, frontend, PostgreSQL ledger, Redis races, Ruff, and dependency audits.
+- **Status:** `RESOLVED ON SHARED DEVELOP`
+- **Logged By:** Codex
+
+### ERR-550: Antigravity core-algorithm push failed API-contract and frontend quality gates
+
+- **Observed (2026-10-17):** Shared `develop` commit `3b46cb65ebd916d7387c11211a1873b1f713ca91` failed [Quality-gates run 39011583703](https://github.com/sharonremotedeveloper/SharonOnline/actions/runs/39011583703) and [API-contract run 39011583697](https://github.com/sharonremotedeveloper/SharonOnline/actions/runs/39011583697). The backend job had one failure after 4,293 passes, the API-contract job had one failure after 13 passes, and frontend tests passed 328/328 before lint stopped the job with eight `react-hooks/refs` errors.
+- **Root cause:** Tutor ranking and lesson-memo serializer changes altered the generated OpenAPI schema, but `docs/api/openapi.yaml` and `frontend/src/types/api.generated.ts` were not regenerated. The new classroom synchronization hook also initialized its external coordinator by reading and writing `useRef.current` during render, which React 19 lint rejects. After regenerating the contract, the build exposed a third seam: the local booking fallback omitted the newly required read-only `ranking_score` and `lessons_completed` tutor fields.
+- **Resolution:** Initialize `ClassroomSyncCoordinator` once with a lazy `useState` initializer; regenerate the OpenAPI schema and generated TypeScript types; and add deterministic ranking fields to the local fallback fixture. No lint rule, contract guard, test, or production safety check was weakened.
+- **Verification:** Frontend tests passed 356/356, ESLint passed with zero warnings, generated API types matched, and the complete 51-route production build passed using the same server-only `INTERNAL_API_URL` placeholder as CI. Django check and migration drift passed; Ruff passed; the OpenAPI contract suite passed 14/14; and the full non-Redis/non-Postgres backend CI-equivalent suite passed 4,294 tests with 25 deselected and 94% coverage. Local recurrences of the known Windows `.next` permission/Google Fonts DNS issue and pytest default-temp exhaustion were handled through the already documented ERR-525/ERR-539 procedures, without source workarounds.
+- **Status:** `RESOLVED ON SHARED DEVELOP` (repair commit `66fe891012356574500b4b0be974b8640a3e85cf`; [API contract](https://github.com/sharonremotedeveloper/SharonOnline/actions/runs/39018732889) and [Quality gates](https://github.com/sharonremotedeveloper/SharonOnline/actions/runs/39018732939) passed)
+- **Logged By:** Codex
+
+### ERR-549: Mobile classroom hard to scroll, overlay covered video, high phone CPU
+
+- **Observed (2026-10-16, Android Chrome, first two-device call):** our status pill and Leave button overlaid Daily's self-view tile; a fixed 500-600px video frame filled the screen so touch scrolling landed inside the iframe; the owner reported high CPU.
+- **Fix:** controls moved above the video (no backdrop blur over live video), Daily's duplicate leave button hidden, frame `62dvh` on phones, phones send `bandwidth-optimized` video after joining, tighter mobile padding (develop `728ae00`, main `91e8960`). CPU reduction is not measured yet.
+
+### ERR-548: Every real Daily webhook rejected with 401 (millisecond timestamp)
+
+- **Observed (2026-10-16 14:49Z):** the first real `participant.joined` deliveries got 401 "Request timestamp out of allowable window"; no attendance was recorded.
+- **Root cause:** Daily sends `X-Webhook-Timestamp` in milliseconds; the replay guard compared it with `time.time()` seconds. Tests only used second timestamps.
+- **Fix:** normalise to seconds for the window; HMAC still over the header value as sent; tests for accepted current-ms and rejected stale-ms timestamps (develop `3621a07`, main `37a9790`, Railway API `7e252c6d`). Also re-pointed the Daily webhook from the (FAILED) development URL to production and rotated `DAILY_WEBHOOK_SECRET` (the old value was exposed in a session log and was not padded base64, which Daily requires).
+
+### ERR-547: Daily classroom stuck on "Connecting to Live Stage" (Permissions-Policy blocked the iframe's devices)
+
+- **Observed (2026-10-16 14:25Z):** tutor and student both received `GET /bookings/5cdec1b2-.../video-token/` 200, but no Daily `participant.joined` webhook arrived and both browsers stayed on "Connecting to Live Stage". The Daily domain and room URL answered (302 dashboard / 200 room page).
+- **Root cause:** `next.config.mjs` sent `Permissions-Policy: camera=(self), microphone=(self)`. That header caps what any iframe may be delegated, so Daily's cross-origin frame (`https://topscholaracademy.daily.co`) was denied the camera and microphone even though daily-js sets `allow="microphone; camera; ..."`; `callFrame.join()` never completed.
+- **Fix:** delegate camera, microphone and display-capture to the Daily domain (+ `https://*.daily.co`); `frontend/test/permissionsPolicy.test.ts` pins it. develop `68d4367`, main `3132d1b`; live header verified. Two-device acceptance is still pending.
+
+### ERR-546: Daily iframe was display:none until joined
+
+- **Observed:** pre-flight review found the frame wrapper hidden until `joined-meeting`, so Daily's device/permission UI rendered in a hidden frame. **Fix:** show it while connecting (develop `92756c9`, main `83a6d27`).
+
+### ERR-545: Booking confirmation notification stuck on Resend 409 invalid_idempotent_request
+
+- **Observed (2026-10-16 11:57Z):** first production test booking `1a3e6dfe` provisioned its Daily room and sent the .ics e-mail, but the student's `booking_confirmed` notification retried with `http_409:invalid_idempotent_request`.
+- **Root cause:** the .ics e-mail key `booking-confirmed:<id>:<n>:student` was identical to the notification key `booking_key('booking-confirmed', booking, 'student')`; Resend rejects a reused key with a different body.
+- **Fix:** e-mail key is now `booking-confirmed-invite:...`; regression test asserts the two keys differ (develop `92756c9`, main `83a6d27`, Railway API `2839b47a`). The already-stuck notification keeps failing until Resend's 24 h key window lapses.
+
 ### ERR-544: Successful tutor submission returned to the editable application wizard
 
 - **Observed:** A real production tutor completed the repaired application journey. Railway recorded the final submission POST as HTTP 200 at `2026-10-16T01:21:31Z`, but the browser remained on the application wizard. Two subsequent attempts from that stale form generated HTTP 409 PATCH responses because the server had correctly locked the submitted application.
@@ -988,3 +1033,15 @@ def configure_test_settings(settings):
 - **Observed (2026-10-19, Wave 2):** `npm run lint` reported "Cannot access refs during render" in `components/admin/LessonHtmlEditor.tsx`.
 - **Root cause:** the toolbar was built during render as an array of closures that call a function reading the editor ref; the React Compiler lint rule cannot tell that the ref is only read when a button is clicked.
 - **Fix:** the toolbar is a static module-level list of commands (`TOOLS`), and the click handler `apply(tool)` reads the ref only inside the event. Lint is clean with no rule disabled.
+
+### ERR-555: Production migration plan job stopped at startup (R2 settings missing on the migration service)
+
+- **Observed (2026-10-19, Wave 2 release step 2):** Railway deployment `e5d812f9-70d6-44b5-8e13-a0a460febafd` of the one-shot service `production-migrations-b33743a` at `59e3e52` (start command `--plan`, approval flag empty) ended `SUCCESS` but the container raised `ImproperlyConfigured: Unsafe production configuration: CLOUDFLARE_R2_ACCOUNT_ID must be set ...; CLOUDFLARE_R2_PUBLIC_DOMAIN must be set ...` while loading `config.settings.production`, before any database connection. No plan was printed and nothing was applied.
+- **Root cause:** the production settings guard (`config/settings/guard.py`) gained the two R2 requirements in the 2026-10-15 release `e534795` ("fix production tutor asset uploads"). The migration service was created on 2026-10-14 with a copy of the variables at that time, so it lacks them; the API, worker and Beat services have them.
+- **Fix (done 2026-10-19 on Anesu's go-ahead):** copied the two variables from `backend-api-production` to the migration service (values never printed; equality re-checked; `skipDeploys`; approval flag still empty). The re-run plan deployment `4ba359ac-f3ea-414d-8cd5-6b91ac203a85` printed the plan. Original note: copy `CLOUDFLARE_R2_ACCOUNT_ID` and `CLOUDFLARE_R2_PUBLIC_DOMAIN` from `backend-api-production` to the migration service without printing values, then re-run the plan-only job. Railway reporting `SUCCESS` for a one-shot job is not evidence: always read its log.
+
+### ERR-556: Tutor training cards squashed into thin side-by-side columns on phones
+
+- **Observed (2026-10-19, production, Redmi):** on `/teacher/training` the module card laid its icon, "Module 1 · Required" label, title, summary and minutes out in one row, so on a phone each became a narrow column and the text overlapped the card edges.
+- **Root cause:** the card `Link` in `frontend/src/app/teacher/training/page.tsx` carried `min-w-11 justify-center min-h-11 inline-flex items-center`, a tap-target class set meant for small icon links (added by an earlier mechanical touch-target sweep). On a block card it turned the vertical content into a horizontal flex row.
+- **Fix:** the card is `flex flex-col` (minutes pinned to the bottom with `mt-auto`), with a visible focus ring, decorative icons `aria-hidden`, and a text "Completed" chip instead of an icon-only tick. A search found no other card link with the same classes. Verified on the Redmi and at 1440 locally.
