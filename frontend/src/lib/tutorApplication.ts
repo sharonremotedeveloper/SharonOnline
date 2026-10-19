@@ -1,5 +1,5 @@
 export const APPLICATION_MIN_DOWNLOAD_MBPS = 10;
-export const APPLICATION_MIN_UPLOAD_MBPS = 5;
+export const APPLICATION_MIN_UPLOAD_MBPS = 2;
 
 export type TutorApplicationOverview = {
   status?: unknown;
@@ -110,7 +110,7 @@ export function validateApplicationStep(step: number, input: {
   ];
   if (step === 2) return (input.requiredKinds || []).filter((kind) => !(input.committedKinds || []).includes(kind)).map((kind) => `Upload your ${kind.replaceAll("_", " ")}.`);
   if (step === 3) return input.powerConfirmed ? [] : ["Confirm that you have a power-backup plan."];
-  if (step === 4) return isSpeedTestPassing(Number(input.download), Number(input.upload)) ? [] : ["Your connection must reach at least 10 Mbps download and 5 Mbps upload."];
+  if (step === 4) return isSpeedTestPassing(Number(input.download), Number(input.upload)) ? [] : ["Your connection must reach at least 10 Mbps download and 2 Mbps upload."];
   if (step === 5) return input.accepted ? [] : ["Accept the legal declarations to submit your application."];
   return [];
 }

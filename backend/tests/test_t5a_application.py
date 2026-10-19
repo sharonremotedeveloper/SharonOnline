@@ -1,6 +1,6 @@
 """Slice T5a: the tutor application funnel (plan section 3.9). A tutor completes five steps (profile, uploads, power backup,
 speed test, declaration) and submits; submitting is the ONLY way an applicant reaches the review queue (the staff lead-in
-`applied -> submitted` of slice T1b is gone). Provisional until D-11: required uploads, 10 / 5 Mbps, 7-day-old speed test."""
+`applied -> submitted` of slice T1b is gone). Provisional until D-11: required uploads, 10 / 2 Mbps, 7-day-old speed test."""
 from datetime import timedelta
 from decimal import Decimal
 
@@ -63,7 +63,7 @@ class TestProgress:
         assert body['status'] == 'applied' and body['can_submit'] is False and body['editable'] is True
         assert [s['key'] for s in body['steps']] == ['profile', 'uploads', 'power_backup', 'speed_test', 'declaration']
         assert not any(s['complete'] for s in body['steps'])
-        assert body['requirements'] == {'upload_kinds': list(KINDS), 'min_download_mbps': 10.0, 'min_upload_mbps': 5.0,
+        assert body['requirements'] == {'upload_kinds': list(KINDS), 'min_download_mbps': 10.0, 'min_upload_mbps': 2.0,
                                         'speed_test_max_age_hours': 168}
 
     def test_a_finished_applicant_can_submit(self):
@@ -94,7 +94,7 @@ class TestProgress:
 
 # ------------------------------------------------------------------ editing
 class TestEditing:
-    @pytest.mark.parametrize('speed', [{'download_mbps': '9.9', 'upload_mbps': '12'}, {'download_mbps': '42', 'upload_mbps': '4.9'}])
+    @pytest.mark.parametrize('speed', [{'download_mbps': '9.9', 'upload_mbps': '12'}, {'download_mbps': '42', 'upload_mbps': '1.9'}])
     def test_a_slow_connection_is_recorded_but_does_not_complete_the_step(self, speed):
         tutor = applicant()
         res = api(tutor.user).patch(URL, {'speed_test': speed}, format='json')
@@ -224,7 +224,7 @@ class TestStaffCannotReceiveTheApplicationForTheTutor:
 class TestMutationSurvivors:
     def test_a_connection_exactly_at_the_minimum_passes(self):
         tutor = applicant()
-        res = api(tutor.user).patch(URL, {'speed_test': {'download_mbps': '10', 'upload_mbps': '5'}}, format='json')
+        res = api(tutor.user).patch(URL, {'speed_test': {'download_mbps': '10', 'upload_mbps': '2'}}, format='json')
         assert {s['key']: s for s in res.json()['steps']}['speed_test']['complete'] is True
 
     def test_a_sent_application_cannot_be_submitted_again_even_if_every_step_is_complete(self):

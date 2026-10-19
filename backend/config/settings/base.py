@@ -287,7 +287,7 @@ TUTOR_TRAINING_GATE_ENABLED = os.environ.get('TUTOR_TRAINING_GATE_ENABLED', 'Fal
 APPLICATION_REQUIRED_ASSET_KINDS = tuple(k.strip() for k in os.environ.get(
     'APPLICATION_REQUIRED_ASSET_KINDS', 'avatar,accent_audio,intro_video,tefl_certificate,identity_document').split(',') if k.strip())
 APPLICATION_MIN_DOWNLOAD_MBPS = float(os.environ.get('APPLICATION_MIN_DOWNLOAD_MBPS', '10'))
-APPLICATION_MIN_UPLOAD_MBPS = float(os.environ.get('APPLICATION_MIN_UPLOAD_MBPS', '5'))
+APPLICATION_MIN_UPLOAD_MBPS = float(os.environ.get('APPLICATION_MIN_UPLOAD_MBPS', '2'))
 APPLICATION_SPEED_TEST_MAX_AGE_HOURS = int(os.environ.get('APPLICATION_SPEED_TEST_MAX_AGE_HOURS', '168'))
 VETTING_MIN_RUBRIC_SCORE = int(os.environ.get('VETTING_MIN_RUBRIC_SCORE', '3'))
 VETTING_REQUIRED_ASSET_KINDS = tuple(k.strip() for k in os.environ.get('VETTING_REQUIRED_ASSET_KINDS', '').split(',') if k.strip())

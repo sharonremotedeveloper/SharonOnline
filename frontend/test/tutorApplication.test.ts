@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildApplicationPayload, getTutorApplicationOutcome, hydrateTutorAssetProgress, isSpeedTestPassing, recoverTutorApplicationOutcome, resolveTutorAssetContentType, validateApplicationStep } from "../src/lib/tutorApplication";
 
-test("T5b speed threshold requires 10/5 Mbps", () => {
-  assert.equal(isSpeedTestPassing(10, 5), true);
+test("T5b speed threshold requires 10/2 Mbps", () => {
+  assert.equal(isSpeedTestPassing(10, 2), true);
   assert.equal(isSpeedTestPassing(9.99, 20), false);
-  assert.equal(isSpeedTestPassing(20, 4.99), false);
+  assert.equal(isSpeedTestPassing(20, 1.99), false);
 });
 
 test("T5b validates required uploads and declarations", () => {
