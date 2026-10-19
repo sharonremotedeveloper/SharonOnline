@@ -337,7 +337,7 @@ Admins write the content on `/admin/training` (Wave 2; Django admin also works a
 
 Code: `teachers/application.py`, `teachers/application_views.py`, model `TeacherApplication` (migration `teachers/0014_t5a_application`).
 Provisional until D-11: `APPLICATION_REQUIRED_ASSET_KINDS` (avatar, accent_audio, intro_video, tefl_certificate,
-identity_document), `APPLICATION_MIN_DOWNLOAD_MBPS=10`, `APPLICATION_MIN_UPLOAD_MBPS=5`, `APPLICATION_SPEED_TEST_MAX_AGE_HOURS=168`.
+identity_document), `APPLICATION_MIN_DOWNLOAD_MBPS=10`, `APPLICATION_MIN_UPLOAD_MBPS=2`, `APPLICATION_SPEED_TEST_MAX_AGE_HOURS=168`.
 
 - **Five steps** (`GET /teachers/me/application/`): `profile` (headline, bio, at least one specialty), `uploads` (a live
   `TeacherAsset` for every required kind; replaced files do not count; `missing` names the kinds), `power_backup` (confirmed),

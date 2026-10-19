@@ -403,7 +403,7 @@ export default function AdminVettingPage() {
                     </div>
                   </div>
                   <span className="text-success-hover font-bold flex items-center gap-1 text-xs pt-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-success" /> Exceeds 10/5 Mbps Sharon SLA
+                    <ShieldCheck className="w-3.5 h-3.5 text-success" /> Exceeds 10/2 Mbps Sharon SLA
                   </span>
                 </div>
 
