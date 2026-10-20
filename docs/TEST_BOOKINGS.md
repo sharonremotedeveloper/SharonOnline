@@ -7,7 +7,7 @@ Status: **Implemented in code, covered by automated tests, intentionally disable
    (`config/settings/production.py`) and it must stay that way.
 2. **Production allowlist** `TEST_BOOKING_ALLOWED_EMAILS` (comma-separated, case-insensitive; default empty = off). With
    `PAYMENTS_ENABLED=false`, `POST /bookings/<id>/confirm-test/` confirms a held booking only if BOTH the student's and the tutor's
-   e-mail are listed. Optional `TEST_BOOKING_ALL_STUDENTS=true` drops the student condition (any student), but the tutor must still be listed. Any other student or tutor gets 503. Payments enabled always wins (no allowlist then).
+   e-mail are listed. Optional `TEST_BOOKING_ALL_STUDENTS=true` drops the student condition (any student), but the tutor must still be listed. Any other student or tutor gets 409 ("This tutor can't take bookings yet...", ERR-557). Each newly approved tutor must be added to the list while payments are off. Payments enabled always wins (no allowlist then).
 
 ## What a test booking does and does not do
 - Does: normal state transition to `confirmed` (audit reason `allowlisted test booking confirmed without payment`), slot lock, Daily room

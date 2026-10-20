@@ -44,7 +44,9 @@ def confirm_test_booking(*, booking, student):
         raise TestBookingError(404, 'Booking not found.')
     mode = booking_test_mode(student, booking.teacher.user)
     if not mode:
-        raise TestBookingError(503, 'Test bookings are not enabled for this booking.')
+        # A policy refusal, not an outage: 409 with words the student can act on (a 5xx showed "The server hit a problem").
+        raise TestBookingError(409, "This tutor can't take bookings yet, so this lesson was not confirmed. "
+                                    'Please choose another tutor, or contact support.')
     if booking.status == Booking.Status.CONFIRMED:
         return booking, False
     if booking.status != Booking.Status.PENDING_PAYMENT:

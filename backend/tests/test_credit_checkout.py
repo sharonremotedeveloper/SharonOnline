@@ -157,7 +157,7 @@ class TestDevelopmentTestBooking:
     def test_test_confirmation_is_disabled_without_explicit_switch(self, student_user, teacher_user):
         booking = held_booking(teacher_user, student_user)
         response = client(student_user).post(f'/api/v1/bookings/{booking.id}/confirm-test/')
-        assert response.status_code == 503
+        assert response.status_code == 409
         booking.refresh_from_db()
         assert booking.status == Booking.Status.PENDING_PAYMENT
 
@@ -218,7 +218,7 @@ class TestAllowlistedTestBooking:
             'student_only': {student_user.email.lower()}, 'teacher_only': {teacher_user.user.email.lower()}, 'nobody': set(),
         }[listed])
         response, booking, queued = self._post(student_user, teacher_user, monkeypatch, django_capture_on_commit_callbacks)
-        assert response.status_code == 503
+        assert response.status_code == 409
         assert booking.status == Booking.Status.PENDING_PAYMENT and queued == []
 
     def test_all_students_switch_still_requires_a_listed_tutor(
@@ -229,7 +229,7 @@ class TestAllowlistedTestBooking:
         settings.TEST_BOOKING_ALL_STUDENTS = True
         settings.TEST_BOOKING_ALLOWED_EMAILS = frozenset({'someone-else@example.com'})
         response, booking, _ = self._post(student_user, teacher_user, monkeypatch, django_capture_on_commit_callbacks)
-        assert response.status_code == 503 and booking.status == Booking.Status.PENDING_PAYMENT
+        assert response.status_code == 409 and booking.status == Booking.Status.PENDING_PAYMENT
 
     def test_all_students_switch_allows_unlisted_student_with_listed_tutor(
         self, student_user, teacher_user, django_capture_on_commit_callbacks, monkeypatch, settings
